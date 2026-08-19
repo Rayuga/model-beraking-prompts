@@ -18,7 +18,9 @@ const state = {
   undo: [],
   redo: [],
   filter: null,
-  editing: false
+  editing: false,
+  editCell: null,
+  editBuffer: ''
 };
 
 const $ = (id) => document.getElementById(id);
@@ -63,12 +65,12 @@ function bindEvents() {
   $('apply-formula').addEventListener('click', () => setSelectedValue(formulaBar.value));
   formulaBar.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') {
-      state.editing = false;
+      commitEdit();
       setSelectedValue(formulaBar.value);
       grid.focus();
     }
     if (event.key === 'Escape') {
-      state.editing = false;
+      commitEdit();
       updateFormulaBar();
       grid.focus();
     }
@@ -251,6 +253,7 @@ function div(className, text) {
 }
 
 function selectCell(row, col, extend = false) {
+  commitEdit();
   if (extend) {
     state.range = { startRow: state.selected.row, startCol: state.selected.col, endRow: row, endCol: col };
   } else {
@@ -298,6 +301,26 @@ function startEdit(a) {
 
 function onGridKeyDown(event) {
   const key = event.key;
+  if (state.editing) {
+    if (key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      event.preventDefault();
+      state.editBuffer += key;
+      applyEditBuffer();
+      return;
+    }
+    if (key === 'Backspace') {
+      event.preventDefault();
+      state.editBuffer = state.editBuffer.slice(0, -1);
+      applyEditBuffer();
+      return;
+    }
+    if (key === 'Escape') {
+      event.preventDefault();
+      commitEdit();
+      return;
+    }
+    commitEdit();
+  }
   if ((event.ctrlKey || event.metaKey) && key.toLowerCase() === 'z') {
     event.preventDefault();
     event.shiftKey ? redo() : undo();
@@ -349,10 +372,29 @@ function onGridKeyDown(event) {
 }
 
 function startFormulaEdit(initialText = '') {
+  pushUndo();
   state.editing = true;
-  formulaBar.focus();
-  formulaBar.value = initialText;
-  formulaBar.setSelectionRange(formulaBar.value.length, formulaBar.value.length);
+  state.editCell = addr(state.selected.row, state.selected.col);
+  state.editBuffer = initialText;
+  applyEditBuffer();
+}
+
+function applyEditBuffer() {
+  if (!state.editCell) return;
+  state.cells[state.editCell] = state.editBuffer;
+  formulaBar.value = state.editBuffer;
+  recalc();
+  markDirty();
+  renderGrid();
+  renderStatus();
+  grid.focus();
+}
+
+function commitEdit() {
+  if (!state.editing) return;
+  state.editing = false;
+  state.editCell = null;
+  state.editBuffer = '';
 }
 
 function onPaste(event) {
