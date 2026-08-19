@@ -130,7 +130,7 @@ window.restoreRevision = async (revision) => {
   markDirty();
   recomputeMatches();
   render();
-  message.textContent = `Revision ${revision} restored as draft. Save to publish it.`;
+  message.textContent = `Revision ${revision} restored as unsaved draft. Use Undo to return to the pre-restore draft.`;
 };
 
 function snapshot() {
@@ -164,6 +164,12 @@ function pushUndo() {
   if (state.undo.length > 150) state.undo.shift();
   state.redo = [];
   state.typingGroup = null;
+}
+
+function pushGroupedUndo() {
+  state.undo.push(snapshot());
+  if (state.undo.length > 150) state.undo.shift();
+  state.redo = [];
 }
 
 function undo() {
@@ -523,11 +529,11 @@ function insertText(text) {
   if (canGroupTyping) {
     const caretKey = caretGroupKey();
     if (!state.typingGroup || state.typingGroup.nextCaretKey !== caretKey) {
-      pushUndo();
+      pushGroupedUndo();
       state.typingGroup = { nextCaretKey: caretKey };
     }
   } else if (replacingSelection && text.length === 1) {
-    pushUndo();
+    pushGroupedUndo();
     state.typingGroup = { nextCaretKey: null };
   } else {
     pushUndo();
