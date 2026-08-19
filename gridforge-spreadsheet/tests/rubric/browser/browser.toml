@@ -1,0 +1,278 @@
+[judge]
+judge = "claude-code"
+model = "anthropic/claude-sonnet-5"
+mode = "batched"
+timeout = 8400
+isolated = false
+prompt_template = "prompt.md"
+weight = 1.0
+
+[[judge.mcp_servers]]
+name = "playwright"
+transport = "stdio"
+command = "playwright-mcp"
+args = ["--headless", "--isolated", "--browser=chromium", "--no-sandbox"]
+
+[[criterion]]
+id = "app_loads_seed_workbook"
+name = "app_loads_seed_workbook"
+type = "binary"
+weight = 0.5
+description = """
+Navigate to http://localhost:3000/. Verify GridForge loads without a login step, shows the workbook title "Northwind Operations Plan", exposes a spreadsheet/grid workspace, and shows the seeded sheet name "Plan".
+"""
+
+[[criterion]]
+id = "custom_grid_no_spreadsheet_widget"
+name = "custom_grid_no_spreadsheet_widget"
+type = "binary"
+weight = 2.0
+description = """
+Inspect the live DOM and loaded scripts. Verify the main editable grid is not a textarea, not a cell-per-input form, not contenteditable, and not Handsontable, AG Grid, Luckysheet, x-spreadsheet, HyperFormula, SheetJS-as-calculation-engine, or another spreadsheet/grid widget. A formula bar input outside the grid is allowed. Then edit a grid cell and verify the workbook data changes, proving the custom surface actually edits cells.
+"""
+
+[[criterion]]
+id = "headers_selection_status"
+name = "headers_selection_status"
+type = "binary"
+weight = 0.5
+description = """
+Verify the grid shows row numbers, column letters, selected cell/range status, formula bar or raw-value readout, current saved revision, and saved/dirty state. The Save action must be unavailable or a no-op while the workbook is already saved and not dirty.
+"""
+
+[[criterion]]
+id = "basic_edit_save_reload"
+name = "basic_edit_save_reload"
+type = "binary"
+weight = 1.0
+description = """
+Edit cell F2 to BASIC-SAVE-CHECK, save the workbook, reload the page, and verify F2 still contains BASIC-SAVE-CHECK exactly once. This must be persisted workbook data, not only rendered overlay text.
+"""
+
+[[criterion]]
+id = "unsaved_reload_discards_draft"
+name = "unsaved_reload_discards_draft"
+type = "binary"
+weight = 1.0
+description = """
+Edit cell F3 to UNSAVED-SHOULD-DISAPPEAR but do not save. Verify the UI marks the workbook dirty. Reload the page and verify F3 is blank or back to its prior saved value while the previously saved F2 BASIC-SAVE-CHECK remains.
+"""
+
+[[criterion]]
+id = "keyboard_navigation_grid"
+name = "keyboard_navigation_grid"
+type = "binary"
+weight = 1.0
+description = """
+Focus a cell in the custom grid and use Arrow keys, Tab, Shift+Tab, Enter, and Shift+Enter. Verify selection moves between adjacent cells in the expected direction and does not jump into a hidden native input or lose grid focus.
+"""
+
+[[criterion]]
+id = "formula_bar_preserves_raw_formula"
+name = "formula_bar_preserves_raw_formula"
+type = "binary"
+weight = 1.5
+description = """
+Select seeded formula cell D2. Verify the grid displays its evaluated value 360 while the formula bar or edit readout preserves the raw formula =B2*C2. Change the formula to =B2*(C2+10), commit it, and verify the displayed value becomes 390 while the raw formula is still editable.
+"""
+
+[[criterion]]
+id = "operator_precedence_parentheses"
+name = "operator_precedence_parentheses"
+type = "binary"
+weight = 1.5
+description = """
+Enter =2+3*4 in G2 and verify it evaluates to 14. Enter =(2+3)*4 in G3 and verify it evaluates to 20. This must be formula parsing with precedence, not left-to-right string math.
+"""
+
+[[criterion]]
+id = "cell_reference_recalculation"
+name = "cell_reference_recalculation"
+type = "binary"
+weight = 2.0
+description = """
+Enter =B2*C2 in G4 and verify it evaluates from the current B2 and C2 values. Change B2 to 4. Verify D2 and G4 both recalculate immediately from the new B2 value without requiring reload or manual refresh.
+"""
+
+[[criterion]]
+id = "range_functions_recalculate"
+name = "range_functions_recalculate"
+type = "binary"
+weight = 2.0
+description = """
+Enter formulas using SUM, AVG, MIN, MAX, and COUNT over B2:B4 in nearby cells. Verify each result is correct. Then change B4 from 5 to 8 and verify every dependent range formula recalculates correctly.
+"""
+
+[[criterion]]
+id = "division_by_zero_error"
+name = "division_by_zero_error"
+type = "binary"
+weight = 1.0
+description = """
+Enter =10/0 in H2. Verify the cell shows a visible formula error rather than Infinity, a blank value, a crash, or stale previous data.
+"""
+
+[[criterion]]
+id = "circular_reference_error"
+name = "circular_reference_error"
+type = "binary"
+weight = 2.0
+description = """
+Set H3 to =H4 and H4 to =H3. Verify both cells or the relevant cycle show a visible circular-reference error and the app remains responsive. Then replace H4 with 12 and verify H3 recalculates to 12.
+"""
+
+[[criterion]]
+id = "invalid_formula_error"
+name = "invalid_formula_error"
+type = "binary"
+weight = 1.0
+description = """
+Enter an invalid formula such as =SUM( in H5. Verify the cell shows a visible formula error and the app remains usable.
+"""
+
+[[criterion]]
+id = "tsv_range_paste_atomic"
+name = "tsv_range_paste_atomic"
+type = "binary"
+weight = 1.5
+description = """
+Paste the tab-separated block "TSV-A\t11\t12\nTSV-B\t21\t22\nTSV-C\t31\t32" starting at J2. Verify it fills the 3 by 3 range J2:L4 exactly. Press Undo once and verify the whole pasted range is removed together. Press Redo once and verify the whole range returns.
+"""
+
+[[criterion]]
+id = "range_copy_cut_clear"
+name = "range_copy_cut_clear"
+type = "binary"
+weight = 1.5
+description = """
+Select the range J2:L4, copy it, paste it starting at J6, and verify all 3 by 3 values are copied. Cut J6:L8 and verify the pasted copy is cleared. Press Undo once and verify the full cut range returns. Then clear J6:L8 and verify one Undo restores the whole cleared range.
+"""
+
+[[criterion]]
+id = "fill_down_numbers"
+name = "fill_down_numbers"
+type = "binary"
+weight = 1.5
+description = """
+Put 1 in M2 and 2 in M3, select M2:M3, then use the fill control or drag handle to extend down through M7. Verify M4:M7 become 3, 4, 5, and 6. Press Undo once and verify the fill extension is undone as one edit.
+"""
+
+[[criterion]]
+id = "fill_formula_relative_refs"
+name = "fill_formula_relative_refs"
+type = "binary"
+weight = 2.0
+description = """
+Enter =B2*C2 in N2, then fill it down through N4. Verify N3 uses B3*C3 and N4 uses B4*C4, with displayed values matching each row rather than copying the literal reference to row 2.
+"""
+
+[[criterion]]
+id = "sort_preserves_row_integrity"
+name = "sort_preserves_row_integrity"
+type = "binary"
+weight = 2.0
+description = """
+Use the seeded table A9:D12. Sort rows 10:12 by Revenue descending. Verify West remains paired with 1500, 850, and its margin; North remains paired with 1200 and 700; South remains paired with 900 and 500. Formulas in the sorted rows must still evaluate to the correct margin for their row.
+"""
+
+[[criterion]]
+id = "filter_hide_clear_without_deleting"
+name = "filter_hide_clear_without_deleting"
+type = "binary"
+weight = 1.5
+description = """
+Apply a text filter to the Region table that shows only rows containing South. Verify North and West are hidden from the visible filtered rows while South remains visible. Clear the filter and verify North, South, and West all return with their original row data intact.
+"""
+
+[[criterion]]
+id = "long_grid_scroll_integrity"
+name = "long_grid_scroll_integrity"
+type = "binary"
+weight = 1.0
+description = """
+Scroll or navigate to confirm ANCHOR-TOP, ANCHOR-MIDDLE, and ANCHOR-BOTTOM are all present in the workbook. Make one edit near each anchor, save, reload, and verify all three edits persisted without truncating or duplicating distant rows.
+"""
+
+[[criterion]]
+id = "undo_redo_separate_edits"
+name = "undo_redo_separate_edits"
+type = "binary"
+weight = 1.5
+description = """
+Make three edits in three different cells: P2=UNDO-ONE, P3=UNDO-TWO, P4=UNDO-THREE. Press Undo once and verify only P4 reverts. Press Undo again and verify only P3 reverts. Press Redo twice and verify P3 then P4 return in order.
+"""
+
+[[criterion]]
+id = "redo_cleared_after_new_edit"
+name = "redo_cleared_after_new_edit"
+type = "binary"
+weight = 1.5
+description = """
+Enter REDO-ORIGINAL in Q2, press Undo once so Q2 reverts, then enter REDO-NEW in Q2. Attempt Redo using both visible control and keyboard shortcut. Verify REDO-ORIGINAL does not return and REDO-NEW remains.
+"""
+
+[[criterion]]
+id = "save_preserves_formulas_reload"
+name = "save_preserves_formulas_reload"
+type = "binary"
+weight = 1.5
+description = """
+Enter =SUM(B2:B4) in R2 and save. Reload the page. Verify R2 displays the correct evaluated result and selecting R2 still exposes the raw formula =SUM(B2:B4), not only the computed number.
+"""
+
+[[criterion]]
+id = "unchanged_save_no_revision"
+name = "unchanged_save_no_revision"
+type = "binary"
+weight = 1.0
+description = """
+With the workbook in a saved/not-dirty state, record the current revision number and revision-history count. Attempt to save without making any edit, through the visible Save control if available and also with a direct in-page fetch using the current workbook content and current baseRevision. Verify no new revision is created and the app either disables Save or reports that there are no changes to save.
+"""
+
+[[criterion]]
+id = "revision_history_preview_restore"
+name = "revision_history_preview_restore"
+type = "binary"
+weight = 1.0
+description = """
+After at least two successful saves, open revision history. Verify it lists multiple revisions with revision numbers and timestamps. Preview an older revision without replacing the current draft. Restore an older revision as the current draft, verify the workbook becomes dirty, press Undo once, and verify the pre-restore draft returns.
+"""
+
+[[criterion]]
+id = "two_tab_stale_save_conflict"
+name = "two_tab_stale_save_conflict"
+type = "binary"
+weight = 2.0
+description = """
+Open GridForge in two browser pages/tabs. In tab A, edit S2 to TAB-A-WINS and save. In tab B, without reloading, edit S2 to TAB-B-STALE and try to save. Verify tab B gets a visible conflict/stale revision message and TAB-B-STALE does not overwrite TAB-A-WINS. Re-read or reload the workbook and verify TAB-A-WINS remains stored.
+"""
+
+[[criterion]]
+id = "forged_stale_save_rejected"
+name = "forged_stale_save_rejected"
+type = "binary"
+weight = 2.0
+description = """
+From the page, discover the workbook id and current revision. First save a marker FORGED-CURRENT-SAVE through the normal UI or API with the current revision so the stored revision advances. Then use JavaScript evaluation to send the app's save request directly with the older stale baseRevision and content containing FORGED-STALE-OVERWRITE. The server must refuse the stale save and must not store FORGED-STALE-OVERWRITE. Re-read the workbook from the API to confirm.
+"""
+
+[[criterion]]
+id = "forged_workbook_id_rejected"
+name = "forged_workbook_id_rejected"
+type = "binary"
+weight = 2.0
+description = """
+Use JavaScript evaluation from the page to forge save requests that tamper with workbook identity: one request to an unknown workbook id, and one request whose URL workbook id differs from the body workbookId. Both must be rejected and must not alter the real seeded workbook. Re-read the real workbook and verify its content and latest revision are unchanged by these probes.
+"""
+
+[[criterion]]
+id = "api_rejects_invalid_revision_payloads"
+name = "api_rejects_invalid_revision_payloads"
+type = "binary"
+weight = 1.5
+description = """
+Use direct in-page fetch calls to attempt saves with missing baseRevision, non-integer baseRevision, or missing workbook data. Each invalid save must be rejected and must not change the stored workbook or create a new revision.
+"""
+
+[scoring]
+aggregation = "weighted_mean"
