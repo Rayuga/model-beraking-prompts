@@ -6,6 +6,7 @@ set RESET_SEED=1
 set APP=%~dp0
 set NODE=%APP%..\..\..\.tools\node-v22.23.2-win-x64\node.exe
 set NPM=%APP%..\..\..\.tools\node-v22.23.2-win-x64\npm.cmd
+set SEED_PATH=%APP%..\..\environment\assets\workbook_seed.json
 cd /d "%APP%"
 echo Starting GridForge browser app on http://127.0.0.1:3000/
 echo Keep this window open while testing.

@@ -17,7 +17,8 @@ const state = {
   dirty: false,
   undo: [],
   redo: [],
-  filter: null
+  filter: null,
+  editing: false
 };
 
 const $ = (id) => document.getElementById(id);
@@ -61,7 +62,16 @@ function bindEvents() {
   $('redo-btn').addEventListener('click', redo);
   $('apply-formula').addEventListener('click', () => setSelectedValue(formulaBar.value));
   formulaBar.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter') setSelectedValue(formulaBar.value);
+    if (event.key === 'Enter') {
+      state.editing = false;
+      setSelectedValue(formulaBar.value);
+      grid.focus();
+    }
+    if (event.key === 'Escape') {
+      state.editing = false;
+      updateFormulaBar();
+      grid.focus();
+    }
   });
   $('fill-down-btn').addEventListener('click', () => fill('down'));
   $('fill-right-btn').addEventListener('click', () => fill('right'));
@@ -334,8 +344,15 @@ function onGridKeyDown(event) {
   }
   if (key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
     event.preventDefault();
-    setSelectedValue(key);
+    startFormulaEdit(key);
   }
+}
+
+function startFormulaEdit(initialText = '') {
+  state.editing = true;
+  formulaBar.focus();
+  formulaBar.value = initialText;
+  formulaBar.setSelectionRange(formulaBar.value.length, formulaBar.value.length);
 }
 
 function onPaste(event) {
@@ -384,24 +401,19 @@ function clearRange() {
 }
 
 function fill(direction) {
-  const r = normalizedRange();
-  if (!r) return;
+  const r = normalizedRange() || { r1: state.selected.row, c1: state.selected.col, r2: state.selected.row, c2: state.selected.col };
   pushUndo();
   if (direction === 'down') {
-    const height = r.r2 - r.r1 + 1;
     for (let col = r.c1; col <= r.c2; col++) {
-      const seed = [];
-      for (let row = r.r1; row <= r.r2; row++) seed.push(state.cells[addr(row, col)] || '');
-      for (let row = r.r2 + 1; row <= Math.min(ROWS, r.r2 + height + 2); row++) {
+      const { seed, targetStart, targetEnd } = fillPlanDown(r, col);
+      for (let row = targetStart; row <= targetEnd; row++) {
         state.cells[addr(row, col)] = fillValue(seed, row - r.r1, 'row');
       }
     }
   } else {
-    const width = r.c2 - r.c1 + 1;
     for (let row = r.r1; row <= r.r2; row++) {
-      const seed = [];
-      for (let col = r.c1; col <= r.c2; col++) seed.push(state.cells[addr(row, col)] || '');
-      for (let col = r.c2 + 1; col <= Math.min(COLS, r.c2 + width + 2); col++) {
+      const { seed, targetStart, targetEnd } = fillPlanRight(r, row);
+      for (let col = targetStart; col <= targetEnd; col++) {
         state.cells[addr(row, col)] = fillValue(seed, col - r.c1, 'col');
       }
     }
@@ -409,6 +421,33 @@ function fill(direction) {
   recalc();
   markDirty();
   renderAll();
+}
+
+function fillPlanDown(r, col) {
+  const selected = [];
+  for (let row = r.r1; row <= r.r2; row++) selected.push(state.cells[addr(row, col)] || '');
+  let sourceCount = selected.findIndex((value) => value === '');
+  if (sourceCount < 0) sourceCount = selected.length;
+  sourceCount = Math.max(1, sourceCount);
+  const seed = selected.slice(0, sourceCount);
+  if (sourceCount < selected.length) {
+    return { seed, targetStart: r.r1 + sourceCount, targetEnd: r.r2 };
+  }
+  const extension = seed.length >= 2 && seed.map(Number).every(Number.isFinite) ? 4 : 2;
+  return { seed, targetStart: r.r2 + 1, targetEnd: Math.min(ROWS, r.r2 + extension) };
+}
+
+function fillPlanRight(r, row) {
+  const selected = [];
+  for (let col = r.c1; col <= r.c2; col++) selected.push(state.cells[addr(row, col)] || '');
+  let sourceCount = selected.findIndex((value) => value === '');
+  if (sourceCount < 0) sourceCount = selected.length;
+  sourceCount = Math.max(1, sourceCount);
+  const seed = selected.slice(0, sourceCount);
+  if (sourceCount < selected.length) {
+    return { seed, targetStart: r.c1 + sourceCount, targetEnd: r.c2 };
+  }
+  return { seed, targetStart: r.c2 + 1, targetEnd: Math.min(COLS, r.c2 + 2) };
 }
 
 function fillValue(seed, offset, axis) {
