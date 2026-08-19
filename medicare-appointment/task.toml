@@ -1,0 +1,164 @@
+schema_version = "1.4"
+
+# Top-level only — do NOT nest under [verifier] (Harbor silently drops it there).
+artifacts = ["/app"]
+
+[task]
+name = "webdev/medcare-appointments"
+version = "6.0.0"
+description = "Build MedCare, a healthcare appointment portal with SQLite persistence, per-doctor availability enforcement, role isolation, and Stripe Checkout, from a deliberately underspecified brief that states the clinic's symptoms rather than the invariants; graded by a RewardKit CUA browser judge that drives the UI end to end and then bypasses it with forged in-page requests to prove the rules are enforced server-side rather than only in the interface."
+authors = [{ name = "Turing WebDev", email = "webdev@turing.com" }]
+keywords = ["vibe-code", "webdev", "fullstack", "nodejs", "sqlite", "stripe", "healthcare", "appointments", "role-based-access"]
+
+[metadata]
+category = "web-development"
+difficulty = "hard"
+difficulty_explanation = """
+Small surface area with difficulty concentrated in inference, authorization,
+and payment integrity rather than feature volume. The defining property of
+this task is that the brief does not state its own invariants. `behaviour.md`
+is written as the clinic describing its business, with the failures of the
+replaced system buried in loose prose attributed to the practice manager
+("patients turned up on Saturdays for doctors who don't work weekends", "the
+schedule filled up with visits nobody had paid for", "one woman paid once and
+ended up on the books twice", "finance turned up a charge that did not match
+the fee on the doctor's profile"). It is deliberately not a numbered list, not
+a fault report, and is framed as anecdote rather than requirement — the brief
+states outright that it is neither a specification nor a checklist. The
+anecdotes are also stripped of their reproduction steps: they give the symptom
+but not the path that produced it, and say explicitly that nobody worked out
+how to bring most of them about a second time. A submission cannot therefore
+guard the one route it was handed; it has to decide what invariant was violated
+and enforce that invariant everywhere. No rule is named, no uniqueness key is
+spelled out, no boundary semantics are given, and no algorithm is described.
+Nothing tells the submission that enforcement belongs on the server or that it
+will be probed there. The submission has to work backwards from symptoms to the
+guarantees that prevent them, and then put those guarantees somewhere a forged
+request cannot walk around — which is where most models fail, because
+implementing a checklist is easy and deriving one is not.
+
+The rules the incidents imply, none of which are stated: each doctor's
+availability string is a booking constraint and not a display field, with day
+and hour ranges inclusive at both ends (reception's "6pm is the last
+appointment Dr. Mitchell will take" is the only hint that 18:00 must be
+bookable while 18:01 must not); slot uniqueness is keyed per doctor, so the
+same instant stays independently bookable for other doctors and one booking
+never blocks the rest of a doctor's day; a date/time valid when entered but
+stale by submit must be re-validated as one combined instant; a Checkout
+Session is a quote and never a reservation, so nothing may be written in any
+status before Stripe verification and an abandoned session must leave the slot
+untouched; one payment yields exactly one appointment across reloads, repeat
+visits to the return URL, replays of the confirmation, and identity
+round-trips; the consultation amount is always recomputed from the database;
+identity, role, and ownership are resolved server-side, with an unknown
+identity refused rather than defaulted; completion is doctor-only,
+ownership-scoped and terminal; and clinical notes require an already-completed
+visit and cap at one record per appointment.
+
+The rubric is built so that inferring these well enough to decorate the
+interface is not enough. Most criteria pair the visible journey with forged
+in-page requests that bypass the UI entirely: a restricted time dropdown, a
+`min` attribute, a disabled button, a hidden taken slot, or an absent
+Complete/Add Notes control all pass the visual check and then fail the probe if
+the endpoint still accepts the request. Probes cover out-of-window and past
+slots on all three doctors' windows, double-booking, client-supplied prices and
+doctor/fee mismatches, session-creation-as-reservation, confirmation replay
+with a real and a fabricated session id, patients attempting doctor-only
+mutations, cross-patient reads including a third patient who books nothing,
+cross-doctor mutation of another doctor's visit and notes, duplicate,
+overwriting, blank, and orphaned clinical notes, notes filed against a visit
+that has not been completed yet, arbitrary and backwards status transitions,
+malformed dates and times, omitted fields, invented doctor and appointment ids,
+decoy doctor/fee fields sent alongside and instead of the real identifier,
+forged role/owner claims, and unknown identities that must not fall back to a
+default. Read probes are graded on the response body rather than the rendered
+page, so an endpoint that returns another identity's data in fields the
+interface never displays still fails. Criteria are graded conjunctively — every
+sub-check in a criterion must hold — and the weighting puts roughly four fifths
+of the total on these enforcement criteria, so a polished interface over an
+unguarded API scores poorly rather than respectably. Because the app has no
+passwords, the rubric explicitly does not treat asserting a real seeded user's
+own identity as a vulnerability, so the probes stay fair while remaining strict.
+
+Several criteria also withhold a doctor's name and require resolving one from
+specialty, a described condition, or a stated fee, so a hardcoded route to a
+specific doctor fails even where the named-doctor criteria pass.
+
+The 35 browser criteria are graded as one ordered journey against a single
+persistent SQLite instance, not 35 independent probes: later criteria
+(replay, taken-slot, cross-patient conflict, isolation, records, the second
+doctor's clinical workflow) all assume the two paid appointments created by
+earlier criteria — Sarah Chen (reached directly) and James Mitchell (reached
+via a deliberate Saturday-rejection-then-recovery flow) — still exist, and
+that every other Checkout session opened along the way was abandoned unpaid
+and left no trace. A submission that fails the initial booking,
+payment-verification, or availability-enforcement step therefore fails most
+of the suite by cascade, not because each later step was separately broken.
+"""
+task_id = "WEBDEV-MEDCARE-APPOINTMENTS-001"
+capabilities = ["backend-api", "frontend-ui", "persistence", "payments", "authorization"]
+
+[agent]
+# Wall-clock cap on agent *execution* (coding/building the app). Does NOT
+# control OpenHands harness install — that phase is a separate Harbor constant
+# (360s by default) and must be raised via job config
+# agent_setup_timeout_multiplier, not this field.
+timeout_sec = 10800.0
+network_mode = "public"
+
+[verifier]
+# RewardKit verifier, single phase: a claude-code agent judge drives the app
+# through Playwright MCP the same way a real user would — browsing doctors,
+# booking and paying via live Stripe Checkout, adding clinical notes, and
+# switching identities via the demo-user switcher to check isolation.
+#
+# It then goes a step further: many criteria require the judge to bypass the
+# interface and replay the app's own requests from the page via JavaScript
+# evaluation, so that UI-only enforcement (restricted dropdowns, min/max
+# attributes, hidden controls) fails. The judge is NOT given endpoint paths or
+# payload shapes — it discovers them by observing the traffic the submission's
+# own pages produce, so this stays implementation-agnostic. See
+# docs/verifier-approach-comparison.md for the tradeoffs versus a pure-UI
+# design.
+#
+# Verifier egress (do not rely on provider defaults): OpenRouter judge
+# (openrouter.ai) and browser Checkout (checkout.stripe.com plus *.stripe.com
+# assets). Use public mode rather than a narrow allowlist — Stripe Checkout
+# loads many subdomains.
+timeout_sec = 10800.0
+network_mode = "public"
+
+[verifier.env]
+OPENROUTER_API_KEY = "${OPENROUTER_API_KEY}"
+ANTHROPIC_BASE_URL = "https://openrouter.ai/api"
+ANTHROPIC_AUTH_TOKEN = "${OPENROUTER_API_KEY}"
+ANTHROPIC_API_KEY = ""
+CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY = "1"
+REWARDKIT_JUDGE = "claude-code"
+REWARDKIT_MODEL = "anthropic/claude-sonnet-5"
+# 35-criterion journey (was 19, before that 13), now with several forged-request
+# probes layered onto each criterion of the UI journey, needs more RewardKit
+# headroom than the tests/test.py default of 3600s. Keep judge (browser.toml,
+# 9300) < this < [verifier] timeout_sec below (10800).
+REWARDKIT_TIMEOUT_SEC = "9900"
+STRIPE_SECRET_KEY = "${STRIPE_SECRET_KEY}"
+STRIPE_PUBLISHABLE_KEY = "${STRIPE_PUBLISHABLE_KEY}"
+
+[solution]
+env = {}
+
+[environment]
+build_timeout_sec = 1800.0
+os = "linux"
+cpus = 4
+memory_mb = 8192
+storage_mb = 10240
+network_mode = "public"
+
+[environment.env]
+STRIPE_SECRET_KEY = "${STRIPE_SECRET_KEY}"
+STRIPE_PUBLISHABLE_KEY = "${STRIPE_PUBLISHABLE_KEY}"
+PORT = "3000"
+BASE_URL = "http://localhost:3000"
+APP_PUBLIC_URL = "http://localhost:3000"
+APP_PUBLIC_PORT = "3000"

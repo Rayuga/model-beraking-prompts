@@ -1,0 +1,415 @@
+[judge]
+judge = "claude-code"
+model = "anthropic/claude-sonnet-5"
+mode = "batched"
+timeout = 9300
+isolated = false
+prompt_template = "prompt.md"
+weight = 1.0
+
+[[judge.mcp_servers]]
+name = "playwright"
+transport = "stdio"
+command = "playwright-mcp"
+args = ["--headless", "--isolated", "--browser=chromium", "--no-sandbox"]
+
+# ============================================================================
+# Section 1 — Basic UI / discovery
+#
+# Weighting note: these surface-level criteria are deliberately cheap. The
+# score is meant to track whether the server actually enforces the clinic's
+# rules, not whether a plausible-looking interface was produced, so the bulk
+# of the weight sits on the forged-request criteria in Sections 3-8.
+# ============================================================================
+
+[[criterion]]
+id = "default_patient_session"
+name = "default_patient_session"
+type = "binary"
+weight = 0.5
+description = """
+Navigate to http://localhost:3000/. Verify the app loads as a MedCare healthcare appointment surface, Alice Johnson is the active patient, no login/sign-in/registration/password flow is required, patient controls are discoverable for doctors, appointments, and medical records, and a visible demo-user/identity switcher can change the seeded user.
+"""
+
+[[criterion]]
+id = "browse_doctors"
+name = "browse_doctors"
+type = "binary"
+weight = 0.5
+description = """
+From the default Alice session, open the doctor directory or booking surface by intent (labels may vary: Find Doctors, Doctors, Book Appointment, Browse Doctors). Verify at least three seeded doctors are listed with distinct fees: Dr. Sarah Chen shows Cardiology and about $150, Dr. James Mitchell shows Dermatology and about $120, and Dr. Priya Sharma shows Pediatrics and about $100. Fail if the three doctors cannot be told apart by name, specialty, and fee.
+"""
+
+# ============================================================================
+# Section 2 — Doctor / profile / fee correctness (agent must infer, not be told)
+# ============================================================================
+
+[[criterion]]
+id = "doctor_profile"
+name = "doctor_profile"
+type = "binary"
+weight = 1.5
+description = """
+From the doctor directory, open Dr. Sarah Chen's own profile or booking/details view — not James Mitchell or Priya Sharma. Verify the opened view shows Dr. Sarah Chen, Cardiology, and a consultation fee of about $150 (not ~$120 or ~$100). Also verify experience/biography/availability detail, date and time inputs, and a payment or booking action. Fail immediately if the opened profile belongs to a different doctor or shows a different fee.
+"""
+
+[[criterion]]
+id = "doctor_profile_by_specialty"
+name = "doctor_profile_by_specialty"
+type = "binary"
+weight = 1.5
+description = """
+Do not use any doctor's name for this criterion. From the doctor directory, open "the Pediatrics doctor's" profile purely by matching the specialty label — you must resolve Pediatrics to a specific doctor yourself. Verify the profile that opens is Dr. Priya Sharma, showing Pediatrics and a consultation fee of about $100. Fail if the opened profile is Dr. Sarah Chen (Cardiology/~$150) or Dr. James Mitchell (Dermatology/~$120), or if you had to be told Priya's name to find the profile.
+"""
+
+[[criterion]]
+id = "doctor_by_symptom_inference"
+name = "doctor_by_symptom_inference"
+type = "binary"
+weight = 1.5
+description = """
+Do not use any doctor's name or the word "Dermatology" for this criterion. From the doctor directory, find the doctor who treats skin conditions / acne — you must infer that this means the Dermatology specialty and identify the matching doctor from the listed specialties and bios yourself. Open that doctor's profile and verify it is Dr. James Mitchell, showing Dermatology and a consultation fee of about $120. Fail if you open Dr. Sarah Chen's or Dr. Priya Sharma's profile instead, or if the fee shown is ~$150 or ~$100.
+"""
+
+[[criterion]]
+id = "doctor_by_fee_lookup"
+name = "doctor_by_fee_lookup"
+type = "binary"
+weight = 1.5
+description = """
+Do not use any doctor's name or specialty for this criterion. From the doctor directory, identify the doctor whose consultation fee is $100 by comparing the fees shown for all listed doctors — do not simply assume the first, last, or default doctor. Open that doctor's profile and verify it is Dr. Priya Sharma (Pediatrics). Fail if you open a doctor whose fee is not $100, or if you cannot show how the $100 fee was used to pick the doctor.
+"""
+
+# ============================================================================
+# Section 3 — Availability boundaries and recovery. Each doctor's day range and
+# inclusive-both-ends hour range must be a real server-side booking constraint,
+# not a display-only field or a restricted picker. Ends with James's real paid
+# booking (created via reject-then-recover) and its own immediate
+# replay/persistence check, mirroring Section 4's Sarah pattern.
+# ============================================================================
+
+[[criterion]]
+id = "james_hour_boundary_probe"
+name = "james_hour_boundary_probe"
+type = "binary"
+weight = 4.5
+description = """
+Still as Alice Johnson, open Dr. James Mitchell's booking view. Do not assume his availability window in advance — read "Mon-Fri 10AM-6PM" (or equivalent) from his own profile if you need it, then test the actual boundary behavior:
+(1) Attempt Saturday 2030-06-15 at 11:00. Verify this is REJECTED with a visible error and the browser does NOT reach checkout.stripe.com — Saturday is outside James's Mon-Fri days.
+(2) Attempt Monday 2030-06-17 at 09:59. Verify this is REJECTED with a visible error and no Stripe redirect — one minute before his 10AM start.
+(3) Attempt Monday 2030-06-17 at 18:00 (exactly his listed 6PM end time). Verify this is ACCEPTED — the browser reaches checkout.stripe.com showing a total of about $120.00 for James Mitchell. Do not enter card details; abandon this session by navigating back to http://localhost:3000/ without paying.
+(4) Attempt Monday 2030-06-17 at 18:01. Verify this is REJECTED with a visible error and no Stripe redirect — one minute past his 6PM end.
+(5) Now bypass the interface entirely. Work out how this app identifies the active user and how it submits a booking by observing the requests the page itself sends, then use JavaScript evaluation in the page to send the SAME booking request directly for Saturday 2030-06-15 at 11:00 and for Monday 2030-06-17 at 18:01, as Alice. Both direct requests must be refused by the server with an error status and must not return any Stripe Checkout URL or session. A client-side-only guard — a restricted time dropdown, a `min`/`max` attribute, disabled options, or a JavaScript check before submit — is NOT sufficient: if either direct request succeeds or yields a Checkout URL, this criterion FAILS even though the interface refused the same slot.
+Fail this criterion if any rejection case reaches checkout.stripe.com, if the 18:00 boundary case is rejected instead of reaching Checkout, or if the direct requests in step 5 are not refused server-side.
+"""
+
+[[criterion]]
+id = "priya_day_and_hour_boundary"
+name = "priya_day_and_hour_boundary"
+type = "binary"
+weight = 4.5
+description = """
+Still as Alice Johnson, open Dr. Priya Sharma's booking view. Read her availability from her own profile if needed (Mon-Sat 8AM-4PM or equivalent), then test the actual boundary behavior:
+(1) Attempt Sunday 2030-06-16 at 10:00. Verify this is REJECTED with a visible error and the browser does NOT reach checkout.stripe.com — Sunday is outside her Mon-Sat days even though Saturday is included.
+(2) Attempt Saturday 2030-06-15 at 15:59. Verify this is ACCEPTED — the browser reaches checkout.stripe.com showing a total of about $100.00 for Priya Sharma. Do not enter card details; abandon this session by navigating back to http://localhost:3000/ without paying.
+(3) Attempt Saturday 2030-06-15 at 16:01. Verify this is REJECTED with a visible error and no Stripe redirect — one minute past her 4PM end.
+(4) Bypass the interface as in the previous criterion: send the booking request directly via JavaScript evaluation for Sunday 2030-06-16 at 10:00 and for Saturday 2030-06-15 at 16:01. Both must be refused server-side with an error status and no Checkout URL. Also send one direct request for Saturday 2030-06-15 at 23:00 — far outside her hours — and confirm it too is refused.
+Fail this criterion if the Sunday or 16:01 attempts reach checkout.stripe.com, if the 15:59 attempt is rejected instead of reaching Checkout, or if any direct request in step 4 is accepted.
+"""
+
+[[criterion]]
+id = "james_availability_recovery_and_payment"
+name = "james_availability_recovery_and_payment"
+type = "binary"
+weight = 3.5
+description = """
+As Alice Johnson, open Dr. James Mitchell's booking view again and attempt to book Saturday 2030-06-15 at 11:00. Verify this is REJECTED with a visible error and the browser does not reach checkout.stripe.com. Without being told why in advance, use the rejection plus James's own profile to recover: choose a valid weekday and time within his listed availability — 2030-06-17 (a Monday) at 11:00 — and submit again. Verify the browser reaches checkout.stripe.com showing a total of about $120.00 for James Mitchell's consultation. Complete Stripe Checkout using email alice.j@patient.com, card 4242 4242 4242 4242, expiry 12/34, CVC 123, cardholder Alice Johnson, and ZIP/postal code 94103. Wait for the redirect back to localhost:3000 and verify a booking success / payment verified / appointment confirmed message is visible. This creates Alice's second real confirmed appointment (with Dr. James Mitchell, 2030-06-17 at 11:00, about $120), used by later criteria.
+"""
+
+[[criterion]]
+id = "james_payment_replay_and_identity_switch_persistence"
+name = "james_payment_replay_and_identity_switch_persistence"
+type = "binary"
+weight = 3.5
+description = """
+Immediately after the booking-success confirmation for Alice's Dr. James Mitchell 2030-06-17 11:00 appointment above, reload the current page (browser refresh, or re-navigate to the exact same URL currently shown). If the address bar still carries a Stripe session_id query parameter at this point, also navigate to that same URL a second time. Capture that session identifier and, required, forge the app's post-payment confirmation request directly via JavaScript evaluation with it twice more; neither replay may create a second appointment. Additionally forge one confirmation request carrying a fabricated or unknown session identifier and confirm it is refused and creates nothing. Then navigate away entirely (e.g. open the doctor directory or dashboard) and back to Alice's appointments view. Use the demo-user switcher to visit Bob Williams, then Dr. Sarah Chen, then back to Alice Johnson, refreshing Alice's appointments view after switching back. At every point where Alice's appointments are visible, verify there is still exactly ONE appointment between Alice and Dr. James Mitchell for 2030-06-17 at 11:00 — fail if a second row for that doctor/date/time ever appears regardless of status, or if the appointment is ever missing after the reload or the identity-switch round trip.
+"""
+
+# ============================================================================
+# Section 4 — Date/time integrity and the primary paid booking
+# ============================================================================
+
+[[criterion]]
+id = "past_appointment_rejected"
+name = "past_appointment_rejected"
+type = "binary"
+weight = 3.5
+description = """
+As Alice Johnson, open Dr. Sarah Chen's booking view and attempt to book a slot that is already in the past by using TODAY's date with an early time that has already elapsed relative to the browser clock (for example 00:05 or 01:00 — choose a time earlier than now). Prefer this past-time-on-today path so a date-input min= attribute alone cannot satisfy the check without time validation. If the clock is so early that no past time exists today, use yesterday's date at 10:00 instead. Submit through the visible booking controls. Verify the app rejects the attempt with a visible error about an invalid or past appointment, and that the browser does NOT navigate to checkout.stripe.com. Then send the same past date/time as a direct request via JavaScript evaluation in the page, bypassing the form and any input constraints, and also send one for yesterday's date at 10:00. Both must be refused server-side with an error status and no Checkout URL — an input `min` attribute, a disabled submit button, or any other browser-only guard does NOT satisfy this criterion. Do not complete any Stripe payment in this criterion.
+"""
+
+[[criterion]]
+id = "stale_date_time_combination_rejected"
+name = "stale_date_time_combination_rejected"
+type = "binary"
+weight = 4.0
+description = """
+Still on Dr. Sarah Chen's booking view, fill in TOMORROW's real calendar date (not a 2030 fixture date) with time 00:05 — a combination that is genuinely in the future — but do NOT submit yet. Then, without touching the time field, change only the date field to TODAY's real date, leaving the time at 00:05. Submit through the visible booking controls. Verify the app rejects this attempt with a visible error about an invalid or past appointment, and that the browser does NOT navigate to checkout.stripe.com. This specifically catches implementations that validated the date and time fields independently at the moment each was entered instead of re-validating the combined date+time instant at submit time. Do not complete any Stripe payment in this criterion, and do not leave the form in a state where a submission with tomorrow's date could have gone through — only the final today+00:05 submission should ever be sent.
+Then run these required direct-request probes via JavaScript evaluation, which the interface cannot satisfy on its own — the server must validate what it is actually sent rather than trusting the form that normally sends it:
+(1) A booking whose date is not a date at all (for example "not-a-date", "2030-13-45", or an empty string) with an otherwise valid time. It must be refused with an error status and no Checkout URL.
+(2) A booking whose time is not a time (for example "25:00", "99:99", or an empty string) on 2030-06-14. It must also be refused.
+(3) A booking with the doctor, the date, or the time field omitted entirely. It must be refused rather than defaulting to some doctor or some moment.
+(4) A booking naming a doctor identifier that belongs to no seeded doctor (invent a plausible id in the same format), with 2030-06-14 at 11:00. It must be refused — the server must confirm the doctor exists rather than trusting the id it was handed.
+Fail if any of these four probes is accepted, returns a Checkout URL, or causes any appointment row to appear for Alice.
+"""
+
+[[criterion]]
+id = "book_appointment_with_payment"
+name = "book_appointment_with_payment"
+type = "binary"
+weight = 3.0
+description = """
+As Alice Johnson, book specifically Dr. Sarah Chen (Cardiology) for 2030-06-14 at 14:00 through the visible UI and real Stripe Checkout. Before paying, verify checkout.stripe.com shows a total of about $150.00 for Sarah's consultation — fail if the total is about $120 (James) or $100 (Priya), or if the session is clearly for another doctor. Complete Stripe Checkout using email alice.j@patient.com, card 4242 4242 4242 4242, expiry 12/34, CVC 123, cardholder Alice Johnson, and ZIP/postal code 94103. Wait for the redirect back to localhost:3000 or 127.0.0.1:3000 and verify a booking success / payment verified / appointment confirmed message is visible.
+"""
+
+[[criterion]]
+id = "payment_replay_no_duplicate"
+name = "payment_replay_no_duplicate"
+type = "binary"
+weight = 4.0
+description = """
+Immediately after the booking-success confirmation for Alice's Dr. Sarah Chen 2030-06-14 14:00 appointment, capture the Stripe Checkout session identifier for that payment from the return URL or the app's own network traffic. Then replay the payment three ways: (1) reload the current page (browser refresh, or re-navigate to the exact same URL currently shown); (2) navigate directly to the original return URL including its session identifier, twice; and (3) required — forge the app's own post-payment confirmation request directly via JavaScript evaluation, using that same session identifier, and send it at least twice more. The success banner is not required to reappear — only the stored appointments are graded, and the forged replay must not be rejected in a way that damages the existing appointment either. Then open Alice Johnson's appointments/bookings view and verify there is still exactly ONE appointment with Dr. Sarah Chen for 2030-06-14 at 14:00, still confirmed/paid, with the correct ~$150 amount. Fail if two or more rows exist for that doctor/date/time from the single original payment regardless of status, or if replaying the confirmation duplicated, downgraded, or removed the appointment.
+"""
+
+[[criterion]]
+id = "taken_slot_rejected"
+name = "taken_slot_rejected"
+type = "binary"
+weight = 3.5
+description = """
+After Alice's paid booking for Dr. Sarah Chen on 2030-06-14 at 14:00 exists, stay as Alice Johnson and open Dr. Sarah Chen's booking view again. Attempt to book the same date and time 2030-06-14 at 14:00. Verify the app rejects the duplicate slot with a visible unavailable/taken/conflict error and that the browser does NOT reach checkout.stripe.com for a second payment. Then send the same booking directly via JavaScript evaluation, bypassing the interface and any greyed-out or hidden slot rendering. That direct request must also be refused server-side with an error status and no Checkout URL. Fail if the direct request is accepted, or if it returns a Checkout URL that could be paid to double-book the slot — hiding a taken slot in the UI while the endpoint still accepts it does not satisfy this criterion.
+"""
+
+[[criterion]]
+id = "patient_views_appointments"
+name = "patient_views_appointments"
+type = "binary"
+weight = 0.5
+description = """
+Back in the app as Alice Johnson, open the patient's appointments/bookings/schedule view. Verify exactly one appointment with Dr. Sarah Chen (not James or Priya) is listed for 2030-06-14 around 14:00/2:00 PM, shows about $150, and has confirmed/paid/scheduled status — fail if duplicate rows appear for that same Sarah/2030-06-14/14:00 booking from the single Checkout payment. Verify Bob Williams and Carol Davis are not shown as owners of Alice's appointment.
+"""
+
+# ============================================================================
+# Section 5 — Fee/doctor integrity and cross-doctor slot independence
+# ============================================================================
+
+[[criterion]]
+id = "payment_amount_and_fee_integrity"
+name = "payment_amount_and_fee_integrity"
+type = "binary"
+weight = 5.0
+description = """
+Still as Alice Johnson, work out how the app submits a booking by observing the request the page sends, then use JavaScript evaluation in the page to forge booking requests for Dr. Priya Sharma at 2030-06-14 15:00 — a slot inside her hours. This tampering step is REQUIRED, not optional. Send at least three variants, each carrying Priya's doctor id plus injected pricing fields intended to override her real $100 fee: (a) an amount/fee/price field set to 15000 or 150, (b) the same set to 1 or 0, and (c) a currency or line-item description claiming Sarah Chen's $150 consultation. For every variant that the server accepts, follow the returned Checkout URL and verify checkout.stripe.com shows a total of about $100.00 attributable to Priya Sharma or Pediatrics — never $150, never $1 or $0, and never any amount the request supplied. Abandon each session without entering card details. Then submit the same slot normally through the interface and confirm the total is again about $100.00. Fail if any Checkout total ever reflects a client-supplied amount, if the line item names a doctor other than the one whose id was sent, or if the server refuses to price the booking at all rather than pricing it from its own records.
+"""
+
+[[criterion]]
+id = "other_doctor_same_slot_bookable_and_fee_from_db"
+name = "other_doctor_same_slot_bookable_and_fee_from_db"
+type = "binary"
+weight = 2.5
+description = """
+Still as Alice Johnson, open the doctor directory and this time open Dr. Priya Sharma's own profile — not Sarah Chen or James Mitchell. Attempt to book the identical date and time already used for Sarah's appointment, 2030-06-14 at 14:00, but for Dr. Priya Sharma instead. This attempt must be ACCEPTED — a different doctor's schedule for that date/time is independent of Sarah's already-booked slot, and 14:00 is within Priya's Mon-Sat 8AM-4PM availability — and must reach checkout.stripe.com. Before doing anything else on the Stripe page, verify the displayed total is about $100.00 and the line item clearly names Priya Sharma or Pediatrics. Fail if the total instead reads about $150 (Sarah) or $120 (James), or if the checkout session is ambiguous about which doctor it is for. Do NOT enter card details and do NOT complete this payment.
+"""
+
+[[criterion]]
+id = "abandoned_checkout_writes_no_appointment"
+name = "abandoned_checkout_writes_no_appointment"
+type = "binary"
+weight = 4.5
+description = """
+Continuing directly from the unpaid Dr. Priya Sharma Stripe Checkout session above, abandon it without paying — use Stripe's own back/cancel navigation if available, or directly navigate the browser to http://localhost:3000/. Then open Alice Johnson's appointments/bookings view and verify there is NO appointment entry for Dr. Priya Sharma or Pediatrics in any form. Explicitly, a row shown as pending, unpaid, awaiting payment, draft, or any status other than fully absent must be treated as a FAILURE of this criterion, not a pass — nothing should have been written before payment was verified. Verify Alice's original Dr. Sarah Chen 2030-06-14 appointment is still present exactly once and unaffected. Then run this required probe: forge one booking request directly via JavaScript evaluation for Dr. Priya Sharma at 2030-06-19 at 09:00 and, WITHOUT following the returned Checkout URL at all, immediately re-read Alice's appointments. No entry for that slot may exist in any status — creating a Checkout Session must not itself reserve anything. Confirm the same slot is still bookable afterwards. Finally, re-open Dr. Priya Sharma's booking view and attempt the same 2030-06-14 at 14:00 slot again — verify the app does NOT report that slot as unavailable/taken, since the earlier abandoned session was never paid and the slot must still be free. Fail if any unpaid row exists at any point under any status label, or if an abandoned or never-followed session leaves a slot blocked.
+"""
+
+[[criterion]]
+id = "james_same_slot_independent"
+name = "james_same_slot_independent"
+type = "binary"
+weight = 2.0
+description = """
+Still as Alice Johnson, open Dr. James Mitchell's profile and attempt to book the exact same date and time used above, 2030-06-14 at 14:00 — the same slot that is paid for Sarah Chen and was just re-confirmed free for Priya Sharma. This must be ACCEPTED: appointment-slot uniqueness is per doctor, so a third, completely different doctor's identical date/time is independently bookable. Verify the browser reaches checkout.stripe.com showing a total of about $120.00 naming James Mitchell or Dermatology. Do NOT enter card details; abandon this session by navigating back to http://localhost:3000/ without paying. Fail if the attempt is rejected as unavailable, or if the Checkout total/line item is wrong.
+"""
+
+[[criterion]]
+id = "same_doctor_different_time_allowed"
+name = "same_doctor_different_time_allowed"
+type = "binary"
+weight = 3.5
+description = """
+Still as Alice Johnson, open Dr. Sarah Chen's booking view again and attempt 2030-06-14 at 16:00 — the same date as her existing paid 14:00 appointment, but a different time, still within her Mon-Fri 9AM-5PM availability. This must be ACCEPTED: one existing appointment must never block the rest of that doctor's day. Verify the browser reaches checkout.stripe.com showing a total of about $150.00 for Sarah Chen. Do NOT enter card details; abandon this session by navigating back to http://localhost:3000/ without paying. Fail if the attempt is rejected as unavailable.
+Then test Sarah's own availability boundary the same way James's and Priya's were tested, but entirely through direct requests via JavaScript evaluation so that no restricted picker can stand in for server-side enforcement. Read her window from her own profile if needed. On 2030-06-14 (a weekday inside her days), send four direct booking requests: at 08:59, at 09:00, at 17:00, and at 17:01. The 08:59 and 17:01 requests must be refused with an error status and no Checkout URL. The 09:00 and 17:00 requests — exactly her listed start and end — must be ACCEPTED and return a Checkout URL; do not follow those URLs and do not pay. Fail if either boundary minute is refused, if either out-of-window minute is accepted, or if the server treats her published window as advisory.
+"""
+
+[[criterion]]
+id = "doctor_switching_state_corruption"
+name = "doctor_switching_state_corruption"
+type = "binary"
+weight = 4.0
+description = """
+Still as Alice Johnson, open Dr. Sarah Chen's booking view and fill in date 2030-06-18 and time 11:00 in the form, but do NOT submit. Navigate away from this form (e.g. back to the doctor directory) without submitting, then open Dr. Priya Sharma's own profile/booking view instead and fill in the same date and time, 2030-06-18 at 11:00. Submit this second form. Verify the resulting checkout.stripe.com session is unambiguously for Priya Sharma at about $100.00 — fail if it instead reflects Sarah Chen, about $150, or any mix of the two doctors' data, which would indicate stale client-side state leaking into the submitted booking. Do NOT enter card details; abandon this session by navigating back to http://localhost:3000/ without paying.
+Then run these required probes via JavaScript evaluation, which test the same confusion at the endpoint rather than in the form:
+(1) Forge a booking for 2030-06-18 at 12:00 that identifies Dr. Priya Sharma through the field the app actually uses, while ALSO carrying decoy fields naming Sarah Chen — for example a doctor name, a specialty of Cardiology, and a fee of 150 — alongside it. If the server accepts it, follow the returned Checkout URL and verify the session is for Priya Sharma at about $100.00, not Sarah Chen and not $150. Abandon it without paying.
+(2) Forge a booking for 2030-06-18 at 13:00 that carries ONLY the decoy doctor fields and omits the identifier the app actually uses. It must be refused — the server must not fall back to a name, a specialty, a previously viewed doctor, or any default when the real identifier is absent.
+Fail if the resolved doctor or price ever follows a decoy field, if the request with no real doctor identifier is accepted, or if any of these probes produces an appointment row.
+"""
+
+[[criterion]]
+id = "cross_patient_slot_conflict"
+name = "cross_patient_slot_conflict"
+type = "binary"
+weight = 3.5
+description = """
+Use the visible demo-user/identity switcher to select Bob Williams without a login step. As Bob, open Dr. Sarah Chen's booking view and attempt to book the same date and time already held by Alice's paid appointment: 2030-06-14 at 14:00. Verify the app rejects this attempt with a visible unavailable/taken/conflict error and that the browser does NOT reach checkout.stripe.com for Bob's attempt. Then open Bob's own appointments/bookings view and verify it is still empty — Bob must not have acquired an appointment for that slot merely by attempting it. This confirms the uniqueness key is `(doctor, date, time)`, not `(patient, date, time)`. Now, still as Bob, attempt Dr. Sarah Chen again at a different time on the same date, 2030-06-14 at 10:00 (within her availability and not otherwise occupied) — verify this is ACCEPTED and reaches checkout.stripe.com showing about $150.00. Do NOT enter card details; abandon this session by navigating back to http://localhost:3000/ without paying.
+Then run this required probe while Bob is still the active identity: forge the booking request directly via JavaScript evaluation for Dr. Sarah Chen at 2030-06-14 14:00, bypassing whatever the interface did or did not show Bob. It must be refused with an error status and no Checkout URL — a slot held by one patient must be refused to another at the endpoint, not merely greyed out on a page. Re-read Bob's appointments afterwards and confirm they are still empty, and re-read Alice's and confirm her 14:00 appointment is untouched and still exactly one row. Then switch back to Alice Johnson before continuing so later criteria remain valid. Fail if the forged request is accepted, if it returns a Checkout URL, or if either patient's appointments changed.
+"""
+
+# ============================================================================
+# Section 6 — Role and ownership isolation (patient side)
+# ============================================================================
+
+[[criterion]]
+id = "patient_cannot_complete_own_appointment"
+name = "patient_cannot_complete_own_appointment"
+type = "binary"
+weight = 3.5
+description = """
+Still as Alice Johnson on her appointments/bookings view, inspect the card or row for her confirmed Dr. Sarah Chen 2030-06-14 appointment. Verify it offers no control to mark the appointment completed and no control to add or save clinical/medical notes — those actions must be doctor-only. Fail if any button, link, or action with intent like Complete, Mark Completed, Add Notes, or Save Notes is present or reachable from Alice's own appointment view. Then, still as Alice, identify the appointment's id and the requests the app uses to complete a visit and to save clinical notes (observe what a doctor's controls send, or infer the shape from the app's own network traffic), and forge both requests directly via JavaScript evaluation while Alice is the active identity: one attempting to mark her own appointment completed, one attempting to attach clinical notes to it. Both must be refused server-side. Afterwards reload and confirm the appointment still reads as confirmed/paid with no clinical notes attached — a refused request must not have partially applied. Fail if either forged request succeeds, or if the appointment's status or notes changed.
+"""
+
+[[criterion]]
+id = "patient_ownership_mutation_rejected"
+name = "patient_ownership_mutation_rejected"
+type = "binary"
+weight = 4.5
+description = """
+Use the demo-user/identity switcher to select Bob Williams. Inspect every appointment-related view reachable to Bob and confirm none of Alice Johnson's data appears. Then run these forged-request probes, which are REQUIRED — Bob's interface merely lacking a control does NOT satisfy this criterion:
+(1) While Bob is the active identity, use JavaScript evaluation to request Alice's Dr. Sarah Chen 2030-06-14 appointment and her medical records by id and by any list endpoint the app exposes. None of Alice's appointment or record data may come back to Bob.
+(2) While Bob is active, forge a request to mark Alice's appointment completed, and another to attach clinical notes to it. Both must be refused.
+(3) Establish how the app carries the active identity (a header, cookie, body field, or stored value). Keeping Bob as the active identity, send a request that additionally supplies a role of doctor, an owner/patient id of Alice, or an appointment owner field naming Alice, and confirm none of these client-supplied claims are honoured — Bob must gain no doctor capability and no ownership of Alice's data. Separately, send a request carrying an identity value that matches no seeded user at all: it must be rejected outright and must NOT silently fall back to Alice, to the default user, or to any other identity. Note: simply supplying a real seeded user's own identifier through the app's normal identity mechanism is equivalent to using the visible switcher and is NOT a vulnerability — do not test for that.
+Finally, switch back to Alice Johnson and confirm her appointment still reads exactly as before — confirmed/paid, unchanged, still exactly one row. Fail if any probe returns Alice's data to Bob, if any mutation succeeds, if an unknown identity is treated as a valid or default user, or if Alice's appointment was altered.
+"""
+
+[[criterion]]
+id = "doctor_surface_has_no_patient_booking"
+name = "doctor_surface_has_no_patient_booking"
+type = "binary"
+weight = 3.0
+description = """
+Use the visible demo-user/identity switcher to select Dr. Sarah Chen without a login step. Verify the active identity is Dr. Sarah Chen (doctor). Verify the doctor workspace offers schedule/clinical controls and does NOT offer the patient booking journey (no patient-style Find Doctors / Book Appointment flow that lets a doctor check out as a patient). Then, required: while Sarah is the active identity, forge a patient booking request directly via JavaScript evaluation — Dr. Priya Sharma at 2030-06-19 at 10:00 — and confirm the server refuses it rather than returning a Checkout URL, and that no appointment appears for it. Also forge a request to read the appointment list while Sarah is active and confirm that whatever comes back is limited to visits Sarah is herself the treating doctor for — it must contain no appointment belonging to another doctor, and Sarah must not be treated as the patient-side owner of anyone's booking. Then switch back to Alice Johnson so later patient checks remain valid. Fail if a doctor identity can obtain a Checkout URL or create a booking through any path.
+"""
+
+# ============================================================================
+# Section 7 — Clinical workflow for the primary (Sarah / Alice) visit
+# ============================================================================
+
+[[criterion]]
+id = "doctor_adds_clinical_notes"
+name = "doctor_adds_clinical_notes"
+type = "binary"
+weight = 3.5
+description = """
+Use the visible demo-user/identity switcher to select Dr. Sarah Chen without a login step. Open her schedule if needed. Verify Alice Johnson and the 2030-06-14 appointment are visible on Sarah's schedule, and that it is still `confirmed` (not yet completed) at this point. Before completing it, verify there is no reachable control that saves clinical notes for this appointment while it remains confirmed — clinical notes require the appointment to already be completed, so no standalone "add notes to a confirmed appointment" path should exist.
+Then, while the appointment is STILL confirmed and before you complete anything, run this required probe: forge the clinical-notes request directly via JavaScript evaluation as Sarah for that confirmed appointment, with all note fields filled in plausibly. It must be refused with an error status. The ordering rule has to hold at the endpoint, not just in the layout — an app that simply declines to render the notes form until completion, while its endpoint will happily document a visit that has not happened yet, FAILS this criterion. Re-read the appointment and confirm it is still confirmed and still has no clinical record attached.
+Only then complete the appointment and/or add clinical notes through the interface. Enter chief complaint "Routine cardiovascular checkup", diagnosis "Mild hypertension", and treatment notes "BP 135/85. EKG normal. Follow-up in 3 months.". Save/submit the notes and verify success or completed status with those clinical details retained or acknowledged. Fail if the pre-completion probe was accepted, if it left a record behind, or if the legitimate post-completion write does not succeed.
+"""
+
+[[criterion]]
+id = "doctor_schedule"
+name = "doctor_schedule"
+type = "binary"
+weight = 0.5
+description = """
+As Dr. Sarah Chen, open the doctor's schedule. Verify Alice Johnson and the completed 2030-06-14 appointment are visible, the page identifies Dr. Sarah Chen as the active doctor/schedule owner, and another doctor's identity is not presented as the owner of Sarah's schedule.
+"""
+
+[[criterion]]
+id = "completion_terminal_and_single_record"
+name = "completion_terminal_and_single_record"
+type = "binary"
+weight = 4.0
+description = """
+Still as Dr. Sarah Chen on her schedule, inspect Alice Johnson's completed 2030-06-14 appointment. Verify it shows completed status and offers no control to mark it completed again and no control to add a second set of clinical notes for that same appointment. Then run these required direct-request probes via JavaScript evaluation while Sarah is the active identity, because a hidden button is not an enforced rule:
+(1) Forge a request to mark that already-completed appointment completed again. It must be refused, or must otherwise leave the visit exactly as it was.
+(2) Forge requests that try to move that appointment to some other state — for example a status of `confirmed`, `cancelled`, `pending`, or an invented value. Every one must be refused: the server must not accept whatever state a client asks for, and a completed visit must never be walked back to an earlier one.
+(3) Forge the same status change against an appointment identifier that belongs to no appointment at all (invent one in the same format). It must be refused rather than reporting success.
+Re-read the appointment after every probe and confirm it is still completed and otherwise unchanged. Then switch to Alice Johnson and open Medical Records/Health Records/My Records — verify exactly ONE record is associated with the 2030-06-14 Dr. Sarah Chen visit (fail if a duplicate or second record for that same appointment appears), and that Alice's appointments view still shows that visit as completed. Fail if any forged status change is accepted, if the visit's state moved backwards or to an invented value, or if a probe against a non-existent appointment reported success.
+"""
+
+[[criterion]]
+id = "patient_views_medical_records"
+name = "patient_views_medical_records"
+type = "binary"
+weight = 0.5
+description = """
+Switch back to Alice Johnson if needed and open Medical Records/Health Records/My Records. Verify a record associated with Dr. Sarah Chen/Cardiology is visible, the chief complaint mentions a routine cardiovascular checkup, the diagnosis is Mild hypertension, treatment notes mention BP 135/85 and/or follow-up in 3 months, and no other patient's identity appears as the owner of Alice's record.
+"""
+
+[[criterion]]
+id = "patient_isolation"
+name = "patient_isolation"
+type = "binary"
+weight = 3.5
+description = """
+Positive control first: as Alice Johnson, confirm her appointments view still shows the Dr. Sarah Chen appointment on 2030-06-14 with confirmed/paid/completed status, and her medical records still show the cardiovascular checkup / Mild hypertension record. Only after those positive controls succeed, switch to Bob Williams through the demo-user/identity switcher without login. Open Bob's appointments and records views. Verify Alice's Dr. Sarah Chen appointment and cardiovascular/Mild hypertension record are not visible. Then, as Bob, forge direct requests via JavaScript evaluation for the medical-record and appointment data by id, and for any list endpoint with a patient identifier supplied as a parameter or body field naming Alice. None may return Alice's diagnosis, treatment notes, or appointment. Then switch to the third seeded patient, Carol Davis, who has booked nothing all run, and repeat both the interface check and the forged reads as Carol: her appointments and records views must be empty of Alice's and Bob's data, and no forged read as Carol may return another patient's appointment or clinical content. Fail this criterion if Alice's positive controls are missing (empty Alice data must not count as isolation success), if Bob or Carol can see Alice's visit or notes in any view, or if any forged read returns another patient's clinical content.
+"""
+
+# ============================================================================
+# Section 8 — Second doctor's clinical workflow and bidirectional isolation
+# (uses the real James Mitchell / Alice appointment created in Section 3)
+# ============================================================================
+
+[[criterion]]
+id = "james_completes_own_appointment_and_notes"
+name = "james_completes_own_appointment_and_notes"
+type = "binary"
+weight = 3.5
+description = """
+Use the demo-user/identity switcher to select Dr. James Mitchell. Open his schedule and locate the confirmed Alice Johnson 2030-06-17 appointment created earlier. Verify it is still `confirmed` (not completed) and, as with Sarah's visit, that there is no reachable control to save clinical notes for it while still confirmed. Then, while it is still confirmed, run the same required probe used for Sarah: forge the clinical-notes request directly via JavaScript evaluation as James against that confirmed appointment, and confirm the server refuses it and leaves the appointment unchanged with no record attached. Also forge, as James, a request to attach notes to his OWN confirmed appointment while claiming a different treating doctor or a different patient in the payload — the server must either refuse it or ignore the claim entirely, and must never file the note under the identity the payload named. Only then complete the appointment and add clinical notes through the interface: chief complaint "Persistent acne breakout", diagnosis "Moderate acne vulgaris", treatment notes "Prescribed topical retinoid (adapalene). Follow-up in 6 weeks.". Save and verify success or completed status with those clinical details retained or acknowledged, and confirm the stored record is attributed to James and to Alice. Fail if either probe was accepted, if a record was filed against a doctor or patient named by the payload, or if the legitimate write does not succeed.
+"""
+
+[[criterion]]
+id = "duplicate_clinical_record_rejected"
+name = "duplicate_clinical_record_rejected"
+type = "binary"
+weight = 4.0
+description = """
+Still as Dr. James Mitchell, return to the now-completed 2030-06-17 Alice Johnson appointment. If any control still lets you save another clinical record for it, use it. Then — required regardless of what the interface offers — forge the clinical-notes request directly via JavaScript evaluation as James, twice: once with the exact same chief complaint/diagnosis/treatment text as before, and once with different text for that same appointment. Both must be refused by the server. Also forge a request to mark the already-completed appointment completed a second time; it must be refused or otherwise leave the visit unchanged. Then forge these further note submissions, all of which must also be refused rather than stored or partially stored: one with the chief complaint, diagnosis, or treatment notes blank or missing entirely; and one naming an appointment identifier that belongs to no appointment at all. Verify afterwards that exactly ONE clinical record is associated with that appointment, that its content is still the original text (not overwritten, blanked, or appended to by any later variant), and that the appointment is still completed exactly once — check both James's own records/schedule view and Alice's Medical Records view. Fail if a second record appears in either view, if the original record's content was replaced or damaged, if an empty or partial record was stored anywhere, or if the server accepted any of the forged submissions.
+"""
+
+[[criterion]]
+id = "doctor_isolation"
+name = "doctor_isolation"
+type = "binary"
+weight = 4.0
+description = """
+Positive control first: as Dr. Sarah Chen, confirm her schedule still shows Alice Johnson's 2030-06-14 appointment and that it is completed and has clinical notes. Only after that positive control succeeds, switch to Dr. James Mitchell through the demo-user/identity switcher without login. Open James's schedule and any available clinical/medical records view. Verify Alice's appointment with Dr. Sarah Chen is not visible, James is not offered a complete/notes action for Alice's Sarah visit, and Alice's cardiovascular checkup/Mild hypertension notes are not visible.
+Then run these required read probes while James is the active identity, since a schedule that merely renders one doctor's rows is not the same as an endpoint that only returns them:
+(1) Forge a request to whatever endpoint the schedule and the records view are actually backed by, and inspect the full response body rather than the rendered page. Every appointment and every clinical record it returns must belong to James. Alice's Cardiology visit and its Mild hypertension content must not appear anywhere in the payload, including in fields the interface happens not to display.
+(2) Forge the same reads while supplying a doctor identifier, owner field, or filter naming Dr. Sarah Chen. None of them may cause Sarah's visit or notes to be returned to James.
+Fail if Sarah's positive control is missing, if James can see or act on Sarah's patient visit in any view, or if either probe returns another doctor's appointment or clinical content in the response body even when the page did not show it.
+"""
+
+[[criterion]]
+id = "wrong_doctor_cannot_act_across_appointments"
+name = "wrong_doctor_cannot_act_across_appointments"
+type = "binary"
+weight = 4.5
+description = """
+Positive controls first: confirm (a) Dr. Sarah Chen's schedule still shows Alice Johnson's completed 2030-06-14 Cardiology visit with its clinical note, and (b) Dr. James Mitchell's schedule still shows Alice Johnson's completed 2030-06-17 Dermatology visit with its own clinical note. Only after both positive controls succeed, test isolation in both directions:
+(1) As Dr. James Mitchell, confirm there is no trace of Sarah's Cardiology visit with Alice anywhere in James's schedule or clinical/records views, no control to complete it or add/view notes for it, and none of its clinical content (cardiovascular checkup, Mild hypertension) is visible to James.
+(2) Switch to Dr. Sarah Chen and confirm the symmetric result: no trace of James's Dermatology visit with Alice anywhere in Sarah's views, no control to complete it or add/view notes for it, and none of its clinical content (acne, adapalene) is visible to Sarah.
+(3) Required forged-request probes in both directions, since both doctors are legitimately authenticated and differ only in what they own. As James, use JavaScript evaluation to request Sarah's 2030-06-14 appointment and its clinical record by id, to attach a new clinical note to that appointment, and to alter its status. Then switch to Sarah and do the same against James's 2030-06-17 appointment and record. Every one of these must be refused, and none may return the other doctor's clinical content. Afterwards verify both visits still read as completed with their own original single note intact.
+Fail if either positive control is missing, if either doctor can see or act on the other's appointment or clinical record, or if any forged cross-doctor request succeeds — role alone must not grant access to another doctor's visit.
+"""
+
+[scoring]
+aggregation = "weighted_mean"
