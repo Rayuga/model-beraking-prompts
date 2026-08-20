@@ -397,6 +397,27 @@ One verifier can test multiple related sub-behaviors. That helps prevent
 scoring inflation. Example: clipboard verifier can include paste from outside,
 copy inside, paste elsewhere, cut, and undo.
 
+### Verifiers Must Lock The Interaction Path
+
+Browser-agent judges may find alternate ways to satisfy the final state if the
+criterion only describes the outcome. If the product requirement is about a
+specific interaction, the verifier must say that exact interaction is required
+and that fallback routes should fail.
+
+Example from PatchPad:
+
+```text
+Bad: Verify double-click selects a word.
+
+Better: Select one word by mouse double-click only. If double-click does not
+create the word selection, fail this criterion rather than using keyboard
+shortcuts, DOM APIs, find controls, or another workaround. Press Backspace and
+verify only that selected word is removed.
+```
+
+Use this pattern for mouse-only selection, triple-click line selection, drag
+selection, keyboard-only flows, multi-tab flows, and direct API probes.
+
 ### Server-Side Checks Are Strong
 
 Models often implement UI guards but forget direct API safety. Good verifiers
