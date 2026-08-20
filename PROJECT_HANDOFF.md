@@ -391,6 +391,28 @@ Type a contiguous word, press Undo once, and verify the whole word disappears.
 We avoid leaking every exact verifier sequence in the instruction, but the
 feature must still be reasonably implied by the product brief.
 
+### Browser-Agent Verifiers Need Strict Action Protocols
+
+RewardKit browser judging uses a browser agent, so loose criteria can pass if
+the agent finds an alternate way to reach the same end state. For interaction
+features, write verifier steps as exact required actions and make fallback
+paths disallowed.
+
+Example for mouse selection:
+
+```text
+Using only the mouse, double-click directly on a visible word in the custom
+editor. Do not use keyboard shortcuts, DOM mutation, APIs, search boxes, or any
+alternate selection path. If double-click does not visibly select exactly that
+word, fail this criterion. Press Backspace and verify only that selected word is
+removed.
+```
+
+Use the same pattern for triple-click line selection, mouse drag selection,
+multi-caret placement, fill handles, sort/filter UI, and other interaction
+behaviors. Each required sub-step should be explicit, and any failed sub-step
+should fail the criterion.
+
 ### Verifiers Can Be Conjunctive
 
 One verifier can test multiple related sub-behaviors. That helps prevent
