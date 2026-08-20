@@ -34,6 +34,13 @@ Important grading rules:
 - For keyboard tests, click/focus the custom grid first. Prefer normal keyboard
   input where possible; use JavaScript evaluation only for direct API probes or
   to inspect DOM/API state, not to "fix" the app.
+- If a criterion names a specific interaction path, use that path only. For
+  example, mouse drag range selection must be tested by real mouse down/drag/up,
+  keyboard navigation must be tested with real key presses, toolbar/menu actions
+  must be tested through visible controls, and forged-save checks must be tested
+  with direct in-page fetch calls. If the named interaction does not work, fail
+  the criterion instead of reaching the same final state through DOM mutation,
+  API writes, formula-bar shortcuts, hidden routes, or another workaround.
 
 Required API discovery for forged probes:
 

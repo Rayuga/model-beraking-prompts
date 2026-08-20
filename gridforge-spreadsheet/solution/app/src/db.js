@@ -30,6 +30,23 @@ db.exec(`
     created_at TEXT NOT NULL,
     PRIMARY KEY (workbook_id, revision)
   );
+
+  CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS cell_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    workbook_id TEXT NOT NULL,
+    sheet_id TEXT NOT NULL,
+    cell_addr TEXT NOT NULL,
+    revision INTEGER NOT NULL,
+    user_id TEXT NOT NULL,
+    old_value TEXT NOT NULL,
+    new_value TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
 `);
 
 function defaultSeed() {
@@ -51,6 +68,7 @@ function readSeed() {
 }
 
 export function seedIfNeeded() {
+  seedUsers();
   const count = db.prepare('SELECT COUNT(*) AS count FROM workbooks').get().count;
   if (count > 0) return;
   const seed = readSeed().workbook;
@@ -67,5 +85,15 @@ export function seedIfNeeded() {
 }
 
 seedIfNeeded();
+
+function seedUsers() {
+  const seedUsers = readSeed().users || [
+    { id: 'riley', name: 'Riley Stone' },
+    { id: 'morgan', name: 'Morgan Lee' },
+    { id: 'priya', name: 'Priya Shah' }
+  ];
+  const insert = db.prepare('INSERT OR IGNORE INTO users (id, name) VALUES (?, ?)');
+  for (const user of seedUsers) insert.run(user.id, user.name);
+}
 
 export { DB_PATH };

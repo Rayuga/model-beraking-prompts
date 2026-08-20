@@ -31,10 +31,14 @@ Core requirements:
 - Custom grid surface built from scratch.
 - Formula evaluation and dependency recalculation.
 - Range selection/editing, copy, cut, paste, clear, fill.
-- Sort and filter.
+- Find/replace and name-box navigation.
 - Undo/redo.
 - Revision history.
 - Conflict-safe persistence with server-side save validation.
+- Seeded-user login, per-cell attribution, selected-cell history, and
+  cell-level merge/conflict handling for concurrent saves.
+- Google-Sheets-style autosave after the user pauses editing, while still
+  preserving explicit revision history.
 
 ## Important File Map
 
@@ -76,7 +80,7 @@ The rubric was compressed from 29 criteria to 20 criteria.
 Current totals:
 
 - 20 verifiers
-- total raw weight `29.5`
+- total raw weight `29.0`
 - minimum weight `0.5`
 - maximum weight `2.0`
 
@@ -85,17 +89,17 @@ Verifier list:
 ```text
 1. workbook_load_custom_surface_status             0.5
 2. custom_grid_no_spreadsheet_widget               2.0
-3. save_reload_dirty_noop_persistence              0.5
-4. keyboard_selection_clipboard_ranges             0.5
+3. autosave_reload_revision_attribution           0.5
+4. keyboard_mouse_range_selection                  0.5
 5. formula_bar_raw_formula_and_precedence          1.5
 6. cell_reference_dependency_recalculation         2.0
 7. range_functions_dependency_recalculation        2.0
 8. formula_errors_and_cycle_recovery               2.0
-9. tsv_range_paste_undo_redo_atomic                1.5
+9. tsv_csv_range_paste_undo_redo_atomic            1.5
 10. range_copy_cut_clear_undo_atomic               1.5
 11. fill_numbers_and_formula_relative_refs         2.0
-12. sort_preserves_rows_and_formulas               2.0
-13. filter_hides_without_deleting_rows             1.0
+12. find_replace_navigation_atomic                 1.5
+13. name_box_jump_and_range_selection              1.0
 14. long_grid_scroll_save_reload_integrity         0.5
 15. undo_redo_separate_edits_and_redo_clear        1.5
 16. formulas_save_reload_as_raw_and_values         1.5
@@ -154,6 +158,11 @@ Why it is hard:
 
 - Must support `SUM`, `AVG`, `MIN`, `MAX`, and `COUNT`.
 - Must parse ranges like `B2:B4`.
+- Must recommend a matching function while the user types a formula.
+- Must let the user mouse-drag a grid range into the formula being edited.
+- Must visibly outline referenced cells or ranges while the formula is being
+  edited.
+- Must handle comma-separated function inputs such as `SUM(B2:B4,C2)`.
 - Must recalculate every dependent range formula after a source value changes.
 
 ### 4. Fill Relative Formula References
@@ -171,19 +180,25 @@ Why it is hard:
   `N3` and `N4`.
 - Many simple implementations copy the literal formula, which fails.
 
-### 5. Sort Preserves Rows And Formulas
+### 5. Find/Replace And Name-Box Navigation
 
-Verifier:
+Verifiers:
 
 ```text
-sort_preserves_rows_and_formulas
+find_replace_navigation_atomic
+name_box_jump_and_range_selection
 ```
 
 Why it is hard:
 
-- Sorting must move whole rows, not only one column.
-- West/North/South must remain paired with the correct revenue/cost values.
-- Row formulas must still evaluate correctly after sort.
+- Find Next must advance through matches instead of staying on the first hit.
+- Replace one match and Replace All must affect the exact expected cells.
+- Replace All must undo atomically.
+- The name box must jump to distant cells, select rectangular ranges, and
+  reject invalid addresses without changing the current range.
+
+Note: sort/filter were removed because the UI was becoming too custom and not
+worth carrying into the task.
 
 ### 6. Server-Side Save Rejections
 
@@ -203,11 +218,59 @@ Why they are hard:
   revision, non-integer revision, and missing workbook data must not create
   revisions or alter stored data.
 
+### 7. Cell-Level Collaboration Semantics
+
+Features now implemented in the golden:
+
+- Seeded users come from `workbook_seed.json`: Riley Stone, Morgan Lee, and
+  Priya Shah.
+- The UI has a user selector so saves are attributed to the current user.
+- The server stores per-cell history with old value, new value, user, revision,
+  and timestamp.
+- Selecting a cell shows who last edited it and the cell's recent history.
+- If two users save from the same base revision but changed different cells, the
+  server merges both edits.
+- If two users save from the same base revision and changed the same cell, the
+  later save is rejected with the conflicting cell address.
+
+Good exact verifier shape:
+
+```text
+Load revision 1 in two tabs. In tab A as Riley, set B2 to 41 and save. In tab B
+as Morgan, without reloading, set C2 to 19 and save. Reload the workbook and
+verify B2 displays 41 and C2 displays 19.
+
+Then from the same old base revision, try to save B2 as PRIYA-B2 as Priya.
+Verify the response or UI conflict names B2, reload the workbook, and verify B2
+still displays 41.
+```
+
+### 8. Autosave Persistence
+
+Feature now implemented in the golden:
+
+- Any edit marks the workbook dirty and schedules an autosave after a short
+  pause.
+- The status label can show Dirty, Saving, Saved, or Save failed.
+- Manual Save remains as a "save now" control.
+- Autosaved edits create revisions and cell-history entries just like manual
+  saves.
+
+Good exact verifier shape:
+
+```text
+Select Riley Stone. Set B2 to AUTOSAVE-B2 through the grid UI. Do not press
+Save. Wait until the UI shows Saved, then reload. Verify B2 displays
+AUTOSAVE-B2. Select B2 and verify cell history shows Riley Stone, old value 3,
+and new value AUTOSAVE-B2.
+```
+
 ## Instruction Strategy
 
 Keep `instruction.md` clear and product-level:
 
-- Say to implement formulas, ranges, fill, sort/filter, undo/redo, revision
+- Say to implement formulas, ranges, fill, find/replace, name-box navigation,
+  undo/redo, revision
   history, and conflict-safe persistence.
 - Say the grid must be custom and not a spreadsheet widget.
 - Say saves must include base revision and be enforced server-side.
@@ -217,11 +280,34 @@ The verifier can then test exact cases:
 
 - `=10/0`
 - `=SUM(`
-- `H3 = H4` and `H4 = H3`
+- 4-cell dependency loop `H4 -> H5 -> H6 -> H7 -> H4`
 - TSV paste into `J2:L4`
 - fill `M2:M7`
-- sort `A9:D12`
+- find/replace `target -> DONE`
+- name-box entries such as `T80`, `B2:D4`, and `BADREF`
 - forged save payloads
+
+## Verifier Strictness Learning
+
+From the PatchPad model run, we learned that a browser-agent judge may satisfy
+the final state through a different route if the criterion is too loose. For
+GridForge, interaction-specific criteria should lock the action path:
+
+- If testing mouse range selection, require real mouse down/drag/up and fail if
+  the judge has to use formula-bar shortcuts, DOM mutation, or API writes.
+- If testing keyboard navigation, require real Arrow/Tab/Enter key presses
+  after focusing the custom grid.
+- If testing TSV paste, require real clipboard paste into the grid.
+- If testing fill, require the app's visible fill handle/control, not manual
+  typing of the target cells.
+- If testing find/replace or name-box navigation, require the visible app
+  controls, not direct data mutation.
+- If testing stale or forged saves, require direct in-page `fetch` probes from
+  the app origin and re-read stored data after each rejected write.
+
+Rule of thumb: if the named interaction does not work, the criterion should
+fail instead of allowing the verifier agent to reach the same final state by
+another route.
 
 ## Dos
 
@@ -230,7 +316,8 @@ The verifier can then test exact cases:
 - Merge easy related checks.
 - Weight model-breaking spreadsheet logic at `2.0`.
 - Keep simple UI/persistence checks at `0.5`.
-- Rebuild `gridforge-spreadsheet.zip` after task/rubric changes.
+- Rebuild `gridforge-spreadsheet.zip` before upload or Oracle runs, not after
+  every tiny verifier wording edit.
 - Run Oracle before trusting model scores.
 
 ## Don'ts
@@ -275,9 +362,11 @@ verifiers, so rerun QC after fresh Oracle/model artifacts are available.
 
 ## Next Steps
 
-1. Upload current `gridforge-spreadsheet.zip`.
-2. Run Oracle.
-3. If Oracle fails, fix the golden or verifier first.
-4. If Oracle passes, run model trials.
-5. Inspect which hard criteria fail.
-6. Target: Oracle `1.0`, model score below `0.7`.
+1. Continue verifier review at 14: `long_grid_scroll_save_reload_integrity`.
+2. Then review 15-20: undo/redo, formula save/reload, revision history,
+   two-tab stale conflict, forged save rejection, invalid API payloads.
+3. Rebuild `gridforge-spreadsheet.zip` before upload or Oracle.
+4. Run Oracle.
+5. If Oracle fails, fix the golden or verifier first.
+6. If Oracle passes, run model trials.
+7. Target: Oracle `1.0`, model score below `0.7`.

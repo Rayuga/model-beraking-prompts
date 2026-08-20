@@ -29,8 +29,8 @@ The workbook grid must be built from scratch. Do **not** use `<textarea>`,
 AG Grid, Luckysheet, x-spreadsheet, HyperFormula, SheetJS as the calculation
 engine, or another spreadsheet/grid widget for the editable grid.
 
-Small controls outside the grid, such as a formula bar, search/filter inputs,
-or dialogs, are allowed. The app must own the workbook model, selection,
+Small controls outside the grid, such as a formula bar, name box, find/replace
+inputs, or dialogs, are allowed. The app must own the workbook model, selection,
 keyboard handling, clipboard handling, formulas, undo/redo, and save behavior.
 
 ## Spreadsheet behavior
@@ -49,8 +49,24 @@ Users must be able to:
 - Undo and redo edits using visible controls and keyboard shortcuts.
 - Fill a selected range downward or sideways using a visible fill control or
   drag handle.
-- Sort a rectangular data range by a selected column.
-- Filter rows by a text value and later clear the filter without deleting data.
+- Find matching cell text and replace matches using visible controls.
+- Jump to a cell or select a rectangular range by entering an address in the
+  name box.
+
+## Collaboration and edit history
+
+GridForge has a small seeded-user login so edits can be attributed to people.
+Users should be able to sign in as one of the seeded users, edit the workbook,
+and see who last changed a selected cell.
+
+Track edit history at the cell level. When a cell value changes, record the
+previous value, the new value, the signed-in user, and the time of the change.
+Users should be able to inspect the history for a selected cell.
+
+When two users edit different cells from the same saved workbook version, both
+changes should be kept. When two users edit the same cell from the same saved
+workbook version, the later save should be rejected with a visible conflict
+message instead of overwriting the earlier user's edit.
 
 ## Formulas
 
@@ -63,32 +79,42 @@ Support:
 - Cell references such as `A1` and `D12`.
 - Ranges such as `A1:A10`.
 - Functions `SUM`, `AVG`, `MIN`, `MAX`, and `COUNT`.
-- Recalculation when referenced cells change.
+- Function names should appear in a dropdown below the cell being edited while
+  typing formulas.
+- Formula editing should help users insert cell and range references from the
+  grid, and referenced cells or ranges should be visible while a formula is
+  being edited.
 - Visible errors for invalid formulas, circular references, and division by
   zero.
 
 ## Persistence and revisions
 
+GridForge should autosave workbook changes after the user pauses editing. Users
+should not need to press Save for ordinary edits. The UI should show whether
+changes are dirty, saving, saved, or failed to save. A visible Save control can
+still be provided as a manual "save now" action.
+
 Saving changed workbook content writes to SQLite and creates a new revision.
 Saving unchanged content must not create a duplicate revision. Reloading the
 page must show the last saved workbook, including raw formulas and evaluated
-values. Unsaved edits should be marked dirty and must not become saved merely
-because the page reloads.
+values. Edits that have not finished saving should not be presented as saved.
 
 Show a revision history with revision number and timestamp. Users must be able
 to preview and restore a prior revision without corrupting the saved history.
+Autosaved changes should appear in revision history just like manual saves.
 
 ## Conflict safety
 
 Every workbook save must include the revision number that the browser started
-editing from. If another tab or request has already saved a newer revision, the
-older tab must be refused with a visible conflict message and must not overwrite
-the newer workbook.
+editing from. The server should compare what changed since that version. If a
+newer save changed different cells, keep both users' changes. If a newer save
+changed the same cell, reject the later save with a visible conflict message and
+do not overwrite the earlier user's cell value.
 
-The server must enforce this rule. Do not rely only on a disabled Save button,
-client-side checks, hidden fields, or browser storage. A request with a stale
-base revision, an unknown workbook id, or a mismatched workbook id must be
-rejected without changing the stored workbook.
+The server must enforce these rules. Do not rely only on a disabled Save
+button, client-side checks, hidden fields, or browser storage. A request with an
+unknown workbook id, a mismatched workbook id, or an invalid base revision must
+be rejected without changing the stored workbook.
 
 ## Interface expectations
 
@@ -98,7 +124,7 @@ should include:
 
 - A workbook title or workbook list showing the seeded workbook.
 - A custom grid area.
-- Save, undo, redo, formula editing, fill, sort, filter, clear filter, and
+- Save, undo, redo, formula editing, fill, find, replace, name-box navigation, and
   revision history controls.
 - Visible errors for invalid formulas, rejected saves, and invalid actions.
 

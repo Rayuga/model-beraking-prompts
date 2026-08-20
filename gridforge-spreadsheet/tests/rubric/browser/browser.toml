@@ -19,7 +19,7 @@ name = "workbook_load_custom_surface_status"
 type = "binary"
 weight = 0.5
 description = """
-Navigate to http://localhost:3000/. Verify GridForge loads without a login step, shows the workbook title "Northwind Operations Plan", shows the sheet name "Plan", exposes a spreadsheet/grid workspace, and shows row numbers, column letters, selected cell/range status, a formula bar or raw-value readout, current saved revision, and saved/dirty state.
+Open the running GridForge app URL provided by the verifier harness. This criterion is all-or-nothing: if any sub-check fails, mark the criterion failed. Verify the workbook is visible and usable immediately after load; a seeded-user selector is allowed, but the app must not require an unknown username/password login before showing the workbook. Verify the page shows the workbook title "Northwind Operations Plan". Verify it shows the sheet name "Plan". Verify it exposes a spreadsheet/grid workspace. Verify row numbers are visible. Verify column letters are visible. Verify selected cell or selected range status is visible. Verify a formula bar or raw-value readout is visible. Verify the current saved revision is visible. Verify the saved/dirty state is visible.
 """
 
 [[criterion]]
@@ -28,25 +28,25 @@ name = "custom_grid_no_spreadsheet_widget"
 type = "binary"
 weight = 2.0
 description = """
-Inspect the live DOM and loaded scripts. Verify the main editable grid is not a textarea, not a cell-per-input form, not contenteditable, and not Handsontable, AG Grid, Luckysheet, x-spreadsheet, HyperFormula, SheetJS-as-calculation-engine, or another spreadsheet/grid widget. A formula bar input outside the grid is allowed. Then edit a grid cell and verify workbook data changes through the custom surface.
+Inspect the live DOM and loaded scripts, using browser evaluation if needed. This criterion is all-or-nothing: if any sub-check fails, mark it failed. Verify the main editable grid is not a textarea. Verify the main editable grid is not contenteditable. Verify the main editable grid is not implemented as an input element in every cell or as a cell-per-input form. A formula bar input outside the grid is allowed, but the grid itself must not contain one input per visible cell. Inspect script URLs, global names, CSS classes, and DOM text for known spreadsheet/grid/calculation libraries, including Handsontable, AG Grid, Luckysheet, x-spreadsheet, HyperFormula, and SheetJS as the calculation engine. Then click one visible grid cell and edit it using the normal visible app workflow. Verify the displayed cell value changes and the workbook data changes. If editing only works by direct DOM mutation, direct API mutation, hidden routes, or a hidden/native per-cell input grid, fail.
 """
 
 [[criterion]]
-id = "save_reload_dirty_noop_persistence"
-name = "save_reload_dirty_noop_persistence"
+id = "autosave_reload_revision_attribution"
+name = "autosave_reload_revision_attribution"
 type = "binary"
 weight = 0.5
 description = """
-Edit F2 to BASIC-SAVE-CHECK, save, reload, and verify F2 persists exactly once. Then edit F3 to UNSAVED-SHOULD-DISAPPEAR without saving, verify dirty state, reload, and verify F3 reverts while F2 remains. While saved and not dirty, attempt Save and verify no duplicate revision is created.
+This criterion is all-or-nothing: if any sub-check fails, mark it failed. Select Riley Stone in the seeded-user selector. Using the normal grid editing UI, set B2 to AUTOSAVE-B2. Do not press the Save button and do not use a direct API write. Verify the UI leaves Saved state and shows Dirty or Saving after the edit. Wait up to 5 seconds for the UI to show Saved. If it never shows Saved, fail. Reload the page and verify B2 displays AUTOSAVE-B2. Open revision history and verify a new revision exists after the autosaved edit. Select B2 and verify the selected-cell attribution or cell-history UI shows Riley Stone and a history entry whose old value is 3 and whose new value is AUTOSAVE-B2.
 """
 
 [[criterion]]
-id = "keyboard_selection_clipboard_ranges"
-name = "keyboard_selection_clipboard_ranges"
+id = "keyboard_mouse_range_selection"
+name = "keyboard_mouse_range_selection"
 type = "binary"
 weight = 0.5
 description = """
-Use Arrow keys, Tab, Shift+Tab, Enter, and Shift+Enter to move through cells. Select rectangular ranges with mouse or keyboard. Copy, paste, cut, and clear ranges, including clipboard text copied from outside the app, and verify the selected workbook cells update without losing grid focus.
+This criterion is all-or-nothing: if any sub-check fails, mark it failed. Do not use direct API writes, DOM mutation, hidden routes, or formula-bar-only shortcuts to satisfy these checks. First click/select B2 in the custom grid. Use real key presses and verify exact movement: ArrowRight selects C2, ArrowDown selects C3, ArrowLeft selects B3, ArrowUp selects B2, Tab selects C2, Shift+Tab returns to B2, Enter selects B3, and Shift+Enter returns to B2. If any key selects the wrong cell or loses grid focus, fail. Next create a mouse-drag range from J2 to K3 using real mouse down/drag/up only and verify selected range status shows J2:K3 or equivalent. Next create the same J2:K3 range using keyboard Shift+Arrow only and verify selected range status shows J2:K3 or equivalent.
 """
 
 [[criterion]]
@@ -55,7 +55,7 @@ name = "formula_bar_raw_formula_and_precedence"
 type = "binary"
 weight = 1.5
 description = """
-Select seeded formula cell D2 and verify the grid displays 360 while the formula bar preserves raw formula =B2*C2. Change it to =B2*(C2+10) and verify the display becomes 390 while the raw formula remains editable. Enter =2+3*4 and =(2+3)*4 in separate cells and verify they evaluate to 14 and 20.
+This criterion is all-or-nothing: if any sub-check fails, mark it failed. Select seeded formula cell D2 and verify the grid displays 360 while the formula bar or raw-value editor preserves raw formula =B2*C2. Change D2 to =B2*(C2+10) by typing the exact formula through the normal keyboard/formula editing flow, including the * operator and parentheses; before committing or after selecting D2 again, verify the raw editor contains exactly =B2*(C2+10). Verify the grid displays 390. Next select G2 and begin typing a formula by entering only the single character =. Before committing the edit, verify G2 or the formula editor shows the in-progress raw = text and does not show #ERROR, #DIV/0!, #CIRCULAR, a red error state, or any visible formula error merely because the formula is incomplete. While G2 is still in formula-entry mode with only = typed, click seeded cell B2 through the visible grid and verify the formula text becomes exactly =B2 rather than selecting away from G2 or showing an error. Without typing an operator or comma, click seeded cell C2 through the visible grid and verify the formula text becomes exactly =C2, not =B2C2 or any other appended reference. Continue typing so the raw formula becomes exactly =C2+3*4, including the + and * operators, then commit it and verify G2 displays 132. Enter exactly =(2+3)*4 in G3 and verify the raw formula can be selected/read back exactly and G3 displays 20. Enter exactly =20/2+3*4 in G4 and verify G4 displays 22. Enter exactly =20/(2+3)*4 in G5 and verify G5 displays 16. If any operator character such as *, +, /, (, or ) replaces the formula instead of being inserted into the formula being typed, fail.
 """
 
 [[criterion]]
@@ -64,7 +64,7 @@ name = "cell_reference_dependency_recalculation"
 type = "binary"
 weight = 2.0
 description = """
-Enter =B2*C2 in G4 and verify it evaluates from current B2 and C2. Change B2 to 4. Verify D2, G4, and any affected formulas recalculate immediately from the new B2 value without reload or manual refresh.
+This criterion is all-or-nothing: if any sub-check fails, mark it failed. Starting from the seeded values B2=3 and C2=120, enter =B2*C2 in G4 through normal formula editing and verify G4 displays 360. Enter =G4+10 in H4 and verify H4 displays 370. Change B2 to 4 through normal cell editing. Without reloading the page, pressing a manual refresh control, or using direct API/DOM mutation, verify D2 displays 480, G4 displays 480, and H4 displays 490. Select G4 and verify its raw formula is still exactly =B2*C2. Select H4 and verify its raw formula is still exactly =G4+10.
 """
 
 [[criterion]]
@@ -73,7 +73,7 @@ name = "range_functions_dependency_recalculation"
 type = "binary"
 weight = 2.0
 description = """
-Enter formulas using SUM, AVG, MIN, MAX, and COUNT over B2:B4 in nearby cells. Verify each result is correct. Then change B4 from 5 to 8 and verify every dependent range formula recalculates correctly.
+This criterion is all-or-nothing: if any sub-check fails, mark it failed. Use only the visible spreadsheet UI and normal mouse/keyboard interactions; do not use direct API writes, DOM mutation, hidden routes, or manually typing the finished formula when a mouse reference action is required. Select G6, begin formula entry, and type exactly =SU. Verify a visible dropdown appears directly below the G6 cell being edited, not below the formula bar and not elsewhere in the toolbar or page, and that the dropdown contains SUM. Choose SUM from that below-cell dropdown, or otherwise complete the recommended SUM option from that dropdown, so the formula editor contains exactly =SUM(. With G6 still in formula-entry mode, use mouse down/drag/up on the grid to select B2:B4 as a formula reference, and verify the in-progress formula text becomes exactly =SUM(B2:B4. While still editing, verify B2:B4 is visibly highlighted or outlined as the referenced range. Type a comma, then click seeded cell C2 through the visible grid and verify the formula text becomes exactly =SUM(B2:B4,C2. Type the closing parenthesis and press Enter. Verify G6 displays 130, then select G6 and verify the raw formula is exactly =SUM(B2:B4,C2). Next enter =AVG(B2:B4) in G7, =MIN(B2:B4) in G8, =MAX(B2:B4) in G9, and =COUNT(B2:B4) in G10 through normal formula editing. Verify G7 displays 3.3333333333333335 or a clearly equivalent 3.333333333333333 value, G8 displays 2, G9 displays 5, and G10 displays 3. Change B4 from 5 to 8 through normal cell editing. Without reloading the page, pressing a manual refresh control, or using direct API/DOM mutation, verify G6 displays 133, G7 displays 4.333333333333333 or a clearly equivalent 4.333333333333333 value, G8 displays 2, G9 displays 8, and G10 displays 3.
 """
 
 [[criterion]]
@@ -82,16 +82,16 @@ name = "formula_errors_and_cycle_recovery"
 type = "binary"
 weight = 2.0
 description = """
-Enter =10/0 and verify a visible formula error rather than Infinity, blank, crash, or stale data. Enter an invalid formula such as =SUM( and verify a visible error while the app remains usable. Set H3 to =H4 and H4 to =H3, verify a visible circular-reference error, then replace H4 with 12 and verify H3 recalculates to 12.
+Treat the following as one connected check, and fail the criterion if any required part is missing. Use normal visible spreadsheet editing only; do not use direct API writes, DOM mutation, hidden routes, reload, or manual refresh. In H2 enter exactly =10/0 and verify H2 visibly shows #DIV/0!, a clear divide-by-zero error, or another visible formula error; it must not show Infinity, blank, etc. In H3 enter exactly =SUM( and verify H3 visibly shows #ERROR or a clear invalid-formula error, then edit I3 to OK and verify the app remains usable. Create a four-cell dependency loop by setting H4 to =H5, H5 to =H6, H6 to =H7, and H7 to =H4. Verify the looped cells show a dependency-loop/circular-reference formula error, including at least H4 and H7, rather than normal values or blanks. Break the loop by replacing H7 with 12. Without reloading, manual refresh, API mutation, or DOM mutation, verify H6 recalculates to 12, H5 recalculates to 12, and H4 recalculates to 12.
 """
 
 [[criterion]]
-id = "tsv_range_paste_undo_redo_atomic"
-name = "tsv_range_paste_undo_redo_atomic"
+id = "tsv_csv_range_paste_undo_redo_atomic"
+name = "tsv_csv_range_paste_undo_redo_atomic"
 type = "binary"
 weight = 1.5
 description = """
-Paste the tab-separated block "TSV-A\t11\t12\nTSV-B\t21\t22\nTSV-C\t31\t32" starting at J2. Verify it fills J2:L4 exactly. Press Undo once and verify the whole pasted range is removed together. Press Redo once and verify the whole range returns.
+This criterion is all-or-nothing: if any sub-check fails, mark it failed. Select J2 through the normal grid UI. Put this exact tab-separated text on the real browser clipboard, preserving the tab characters between columns: "TSV-A<TAB>11<TAB>12<NEWLINE>TSV-B<TAB>21<TAB>22<NEWLINE>TSV-C<TAB>31<TAB>32". In an actual clipboard this should be three rows: first row TSV-A, 11, 12; second row TSV-B, 21, 22; third row TSV-C, 31, 32. Paste with Ctrl/Cmd+V only. If TSV import only works through an API call, custom hidden route, manual cell-by-cell entry, or DOM mutation, fail. Verify J2=TSV-A, K2=11, L2=12, J3=TSV-B, K3=21, L3=22, J4=TSV-C, K4=31, and L4=32. Press Undo once through the visible Undo control or Ctrl/Cmd+Z and verify J2:L4 all return to their previous blank values together. Press Redo once through the visible Redo control or Ctrl/Cmd+Y/Shift+Ctrl+Z and verify the same nine values return. Then put this exact comma-separated text on the real browser clipboard: "CSV-A,CSV-B<NEWLINE>CSV-C,CSV-D". Select O2, paste with Ctrl/Cmd+V only, and verify O2=CSV-A, P2=CSV-B, O3=CSV-C, and P3=CSV-D.
 """
 
 [[criterion]]
@@ -100,7 +100,7 @@ name = "range_copy_cut_clear_undo_atomic"
 type = "binary"
 weight = 1.5
 description = """
-Select J2:L4, copy it, paste it starting at J6, and verify all 3 by 3 values are copied. Cut J6:L8 and verify the pasted copy is cleared. Press Undo once and verify the full cut range returns. Clear J6:L8 and verify one Undo restores the whole cleared range.
+This criterion is all-or-nothing: if any sub-check fails, mark it failed. Start from a grid state where J2:L4 contains the nine TSV values from the paste verifier, or create those values through normal paste if needed. Select J2:L4 using the app's normal visible range-selection interaction, not DOM/API mutation. Copy it with Ctrl/Cmd+C or a visible Copy control, select J6, paste with Ctrl/Cmd+V or a visible Paste control, and verify J6=TSV-A, K6=11, L6=12, J7=TSV-B, K7=21, L7=22, J8=TSV-C, K8=31, and L8=32. Select J6:L8, cut with Ctrl/Cmd+X or a visible Cut control, and verify J6:L8 are blank. Press Undo once and verify the same nine values return to J6:L8. Select J6:L8 again and press Delete or Backspace on the selected range, not by direct API/DOM mutation, and verify all nine cells become blank. Press Undo once and verify the same nine values return again.
 """
 
 [[criterion]]
@@ -109,25 +109,25 @@ name = "fill_numbers_and_formula_relative_refs"
 type = "binary"
 weight = 2.0
 description = """
-Put 1 in M2 and 2 in M3, select M2:M3, and use fill through M7. Verify M4:M7 become 3, 4, 5, and 6 and one Undo removes the fill extension as one edit. Enter =B2*C2 in N2, fill it through N4, and verify N3 uses B3*C3 and N4 uses B4*C4 with correct displayed values.
+Put 1 in M2 and 2 in M3 through normal cell editing, then select the full range M2:M7 and use the app's visible fill handle/control only to fill the blank cells in that selected range. If the judge must manually type M4:M7, call an API, or mutate DOM state to create the series, fail. Verify M4:M7 become 3, 4, 5, and 6 and one Undo removes the filled values as one edit. Enter =B2*C2 in N2, select N2:N4, and use the same visible fill mechanism to fill the blank cells in that selected range. Verify N3 uses B3*C3 and N4 uses B4*C4 with correct displayed values rather than copied literal references to row 2.
 """
 
 [[criterion]]
-id = "sort_preserves_rows_and_formulas"
-name = "sort_preserves_rows_and_formulas"
+id = "find_replace_navigation_atomic"
+name = "find_replace_navigation_atomic"
 type = "binary"
-weight = 2.0
+weight = 1.5
 description = """
-Use seeded table A9:D12. Sort rows 10:12 by Revenue descending. Verify West remains paired with 1500, 850, and its margin; North remains paired with 1200 and 700; South remains paired with 900 and 500. Formulas in sorted rows must still evaluate to the correct margin for their row.
+Through normal grid editing, put ALPHA target in A20, target-B in C20, and no-target in A21. Use only the app's visible find/replace controls, not browser find, direct API calls, DOM mutation, or manual cell-by-cell edits for the replacement steps. Search for target and press Find Next twice; verify the selected match advances from A20 to C20 rather than staying on the first match. Replace the current match with FOUND and verify C20 becomes FOUND while A20 still contains ALPHA target. Then use Replace All for target -> DONE and verify A20 becomes ALPHA DONE, A21 becomes no-DONE, and C20 remains FOUND. Press Undo once and verify A20, A21, and C20 return to their pre-Replace-All values together.
 """
 
 [[criterion]]
-id = "filter_hides_without_deleting_rows"
-name = "filter_hides_without_deleting_rows"
+id = "name_box_jump_and_range_selection"
+name = "name_box_jump_and_range_selection"
 type = "binary"
 weight = 1.0
 description = """
-Apply a text filter to the Region table that shows only rows containing South. Verify North and West are hidden from visible filtered rows while South remains visible. Clear the filter and verify North, South, and West all return with original row data intact.
+Use the visible name box or cell address box, not direct API calls or DOM mutation. Type T80 and press Enter; verify the grid scrolls or navigates to T80 and T80 becomes the selected cell. Type B2:D4 and press Enter; verify the selected range is exactly B2:D4 and the selection status shows B2:D4 or an equivalent selected-range label. Type BADREF and press Enter; verify the app rejects the invalid address without changing the selected B2:D4 range or crashing.
 """
 
 [[criterion]]
@@ -145,7 +145,7 @@ name = "undo_redo_separate_edits_and_redo_clear"
 type = "binary"
 weight = 1.5
 description = """
-Make three edits in three different cells: P2=UNDO-ONE, P3=UNDO-TWO, and P4=UNDO-THREE. Press Undo twice and verify only P4 then P3 revert one step at a time. Press Redo twice and verify P3 then P4 return in order. Separately, type REDO-ORIGINAL in Q2, undo it, type REDO-NEW in Q2, and verify Redo cannot bring back REDO-ORIGINAL.
+Make three edits in three different cells through normal grid editing: P2=UNDO-ONE, P3=UNDO-TWO, and P4=UNDO-THREE. Press Undo twice using the visible Undo control or Ctrl/Cmd+Z; verify only P4 then P3 revert one step at a time. Press Redo twice using the visible Redo control or standard redo shortcut; verify P3 then P4 return in order. Separately, type REDO-ORIGINAL in Q2, undo it, type REDO-NEW in Q2, and verify Redo cannot bring back REDO-ORIGINAL. Do not use reload, direct API writes, or manual replacement to simulate undo/redo.
 """
 
 [[criterion]]
@@ -163,7 +163,7 @@ name = "revision_history_preview_restore_undo"
 type = "binary"
 weight = 1.5
 description = """
-After at least two successful saves, open revision history. Verify it lists multiple revisions with revision numbers and timestamps. Preview an older revision without replacing the current draft. Restore an older revision as the current draft, verify the workbook becomes dirty, press Undo once, and verify the pre-restore draft returns.
+After at least two successful saves, open revision history through the visible app UI. Verify it lists multiple revisions with revision numbers and timestamps. Preview an older revision using the revision UI only and verify previewing does not replace the current draft. Restore an older revision using the visible restore action, verify the workbook becomes dirty rather than immediately creating a saved revision, press Undo once, and verify the pre-restore draft returns. If preview/restore is only possible through direct API calls or hidden routes, fail.
 """
 
 [[criterion]]
@@ -172,7 +172,7 @@ name = "two_tab_stale_save_conflict"
 type = "binary"
 weight = 2.0
 description = """
-Open GridForge in two browser pages/tabs. In tab A, edit S2 to TAB-A-WINS and save. In tab B, without reloading, edit S2 to TAB-B-STALE and try to save. Verify tab B gets a visible conflict/stale revision message and TAB-B-STALE does not overwrite TAB-A-WINS. Re-read or reload the workbook and verify TAB-A-WINS remains stored.
+Open GridForge in two real browser pages/tabs that both loaded the workbook before either save. In tab A, edit S2 to TAB-A-WINS through the UI and save. In tab B, without reloading or refreshing its base revision, edit S2 to TAB-B-STALE through the UI and try to save through the visible Save control. Verify tab B gets a visible conflict/stale revision message and TAB-B-STALE does not overwrite TAB-A-WINS. Re-read or reload the workbook and verify TAB-A-WINS remains stored. If the judge must manually adjust tab B's base revision, call hidden APIs to create the conflict, or accept silent overwrite, fail.
 """
 
 [[criterion]]
@@ -181,7 +181,7 @@ name = "forged_save_identity_and_stale_rejections"
 type = "binary"
 weight = 2.0
 description = """
-Use direct in-page fetch calls to test server-side save enforcement. A stale baseRevision with FORGED-STALE-OVERWRITE must be rejected and must not store that marker. A request to an unknown workbook id and a request whose URL workbook id differs from the body workbookId must also be rejected without altering the real workbook.
+Use direct in-page fetch calls from the app origin to test server-side save enforcement; do not rely on disabled buttons or UI validation. First discover the real workbook id, current revision, and save endpoint from the app/API. Keep a copy of that base workbook. Make a legitimate current save that changes T2 to CURRENT-T2 so the stored revision advances. Then send a forged save with the older baseRevision and stale workbook content that changes the same T2 cell to FORGED-STALE-OVERWRITE. It must be rejected and T2 must still display CURRENT-T2 after re-reading the workbook from the API. Also send one request to an unknown workbook id and one request whose URL workbook id differs from the body workbookId. Both must be rejected without altering the real workbook. Re-read the workbook from the API after each rejected probe.
 """
 
 [[criterion]]
@@ -190,7 +190,7 @@ name = "api_rejects_invalid_revision_payloads"
 type = "binary"
 weight = 1.5
 description = """
-Use direct in-page fetch calls to attempt saves with missing baseRevision, non-integer baseRevision, or missing workbook data. Each invalid save must be rejected and must not change the stored workbook or create a new revision.
+Use direct in-page fetch calls from the app origin to attempt saves with missing baseRevision, non-integer baseRevision, and missing workbook data. Do not use the visible Save button for these invalid-payload probes. Each invalid save must be rejected and must not change the stored workbook or create a new revision. Re-read the workbook and revision list after the probes to confirm no write occurred.
 """
 
 [scoring]
