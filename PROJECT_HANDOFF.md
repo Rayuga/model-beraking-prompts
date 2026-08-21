@@ -314,12 +314,13 @@ Product idea:
 Build a browser-based custom spreadsheet engine for operations planning. It
 must be from scratch, not a spreadsheet widget or calculation library. It
 includes formula evaluation, dependency recalculation, range editing, fill,
-sort/filter, undo/redo, saved revisions, and conflict-safe persistence.
+find/replace, name-box navigation, undo/redo, saved revisions, and
+conflict-safe persistence.
 
 Current rubric:
 
 - 20 verifiers
-- total weight `29.5`
+- total weight `29.0`
 - weights from `0.5` to `2.0`
 
 Verifier list:
@@ -327,17 +328,17 @@ Verifier list:
 ```text
 1. workbook_load_custom_surface_status             0.5
 2. custom_grid_no_spreadsheet_widget               2.0
-3. save_reload_dirty_noop_persistence              0.5
-4. keyboard_selection_clipboard_ranges             0.5
+3. autosave_reload_revision_attribution           0.5
+4. keyboard_mouse_range_selection                  0.5
 5. formula_bar_raw_formula_and_precedence          1.5
 6. cell_reference_dependency_recalculation         2.0
 7. range_functions_dependency_recalculation        2.0
 8. formula_errors_and_cycle_recovery               2.0
-9. tsv_range_paste_undo_redo_atomic                1.5
+9. tsv_csv_range_paste_undo_redo_atomic            1.5
 10. range_copy_cut_clear_undo_atomic               1.5
 11. fill_numbers_and_formula_relative_refs         2.0
-12. sort_preserves_rows_and_formulas               2.0
-13. filter_hides_without_deleting_rows             1.0
+12. find_replace_navigation_atomic                 1.5
+13. name_box_jump_and_range_selection              1.0
 14. long_grid_scroll_save_reload_integrity         0.5
 15. undo_redo_separate_edits_and_redo_clear        1.5
 16. formulas_save_reload_as_raw_and_values         1.5
@@ -353,7 +354,10 @@ Most likely GridForge breakers:
 - range functions that recalculate after source changes
 - circular reference detection and recovery after fixing the cycle
 - fill formulas with relative references
-- sorting rows while preserving row integrity and formulas
+- formula authoring UI: below-cell function suggestions, reference picking,
+  range highlighting, and comma-separated range function arguments
+- find/replace navigation and atomic replace-all undo
+- name-box cell/range navigation with invalid-address rejection
 - TSV/range operations undoing atomically
 - stale save conflict across two tabs
 - forged API save rejection on the server
@@ -361,7 +365,13 @@ Most likely GridForge breakers:
 GridForge current status:
 
 - Rubric was compressed from 29 to 20 verifiers.
-- `gridforge-spreadsheet.zip` was rebuilt and pushed.
+- Verifiers 1 through 13 were reviewed/tightened together. Continue tomorrow
+  at verifier 14: `long_grid_scroll_save_reload_integrity`.
+- Sort/filter were removed because their UI became too custom for a
+  Google-Sheets-like task. The replacement criteria are find/replace and
+  name-box navigation.
+- The current working tree includes GridForge source/rubric changes; rebuild
+  `gridforge-spreadsheet.zip` only before upload, not after every small edit.
 - Existing `gridforge-spreadsheet_qc_findings.json` still mentions the older
   29-verifier QC pass; run QC again after the next Oracle/model runs.
 
@@ -418,6 +428,27 @@ should fail the criterion.
 One verifier can test multiple related sub-behaviors. That helps prevent
 scoring inflation. Example: clipboard verifier can include paste from outside,
 copy inside, paste elsewhere, cut, and undo.
+
+### Verifiers Must Lock The Interaction Path
+
+Browser-agent judges may find alternate ways to satisfy the final state if the
+criterion only describes the outcome. If the product requirement is about a
+specific interaction, the verifier must say that exact interaction is required
+and that fallback routes should fail.
+
+Example from PatchPad:
+
+```text
+Bad: Verify double-click selects a word.
+
+Better: Select one word by mouse double-click only. If double-click does not
+create the word selection, fail this criterion rather than using keyboard
+shortcuts, DOM APIs, find controls, or another workaround. Press Backspace and
+verify only that selected word is removed.
+```
+
+Use this pattern for mouse-only selection, triple-click line selection, drag
+selection, keyboard-only flows, multi-tab flows, and direct API probes.
 
 ### Server-Side Checks Are Strong
 
@@ -544,12 +575,13 @@ PatchPad:
 
 GridForge:
 
-1. Upload current `gridforge-spreadsheet.zip`.
-2. Run Oracle.
-3. If Oracle fails, fix golden/verifier first.
-4. If Oracle passes, run model trials.
-5. Focus on formula dependency, circular reference recovery, fill relative refs,
-   sort integrity, and forged API rejection failures.
+1. Continue verifier review at 14: `long_grid_scroll_save_reload_integrity`.
+2. Then review 15-20: undo/redo, formula save/reload, revision history,
+   two-tab stale conflict, forged save rejection, invalid API payloads.
+3. Rebuild `gridforge-spreadsheet.zip` before upload.
+4. Run Oracle.
+5. If Oracle fails, fix golden/verifier first.
+6. If Oracle passes, run model trials.
 
 ## Git Notes
 
