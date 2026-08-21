@@ -1,56 +1,174 @@
 {
   "title": "GridForge Spreadsheet - Harbor Task QC",
-  "subtitle": "Fresh first-level QC after local fixes.",
-  "note": "Scope: static package/prompt/rubric/golden checks only. No Oracle/model RewardKit run artifacts were present under gridforge-spreadsheet.",
-  "mode": "fresh",
+  "subtitle": "Pre-Oracle folder-only rework QC of the task specification, verifier, harness, and golden solution.",
+  "note": "The upload archive is intentionally out of scope for this pass. No Oracle or model trial artifacts are present yet, so behavioral solvability and score spread remain unverified.",
+  "mode": "rework",
   "tasks": [
     {
       "name": "GridForge Spreadsheet",
-      "headline": "Static QC issues found in the first pass were fixed; the remaining blocker is run validation.",
+      "headline": "All static specification, verifier-coverage, metadata, documentation, and packaging findings are fixed. Only Oracle/model run validation remains open by design.",
       "findings": [
         {
           "id": "GF-01",
           "sev": "P1",
           "category": "Run Validation",
           "location": "gridforge-spreadsheet/",
-          "what": "No Harbor run artifacts were found under the task folder. run_inventory.py reported: \"No trials found under gridforge-spreadsheet.\"",
-          "why": "The QC skill treats Oracle score 1.0 as the proof that the task is solvable. Static checks cannot establish that RewardKit, Playwright MCP, and the golden pass all 29 criteria end to end.",
-          "impact": "The task should not be considered delivery-ready until Oracle scores 1.0 and representative model runs show the intended score spread.",
-          "fix": "Run Oracle and at least the planned model set, then re-run QC in run-validation mode with result.json, reward.json, report.json, and agentic.json artifacts.",
-          "evidence": "CONFIRMED: bundled run_inventory.py found no trials at depths 1-3.",
-          "verdict": "CONFIRMED"
+          "what": "No Harbor Oracle or model trial artifacts are present. The bundled inventory script reports: \"No trials found under gridforge-spreadsheet.\"",
+          "why": "Static review cannot prove that the golden implementation completes the 22 browser criteria or that representative model runs produce the intended score separation.",
+          "impact": "The task cannot yet be declared delivery-ready or calibrated; Oracle 1.0 and the model score distribution are unknown.",
+          "fix": "After the static findings are resolved, run Oracle on a newly built task archive, then run the planned model set and repeat QC against the extracted job folders.",
+          "type": "Prior",
+          "status": "OPEN",
+          "action": "Keep open until fresh result.json, reward.json, report.json, and agentic.json artifacts establish Oracle solvability and model calibration."
+        },
+        {
+          "id": "GF-02",
+          "sev": "P1",
+          "category": "Rubric Alignment",
+          "location": "instruction.md: Spreadsheet behavior; browser.toml: tsv_csv_range_paste_undo_redo_atomic",
+          "what": "The instruction now requires multi-row, multi-column clipboard data using common delimiters to populate the corresponding rectangular range, covering the delimiter-based paste behavior exercised by the rubric without prescribing test-specific examples.",
+          "why": "The task previously named only tab-separated paste while the all-or-nothing verifier also exercised comma-delimited input.",
+          "impact": "The written task and delimiter-based range-paste checks are now aligned.",
+          "fix": "No further change required unless the accepted delimiter set is intentionally narrowed later.",
+          "type": "New",
+          "status": "FIXED",
+          "origin": "Pre-existing, missed in QC1",
+          "action": "Closed: instruction.md now states the general common-delimiter rectangular-paste contract."
+        },
+        {
+          "id": "GF-03",
+          "sev": "P1",
+          "category": "Rubric Alignment",
+          "location": "instruction.md: Spreadsheet behavior; browser.toml: fill_numbers_and_formula_relative_refs",
+          "what": "instruction.md now requires numeric sequences to continue from leading values, filled formulas to adjust relative references, and each complete fill to behave as one undoable action.",
+          "why": "The prior generic fill wording did not uniquely define the semantics exercised by the 2.0-weight criterion.",
+          "impact": "The written fill contract now aligns with the observable numeric-series, formula-relative-reference, and atomic-undo checks.",
+          "fix": "No further specification change required for fill behavior.",
+          "type": "New",
+          "status": "FIXED",
+          "origin": "Pre-existing, missed in QC1",
+          "action": "Closed: instruction.md now states the required fill semantics."
+        },
+        {
+          "id": "GF-04",
+          "sev": "P1",
+          "category": "Rubric Alignment",
+          "location": "instruction.md: Spreadsheet behavior and Formulas; browser.toml: formula_bar_raw_formula_and_precedence and find_replace_navigation_atomic",
+          "what": "instruction.md now requires a newly selected formula reference to replace the current inserted reference when no operator or argument separator intervenes. It also requires next-match navigation, replace-current, Replace All, and atomic undo for Replace All.",
+          "why": "The prior feature-level wording did not define these exact state transitions exercised by two all-or-nothing criteria.",
+          "impact": "The formula-reference and find/replace interaction contracts now align with the verifier.",
+          "fix": "No further specification change required for these interaction semantics.",
+          "type": "New",
+          "status": "FIXED",
+          "origin": "Pre-existing, missed in QC1",
+          "action": "Closed: instruction.md now states the required formula-reference and find/replace behavior."
+        },
+        {
+          "id": "GF-05",
+          "sev": "P1",
+          "category": "Rubric Alignment",
+          "location": "instruction.md: Conflict safety; browser.toml: api_rejects_invalid_revision_payloads",
+          "what": "instruction.md now states that cell-save requests cannot rename the workbook or alter sheet identity metadata and must reject changes to workbook title, sheet id, or sheet name without mutation or revision creation.",
+          "why": "The prior trust-boundary wording protected IDs and malformed structure but did not explicitly establish title and sheet-name immutability.",
+          "impact": "The save-API immutability contract now aligns with the invalid-payload probes.",
+          "fix": "No further specification change required for workbook and sheet metadata immutability.",
+          "type": "New",
+          "status": "FIXED",
+          "origin": "Pre-existing, missed in QC1",
+          "action": "Closed: instruction.md now states the metadata immutability enforced by the verifier."
+        },
+        {
+          "id": "GF-06",
+          "sev": "P1",
+          "category": "Coverage Gap",
+          "location": "instruction.md: Data, Required stack, and Persistence and revisions; tests/test.py and browser.toml",
+          "what": "The harness now starts from its existing database wipe, requires the manifest-declared database to be a real SQLite file inside the app directory containing the seeded workbook, captures every application table and row, restarts the app, and requires the complete logical database snapshot to remain unchanged.",
+          "why": "The prior browser-only flow did not exercise the mandatory SQLite restart/idempotence contract.",
+          "impact": "Non-SQLite persistence, missing persisted seed data, and seed logic that inserts or mutates database records on restart now fail deterministically before browser grading.",
+          "fix": "No further change required for the static SQLite startup/restart idempotence gate; Oracle must still exercise the integrated harness.",
+          "type": "New",
+          "status": "FIXED",
+          "origin": "Pre-existing, missed in QC1",
+          "action": "Closed and locally verified: an isolated empty-database run produced exactly one workbook and one revision, and a second initialization preserved the identical logical SQLite snapshot."
+        },
+        {
+          "id": "GF-07",
+          "sev": "P2",
+          "category": "Coverage Gap",
+          "location": "instruction.md: Required stack; tests/test.py: manifest_error and main",
+          "what": "The verifier now requires APP_MANIFEST.md beside package.json and deterministically checks for a non-empty fenced bash start block, a database path, and at least two listed API routes before starting or grading the app.",
+          "why": "The required deliverable previously remained optional because start_command silently fell back to npm start.",
+          "impact": "A missing or materially incomplete manifest now produces a stable zero-reward validation result instead of passing unnoticed.",
+          "fix": "No further change required for the manifest deliverable gate.",
+          "type": "New",
+          "status": "FIXED",
+          "origin": "Pre-existing, missed in QC1",
+          "action": "Closed: tests/test.py now gates grading on the required manifest structure without trusting it as proof of runtime behavior."
+        },
+        {
+          "id": "GF-08",
+          "sev": "P2",
+          "category": "Specification Drift",
+          "location": "task.toml: task.description and metadata.difficulty_explanation",
+          "what": "task.toml no longer mentions removed sort/filter behavior. Its description and difficulty explanation now cover the current range-fill, live-collaboration, remote-selection, persistence, and conflict-safety scope.",
+          "why": "The metadata previously described a feature absent from instruction.md and the current rubric.",
+          "impact": "Task metadata, instruction, and verifier now communicate the same feature scope.",
+          "fix": "No further task metadata change required for sort/filter drift.",
+          "type": "New",
+          "status": "FIXED",
+          "origin": "Pre-existing, missed in QC1",
+          "action": "Closed: task.toml now reflects the current GridForge scope."
+        },
+        {
+          "id": "GF-09",
+          "sev": "P3",
+          "category": "Documentation Drift",
+          "location": "CONTEXT.md: Current Rubric Shape and Next Steps",
+          "what": "CONTEXT.md now records 22 criteria totaling 32.0 raw weight, includes both live-collaboration criteria, and replaces obsolete verifier-review steps with the current pre-Oracle and post-run QC workflow.",
+          "why": "The maintenance document previously reflected the intermediate 20-criterion rubric.",
+          "impact": "Future rework now starts from the current verifier inventory and next steps.",
+          "fix": "No further documentation change required for the recorded rubric shape and workflow.",
+          "type": "New",
+          "status": "FIXED",
+          "origin": "Pre-existing, missed in QC1",
+          "action": "Closed: CONTEXT.md now reflects the current 22-criterion task."
+        },
+        {
+          "id": "GF-10",
+          "sev": "P2",
+          "category": "Packaging Hygiene",
+          "location": "gridforge-spreadsheet-upload/",
+          "what": "A clean upload folder now contains only the Harbor task files. Local node_modules, SQLite database/WAL/SHM files, Python bytecode, run-local.cmd, and internal CONTEXT.md are excluded; executable shell scripts were normalized to LF line endings.",
+          "why": "These are generated development artifacts rather than task source. The solve script replaces node_modules and deletes database files, but a naive folder archive would still ship them.",
+          "impact": "The prepared upload folder no longer carries stale local state or generated dependencies into the eventual archive.",
+          "fix": "Create the final archive from gridforge-spreadsheet-upload and inspect its central directory and executable modes before Oracle.",
+          "type": "New",
+          "status": "FIXED",
+          "origin": "Introduced by rework",
+          "action": "Closed for the prepared folder: generated artifacts are excluded. Archive inspection remains part of GF-01's pre-Oracle workflow."
         }
       ]
     }
   ],
   "blocks": [
     {
-      "title": "Fixed in this pass",
+      "title": "Static checks passed",
       "items": [
-        "Removed generated task-tree artifacts: node_modules and local SQLite DB/WAL/SHM files.",
-        "Fixed direct grid typing so multi-character cell values accumulate through the formula bar instead of overwriting one character at a time.",
-        "Made Fill Down support both source-only selection and source-plus-target-range selection, including relative formula fill.",
-        "Updated the local Windows runner to set SEED_PATH to workbook_seed.json for local testing outside Docker."
+        "Required Harbor task files are present in the folder: instruction.md, task.toml, environment/Dockerfile, solution/solve.sh, and tests/test.sh.",
+        "task.toml and browser.toml parse successfully; the rubric contains 22 unique binary criteria totaling 32.0 raw weight, with weights from 0.5 to 2.0 and no zero-weight criteria.",
+        "The current golden JavaScript entry points pass Node syntax checks, tests/test.py compiles, and the already-running local app returns a healthy response.",
+        "The verifier writes an initial zero reward, catches BaseException, and tests/test.sh supplies fallback reward files if Python exits before producing them.",
+        "Before browser grading, the harness validates the declared SQLite database and rejects any logical data or schema change caused by restarting the seeded app.",
+        "The browser prompt requires positive controls for negative checks, prohibits trusting APP_MANIFEST.md as behavioral evidence, and uses direct in-page fetch probes for server-side conflict enforcement.",
+        "Criterion state is intentionally partitioned across distinct cells, reducing accidental collisions in the ordered persistent browser journey."
       ]
     },
     {
-      "title": "Found clean after fixes",
+      "title": "Deferred by scope",
       "items": [
-        "Required Harbor files are present: instruction.md, task.toml, environment/Dockerfile, solution/solve.sh, tests/test.sh.",
-        "task.toml and browser.toml parse successfully with Python tomllib.",
-        "Rubric has 29 criteria, all weighted between 0.5 and 2.0, with no zero-weight criteria; total raw weight is 42.0.",
-        "tests/test.py writes an initial 0.0 reward floor and catches BaseException; tests/test.sh also writes fallback reward files if Python exits before writing them.",
-        "Verifier prompt explicitly tells the judge not to trust APP_MANIFEST.md as grading evidence.",
-        "Server-side stale-save and workbook-id tampering checks exist via direct in-page fetch probes, not only UI checks.",
-        "Golden JavaScript files pass syntax checks with Node: src/index.js, src/db.js, and public/js/app.js.",
-        "Dockerfile pins the Ubuntu base digest and key tool/package versions."
-      ]
-    },
-    {
-      "title": "Checks not run",
-      "items": [
-        "Full Oracle RewardKit browser run was not executed in this first-level pass.",
-        "No model run spread was available, so the target of Oracle 1.0 and model score below 0.7 is unproven."
+        "Archive contents and executable modes were not assessed because this pass is explicitly folder-only; rebuild and inspect the actual upload ZIP immediately before Oracle.",
+        "No full RewardKit/Playwright Oracle run was executed, so end-to-end behavior across all 22 criteria is not established.",
+        "No representative model job folder exists yet, so score spread, cascade behavior, judge navigation failures, and calibration cannot be assessed until the post-model QC pass."
       ]
     }
   ]

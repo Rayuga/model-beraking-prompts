@@ -75,12 +75,13 @@ gridforge-spreadsheet.zip
 
 ## Current Rubric Shape
 
-The rubric was compressed from 29 criteria to 20 criteria.
+The rubric was compressed from 29 criteria to 20 criteria, then expanded with
+two dedicated live-collaboration criteria.
 
 Current totals:
 
-- 20 verifiers
-- total raw weight `29.0`
+- 22 verifiers
+- total raw weight `32.0`
 - minimum weight `0.5`
 - maximum weight `2.0`
 
@@ -102,11 +103,13 @@ Verifier list:
 13. name_box_jump_and_range_selection              1.0
 14. long_grid_scroll_save_reload_integrity         0.5
 15. undo_redo_separate_edits_and_redo_clear        1.5
-16. formulas_save_reload_as_raw_and_values         1.5
+16. formulas_save_reload_as_raw_and_values         1.0
 17. revision_history_preview_restore_undo          1.5
 18. two_tab_stale_save_conflict                    2.0
-19. forged_save_identity_and_stale_rejections      2.0
-20. api_rejects_invalid_revision_payloads          1.5
+19. live_presence_and_clean_tab_updates            1.5
+20. live_remote_selection_boundaries_and_legend    2.0
+21. forged_save_identity_and_stale_rejections      2.0
+22. api_rejects_invalid_revision_payloads          1.5
 ```
 
 ## Most Important Breakers
@@ -357,16 +360,16 @@ python .qc_skill_tmp/build_report.py gridforge-spreadsheet_qc_findings.json -o G
 python .qc_skill_tmp/audit_report.py GridForge_Spreadsheet_QC.xlsx
 ```
 
-The existing GridForge QC report predates the compression from 29 to 20
-verifiers, so rerun QC after fresh Oracle/model artifacts are available.
+The current pre-Oracle QC findings are recorded in
+`gridforge-spreadsheet_qc_findings.json`. Run QC again after fresh Oracle and
+model artifacts are available.
 
 ## Next Steps
 
-1. Continue verifier review at 14: `long_grid_scroll_save_reload_integrity`.
-2. Then review 15-20: undo/redo, formula save/reload, revision history,
-   two-tab stale conflict, forged save rejection, invalid API payloads.
-3. Rebuild `gridforge-spreadsheet.zip` before upload or Oracle.
-4. Run Oracle.
-5. If Oracle fails, fix the golden or verifier first.
-6. If Oracle passes, run model trials.
-7. Target: Oracle `1.0`, model score below `0.7`.
+1. Resolve the remaining open pre-Oracle QC alignment and coverage findings.
+2. Rebuild and inspect `gridforge-spreadsheet.zip` immediately before upload.
+3. Run Oracle and require a score of `1.0`.
+4. If Oracle fails, fix the golden or verifier first.
+5. If Oracle passes, run model trials and target a representative score below
+   `0.7`.
+6. Repeat QC against the Oracle and model job folders.

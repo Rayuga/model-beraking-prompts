@@ -319,8 +319,8 @@ conflict-safe persistence.
 
 Current rubric:
 
-- 20 verifiers
-- total weight `29.0`
+- 22 verifiers
+- total weight `32.0`
 - weights from `0.5` to `2.0`
 
 Verifier list:
@@ -341,11 +341,13 @@ Verifier list:
 13. name_box_jump_and_range_selection              1.0
 14. long_grid_scroll_save_reload_integrity         0.5
 15. undo_redo_separate_edits_and_redo_clear        1.5
-16. formulas_save_reload_as_raw_and_values         1.5
+16. formulas_save_reload_as_raw_and_values         1.0
 17. revision_history_preview_restore_undo          1.5
 18. two_tab_stale_save_conflict                    2.0
-19. forged_save_identity_and_stale_rejections      2.0
-20. api_rejects_invalid_revision_payloads          1.5
+19. live_presence_and_clean_tab_updates            1.5
+20. live_remote_selection_boundaries_and_legend    2.0
+21. forged_save_identity_and_stale_rejections      2.0
+22. api_rejects_invalid_revision_payloads          1.5
 ```
 
 Most likely GridForge breakers:
@@ -364,9 +366,19 @@ Most likely GridForge breakers:
 
 GridForge current status:
 
-- Rubric was compressed from 29 to 20 verifiers.
-- Verifiers 1 through 13 were reviewed/tightened together. Continue tomorrow
-  at verifier 14: `long_grid_scroll_save_reload_integrity`.
+- Rubric was compressed from 29 to 20 verifiers, then dedicated live
+  synchronization and remote-selection verifiers were added for a current
+  total of 22.
+- All 22 verifiers were reviewed/tightened. The two direct-API verifier flows
+  were exercised against isolated seeded databases: stale/identity forgeries
+  were rejected without mutation, and all 18 invalid revision/workbook payload
+  probes were rejected without creating a revision.
+- The golden app now synchronizes saved workbook changes across open tabs,
+  shows presence grouped by user with open-view counts, merges remote changes
+  into non-overlapping local drafts, preserves same-cell drafts with a visible
+  live conflict, and displays each remote view's current cell or range using a
+  boundary-only color with a top user/address legend that updates as selections
+  move or close without obscuring cell content.
 - Sort/filter were removed because their UI became too custom for a
   Google-Sheets-like task. The replacement criteria are find/replace and
   name-box navigation.
@@ -493,6 +505,73 @@ For GridForge:
 Do not chase model score until Oracle is `1.0`. If Oracle fails, fix the task,
 golden, or verifier first.
 
+## Lead Structuring Guide
+
+A lead-provided guide, **Authoring Web-Dev Tasks: A Structuring Guide**, added
+the following authoring standard for this repo and future tasks:
+
+1. Design top-down as `Task -> Feature -> Sub-feature -> Verifier`, then verify
+   bottom-up. A verifier should identify a useful failure domain rather than
+   only contributing an opaque fraction to the score.
+2. Draw the feature dependency map before writing criteria. Treat foundational
+   capabilities as gates and distinguish a root-gate failure from the expected
+   cascade of downstream failures.
+3. Prefer one independently diagnosable behavior per verifier. Multiple legs
+   may remain conjunctive when they are necessary evidence for the same
+   behavior, but do not combine unrelated behaviors only to shape the score.
+4. Make every verifier self-contained. It must establish or recapture its own
+   setup and must not silently rely on cells, records, authentication, or other
+   state left by an earlier verifier. This is especially important because our
+   browser prompt runs one ordered journey against one persistent app instance.
+5. At server trust boundaries, replay raw requests. UI guards, disabled
+   controls, status text, and manifests are not enforcement evidence.
+6. Add negative and forged cases where relevant, and prove rejection caused no
+   durable mutation or extra revision rather than trusting an error toast.
+7. Deliberately cover model-breaking zones: trust boundaries, object-level
+   authorization, illegal state transitions, concurrency/stale state,
+   idempotency, financial integrity, restart durability, and append-only audit.
+8. Security, authorization, financial-integrity, and durability failures should
+   be treated as hard gates in task analysis and reporting. The current
+   RewardKit TOML used here exposes weighted binary criteria but no true
+   disqualifying-gate field, so do not pretend a `2.0` weight is equivalent to a
+   hard gate. Record the conceptual gate map and interpret cascades explicitly.
+
+### GridForge Feature / Gate Map
+
+```text
+Gate 1: boot + seed + custom grid
+  -> core selection/editing
+  -> formula engine
+  -> range operations and undo
+  -> durable persistence and revisions
+
+Durable persistence + user attribution
+  -> revision restore
+  -> live presence/selections
+  -> concurrent merge/conflict behavior
+
+Server save trust boundary
+  -> stale-write safety
+  -> identity consistency
+  -> invalid-payload rejection
+```
+
+Current criterion grouping:
+
+- Boot/custom surface: 1-2
+- Ordinary editing, autosave, navigation, and long-grid durability: 3-4, 14
+- Formula engine and formula persistence: 5-8, 16
+- Range operations, fill, find, navigation, and undo: 9-13, 15
+- Revision and live collaboration: 17-20
+- Server trust boundary: 21-22
+
+The guide exposed persistent-journey state leakage in the current GridForge
+rubric. Criteria 2, 3, 6, 7, and 15 were moved to isolated cells and now
+establish their own inputs rather than depending on seeded values or cells
+mutated by earlier criteria. For the next task, create this feature/gate map
+before writing `instruction.md` and verifier descriptions, rather than
+retrofitting it after rubric compression.
+
 ## QC Skill
 
 The extracted QC scripts are in:
@@ -575,13 +654,10 @@ PatchPad:
 
 GridForge:
 
-1. Continue verifier review at 14: `long_grid_scroll_save_reload_integrity`.
-2. Then review 15-20: undo/redo, formula save/reload, revision history,
-   two-tab stale conflict, forged save rejection, invalid API payloads.
-3. Rebuild `gridforge-spreadsheet.zip` before upload.
-4. Run Oracle.
-5. If Oracle fails, fix golden/verifier first.
-6. If Oracle passes, run model trials.
+1. Rebuild `gridforge-spreadsheet.zip` before upload.
+2. Run Oracle.
+3. If Oracle fails, fix golden/verifier first.
+4. If Oracle passes, run model trials.
 
 ## Git Notes
 
