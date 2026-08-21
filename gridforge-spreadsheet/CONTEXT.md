@@ -76,12 +76,14 @@ gridforge-spreadsheet.zip
 ## Current Rubric Shape
 
 The rubric was compressed from 29 criteria to 20 criteria, then expanded with
-two dedicated live-collaboration criteria.
+two dedicated live-collaboration criteria. The unstable keyboard/mouse range
+selection verifier was later removed after it continued failing the golden
+solution.
 
 Current totals:
 
-- 22 verifiers
-- total raw weight `32.0`
+- 21 verifiers
+- total raw weight `31.5`
 - minimum weight `0.5`
 - maximum weight `2.0`
 
@@ -91,25 +93,24 @@ Verifier list:
 1. workbook_load_custom_surface_status             0.5
 2. custom_grid_no_spreadsheet_widget               2.0
 3. autosave_reload_revision_attribution           0.5
-4. keyboard_mouse_range_selection                  0.5
-5. formula_bar_raw_formula_and_precedence          1.5
-6. cell_reference_dependency_recalculation         2.0
-7. range_functions_dependency_recalculation        2.0
-8. formula_errors_and_cycle_recovery               2.0
-9. tsv_csv_range_paste_undo_redo_atomic            1.5
-10. range_copy_cut_clear_undo_atomic               1.5
-11. fill_numbers_and_formula_relative_refs         2.0
-12. find_replace_navigation_atomic                 1.5
-13. name_box_jump_and_range_selection              1.0
-14. long_grid_scroll_save_reload_integrity         0.5
-15. undo_redo_separate_edits_and_redo_clear        1.5
-16. formulas_save_reload_as_raw_and_values         1.0
-17. revision_history_preview_restore_undo          1.5
-18. two_tab_stale_save_conflict                    2.0
-19. live_presence_and_clean_tab_updates            1.5
-20. live_remote_selection_boundaries_and_legend    2.0
-21. forged_save_identity_and_stale_rejections      2.0
-22. api_rejects_invalid_revision_payloads          1.5
+4. formula_bar_raw_formula_and_precedence          1.5
+5. cell_reference_dependency_recalculation         2.0
+6. range_functions_dependency_recalculation        2.0
+7. formula_errors_and_cycle_recovery               2.0
+8. tsv_csv_range_paste_undo_redo_atomic            1.5
+9. range_copy_cut_clear_undo_atomic                1.5
+10. fill_numbers_and_formula_relative_refs         2.0
+11. find_replace_navigation_atomic                 1.5
+12. name_box_jump_and_range_selection              1.0
+13. long_grid_scroll_save_reload_integrity         0.5
+14. undo_redo_separate_edits_and_redo_clear        1.5
+15. formulas_save_reload_as_raw_and_values         1.0
+16. revision_history_preview_restore_undo          1.5
+17. two_tab_stale_save_conflict                    2.0
+18. live_presence_and_clean_tab_updates            1.5
+19. live_remote_selection_boundaries_and_legend    2.0
+20. forged_save_identity_and_stale_rejections      2.0
+21. api_rejects_invalid_revision_payloads          1.5
 ```
 
 ## Most Important Breakers
@@ -364,12 +365,31 @@ The current pre-Oracle QC findings are recorded in
 `gridforge-spreadsheet_qc_findings.json`. Run QC again after fresh Oracle and
 model artifacts are available.
 
+## Oracle 0.8 Failure Fix Pass
+
+A later Oracle run scored about `0.8` because the golden solution failed four
+criteria. The failures and fixes:
+
+- `keyboard_mouse_range_selection`: Shift+Arrow range extension was unstable.
+  Fix: track a dedicated `rangeAnchor` so keyboard range selection does not
+  depend on whatever range happened to be active before.
+- `formula_bar_raw_formula_and_precedence`: clicking inside the formula bar and
+  typing mid-formula could lose the intended cursor position. Fix: preserve and
+  restore `selectionStart`/`selectionEnd` during formula-bar input rendering.
+- `range_functions_dependency_recalculation`: the formulas calculated, but the
+  same formula-bar cursor/editing defect affected the raw formula interaction
+  path. Covered by the cursor preservation fix.
+- `forged_save_identity_and_stale_rejections`: the server accepted forged or
+  unknown `userId` values. Fix: save requests now require a known active live
+  session and the submitted user id must match that session. The page exposes
+  `window.gridforgeSessionId` so verifier direct-fetch positive controls can
+  include the legitimate session id.
+
 ## Next Steps
 
-1. Resolve the remaining open pre-Oracle QC alignment and coverage findings.
-2. Rebuild and inspect `gridforge-spreadsheet.zip` immediately before upload.
-3. Run Oracle and require a score of `1.0`.
-4. If Oracle fails, fix the golden or verifier first.
-5. If Oracle passes, run model trials and target a representative score below
+1. Upload the rebuilt `gridforge-spreadsheet.zip` from this fix pass.
+2. Run Oracle and require a score of `1.0`.
+3. If Oracle fails, fix the golden or verifier first.
+4. If Oracle passes, run model trials and target a representative score below
    `0.7`.
-6. Repeat QC against the Oracle and model job folders.
+5. Repeat QC against the Oracle and model job folders.

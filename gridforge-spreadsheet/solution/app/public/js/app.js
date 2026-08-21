@@ -6,6 +6,7 @@ const formulaBar = document.getElementById('formula-bar');
 const message = document.getElementById('message');
 const FUNCTIONS = ['SUM', 'AVG', 'MIN', 'MAX', 'COUNT'];
 const tabSessionId = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
+globalThis.gridforgeSessionId = tabSessionId;
 
 const state = {
   workbookId: null,
@@ -19,6 +20,7 @@ const state = {
   errors: {},
   selected: { row: 1, col: 1 },
   range: null,
+  rangeAnchor: null,
   findMatches: [],
   findIndex: -1,
   dirty: false,
@@ -27,6 +29,8 @@ const state = {
   editing: false,
   editCell: null,
   editBuffer: '',
+  formulaSelectionStart: 0,
+  formulaSelectionEnd: 0,
   draggingRange: false,
   dragStart: null,
   formulaRefDrag: null,
@@ -61,6 +65,7 @@ async function loadUsers() {
     <option value="${escapeHtml(user.id)}">${escapeHtml(user.name)}</option>
   `).join('');
   $('user-select').value = state.currentUserId;
+  globalThis.gridforgeCurrentUserId = state.currentUserId;
 }
 
 async function api(url, options = {}) {
@@ -94,6 +99,7 @@ function bindEvents() {
   $('user-select').addEventListener('change', () => {
     state.currentUserId = $('user-select').value;
     localStorage.setItem('gridforge-user', state.currentUserId);
+    globalThis.gridforgeCurrentUserId = state.currentUserId;
     renderStatus();
     connectLive();
   });
@@ -118,8 +124,14 @@ function bindEvents() {
   });
   formulaBar.addEventListener('input', () => {
     if (!state.editing || state.editCell !== selectedAddr()) return;
+    const selectionStart = formulaBar.selectionStart;
+    const selectionEnd = formulaBar.selectionEnd;
     state.editBuffer = formulaBar.value;
-    applyEditBuffer({ keepFormulaFocus: true });
+    rememberFormulaSelection();
+    applyEditBuffer({ keepFormulaFocus: true, selectionStart, selectionEnd });
+  });
+  ['click', 'keyup', 'select', 'mouseup'].forEach((eventName) => {
+    formulaBar.addEventListener(eventName, rememberFormulaSelection);
   });
   $('formula-suggestions').addEventListener('mousedown', (event) => {
     const button = event.target.closest('[data-function]');
@@ -147,6 +159,7 @@ function bindEvents() {
   grid.addEventListener('copy', onCopy);
   grid.addEventListener('cut', onCut);
   grid.addEventListener('scroll', positionFormulaSuggestions);
+  document.addEventListener('keydown', onDocumentGridShortcut);
   document.addEventListener('mouseup', () => {
     state.draggingRange = false;
     state.dragStart = null;
@@ -339,6 +352,7 @@ function restore(snap) {
   state.cells = { ...snap.cells };
   state.selected = { ...snap.selected };
   state.range = snap.range ? { ...snap.range } : null;
+  state.rangeAnchor = state.range ? { row: state.range.startRow, col: state.range.startCol } : null;
   state.findMatches = [];
   state.findIndex = -1;
   state.dirty = true;
@@ -564,10 +578,13 @@ function div(className, text) {
 function selectCell(row, col, extend = false) {
   commitEdit();
   if (extend) {
-    state.range = { startRow: state.selected.row, startCol: state.selected.col, endRow: row, endCol: col };
+    const anchor = state.rangeAnchor || { row: state.selected.row, col: state.selected.col };
+    state.rangeAnchor = anchor;
+    state.range = { startRow: anchor.row, startCol: anchor.col, endRow: row, endCol: col };
   } else {
     state.selected = { row, col };
     state.range = null;
+    state.rangeAnchor = null;
   }
   updateFormulaBar();
   renderGrid();
@@ -591,6 +608,7 @@ function startMouseSelection(row, col, event) {
   }
   state.selected = { row, col };
   state.range = null;
+  state.rangeAnchor = { row, col };
   state.draggingRange = true;
   state.dragStart = { row, col };
   updateFormulaBar();
@@ -606,9 +624,24 @@ function startFormulaReferencePick(row, col) {
   replaceFormulaReferenceText(addr(row, col));
 }
 
+function rememberFormulaSelection() {
+  if (document.activeElement !== formulaBar) return;
+  state.formulaSelectionStart = formulaBar.selectionStart ?? state.editBuffer.length;
+  state.formulaSelectionEnd = formulaBar.selectionEnd ?? state.formulaSelectionStart;
+}
+
+function setFormulaSelection(start, end = start) {
+  const max = state.editBuffer.length;
+  state.formulaSelectionStart = clamp(start, 0, max);
+  state.formulaSelectionEnd = clamp(end, 0, max);
+  formulaBar.focus();
+  formulaBar.setSelectionRange(state.formulaSelectionStart, state.formulaSelectionEnd);
+}
+
 function formulaReferenceReplacementSpan() {
-  const caretStart = formulaBar.selectionStart ?? state.editBuffer.length;
-  const caretEnd = formulaBar.selectionEnd ?? caretStart;
+  rememberFormulaSelection();
+  const caretStart = state.formulaSelectionStart ?? state.editBuffer.length;
+  const caretEnd = state.formulaSelectionEnd ?? caretStart;
   if (caretStart !== caretEnd) return { start: caretStart, end: caretEnd };
   const before = state.editBuffer.slice(0, caretStart);
   const after = state.editBuffer.slice(caretEnd);
@@ -628,20 +661,24 @@ function replaceFormulaReferenceText(reference) {
   const { insertStart, insertEnd } = state.formulaRefDrag;
   state.editBuffer = `${state.editBuffer.slice(0, insertStart)}${reference}${state.editBuffer.slice(insertEnd)}`;
   state.formulaRefDrag.insertEnd = insertStart + reference.length;
-  applyEditBuffer({ keepFormulaFocus: true });
-  formulaBar.focus();
-  formulaBar.setSelectionRange(state.formulaRefDrag.insertEnd, state.formulaRefDrag.insertEnd);
+  state.formulaSelectionStart = state.formulaRefDrag.insertEnd;
+  state.formulaSelectionEnd = state.formulaRefDrag.insertEnd;
+  applyEditBuffer({
+    keepFormulaFocus: true,
+    selectionStart: state.formulaSelectionStart,
+    selectionEnd: state.formulaSelectionEnd
+  });
 }
 
 function insertFormulaReference(reference) {
-  const input = formulaBar;
-  const start = input.selectionStart ?? state.editBuffer.length;
-  const end = input.selectionEnd ?? start;
+  rememberFormulaSelection();
+  const start = state.formulaSelectionStart ?? state.editBuffer.length;
+  const end = state.formulaSelectionEnd ?? start;
   state.editBuffer = `${state.editBuffer.slice(0, start)}${reference}${state.editBuffer.slice(end)}`;
-  applyEditBuffer({ keepFormulaFocus: true });
   const caret = start + reference.length;
-  formulaBar.focus();
-  formulaBar.setSelectionRange(caret, caret);
+  state.formulaSelectionStart = caret;
+  state.formulaSelectionEnd = caret;
+  applyEditBuffer({ keepFormulaFocus: true, selectionStart: caret, selectionEnd: caret });
 }
 
 function extendMouseSelection(row, col) {
@@ -660,6 +697,7 @@ function extendMouseSelection(row, col) {
     endRow: row,
     endCol: col
   };
+  state.rangeAnchor = { row: state.dragStart.row, col: state.dragStart.col };
   renderGrid();
   renderStatus();
 }
@@ -751,6 +789,7 @@ function onGridKeyDown(event) {
   if ((event.ctrlKey || event.metaKey) && key.toLowerCase() === 'a') {
     event.preventDefault();
     state.range = { startRow: 1, startCol: 1, endRow: ROWS, endCol: COLS };
+    state.rangeAnchor = { row: 1, col: 1 };
     renderAll();
     return;
   }
@@ -766,11 +805,14 @@ function onGridKeyDown(event) {
       col: clamp(state.selected.col + dc, 1, COLS)
     };
     if (event.shiftKey && key.startsWith('Arrow')) {
-      state.range = state.range || { startRow: state.selected.row, startCol: state.selected.col, endRow: state.selected.row, endCol: state.selected.col };
-      state.range.endRow = next.row;
-      state.range.endCol = next.col;
+      const anchor = state.rangeAnchor || (state.range
+        ? { row: state.range.startRow, col: state.range.startCol }
+        : { row: state.selected.row, col: state.selected.col });
+      state.rangeAnchor = anchor;
+      state.range = { startRow: anchor.row, startCol: anchor.col, endRow: next.row, endCol: next.col };
     } else {
       state.range = null;
+      state.rangeAnchor = null;
     }
     state.selected = next;
     renderAll();
@@ -788,17 +830,34 @@ function onGridKeyDown(event) {
   }
 }
 
+function onDocumentGridShortcut(event) {
+  if (event.defaultPrevented || !state.workbookId) return;
+  const target = event.target;
+  const editable = target instanceof HTMLInputElement
+    || target instanceof HTMLTextAreaElement
+    || target instanceof HTMLSelectElement
+    || target?.isContentEditable;
+  if (editable || target === grid || grid.contains(target)) return;
+  const key = event.key;
+  const isGridNavigation = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Tab', 'Enter'].includes(key);
+  const isGridShortcut = (event.ctrlKey || event.metaKey) && ['a', 'z', 'y'].includes(key.toLowerCase());
+  const isGridEdit = key === 'Delete' || key === 'Backspace';
+  if (!isGridNavigation && !isGridShortcut && !isGridEdit) return;
+  onGridKeyDown(event);
+}
+
 function startFormulaEdit(initialText = '') {
   pushUndo();
   state.editing = true;
   state.editCell = addr(state.selected.row, state.selected.col);
   state.editBuffer = initialText;
-  applyEditBuffer({ keepFormulaFocus: true });
-  formulaBar.focus();
-  formulaBar.setSelectionRange(formulaBar.value.length, formulaBar.value.length);
+  const caret = initialText.length;
+  state.formulaSelectionStart = caret;
+  state.formulaSelectionEnd = caret;
+  applyEditBuffer({ keepFormulaFocus: true, selectionStart: caret, selectionEnd: caret });
 }
 
-function applyEditBuffer({ keepFormulaFocus = false } = {}) {
+function applyEditBuffer({ keepFormulaFocus = false, selectionStart = null, selectionEnd = null } = {}) {
   if (!state.editCell) return;
   state.cells[state.editCell] = state.editBuffer;
   formulaBar.value = state.editBuffer;
@@ -807,7 +866,19 @@ function applyEditBuffer({ keepFormulaFocus = false } = {}) {
   renderGrid();
   renderFormulaSuggestions();
   renderStatus();
-  if (!keepFormulaFocus) grid.focus();
+  if (keepFormulaFocus) {
+    formulaBar.focus();
+    if (Number.isInteger(selectionStart) && Number.isInteger(selectionEnd)) {
+      const max = formulaBar.value.length;
+      state.formulaSelectionStart = Math.min(selectionStart, max);
+      state.formulaSelectionEnd = Math.min(selectionEnd, max);
+      formulaBar.setSelectionRange(state.formulaSelectionStart, state.formulaSelectionEnd);
+    } else {
+      setFormulaSelection(state.formulaSelectionStart, state.formulaSelectionEnd);
+    }
+  } else {
+    grid.focus();
+  }
 }
 
 function commitEdit() {
@@ -815,6 +886,8 @@ function commitEdit() {
   state.editing = false;
   state.editCell = null;
   state.editBuffer = '';
+  state.formulaSelectionStart = 0;
+  state.formulaSelectionEnd = 0;
   state.formulaRefDrag = null;
   recalc();
   renderAll();
@@ -1082,6 +1155,7 @@ function goToNameBoxAddress() {
   state.range = range.r1 === range.r2 && range.c1 === range.c2
     ? null
     : { startRow: range.r1, startCol: range.c1, endRow: range.r2, endCol: range.c2 };
+  state.rangeAnchor = state.range ? { row: range.r1, col: range.c1 } : null;
   updateFormulaBar();
   renderGrid();
   renderStatus();

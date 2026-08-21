@@ -64,13 +64,17 @@ function applyCellChanges(targetWorkbook, sourceWorkbook, addresses) {
   return merged;
 }
 
-function getUser(req) {
+function getSaveUser(req, workbookId) {
   const requested = String(req.body?.userId || req.get('x-gridforge-user') || '').trim();
-  if (requested) {
-    const row = db.prepare('SELECT id, name FROM users WHERE id = ?').get(requested);
-    if (row) return row;
-  }
-  return db.prepare('SELECT id, name FROM users ORDER BY id LIMIT 1').get();
+  if (!requested) return { error: 'userId required' };
+  const row = db.prepare('SELECT id, name FROM users WHERE id = ?').get(requested);
+  if (!row) return { error: 'unknown user' };
+  const sessionId = String(req.body?.sessionId || req.get('x-gridforge-session') || '').trim();
+  if (!sessionId) return { error: 'sessionId required' };
+  const session = liveSessions.get(workbookId)?.get(sessionId);
+  if (!session) return { error: 'active session required' };
+  if (session.userId !== row.id) return { error: 'session user mismatch' };
+  return { user: row };
 }
 
 function workbookSessions(workbookId) {
@@ -260,7 +264,9 @@ app.post('/api/workbooks/:id/save', (req, res) => {
   if (payloadError) return res.status(400).json({ error: payloadError });
   const row = db.prepare('SELECT * FROM workbooks WHERE id = ?').get(req.params.id);
   if (!row) return res.status(404).json({ error: 'unknown workbook' });
-  const user = getUser(req);
+  const userResult = getSaveUser(req, req.params.id);
+  if (userResult.error) return res.status(403).json({ error: userResult.error });
+  const user = userResult.user;
   const currentWorkbook = JSON.parse(row.content);
   if (workbook.title !== currentWorkbook.title
       || workbook.sheets[0].id !== currentWorkbook.sheets[0].id

@@ -46,9 +46,12 @@ Required API discovery for forged probes:
 
 1. Observe or infer the workbook id and current revision from the app's own API
    calls or UI state.
-2. Use `fetch` from the page origin to call the app's save endpoint with
+2. For legitimate direct save probes, include the current visible user id and
+   the page's live session id exposed as `window.gridforgeSessionId`; forged
+   user probes should deliberately mismatch those values.
+3. Use `fetch` from the page origin to call the app's save endpoint with
    intentionally stale or tampered data.
-3. A refusal is an HTTP error status or an explicit non-write response. A
+4. A refusal is an HTTP error status or an explicit non-write response. A
    successful response that overwrites content fails.
 
 Criteria:

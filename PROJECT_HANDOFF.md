@@ -384,6 +384,14 @@ GridForge current status:
   name-box navigation.
 - The current working tree includes GridForge source/rubric changes; rebuild
   `gridforge-spreadsheet.zip` only before upload, not after every small edit.
+- A later Oracle run scored about `0.8`; the golden failed
+  `keyboard_mouse_range_selection`,
+  `formula_bar_raw_formula_and_precedence`,
+  `range_functions_dependency_recalculation`, and
+  `forged_save_identity_and_stale_rejections`. The current fix pass stabilizes
+  Shift+Arrow range anchoring, preserves formula-bar cursor position during
+  live edits, and requires save requests to use a known live session whose user
+  matches the submitted `userId`.
 - Existing `gridforge-spreadsheet_qc_findings.json` still mentions the older
   29-verifier QC pass; run QC again after the next Oracle/model runs.
 
