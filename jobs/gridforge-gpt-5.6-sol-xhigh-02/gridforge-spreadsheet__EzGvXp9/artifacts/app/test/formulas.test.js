@@ -1,0 +1,5 @@
+const test=require('node:test');const assert=require('node:assert/strict');const fs=require('node:fs'),vm=require('node:vm');
+const context={window:{}};vm.runInNewContext(fs.readFileSync('public/formulas.js','utf8'),context);const F=context.window.GFFormula;
+test('evaluates arithmetic, references, ranges, and functions',()=>{const cells={A1:'2',A2:'3',B1:'=A1+A2*2',B2:'=SUM(A1:A2)',B3:'=AVG(A1:A2)',B4:'=MIN(A1:A2)',B5:'=MAX(A1:A2)',B6:'=COUNT(A1:A2)'};const e=F.evaluator(a=>cells[a]||'');assert.equal(e('B1'),'8');assert.equal(e('B2'),'5');assert.equal(e('B3'),'2.5');assert.equal(e('B4'),'2');assert.equal(e('B5'),'3');assert.equal(e('B6'),'2')});
+test('shows formula errors',()=>{const cells={A1:'=1/0',A2:'=A2',A3:'=NOPE(1)',A4:'=1+'};const e=F.evaluator(a=>cells[a]||'');assert.equal(e('A1'),'#DIV/0!');assert.equal(e('A2'),'#CIRCULAR!');assert.equal(e('A3'),'#NAME?');assert.equal(e('A4'),'#FORMULA!')});
+test('adjusts relative references for fill',()=>assert.equal(F.adjust('=A1+B2',2,1),'=B3+C4'));

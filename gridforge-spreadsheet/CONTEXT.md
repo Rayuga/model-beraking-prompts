@@ -82,8 +82,8 @@ solution.
 
 Current totals:
 
-- 21 verifiers
-- total raw weight `31.5`
+- 20 verifiers
+- total raw weight `23.0`
 - minimum weight `0.5`
 - maximum weight `2.0`
 
@@ -91,26 +91,25 @@ Verifier list:
 
 ```text
 1. workbook_load_custom_surface_status             0.5
-2. custom_grid_no_spreadsheet_widget               2.0
+2. custom_grid_no_spreadsheet_widget               1.0
 3. autosave_reload_revision_attribution           0.5
-4. formula_bar_raw_formula_and_precedence          1.5
-5. cell_reference_dependency_recalculation         2.0
-6. range_functions_dependency_recalculation        2.0
-7. formula_errors_and_cycle_recovery               2.0
-8. tsv_csv_range_paste_undo_redo_atomic            1.5
-9. range_copy_cut_clear_undo_atomic                1.5
-10. fill_numbers_and_formula_relative_refs         2.0
-11. find_replace_navigation_atomic                 1.5
-12. name_box_jump_and_range_selection              1.0
-13. long_grid_scroll_save_reload_integrity         0.5
-14. undo_redo_separate_edits_and_redo_clear        1.5
-15. formulas_save_reload_as_raw_and_values         1.0
-16. revision_history_preview_restore_undo          1.5
-17. two_tab_stale_save_conflict                    2.0
-18. live_presence_and_clean_tab_updates            1.5
-19. live_remote_selection_boundaries_and_legend    2.0
-20. forged_save_identity_and_stale_rejections      2.0
-21. api_rejects_invalid_revision_payloads          1.5
+4. formula_bar_raw_formula_and_precedence          2.0
+5. formula_reference_replacement_selection         2.0
+6. formula_mid_edit_caret_operator_preservation    2.0
+7. range_functions_dependency_recalculation        1.0
+8. formula_errors_and_cycle_recovery               1.0
+9. tsv_csv_range_paste_undo_redo_atomic            1.0
+10. fill_numbers_and_formula_relative_refs         1.0
+11. name_box_jump_and_range_selection              0.5
+12. long_grid_scroll_save_reload_integrity         0.5
+13. undo_redo_separate_edits_and_redo_clear        1.0
+14. revision_history_preview_restore_undo          1.0
+15. two_tab_stale_save_conflict                    1.0
+16. live_presence_and_clean_tab_updates            1.0
+17. live_remote_selection_boundaries_and_legend    1.0
+18. forged_save_identity_and_stale_rejections      2.0
+19. api_rejects_invalid_revision_payloads          1.0
+20. api_session_user_mismatch_rejected             2.0
 ```
 
 ## Most Important Breakers
@@ -134,21 +133,23 @@ Why it is hard:
 This is probably the single hardest verifier because it requires parsing,
 dependency tracking, cycle detection, error state management, and recovery.
 
-### 2. Dependency Recalculation
+### 2. Formula Reference Editing
 
 Verifier:
 
 ```text
-cell_reference_dependency_recalculation
+formula_reference_replacement_selection
+formula_mid_edit_caret_operator_preservation
 ```
 
 Why it is hard:
 
-- The app must not just calculate formulas once.
-- When `B2` changes, seeded formula `D2` and user formula `G4` must update
-  immediately.
-- Many model solutions miss a real dependency graph or recompute only the
-  edited cell.
+- Formula authoring must preserve the leading `=`.
+- Clicking grid references while editing must replace the intended token rather
+  than append invalid text.
+- Caret placement inside an existing formula must survive rerenders.
+- Operator characters such as `*`, `+`, `(`, and `)` must insert into the raw
+  formula instead of replacing the whole formula.
 
 ### 3. Range Function Recalculation
 
@@ -184,25 +185,23 @@ Why it is hard:
   `N3` and `N4`.
 - Many simple implementations copy the literal formula, which fails.
 
-### 5. Find/Replace And Name-Box Navigation
+### 5. Name-Box Navigation
 
 Verifiers:
 
 ```text
-find_replace_navigation_atomic
 name_box_jump_and_range_selection
 ```
 
 Why it is hard:
 
-- Find Next must advance through matches instead of staying on the first hit.
-- Replace one match and Replace All must affect the exact expected cells.
-- Replace All must undo atomically.
 - The name box must jump to distant cells, select rectangular ranges, and
   reject invalid addresses without changing the current range.
 
 Note: sort/filter were removed because the UI was becoming too custom and not
-worth carrying into the task.
+worth carrying into the task. The find/replace verifier was also removed after
+review because one old expected value implied whole-cell replacement for a
+substring match, which was not standard enough to keep.
 
 ### 6. Server-Side Save Rejections
 
@@ -367,12 +366,9 @@ model artifacts are available.
 
 ## Oracle 0.8 Failure Fix Pass
 
-A later Oracle run scored about `0.8` because the golden solution failed four
-criteria. The failures and fixes:
+A later Oracle run scored about `0.8` because the golden solution exposed
+formula-bar and save identity edge cases. The failures and fixes:
 
-- `keyboard_mouse_range_selection`: Shift+Arrow range extension was unstable.
-  Fix: track a dedicated `rangeAnchor` so keyboard range selection does not
-  depend on whatever range happened to be active before.
 - `formula_bar_raw_formula_and_precedence`: clicking inside the formula bar and
   typing mid-formula could lose the intended cursor position. Fix: preserve and
   restore `selectionStart`/`selectionEnd` during formula-bar input rendering.

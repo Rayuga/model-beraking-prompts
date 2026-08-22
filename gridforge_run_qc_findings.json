@@ -1,0 +1,95 @@
+{
+  "title": "GridForge Spreadsheet - Harbor Run QC",
+  "subtitle": "OpenHands gpt-5.6-sol xhigh model run scored 0.8413 on 2026-08-22.",
+  "note": "Scope: run-backed analysis of jobs/gridforge-gpt-5.6-sol-xhigh-02. The bundled run_inventory.py did not recognize this Harbor trial naming shape, so evidence is taken from result.json, verifier/report.json, verifier/test-stdout.txt, and generated app artifacts.",
+  "mode": "fresh",
+  "runs": [
+    {
+      "task": "webdev/gridforge-spreadsheet",
+      "model": "openhands / openrouter/openai/gpt-5.6-sol",
+      "reward": 0.8413,
+      "browser_score": 0.8413,
+      "browser_passed": 18,
+      "browser_total": 21,
+      "agent_s": 475,
+      "verifier_s": 6280,
+      "note": "Valid graded run: no_op=0, graded=1. Failed 3 of 21 browser criteria."
+    }
+  ],
+  "tasks": [
+    {
+      "name": "GridForge",
+      "oracle": 1.0,
+      "best_model": 0.8413,
+      "headline": "The model run is valid and still too high: three strong verifiers failed, but 18/21 passed, so the task needs additional strict coverage to push model score below 0.7.",
+      "findings": [
+        {
+          "id": "GF-RUN-01",
+          "sev": "P2",
+          "category": "Model failure - formula authoring",
+          "location": "gridforge-spreadsheet/tests/rubric/browser/browser.toml:formula_bar_raw_formula_and_precedence; jobs/gridforge-gpt-5.6-sol-xhigh-02/gridforge-spreadsheet__EzGvXp9/artifacts/app/public/app.js:insertRef",
+          "what": "The model failed the formula reference-click edge case. The verifier reported that insertRef() drops the leading '=' when formula editor content is fully selected.",
+          "why": "The generated insertRef() uses the editor selection and replaces the selected text with a raw reference, so a fully selected '=' can become 'B2' instead of '=B2'.",
+          "impact": "This is a real model miss and a useful breaker, but it only costs 1.5 weight, so it is not enough to lower the model below target by itself.",
+          "fix": "Keep this verifier and add adjacent formula-authoring checks around selection replacement, editing mid-formula, dragging references after typed operators, and preserving '=' through all reference-pick paths.",
+          "evidence": "CONFIRMED by verifier report: formula_bar_raw_formula_and_precedence value=0.0, weight=1.5, reasoning says insertRef() drops the leading '=' and breaks the required raw-formula workflow.",
+          "verdict": "CONFIRMED"
+        },
+        {
+          "id": "GF-RUN-02",
+          "sev": "P2",
+          "category": "Model failure - find/replace semantics",
+          "location": "gridforge-spreadsheet/tests/rubric/browser/browser.toml:find_replace_navigation_atomic; jobs/gridforge-gpt-5.6-sol-xhigh-02/gridforge-spreadsheet__EzGvXp9/artifacts/app/public/app.js:replaceOne",
+          "what": "The model failed the single Replace exact-value check: replacing target in C20='target-B' produced C20='FOUND-B' instead of exactly 'FOUND'.",
+          "why": "The generated replaceOne() performs substring replacement with raw(a).replace(regex(), replacement). The verifier intentionally checks selected-match replacement semantics, not just substring substitution.",
+          "impact": "This is a clean confirmed failure and shows the verifier is catching spreadsheet behavior beyond simple text replacement, but it costs only 1.5 weight.",
+          "fix": "Keep this check and consider splitting find navigation, replace-current-cell exactness, and replace-all atomic undo into separate criteria so partial implementations lose more score.",
+          "evidence": "CONFIRMED by verifier report: find_replace_navigation_atomic value=0.0, weight=1.5; Find Next and Replace All passed, but single Replace produced C20='FOUND-B'.",
+          "verdict": "CONFIRMED"
+        },
+        {
+          "id": "GF-RUN-03",
+          "sev": "P1",
+          "category": "Model failure - server trust boundary",
+          "location": "gridforge-spreadsheet/tests/rubric/browser/browser.toml:forged_save_identity_and_stale_rejections; jobs/gridforge-gpt-5.6-sol-xhigh-02/gridforge-spreadsheet__EzGvXp9/artifacts/app/server.js:save route",
+          "what": "The model accepted a forged save where Riley's live sessionId was paired with userId='morgan', returning HTTP 200 and attributing the revision to Morgan.",
+          "why": "The generated save route validates that body.userId exists, but does not verify that body.sessionId belongs to that same user. The presence endpoint checks session ownership more strictly than save.",
+          "impact": "This is a high-value confirmed failure because it proves the server trust-boundary verifier can catch impersonation that UI-only tests miss.",
+          "fix": "Keep this verifier at high weight, and add one more direct API trust-boundary criterion for workbook/sheet metadata immutability or revision-list immutation after rejected probes.",
+          "evidence": "CONFIRMED by verifier report: forged_save_identity_and_stale_rejections value=0.0, weight=2.0; the mismatched valid userId probe returned HTTP 200, advanced revision to 87, and attributed the write to 'morgan'.",
+          "verdict": "CONFIRMED"
+        },
+        {
+          "id": "GF-RUN-04",
+          "sev": "P1",
+          "category": "Task discrimination",
+          "location": "jobs/gridforge-gpt-5.6-sol-xhigh-02/result.json; gridforge-spreadsheet/tests/rubric/browser/browser.toml",
+          "what": "The current model score is 0.8413, above the target of <0.7, because only 5.0 of 31.5 total weight failed.",
+          "why": "The task has good hard checks, but the model passed many medium/high-weight criteria including range functions, circular recovery, fill formulas, revision restore, stale conflicts, and live presence.",
+          "impact": "If shipped as-is, the task may not break the target model strongly enough even though several individual verifiers are good.",
+          "fix": "Tighten or split existing passed complex areas rather than adding vague new requirements: formula editing edge cases, range operations, live collaboration, and API trust-boundary checks are the best places to harvest additional failures.",
+          "evidence": "CONFIRMED by Harbor result: browser_passed=18, browser_total=21, browser_score=0.8413; failed weights are 1.5 + 1.5 + 2.0 = 5.0.",
+          "verdict": "CONFIRMED"
+        }
+      ]
+    }
+  ],
+  "blocks": [
+    {
+      "title": "Failed Verifiers",
+      "items": [
+        "formula_bar_raw_formula_and_precedence: failed, weight 1.5.",
+        "find_replace_navigation_atomic: failed, weight 1.5.",
+        "forged_save_identity_and_stale_rejections: failed, weight 2.0."
+      ]
+    },
+    {
+      "title": "Tightening Direction",
+      "items": [
+        "Split partial-pass compound checks where the model already failed one sub-path.",
+        "Add stricter formula authoring edge cases around selected text, reference replacement, and caret preservation.",
+        "Add more direct API trust-boundary probes because the model already missed one server-side identity invariant."
+      ]
+    }
+  ]
+}

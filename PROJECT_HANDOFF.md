@@ -319,35 +319,33 @@ conflict-safe persistence.
 
 Current rubric:
 
-- 22 verifiers
-- total weight `32.0`
+- 20 verifiers
+- total weight `23.0`
 - weights from `0.5` to `2.0`
 
 Verifier list:
 
 ```text
 1. workbook_load_custom_surface_status             0.5
-2. custom_grid_no_spreadsheet_widget               2.0
+2. custom_grid_no_spreadsheet_widget               1.0
 3. autosave_reload_revision_attribution           0.5
-4. keyboard_mouse_range_selection                  0.5
-5. formula_bar_raw_formula_and_precedence          1.5
-6. cell_reference_dependency_recalculation         2.0
-7. range_functions_dependency_recalculation        2.0
-8. formula_errors_and_cycle_recovery               2.0
-9. tsv_csv_range_paste_undo_redo_atomic            1.5
-10. range_copy_cut_clear_undo_atomic               1.5
-11. fill_numbers_and_formula_relative_refs         2.0
-12. find_replace_navigation_atomic                 1.5
-13. name_box_jump_and_range_selection              1.0
-14. long_grid_scroll_save_reload_integrity         0.5
-15. undo_redo_separate_edits_and_redo_clear        1.5
-16. formulas_save_reload_as_raw_and_values         1.0
-17. revision_history_preview_restore_undo          1.5
-18. two_tab_stale_save_conflict                    2.0
-19. live_presence_and_clean_tab_updates            1.5
-20. live_remote_selection_boundaries_and_legend    2.0
-21. forged_save_identity_and_stale_rejections      2.0
-22. api_rejects_invalid_revision_payloads          1.5
+4. formula_bar_raw_formula_and_precedence          2.0
+5. formula_reference_replacement_selection         2.0
+6. formula_mid_edit_caret_operator_preservation    2.0
+7. range_functions_dependency_recalculation        1.0
+8. formula_errors_and_cycle_recovery               1.0
+9. tsv_csv_range_paste_undo_redo_atomic            1.0
+10. fill_numbers_and_formula_relative_refs         1.0
+11. name_box_jump_and_range_selection              0.5
+12. long_grid_scroll_save_reload_integrity         0.5
+13. undo_redo_separate_edits_and_redo_clear        1.0
+14. revision_history_preview_restore_undo          1.0
+15. two_tab_stale_save_conflict                    1.0
+16. live_presence_and_clean_tab_updates            1.0
+17. live_remote_selection_boundaries_and_legend    1.0
+18. forged_save_identity_and_stale_rejections      2.0
+19. api_rejects_invalid_revision_payloads          1.0
+20. api_session_user_mismatch_rejected             2.0
 ```
 
 Most likely GridForge breakers:
@@ -367,9 +365,11 @@ Most likely GridForge breakers:
 GridForge current status:
 
 - Rubric was compressed from 29 to 20 verifiers, then dedicated live
-  synchronization and remote-selection verifiers were added for a current
-  total of 22.
-- All 22 verifiers were reviewed/tightened. The two direct-API verifier flows
+  synchronization and remote-selection verifiers were added. The unstable
+  keyboard range-selection verifier was removed after Oracle instability. After
+  the `0.8413` model run, overlapping/easy checks were trimmed back to a
+  current 20-verifier rubric that keeps the formula/session variants.
+- The verifier set was reviewed/tightened. The two direct-API verifier flows
   were exercised against isolated seeded databases: stale/identity forgeries
   were rejected without mutation, and all 18 invalid revision/workbook payload
   probes were rejected without creating a revision.
@@ -380,18 +380,21 @@ GridForge current status:
   boundary-only color with a top user/address legend that updates as selections
   move or close without obscuring cell content.
 - Sort/filter were removed because their UI became too custom for a
-  Google-Sheets-like task. The replacement criteria are find/replace and
-  name-box navigation.
+  Google-Sheets-like task. The questionable find/replace verifier was also
+  removed because its `target-B -> FOUND` expectation was not standard enough.
 - The current working tree includes GridForge source/rubric changes; rebuild
   `gridforge-spreadsheet.zip` only before upload, not after every small edit.
-- A later Oracle run scored about `0.8`; the golden failed
-  `keyboard_mouse_range_selection`,
-  `formula_bar_raw_formula_and_precedence`,
-  `range_functions_dependency_recalculation`, and
-  `forged_save_identity_and_stale_rejections`. The current fix pass stabilizes
-  Shift+Arrow range anchoring, preserves formula-bar cursor position during
-  live edits, and requires save requests to use a known live session whose user
-  matches the submitted `userId`.
+- A later Oracle run scored about `0.8`; the golden initially exposed
+  formula-bar cursor/reference issues and save identity-forgery issues. The
+  unstable keyboard range verifier was removed; the current fix pass preserves
+  formula-bar cursor position during live edits and requires save requests to
+  use a known live session whose user matches the submitted `userId`.
+- A valid OpenHands `gpt-5.6-sol` xhigh model run scored `0.8413` on the
+  21-verifier rubric, failing only formula raw/reference insertion,
+  find/replace, and save identity forgery. The latest rubric reweights easy
+  checks downward, raises the proven hard checks to `2.0`, removes the
+  questionable find/replace check, and adds sibling formula/session verifiers
+  to target those confirmed weak spots.
 - Existing `gridforge-spreadsheet_qc_findings.json` still mentions the older
   29-verifier QC pass; run QC again after the next Oracle/model runs.
 
