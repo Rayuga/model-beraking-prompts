@@ -1,0 +1,151 @@
+{
+  "title": "GridForge Spreadsheet - Harness Run QC",
+  "subtitle": "Fairness audit of OpenHands gpt-5.6-sol xhigh run 07, reported reward 0.5556.",
+  "note": "Scope: jobs/gridforge-gpt-5.6-sol-xhigh-07/gridforge-spreadsheet__WLvkjEk. Evidence was checked against reward-details.json, verifier logs, the captured model app source, the current instruction and rubric, and Oracle run 02.",
+  "mode": "fresh",
+  "runs": [
+    {
+      "task": "webdev/gridforge-spreadsheet",
+      "model": "ORACLE",
+      "reward": 1.0,
+      "browser_score": 1.0,
+      "browser_passed": 20,
+      "browser_total": 20,
+      "agent_s": 1,
+      "verifier_s": 3015,
+      "note": "Oracle run 02 passed 20/20, but its task checksum differs from model run 07. The 20 criterion descriptions and weights are identical."
+    },
+    {
+      "task": "webdev/gridforge-spreadsheet",
+      "model": "openhands / openrouter/openai/gpt-5.6-sol xhigh",
+      "reward": 0.5556,
+      "browser_score": 0.5556,
+      "browser_passed": 15,
+      "browser_total": 20,
+      "agent_s": 466,
+      "verifier_s": 4388,
+      "note": "Valid graded run with no exception, timeout, action-error, or cascade. Passed weight 10.0 of 18.0."
+    }
+  ],
+  "tasks": [
+    {
+      "name": "GridForge Run 07",
+      "oracle": 1.0,
+      "best_model": 0.5556,
+      "headline": "The five reported failures are based on real model behavior, but the rubric contains one contradictory false pass, one under-specified security requirement, and duplicated formula weighting.",
+      "findings": [
+        {
+          "id": "GF07-01",
+          "sev": "P0",
+          "category": "Grading consistency",
+          "location": "gridforge-spreadsheet/tests/rubric/browser/browser.toml:170 and :188; jobs/gridforge-gpt-5.6-sol-xhigh-07/gridforge-spreadsheet__WLvkjEk/verifier/rewardkit-browser/reward-details.json",
+          "what": "forged_save_identity_and_stale_rejections passed even though its all-or-nothing checklist explicitly requires a valid-user/live-session mismatch to be rejected. The same run's api_session_user_mismatch_rejected criterion proved that this exact mismatch returned HTTP 200 and changed attribution.",
+          "why": "The batched browser judge exercised only a subset of the broader criterion, then generalized that all identity probes passed. Its own second verdict contradicts that conclusion.",
+          "impact": "The official reward is inflated. If the 2.0-weight forged-save criterion follows its written all-or-nothing rule, passed weight becomes 8.0 of 18.0 and the score is 0.4444, not 0.5556.",
+          "fix": "Remove the valid-user/session-mismatch leg from the broad forged-save criterion because it already has a dedicated criterion, or require an explicit per-probe result table and fail the broad criterion when that leg is accepted.",
+          "evidence": "CONFIRMED: forged_save_identity_and_stale_rejections reasoning cites only an unknown user and a stale-cell conflict, while api_session_user_mismatch_rejected records Riley's session accepting userId=morgan with HTTP 200. Captured server.js:104 and :144-153 trusts body.userId for revision attribution.",
+          "verdict": "CONFIRMED"
+        },
+        {
+          "id": "GF07-02",
+          "sev": "P1",
+          "category": "Graded but weakly stated",
+          "location": "gridforge-spreadsheet/instruction.md:66-71 and :151-160; gridforge-spreadsheet/tests/rubric/browser/browser.toml:188",
+          "what": "The model genuinely permits one seeded user to submit a save attributed to another, but the criterion mandates authorization through the current live session ID even though the instruction never states that a collaboration session ID must authorize save requests.",
+          "why": "The instruction requires a seeded-user login, correct edit attribution, and a server trust boundary. Those support rejecting impersonation at the behavioral level, but they do not prescribe the verifier's exact live-session mechanism.",
+          "impact": "The observed model behavior is defective, so this is not a fabricated failure. However, a different correct implementation using a cookie or token rather than the collaboration session ID could be judged against an implementation detail it was never told to expose.",
+          "fix": "State that the server must bind every save to the authenticated signed-in user and reject a payload that claims another user, while allowing any secure session or token mechanism.",
+          "evidence": "PARTIAL: captured client app.js:18 sends client-controlled userId and no authorization credential; server.js:104 only checks that the user exists and then attributes revisions to body.userId. The behavioral failure is confirmed, while the required session-ID mechanism is under-specified.",
+          "verdict": "PARTIAL"
+        },
+        {
+          "id": "GF07-03",
+          "sev": "P1",
+          "category": "Duplicate root-cause weighting",
+          "location": "gridforge-spreadsheet/tests/rubric/browser/browser.toml:44-58",
+          "what": "formula_bar_raw_formula_and_precedence and formula_reference_replacement_selection both failed because the same autocomplete overlay intercepted B2. Together they remove 3.5 of 18.0 weight for one root defect.",
+          "why": "The broad precedence criterion repeats the cell-reference click path that the dedicated replacement criterion already owns. Both are binary and all-or-nothing, so the overlay erases credit for unrelated precedence checks that the judge says passed.",
+          "impact": "Both verdicts are behaviorally fair, but the aggregate score overstates defect breadth. Crediting either one of the duplicated penalties would produce 0.6389 or 0.6667; the model still remains below the 0.7 target.",
+          "fix": "Keep reference clicking and replacement in the dedicated criterion; make the raw-formula criterion test raw preservation and precedence without repeating that gate, or account for both under one formula-authoring feature score.",
+          "evidence": "CONFIRMED: both failed reasonings name the same fixed-position suggestion list over B2. Captured app.js:24 positions suggestions below the formula bar, while instruction.md:115-116 requires the dropdown below the edited cell.",
+          "verdict": "CONFIRMED"
+        },
+        {
+          "id": "GF07-04",
+          "sev": "P2",
+          "category": "Failed-verifier fairness",
+          "location": "gridforge-spreadsheet/tests/rubric/browser/browser.toml:71; captured model public/app.js:10, :24, and :31",
+          "what": "range_functions_dependency_recalculation is a fair failure. Formula-mode mousedown returns before enabling drag extension, and the evaluator treats a standalone cell argument such as G22 as Number('G22'), which becomes zero.",
+          "why": "The implementation can evaluate and recalculate simple single ranges, but cannot build F22:F24 through the required mouse drag and drops G22 from SUM(F22:F24,G22).",
+          "impact": "The verifier catches two independent model defects. Even if multi-argument function syntax is viewed as an implicit spreadsheet convention, the explicitly stated grid range-reference interaction still fails and independently justifies a no verdict.",
+          "fix": "No rubric fix is required for the overall verdict. For cleaner diagnosis, split formula-range authoring from multi-argument calculation semantics.",
+          "evidence": "CONFIRMED: app.js:31 returns from formula-mode mousedown before state.drag=true; app.js:10 evaluates non-range function arguments with Number(part) rather than resolving cell references. Instruction.md:112-120 covers ranges, functions, and grid reference insertion.",
+          "verdict": "CONFIRMED"
+        },
+        {
+          "id": "GF07-05",
+          "sev": "P2",
+          "category": "Failed-verifier fairness",
+          "location": "gridforge-spreadsheet/tests/rubric/browser/browser.toml:107; captured model public/app.js:20",
+          "what": "name_box_jump_and_range_selection is a fair failure. Entering T80 changes selection state but never scrolls the target into view.",
+          "why": "The model's jump() directly updates anchor and focus, renders, and broadcasts selection. It does not call select() or scrollIntoView(), even though ordinary selection does.",
+          "impact": "The named jump feature is unusable for off-screen addresses. The criterion costs only 0.5 and its other range, invalid-address, clear, and undo checks passed.",
+          "fix": "No verifier change is needed; keeping an off-screen address is the right positive test for actual navigation.",
+          "evidence": "CONFIRMED: the judge measured T80 around 2470px below a roughly 448px viewport with scrollTop still zero; source app.js:20 has no scrolling call. Instruction.md:61-62 explicitly requests name-box jumping.",
+          "verdict": "CONFIRMED"
+        },
+        {
+          "id": "GF07-06",
+          "sev": "P1",
+          "category": "Under-evidenced batched verdicts",
+          "location": "jobs/gridforge-gpt-5.6-sol-xhigh-07/gridforge-spreadsheet__WLvkjEk/verifier/rewardkit-browser/reward-details.json",
+          "what": "Several passing all-or-nothing criteria have reasoning that documents only a subset of their required actions. For example, workbook_load_custom_surface_status does not mention the exact B2/C2/D2 or A14/A40/A80 checks, and forged_save_identity_and_stale_rejections omits most identity probes and reaches a conclusion contradicted elsewhere.",
+          "why": "All 20 long criteria are judged in one batched agent session with no stored ATIF trajectory or screenshots. A concise final summary is the only surviving proof, so omitted sub-checks cannot be distinguished from unexecuted sub-checks.",
+          "impact": "This creates a false-pass risk and has already produced one confirmed false pass. The nominal 15/20 pass count should not be treated as proof that every conjunctive leg was exercised.",
+          "fix": "Split long criteria into feature/subfeature checks or require the judge to return one explicit pass/fail/evidence entry for every numbered probe before computing the criterion verdict.",
+          "evidence": "CONFIRMED by the missing evidence in reward-details.json and the direct contradiction documented in GF07-01. No screenshots or ATIF trajectory were retained for independent replay.",
+          "verdict": "CONFIRMED"
+        },
+        {
+          "id": "GF07-07",
+          "sev": "P1",
+          "category": "Oracle provenance",
+          "location": "jobs/gridforge-oracle-02/*/result.json; jobs/gridforge-gpt-5.6-sol-xhigh-07/*/result.json",
+          "what": "Oracle run 02 scored 1.0 on 20/20 and its criterion text and weights match model run 07, but the Harbor task checksums differ: 96abc53a... for Oracle and 46711076... for the model.",
+          "why": "At least one task file changed between runs. The matching rubric proves the same browser criteria were used, but the checksum mismatch prevents claiming that the complete task snapshot was identical.",
+          "impact": "Solvability is strongly supported but not formally proven for the exact model-run artifact. This is a provenance gap, not evidence that any of the five model failures is false.",
+          "fix": "Freeze the task tree, rerun Oracle and the target model from that exact checksum, and record the checksum beside both results.",
+          "evidence": "PARTIAL: Oracle 02 has reward 1.0 and 20/20; a direct comparison found no criterion description or weight differences, but result.json records different task_checksum values.",
+          "verdict": "PARTIAL"
+        }
+      ]
+    }
+  ],
+  "blocks": [
+    {
+      "title": "Fairness Verdict",
+      "items": [
+        "No failed criterion was caused by a timeout, action error, blank app, or cascade.",
+        "Formula overlay, formula-range drag/calculation, and name-box scrolling failures are clearly fair.",
+        "Session impersonation is a real model defect, but the exact live-session authorization mechanism needs one explicit instruction sentence.",
+        "The run contains a confirmed false pass, not a false failure: forged_save_identity_and_stale_rejections should also have failed."
+      ]
+    },
+    {
+      "title": "Score Interpretation",
+      "items": [
+        "Official score: 10.0 passed weight / 18.0 total = 0.5556.",
+        "Applying the broad forged-save criterion as written: 8.0 / 18.0 = 0.4444.",
+        "Giving back either duplicated formula penalty still leaves the model at or below 0.5556 after correcting the false pass, comfortably below the 0.7 target."
+      ]
+    },
+    {
+      "title": "Run Health",
+      "items": [
+        "The trial completed normally with graded=1, no_op=0, and no exception.",
+        "SQLite seed/restart idempotence passed before browser grading.",
+        "The only app stderr entry was the expected invalid-JSON probe; it did not crash the server."
+      ]
+    }
+  ]
+}

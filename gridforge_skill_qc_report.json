@@ -1,0 +1,133 @@
+{
+  "title": "GridForge Spreadsheet - Harbor Task QC",
+  "subtitle": "Main task folder QC while Oracle-02 is running",
+  "note": "Scope excludes model job submissions except for prior Oracle evidence. Generated after removing internal CONTEXT.md from the upload zip and fixing executable archive modes.",
+  "mode": "rework",
+  "runs": [
+    {
+      "task": "gridforge-spreadsheet",
+      "model": "ORACLE-01",
+      "reward": 0.6111,
+      "prog": null,
+      "agent_s": null,
+      "verifier_s": 2474,
+      "note": "Completed before formula-caret fix; failed 4 formula interaction verifiers."
+    },
+    {
+      "task": "gridforge-spreadsheet",
+      "model": "ORACLE-02",
+      "reward": null,
+      "prog": null,
+      "agent_s": null,
+      "verifier_s": null,
+      "note": "Running/pending at report generation time."
+    },
+    {
+      "task": "gridforge-spreadsheet",
+      "model": "gpt-5.6-sol xhigh-04",
+      "reward": 0.0556,
+      "prog": null,
+      "agent_s": null,
+      "verifier_s": 1800,
+      "note": "Model app exposed broken multi-character typing; useful discrimination evidence."
+    }
+  ],
+  "tasks": [
+    {
+      "name": "GridForge",
+      "oracle": null,
+      "best_model": 0.0556,
+      "headline": "Static QC found one P0 packaging leak and fixed it; no open static P0 remains, but Oracle-02 must confirm golden score 1.0.",
+      "findings": [
+        {
+          "id": "GF-QC-01",
+          "sev": "P0",
+          "category": "Packaging",
+          "location": "gridforge-spreadsheet.zip:CONTEXT.md",
+          "what": "The upload archive included internal handoff material: `CONTEXT.md`.",
+          "why": "The file contains development context, verifier strategy, run outcomes, and task-construction notes. Shipping it risks leaking rubric intent and model-breaking strategy to the graded environment or reviewers.",
+          "impact": "If agent-visible, this corrupts the training signal; even if not agent-visible, it is embarrassing internal material in a client artifact.",
+          "fix": "Rebuilt `gridforge-spreadsheet.zip` excluding `CONTEXT.md` and other internal/runtime files.",
+          "type": "New",
+          "status": "FIXED",
+          "origin": "Introduced by rework",
+          "action": "Use the current rebuilt zip. Do not manually zip the whole folder because the root still keeps CONTEXT.md for our handoff."
+        },
+        {
+          "id": "GF-QC-02",
+          "sev": "P1",
+          "category": "Packaging",
+          "location": "gridforge-spreadsheet.zip central directory",
+          "what": "The previous zip had shell scripts recorded as non-executable (`0o666`).",
+          "why": "Harbor often invokes scripts through shell wrappers, but uploaded archives should preserve executable bits for `solution/solve.sh` and `tests/test.sh` to avoid platform-specific launch failures.",
+          "impact": "Could cause a build/test launch failure on a runner that executes scripts directly from archive permissions.",
+          "fix": "Rebuilt the zip with `solution/solve.sh` and `tests/test.sh` set to `0o755` in the central directory.",
+          "type": "New",
+          "status": "FIXED",
+          "origin": "Introduced by rework",
+          "action": "Use the current rebuilt zip; archive check now reports both scripts executable."
+        },
+        {
+          "id": "GF-QC-03",
+          "sev": "P0",
+          "category": "Golden-Solution",
+          "location": "jobs/gridforge-oracle-01/.../reward-details.json + solution/app/public/js/app.js",
+          "what": "Oracle-01 scored `0.6111`, failing formula-bar/reference interaction verifiers.",
+          "why": "An Oracle below 1.0 means the task is not yet proven solvable. The run showed stale caret/reference state corrupting formulas after function suggestion or grid reference clicks.",
+          "impact": "Would block delivery if still present because the golden fails its own rubric.",
+          "fix": "Patched `app.js` to sync the live formula bar selection before grid reference insertion and to update stored caret state after function suggestion completion.",
+          "type": "Prior",
+          "status": "PARTIAL",
+          "origin": "Carry-over of a prior finding",
+          "action": "Wait for Oracle-02. Mark closed only if Oracle-02 reaches 1.0; otherwise inspect remaining failed criteria."
+        },
+        {
+          "id": "GF-QC-04",
+          "sev": "P0",
+          "category": "Verifier-Strictness",
+          "location": "tests/rubric/browser/browser.toml:workbook_load_custom_surface_status and name_box_jump_and_range_selection",
+          "what": "Rubric previously expected seed values `B2=120` and `C2=3`, but the seed file has `B2=3` and `C2=120`.",
+          "why": "A verifier asserting the wrong seed values makes Oracle fail a correct golden and punishes models for following the actual seed data.",
+          "impact": "Would block Oracle and corrupt scores for a purely task-authoring mistake.",
+          "fix": "Updated both active rubric criteria to expect `B2=3`, `C2=120`, and `D2=360`.",
+          "type": "Prior",
+          "status": "FIXED",
+          "origin": "Carry-over of a prior finding",
+          "action": "No further action unless Oracle-02 reports the same mismatch."
+        },
+        {
+          "id": "GF-QC-05",
+          "sev": "P2",
+          "category": "Hygiene",
+          "location": "solution/app/data* local runtime directories",
+          "what": "The local development folder contains runtime SQLite data directories, but the upload zip excludes them.",
+          "why": "Runtime DB files can confuse local manual testing and should never ship, but current archive hygiene is clean.",
+          "impact": "Local-only risk: testers may see stale/blank data if they run without `RESET_SEED=1`; no current upload impact.",
+          "fix": "Patched `db.js` reset to delete `gridforge.db`, `gridforge.db-wal`, and `gridforge.db-shm`; rebuilt zip excluding `data` and `data-*` directories.",
+          "type": "New",
+          "status": "FIXED",
+          "origin": "Introduced by rework",
+          "action": "Run local app with `RESET_SEED=1` and correct `SEED_PATH`; upload only the filtered zip."
+        }
+      ]
+    }
+  ],
+  "blocks": [
+    {
+      "title": "Ship-blockers",
+      "items": [
+        "No open static packaging P0 remains after rebuilding the zip without CONTEXT.md and with executable script modes.",
+        "Oracle-02 is still pending. If Oracle-02 is below 1.0, that becomes the active P0 to fix before upload."
+      ]
+    },
+    {
+      "title": "Clean Checks",
+      "items": [
+        "Active rubric parses with 20 unique criteria and total weight 18.0.",
+        "Weights are within the requested 0.5 to 2.0 range.",
+        "Current zip contains 18 files, excludes node_modules/data/db/log/pyc/internal CONTEXT.md, and records solve.sh/test.sh as 0o755.",
+        "No real API keys or secrets found in the main task folder scan; only environment-variable placeholders are present."
+      ]
+    }
+  ]
+}

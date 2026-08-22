@@ -398,6 +398,44 @@ GridForge current status:
 - Existing `gridforge-spreadsheet_qc_findings.json` still mentions the older
   29-verifier QC pass; run QC again after the next Oracle/model runs.
 
+## Task 3: Threadline Team Chat
+
+Folder:
+
+```text
+threadline-chat/
+```
+
+Product idea:
+
+Build a focused Slack-style team workspace with authenticated seeded users,
+public/private channels, ordered messages, threads, unread state, mentions,
+reactions, pins, search, live presence and typing, incoming webhooks,
+append-only audit history, and durable SQLite persistence.
+
+The golden app is implemented. Its feature dependency map and planned
+feature/sub-feature verifier metadata are recorded in
+`threadline-chat/CONTEXT.md`. The next authoring step is to review and write the
+verifiers feature by feature with the user; do not compress them into an opaque
+rubric before that review.
+
+Initial golden checks completed:
+
+- independent cookie sessions and private-channel authorization
+- optimistic message reconciliation without duplicate delivery
+- live two-user message, thread, edit, reaction, and presence behavior
+- stale-version and forged-ownership rejection
+- mention creation and correction after editing
+- reply-count/participant correction after reply deletion
+- idempotent message, reaction, pin, and webhook operations
+- immediate authorization after channel membership removal
+- append-only message history and persistence across server restart
+
+Verifier metadata should identify `feature`, `sub_feature`, and `depends_on`.
+If RewardKit's criterion schema rejects custom TOML keys, preserve the metadata
+in structured criterion comments or a companion author-only map and include the
+feature/sub-feature names in each criterion id.
+
 ## What We Learned
 
 ### Scoring Shape Matters

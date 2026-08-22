@@ -76,7 +76,8 @@ def start_command(app_root: Path) -> str:
             text = manifest.read_text(encoding="utf-8", errors="replace")
             match = START_BLOCK_RE.search(text)
             if match:
-                return " ".join(line.strip() for line in match.group(1).splitlines() if line.strip()) or DEFAULT_START_COMMAND
+                lines = [line.strip() for line in match.group(1).splitlines() if line.strip()]
+                return " && ".join(lines) or DEFAULT_START_COMMAND
     return DEFAULT_START_COMMAND
 
 
