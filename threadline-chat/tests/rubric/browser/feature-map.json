@@ -1,0 +1,36 @@
+{
+  "task": "webdev/threadline-chat",
+  "dependency_order": [
+    "auth_session",
+    "channel_authorization",
+    "messages_threads",
+    "derived_user_state",
+    "live_collaboration",
+    "interface_usability",
+    "integration_audit_durability"
+  ],
+  "criteria": {
+    "seeded_login_and_session_isolation": { "feature": "auth_session", "sub_feature": "login_and_cookie_isolation", "kind": "hard_gate", "depends_on": [] },
+    "server_owned_identity_and_logout_revocation": { "feature": "auth_session", "sub_feature": "server_owned_identity", "kind": "hard_gate", "depends_on": ["seeded_login_and_session_isolation"] },
+    "private_channel_object_authorization": { "feature": "channel_authorization", "sub_feature": "private_channel_isolation", "kind": "hard_gate", "depends_on": ["server_owned_identity_and_logout_revocation"] },
+    "membership_revocation_blocks_captured_requests": { "feature": "channel_authorization", "sub_feature": "immediate_membership_revocation", "kind": "hard_gate", "depends_on": ["private_channel_object_authorization"] },
+    "message_moderation_and_ownership": { "feature": "channel_authorization", "sub_feature": "message_ownership_and_moderation", "kind": "hard_gate", "depends_on": ["server_owned_identity_and_logout_revocation"] },
+    "message_multiline_order_and_idempotency": { "feature": "messages_threads", "sub_feature": "send_order_and_retry", "kind": "graded", "depends_on": ["private_channel_object_authorization"] },
+    "message_edit_stale_version_and_audit": { "feature": "messages_threads", "sub_feature": "optimistic_edit_conflict", "kind": "hard_gate", "depends_on": ["message_multiline_order_and_idempotency"] },
+    "message_delete_cleanup_and_history": { "feature": "messages_threads", "sub_feature": "delete_cleanup_and_append_only_history", "kind": "hard_gate", "depends_on": ["message_edit_stale_version_and_audit"] },
+    "timeline_pagination_preserves_position": { "feature": "messages_threads", "sub_feature": "older_message_pagination", "kind": "graded", "depends_on": ["message_multiline_order_and_idempotency"] },
+    "thread_reply_parent_channel_authorization": { "feature": "messages_threads", "sub_feature": "thread_parent_integrity", "kind": "hard_gate", "depends_on": ["private_channel_object_authorization", "message_multiline_order_and_idempotency"] },
+    "thread_metadata_after_reply_mutations": { "feature": "messages_threads", "sub_feature": "reply_summary_consistency", "kind": "graded", "depends_on": ["thread_reply_parent_channel_authorization"] },
+    "per_user_unread_read_scope": { "feature": "derived_user_state", "sub_feature": "per_user_read_positions", "kind": "graded", "depends_on": ["message_multiline_order_and_idempotency"] },
+    "mention_edit_delete_correction": { "feature": "derived_user_state", "sub_feature": "mention_notification_reconciliation", "kind": "hard_gate", "depends_on": ["message_edit_stale_version_and_audit"] },
+    "reaction_idempotency_and_access": { "feature": "derived_user_state", "sub_feature": "reaction_uniqueness", "kind": "graded", "depends_on": ["message_multiline_order_and_idempotency"] },
+    "pin_permission_sync_and_cleanup": { "feature": "derived_user_state", "sub_feature": "pin_authority_and_lifecycle", "kind": "graded", "depends_on": ["message_delete_cleanup_and_history"] },
+    "live_message_thread_reaction_delivery": { "feature": "live_collaboration", "sub_feature": "cross_session_change_delivery", "kind": "graded", "depends_on": ["thread_metadata_after_reply_mutations", "reaction_idempotency_and_access"] },
+    "presence_typing_multiview_cleanup": { "feature": "live_collaboration", "sub_feature": "presence_typing_and_reconnect", "kind": "hard_gate", "depends_on": ["seeded_login_and_session_isolation"] },
+    "search_access_deleted_and_thread_results": { "feature": "derived_user_state", "sub_feature": "authorized_search", "kind": "graded", "depends_on": ["thread_reply_parent_channel_authorization"] },
+    "webhook_secret_channel_and_idempotency": { "feature": "integration_audit_durability", "sub_feature": "incoming_webhook_trust_boundary", "kind": "hard_gate", "depends_on": ["private_channel_object_authorization"] },
+    "audit_append_only_and_reload_persistence": { "feature": "integration_audit_durability", "sub_feature": "audit_and_committed_state_durability", "kind": "hard_gate", "depends_on": ["message_edit_stale_version_and_audit"] },
+    "message_links_route_to_exact_target": { "feature": "messages_threads", "sub_feature": "exact_message_deep_links", "kind": "graded", "depends_on": ["thread_reply_parent_channel_authorization"] },
+    "mobile_channel_message_thread_workflow": { "feature": "interface_usability", "sub_feature": "mobile_core_workflow", "kind": "graded", "depends_on": ["seeded_login_and_session_isolation", "thread_reply_parent_channel_authorization"] }
+  }
+}

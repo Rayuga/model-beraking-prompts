@@ -331,14 +331,22 @@ app.post('/api/channels/:id/messages', requireAuth, requireChannel, (req, res) =
   const clientId = req.body?.clientId;
   if (!content || content.length > 8000) return res.status(400).json({ error: 'message content required' });
   if (!validClientId(clientId)) return res.status(400).json({ error: 'valid clientId required' });
-  const existing = db.prepare('SELECT id FROM messages WHERE author_id = ? AND client_id = ?').get(req.user.id, clientId);
-  if (existing) return res.json({ message: serializeMessage(messageRow(existing.id)), duplicate: true });
+  const existing = db.prepare('SELECT id, channel_id, parent_id FROM messages WHERE author_id = ? AND client_id = ?').get(req.user.id, clientId);
+  if (existing) {
+    if (existing.channel_id !== req.channel.id || existing.parent_id != null) {
+      return res.status(409).json({ error: 'clientId belongs to a different message target' });
+    }
+    return res.json({ message: serializeMessage(messageRow(existing.id)), duplicate: true });
+  }
   let id;
   try {
     id = transaction(() => createMessage({ channelId: req.channel.id, authorId: req.user.id, content, clientId }));
   } catch (error) {
-    const duplicate = db.prepare('SELECT id FROM messages WHERE author_id = ? AND client_id = ?').get(req.user.id, clientId);
-    if (duplicate) return res.json({ message: serializeMessage(messageRow(duplicate.id)), duplicate: true });
+    const duplicate = db.prepare('SELECT id, channel_id, parent_id FROM messages WHERE author_id = ? AND client_id = ?').get(req.user.id, clientId);
+    if (duplicate && duplicate.channel_id === req.channel.id && duplicate.parent_id == null) {
+      return res.json({ message: serializeMessage(messageRow(duplicate.id)), duplicate: true });
+    }
+    if (duplicate) return res.status(409).json({ error: 'clientId belongs to a different message target' });
     throw error;
   }
   broadcastWorkspaceChange(req.channel.id, 'message-created', id);
@@ -368,14 +376,26 @@ app.post('/api/messages/:id/replies', requireAuth, (req, res) => {
   const clientId = req.body?.clientId;
   if (!content || content.length > 8000) return res.status(400).json({ error: 'reply content required' });
   if (!validClientId(clientId)) return res.status(400).json({ error: 'valid clientId required' });
-  const existing = db.prepare('SELECT id FROM messages WHERE author_id = ? AND client_id = ?').get(req.user.id, clientId);
-  if (existing) return res.json({ message: serializeMessage(messageRow(existing.id)), duplicate: true });
+  const existing = db.prepare('SELECT id, channel_id, parent_id FROM messages WHERE author_id = ? AND client_id = ?').get(req.user.id, clientId);
+  if (existing) {
+    if (existing.channel_id !== parent.channel_id || existing.parent_id !== parent.id) {
+      return res.status(409).json({ error: 'clientId belongs to a different thread' });
+    }
+    return res.json({
+      message: serializeMessage(messageRow(existing.id)),
+      parent: serializeMessage(messageRow(parent.id)),
+      duplicate: true
+    });
+  }
   let id;
   try {
     id = transaction(() => createMessage({ channelId: parent.channel_id, parentId: parent.id, authorId: req.user.id, content, clientId }));
   } catch (error) {
-    const duplicate = db.prepare('SELECT id FROM messages WHERE author_id = ? AND client_id = ?').get(req.user.id, clientId);
-    if (duplicate) return res.json({ message: serializeMessage(messageRow(duplicate.id)), parent: serializeMessage(messageRow(parent.id)), duplicate: true });
+    const duplicate = db.prepare('SELECT id, channel_id, parent_id FROM messages WHERE author_id = ? AND client_id = ?').get(req.user.id, clientId);
+    if (duplicate && duplicate.channel_id === parent.channel_id && duplicate.parent_id === parent.id) {
+      return res.json({ message: serializeMessage(messageRow(duplicate.id)), parent: serializeMessage(messageRow(parent.id)), duplicate: true });
+    }
+    if (duplicate) return res.status(409).json({ error: 'clientId belongs to a different thread' });
     throw error;
   }
   broadcastWorkspaceChange(parent.channel_id, 'reply-created', id, { parent: serializeMessage(messageRow(parent.id)) });
@@ -550,6 +570,15 @@ app.post('/api/channels/:id/members', requireAuth, (req, res) => {
     else db.prepare('DELETE FROM channel_members WHERE channel_id = ? AND user_id = ?').run(channel.id, userId);
     insertAudit('membership', `${channel.id}:${userId}`, action === 'add' ? 'added' : 'removed', req.user.id, null, at);
   });
+  if (action === 'remove') {
+    for (const [viewId, session] of liveSessions) {
+      if (session.user.id !== userId || session.channelId !== channel.id) continue;
+      session.channelId = null;
+      const typingState = typing.get(`${viewId}:${channel.id}`);
+      if (typingState?.timer) clearTimeout(typingState.timer);
+      typing.delete(`${viewId}:${channel.id}`);
+    }
+  }
   broadcastUser(userId, 'membership', { channelId: channel.id, action });
   broadcastPresence(channel.id);
   res.json({ channel: channelPayload(channel, req.user.id) });

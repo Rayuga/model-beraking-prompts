@@ -118,14 +118,32 @@ function showApp() {
   renderChannels();
   renderNotificationCounts(notifications);
   connectEvents();
+  navigateFromHash();
+}
+
+async function navigateFromHash() {
   const params = new URLSearchParams(location.hash.replace(/^#/, ''));
   const requested = params.get('channel');
+  const channels = state.bootstrap?.channels || [];
   const channelId = channels.some((channel) => channel.id === requested) ? requested : channels[0]?.id;
-  if (channelId) loadChannel(channelId).then(() => {
-    const messageId = Number(params.get('message'));
-    if (messageId) focusLinkedMessage(messageId);
-  });
+  if (!channelId) return;
+  await loadChannel(channelId, { updateHash: !requested });
+  const messageId = Number(params.get('message'));
+  const threadId = Number(params.get('thread'));
+  if (threadId) {
+    const parent = state.messages.find((message) => Number(message.id) === threadId);
+    if (parent) {
+      await openThread(parent);
+      focusLinkedMessage(messageId || threadId);
+    }
+  } else if (messageId) {
+    focusLinkedMessage(messageId);
+  }
 }
+
+window.addEventListener('hashchange', () => {
+  if (!els.appShell.hidden) navigateFromHash();
+});
 
 function renderChannels() {
   els.channelList.replaceChildren(...state.bootstrap.channels.map((channel) => {
@@ -162,7 +180,7 @@ els.channelList.addEventListener('click', (event) => {
   if (button) loadChannel(button.dataset.channelId);
 });
 
-async function loadChannel(channelId, { preserveScroll = false } = {}) {
+async function loadChannel(channelId, { preserveScroll = false, updateHash = true } = {}) {
   const channel = state.bootstrap.channels.find((item) => item.id === channelId);
   if (!channel) return;
   const oldScroll = els.messageScroller.scrollTop;
@@ -177,7 +195,7 @@ async function loadChannel(channelId, { preserveScroll = false } = {}) {
   els.messageInput.placeholder = `Message #${channel.name}`;
   els.messageList.innerHTML = '<div class="empty-state">Loading conversation...</div>';
   closeMobileNav();
-  history.replaceState(null, '', `#channel=${encodeURIComponent(channelId)}`);
+  if (updateHash) history.replaceState(null, '', `#channel=${encodeURIComponent(channelId)}`);
   try {
     const data = await api(`/api/channels/${encodeURIComponent(channelId)}/messages?limit=30`);
     if (state.channelId !== channelId) return;
@@ -417,7 +435,8 @@ async function togglePin(message) {
 
 async function copyMessageLink(message) {
   const rootId = message.parentId || message.id;
-  const link = `${location.origin}${location.pathname}#channel=${encodeURIComponent(message.channelId)}&message=${rootId}`;
+  const thread = message.parentId ? `&thread=${rootId}` : '';
+  const link = `${location.origin}${location.pathname}#channel=${encodeURIComponent(message.channelId)}${thread}&message=${message.id}`;
   await navigator.clipboard.writeText(link);
   toast('Message link copied');
 }
@@ -789,7 +808,10 @@ async function navigateToMessage(message) {
   await loadChannel(message.channelId);
   if (message.parentId) {
     const parent = state.messages.find((item) => item.id === message.parentId);
-    if (parent) await openThread(parent);
+    if (parent) {
+      await openThread(parent);
+      focusLinkedMessage(message.id);
+    }
   } else {
     focusLinkedMessage(message.id);
   }

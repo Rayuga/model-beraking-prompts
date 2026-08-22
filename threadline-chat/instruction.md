@@ -117,9 +117,9 @@ notifications, or other stored effects.
 
 ## Message history and moderation
 
-Keep an append-only history for message edits and deletions. The history should
-record the message, action, acting user, previous content where applicable, and
-server timestamp.
+Keep an append-only history for message creation, edits, and deletions. The
+history should record the message, action, acting user, previous content where
+applicable, and server timestamp.
 
 Users should be able to inspect the edit history of messages they are permitted
 to see. Deleting a message should not erase its moderation history.

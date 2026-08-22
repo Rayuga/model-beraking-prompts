@@ -12,7 +12,7 @@ if [[ -d /opt/threadline-deps/node_modules ]]; then
   rm -rf node_modules
   cp -R /opt/threadline-deps/node_modules ./node_modules
 else
-  npm install --omit=dev --no-audit --no-fund --loglevel=error
+  npm ci --omit=dev --no-audit --no-fund --loglevel=error
 fi
 
 node --experimental-sqlite -e "import('./src/db.js').then(() => console.log('seed ok'))"
