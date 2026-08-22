@@ -6,7 +6,6 @@ import { db, hashToken, insertAudit, passwordMatches } from './db.js';
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
 const HOST = process.env.HOST || '0.0.0.0';
-const SESSION_COOKIE = 'threadline_session';
 const SESSION_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 const liveSessions = new Map();
 const typing = new Map();
@@ -18,15 +17,11 @@ function nowIso() {
   return new Date().toISOString();
 }
 
-function parseCookies(header = '') {
-  return Object.fromEntries(header.split(';').map((item) => item.trim()).filter(Boolean).map((item) => {
-    const index = item.indexOf('=');
-    return [decodeURIComponent(index < 0 ? item : item.slice(0, index)), decodeURIComponent(index < 0 ? '' : item.slice(index + 1))];
-  }));
-}
-
 function userForRequest(req) {
-  const raw = parseCookies(req.headers.cookie)[SESSION_COOKIE];
+  const authorization = String(req.get('Authorization') || '');
+  const raw = authorization.startsWith('Bearer ')
+    ? authorization.slice(7).trim()
+    : (req.path === '/api/events' ? String(req.query.session || '') : '');
   if (!raw) return null;
   return db.prepare(`
     SELECT u.id, u.name, u.email, u.role, u.color, s.token_hash
@@ -177,10 +172,15 @@ function channelPayload(channel, userId) {
     SELECT u.id, u.name, u.role, u.color FROM users u
     JOIN channel_members cm ON cm.user_id = u.id WHERE cm.channel_id = ? ORDER BY u.name
   `).all(channel.id);
+  const directUser = channel.kind === 'direct' ? members.find((member) => member.id !== userId) || null : null;
   return {
     id: channel.id,
     name: channel.name,
+    displayName: directUser?.name || channel.name,
     description: channel.description,
+    kind: channel.kind,
+    isDirect: channel.kind === 'direct',
+    directUser,
     isPrivate: Boolean(channel.is_private),
     unread,
     mentions,
@@ -191,7 +191,7 @@ function channelPayload(channel, userId) {
 function accessibleChannels(userId) {
   return db.prepare(`
     SELECT c.* FROM channels c JOIN channel_members cm ON cm.channel_id = c.id
-    WHERE cm.user_id = ? ORDER BY c.is_private, c.name
+    WHERE cm.user_id = ? ORDER BY CASE c.kind WHEN 'public' THEN 0 WHEN 'private' THEN 1 ELSE 2 END, c.name
   `).all(userId).map((channel) => channelPayload(channel, userId));
 }
 
@@ -289,13 +289,14 @@ app.post('/api/auth/login', (req, res) => {
   const expiresAt = new Date(Date.now() + SESSION_AGE_MS).toISOString();
   db.prepare('INSERT INTO sessions (token_hash, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)')
     .run(hashToken(token), user.id, createdAt, expiresAt);
-  res.setHeader('Set-Cookie', `${SESSION_COOKIE}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${Math.floor(SESSION_AGE_MS / 1000)}`);
-  res.json({ user: { id: user.id, name: user.name, email: user.email, role: user.role, color: user.color } });
+  res.json({
+    sessionToken: token,
+    user: { id: user.id, name: user.name, email: user.email, role: user.role, color: user.color }
+  });
 });
 
 app.post('/api/auth/logout', requireAuth, (req, res) => {
   db.prepare('DELETE FROM sessions WHERE token_hash = ?').run(req.user.token_hash);
-  res.setHeader('Set-Cookie', `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);
   res.json({ ok: true });
 });
 
@@ -308,6 +309,48 @@ app.get('/api/bootstrap', requireAuth, (req, res) => {
     channels,
     notifications: notificationsFor(req.user.id)
   });
+});
+
+app.post('/api/direct-messages', requireAuth, (req, res) => {
+  const targetUserId = String(req.body?.userId || '').trim();
+  if (!targetUserId || targetUserId === req.user.id) return res.status(400).json({ error: 'choose another workspace member' });
+  const target = db.prepare('SELECT id FROM users WHERE id = ?').get(targetUserId);
+  if (!target) return res.status(400).json({ error: 'unknown workspace member' });
+  const [userLow, userHigh] = [req.user.id, targetUserId].sort();
+  let direct = db.prepare(`
+    SELECT c.* FROM direct_conversations d JOIN channels c ON c.id = d.channel_id
+    WHERE d.user_low = ? AND d.user_high = ?
+  `).get(userLow, userHigh);
+  let created = false;
+  if (!direct) {
+    const channelId = `dm-${userLow}-${userHigh}`;
+    const at = nowIso();
+    try {
+      transaction(() => {
+        db.prepare(`
+          INSERT INTO channels (id, workspace_id, name, description, kind, is_private, created_at)
+          SELECT ?, id, ?, 'Private conversation', 'direct', 1, ? FROM workspaces LIMIT 1
+        `).run(channelId, `${userLow}-${userHigh}`, at);
+        const addMember = db.prepare('INSERT INTO channel_members (channel_id, user_id, added_at) VALUES (?, ?, ?)');
+        addMember.run(channelId, userLow, at);
+        addMember.run(channelId, userHigh, at);
+        db.prepare('INSERT INTO direct_conversations (channel_id, user_low, user_high) VALUES (?, ?, ?)')
+          .run(channelId, userLow, userHigh);
+        insertAudit('direct-conversation', channelId, 'created', req.user.id, null, at);
+      });
+      created = true;
+    } catch (error) {
+      direct = db.prepare(`
+        SELECT c.* FROM direct_conversations d JOIN channels c ON c.id = d.channel_id
+        WHERE d.user_low = ? AND d.user_high = ?
+      `).get(userLow, userHigh);
+      if (!direct) throw error;
+    }
+    direct ||= db.prepare('SELECT * FROM channels WHERE id = ?').get(channelId);
+  }
+  const payload = channelPayload(direct, req.user.id);
+  broadcastUser(targetUserId, 'membership', { channelId: direct.id, action: 'direct-message-created' });
+  res.status(created ? 201 : 200).json({ channel: payload, created });
 });
 
 app.get('/api/channels/:id/messages', requireAuth, requireChannel, (req, res) => {
@@ -558,6 +601,7 @@ app.get('/api/messages/:id/history', requireAuth, (req, res) => {
 app.post('/api/channels/:id/members', requireAuth, (req, res) => {
   const channel = db.prepare('SELECT * FROM channels WHERE id = ?').get(req.params.id);
   if (!channel) return res.status(404).json({ error: 'channel not found' });
+  if (channel.kind === 'direct') return res.status(400).json({ error: 'direct-message participants cannot be changed' });
   if (req.user.role !== 'admin' || !channelForUser(channel.id, req.user.id)) return res.status(403).json({ error: 'admin permission required' });
   const userId = String(req.body?.userId || '');
   const action = String(req.body?.action || '');

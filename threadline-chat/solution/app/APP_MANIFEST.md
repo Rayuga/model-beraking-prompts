@@ -19,9 +19,10 @@ The server listens on `0.0.0.0:${PORT:-3000}`.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| POST | `/api/auth/login` | Start an authenticated cookie session |
+| POST | `/api/auth/login` | Start a tab-scoped authenticated session |
 | POST | `/api/auth/logout` | Revoke the current session |
 | GET | `/api/bootstrap` | Current user, workspace, channels, unread state |
+| POST | `/api/direct-messages` | Start or reopen a one-to-one conversation |
 | GET/POST | `/api/channels/:id/messages` | Read or send channel messages |
 | GET/POST | `/api/messages/:id/replies` | Read or send thread replies |
 | PATCH/DELETE | `/api/messages/:id` | Versioned edit or delete |

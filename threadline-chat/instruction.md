@@ -9,7 +9,8 @@ teammates, react to messages, and see activity from other open browser sessions.
 
 Seed the application from the files provided under `/assets`. The seed data
 contains users with different roles, a workspace, public and private channels,
-memberships, messages, threaded replies, reactions, pins, and read positions.
+direct messages, memberships, messages, threaded replies, reactions, pins, and
+read positions.
 
 Starting with an empty SQLite database must create the seeded workspace exactly
 once. Restarting the application must preserve stored changes and must not
@@ -26,9 +27,10 @@ duplicate seeded records.
 
 ## Users and sessions
 
-Provide a normal sign-in flow for the seeded users. Each browser session must
-belong to one signed-in user, and different browser windows must be able to use
-different accounts at the same time.
+Provide a normal sign-in flow for the seeded users. Each browser tab must belong
+to one signed-in user, and two ordinary tabs in the same browser must be able to
+use different accounts at the same time. Reloading one tab should retain that
+tab's identity without changing another tab.
 
 The server must determine the acting user from the authenticated session.
 Client-supplied user names, user ids, roles, membership claims, or ownership
@@ -65,8 +67,9 @@ another user's action.
 
 ## Threads
 
-Any message may start a thread. Users can open the thread, add replies, edit or
-delete their own replies, and return to the channel without losing their place.
+Any message may start a thread through a visible reply or start-thread control.
+Users can open the thread, add replies, edit or delete their own replies, and
+return to the channel without losing their place.
 
 A parent message should show its current reply count, participating users, and
 latest reply information. These details must stay accurate when replies are
@@ -75,6 +78,18 @@ added, edited, deleted, or received from another open browser.
 Thread replies must belong to the correct parent and channel. Requests that
 attempt to attach a reply to an unrelated or inaccessible message must be
 rejected.
+
+## Direct messages
+
+Show a direct-messages section where a user can choose one teammate and start
+or reopen a one-to-one conversation. A pair of users must have one durable
+conversation rather than receiving a new conversation each time either person
+starts it.
+
+Only the two participants may discover, open, search, or post to that direct
+conversation. Its participants cannot be changed into a group. Direct messages
+support the same message, thread, reaction, unread, live-update, and persistence
+behavior as channel conversations.
 
 ## Unread messages and mentions
 
@@ -171,6 +186,7 @@ The first screen should be the usable application. Include:
 
 - A sign-in view for seeded users.
 - Workspace and channel navigation.
+- Direct-message navigation and a visible new-conversation control.
 - A channel message timeline and composer.
 - A thread panel.
 - Unread and mention indicators.

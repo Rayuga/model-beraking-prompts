@@ -1,4 +1,5 @@
 const $ = (selector) => document.querySelector(selector);
+const SESSION_KEY = 'threadline.session';
 const state = {
   bootstrap: null,
   channelId: null,
@@ -11,13 +12,14 @@ const state = {
   typingUsers: [],
   eventSource: null,
   viewId: `view-${crypto.randomUUID()}`,
-  allUsers: []
+  allUsers: [],
+  sessionToken: sessionStorage.getItem(SESSION_KEY) || ''
 };
 
-const emojiMap = { 'thumbs-up': '👍', celebrate: '🎉', eyes: '👀', heart: '❤️', check: '✅' };
+const emojiMap = { 'thumbs-up': '\u{1F44D}', celebrate: '\u{1F389}', eyes: '\u{1F440}', heart: '\u2764\uFE0F', check: '\u2705' };
 const els = {
   loginScreen: $('#login-screen'), loginForm: $('#login-form'), loginEmail: $('#login-email'), loginPassword: $('#login-password'), loginError: $('#login-error'),
-  appShell: $('#app-shell'), workspaceName: $('#workspace-name'), channelList: $('#channel-list'), channelName: $('#channel-name'), channelPrivacy: $('#channel-privacy'), channelDescription: $('#channel-description'),
+  appShell: $('#app-shell'), workspaceName: $('#workspace-name'), channelList: $('#channel-list'), directMessageList: $('#direct-message-list'), newDirectMessage: $('#new-direct-message-button'), channelName: $('#channel-name'), channelPrivacy: $('#channel-privacy'), channelDescription: $('#channel-description'),
   messageScroller: $('#message-scroller'), messageList: $('#message-list'), loadOlder: $('#load-older-button'), messageForm: $('#message-form'), messageInput: $('#message-input'), sendButton: $('#send-button'), mentionSuggestions: $('#mention-suggestions'),
   profileButton: $('#profile-button'), profileAvatar: $('#profile-avatar'), profileName: $('#profile-name'), profileRole: $('#profile-role'), profileMenu: $('#profile-menu'), logout: $('#logout-button'),
   notificationsButton: $('#notifications-button'), notificationCount: $('#notification-count'), mentionsNavCount: $('#mentions-nav-count'), mentionsNav: $('#mentions-nav'), pinsNav: $('#pins-nav'),
@@ -29,9 +31,10 @@ const els = {
 };
 
 async function api(path, options = {}) {
+  const authorization = state.sessionToken ? { Authorization: `Bearer ${state.sessionToken}` } : {};
   const response = await fetch(path, {
     ...options,
-    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) }
+    headers: { 'Content-Type': 'application/json', ...authorization, ...(options.headers || {}) }
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
@@ -72,13 +75,18 @@ function currentChannel() {
   return state.bootstrap?.channels.find((channel) => channel.id === state.channelId) || null;
 }
 
+function conversationLabel(channel) {
+  if (!channel) return 'Conversation';
+  return channel.isDirect ? channel.displayName : `#${channel.name}`;
+}
+
 async function loadLoginUsers() {
   const data = await api('/api/auth/users');
   state.allUsers = data.users;
   els.loginEmail.replaceChildren(...data.users.map((user) => {
     const option = document.createElement('option');
     option.value = user.email;
-    option.textContent = `${user.name} · ${user.role}`;
+    option.textContent = `${user.name} \u00b7 ${user.role}`;
     return option;
   }));
 }
@@ -99,7 +107,9 @@ els.loginForm.addEventListener('submit', async (event) => {
   event.preventDefault();
   els.loginError.textContent = '';
   try {
-    await api('/api/auth/login', { method: 'POST', body: JSON.stringify({ email: els.loginEmail.value, password: els.loginPassword.value }) });
+    const login = await api('/api/auth/login', { method: 'POST', body: JSON.stringify({ email: els.loginEmail.value, password: els.loginPassword.value }) });
+    state.sessionToken = login.sessionToken;
+    sessionStorage.setItem(SESSION_KEY, state.sessionToken);
     state.bootstrap = await api('/api/bootstrap');
     showApp();
   } catch (error) {
@@ -113,7 +123,7 @@ function showApp() {
   const { user, workspace, channels, notifications } = state.bootstrap;
   els.workspaceName.textContent = workspace.name;
   els.profileName.textContent = user.name;
-  els.profileRole.textContent = `${user.email} · ${user.role}`;
+  els.profileRole.textContent = `${user.email} \u00b7 ${user.role}`;
   setAvatar(els.profileAvatar, user);
   renderChannels();
   renderNotificationCounts(notifications);
@@ -146,25 +156,36 @@ window.addEventListener('hashchange', () => {
 });
 
 function renderChannels() {
-  els.channelList.replaceChildren(...state.bootstrap.channels.map((channel) => {
-    const button = document.createElement('button');
-    button.className = `channel-button ${channel.id === state.channelId ? 'active' : ''}`;
-    button.dataset.channelId = channel.id;
-    const privacy = document.createElement('span');
-    privacy.textContent = channel.isPrivate ? '◆' : '#';
-    privacy.setAttribute('aria-hidden', 'true');
-    const label = document.createElement('span');
-    label.className = 'channel-label';
-    label.textContent = channel.name;
-    button.append(privacy, label);
-    if (channel.mentions || channel.unread) {
-      const badge = document.createElement('span');
-      badge.className = `channel-badge ${channel.mentions ? 'mention' : ''}`;
-      badge.textContent = channel.mentions || channel.unread;
-      button.append(badge);
-    }
-    return button;
-  }));
+  const channels = state.bootstrap.channels.filter((channel) => !channel.isDirect);
+  const directs = state.bootstrap.channels.filter((channel) => channel.isDirect);
+  els.channelList.replaceChildren(...channels.map(channelButton));
+  els.directMessageList.replaceChildren(...directs.map(channelButton));
+}
+
+function channelButton(channel) {
+  const button = document.createElement('button');
+  button.className = `channel-button ${channel.id === state.channelId ? 'active' : ''}`;
+  button.dataset.channelId = channel.id;
+  const marker = document.createElement('span');
+  marker.setAttribute('aria-hidden', 'true');
+  if (channel.isDirect) {
+    marker.className = 'dm-avatar';
+    marker.textContent = initials(channel.directUser?.name);
+    marker.style.background = channel.directUser?.color || '#475569';
+  } else {
+    marker.textContent = channel.isPrivate ? '\u25c6' : '#';
+  }
+  const label = document.createElement('span');
+  label.className = 'channel-label';
+  label.textContent = channel.displayName || channel.name;
+  button.append(marker, label);
+  if (channel.mentions || channel.unread) {
+    const badge = document.createElement('span');
+    badge.className = `channel-badge ${channel.mentions ? 'mention' : ''}`;
+    badge.textContent = channel.mentions || channel.unread;
+    button.append(badge);
+  }
+  return button;
 }
 
 function renderNotificationCounts(notifications = []) {
@@ -179,6 +200,10 @@ els.channelList.addEventListener('click', (event) => {
   const button = event.target.closest('[data-channel-id]');
   if (button) loadChannel(button.dataset.channelId);
 });
+els.directMessageList.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-channel-id]');
+  if (button) loadChannel(button.dataset.channelId);
+});
 
 async function loadChannel(channelId, { preserveScroll = false, updateHash = true } = {}) {
   const channel = state.bootstrap.channels.find((item) => item.id === channelId);
@@ -189,10 +214,11 @@ async function loadChannel(channelId, { preserveScroll = false, updateHash = tru
   state.hasMore = false;
   closeThread();
   renderChannels();
-  els.channelName.textContent = channel.name;
-  els.channelPrivacy.textContent = channel.isPrivate ? '◆' : '#';
-  els.channelDescription.textContent = channel.description;
-  els.messageInput.placeholder = `Message #${channel.name}`;
+  els.channelName.textContent = channel.displayName || channel.name;
+  els.channelPrivacy.textContent = channel.isDirect ? '' : (channel.isPrivate ? '\u25c6' : '#');
+  els.channelDescription.textContent = channel.isDirect ? 'Direct message' : channel.description;
+  els.messageInput.placeholder = channel.isDirect ? `Message ${channel.displayName}` : `Message #${channel.name}`;
+  els.messageInput.setAttribute('aria-label', channel.isDirect ? `Message ${channel.displayName}` : `Message #${channel.name}`);
   els.messageList.innerHTML = '<div class="empty-state">Loading conversation...</div>';
   closeMobileNav();
   if (updateHash) history.replaceState(null, '', `#channel=${encodeURIComponent(channelId)}`);
@@ -278,9 +304,11 @@ function messageElement(message, { thread = false, parent = false } = {}) {
   }
   renderReactions(article.querySelector('.message-reactions'), message);
   const summary = article.querySelector('.thread-summary');
-  if (!thread && message.replyCount) {
+  if (!thread && !message.deletedAt && !message.pending) {
     summary.hidden = false;
-    summary.textContent = `${message.replyCount} ${message.replyCount === 1 ? 'reply' : 'replies'} · Latest ${formatTime(message.latestReplyAt)}`;
+    summary.textContent = message.replyCount
+      ? `${message.replyCount} ${message.replyCount === 1 ? 'reply' : 'replies'} \u00b7 Latest ${formatTime(message.latestReplyAt)}`
+      : 'Start a thread';
     summary.dataset.action = 'reply';
   }
   const actions = article.querySelector('.message-actions');
@@ -591,7 +619,7 @@ async function openThread(message) {
     state.threadId = message.id;
     state.threadParent = data.parent;
     state.replies = data.replies;
-    els.threadChannel.textContent = `#${currentChannel()?.name || ''}`;
+    els.threadChannel.textContent = conversationLabel(currentChannel());
     els.threadPanel.hidden = false;
     els.appShell.classList.add('thread-open');
     renderThread();
@@ -660,7 +688,7 @@ async function markChannelRead(messageId = null) {
 function connectEvents() {
   state.eventSource?.close();
   els.connection.textContent = 'Connecting...';
-  const source = new EventSource(`/api/events?viewId=${encodeURIComponent(state.viewId)}`);
+  const source = new EventSource(`/api/events?viewId=${encodeURIComponent(state.viewId)}&session=${encodeURIComponent(state.sessionToken)}`);
   state.eventSource = source;
   source.addEventListener('ready', () => {
     els.connection.textContent = 'Live updates connected';
@@ -793,7 +821,8 @@ function renderResultList(container, messages, emptyText) {
     const button = document.createElement('button');
     button.className = 'result-item';
     const meta = document.createElement('small');
-    meta.textContent = `${message.author?.name || 'Integration'} in #${message.channelName || state.bootstrap.channels.find((channel) => channel.id === message.channelId)?.name} · ${formatDateTime(message.createdAt)}`;
+    const channel = state.bootstrap.channels.find((item) => item.id === message.channelId);
+    meta.textContent = `${message.author?.name || 'Integration'} in ${conversationLabel(channel)} \u00b7 ${formatDateTime(message.createdAt)}`;
     const content = document.createElement('span');
     content.textContent = message.content;
     button.append(meta, content);
@@ -836,7 +865,8 @@ function showMentions() {
     const button = document.createElement('button');
     button.className = 'result-item';
     const meta = document.createElement('small');
-    meta.textContent = `${item.authorName} mentioned you in #${item.channelName} · ${formatDateTime(item.createdAt)}`;
+    const channel = state.bootstrap.channels.find((candidate) => candidate.id === item.channelId);
+    meta.textContent = `${item.authorName} mentioned you in ${conversationLabel(channel)} \u00b7 ${formatDateTime(item.createdAt)}`;
     const content = document.createElement('span');
     content.textContent = item.content;
     button.append(meta, content);
@@ -851,7 +881,7 @@ els.channelPins.addEventListener('click', showPins);
 async function showPins() {
   try {
     const data = await api(`/api/channels/${encodeURIComponent(state.channelId)}/pins`);
-    const channelName = currentChannel()?.name;
+    const channel = currentChannel();
     const nodes = data.messages.length ? data.messages.map((message) => {
       const button = document.createElement('button');
       button.className = 'result-item';
@@ -860,14 +890,49 @@ async function showPins() {
       const content = document.createElement('span');
       content.textContent = message.content;
       button.append(meta, content);
-      button.addEventListener('click', () => navigateToMessage({ ...message, channelName }));
+      button.addEventListener('click', () => navigateToMessage({ ...message, channelName: channel?.name }));
       return button;
     }) : [emptyNode('No pinned messages in this channel.')];
-    openDetail(`#${channelName}`, 'Pinned messages', nodes);
+    openDetail(conversationLabel(channel), 'Pinned messages', nodes);
   } catch (error) { toast(error.message, 'error'); }
 }
 
 els.membersButton.addEventListener('click', showMembers);
+els.newDirectMessage.addEventListener('click', showNewDirectMessage);
+
+async function showNewDirectMessage() {
+  if (!state.allUsers.length) state.allUsers = (await api('/api/auth/users')).users;
+  const users = state.allUsers.filter((user) => user.id !== state.bootstrap.user.id);
+  const nodes = users.map((user) => {
+    const button = document.createElement('button');
+    button.className = 'member-row member-choice';
+    const avatar = document.createElement('span');
+    avatar.className = 'avatar';
+    setAvatar(avatar, user);
+    const label = document.createElement('div');
+    const name = document.createElement('strong');
+    name.textContent = user.name;
+    const detail = document.createElement('span');
+    detail.textContent = user.email;
+    label.append(name, detail);
+    button.append(avatar, label);
+    button.addEventListener('click', async () => {
+      button.disabled = true;
+      try {
+        const data = await api('/api/direct-messages', { method: 'POST', body: JSON.stringify({ userId: user.id }) });
+        await refreshBootstrap();
+        els.detailDialog.close();
+        await loadChannel(data.channel.id);
+      } catch (error) {
+        button.disabled = false;
+        toast(error.message, 'error');
+      }
+    });
+    return button;
+  });
+  openDetail('New conversation', 'Direct message', nodes);
+}
+
 async function showMembers() {
   const channel = currentChannel();
   if (!channel) return;
@@ -887,7 +952,7 @@ async function showMembers() {
     role.textContent = `${user.role}${member ? ' · member' : ' · not in channel'}`;
     label.append(name, role);
     row.append(avatar, label);
-    if (state.bootstrap.user.role === 'admin' && user.id !== state.bootstrap.user.id) {
+    if (!channel.isDirect && state.bootstrap.user.role === 'admin' && user.id !== state.bootstrap.user.id) {
       const control = document.createElement('button');
       control.className = member ? '' : 'primary-button';
       control.textContent = member ? 'Remove' : 'Add';
@@ -903,7 +968,7 @@ async function showMembers() {
     }
     return row;
   }).filter(Boolean);
-  openDetail(`#${channel.name}`, 'Channel members', nodes);
+  openDetail(channel.isDirect ? channel.displayName : `#${channel.name}`, channel.isDirect ? 'Conversation members' : 'Channel members', nodes);
 }
 
 function openDetail(eyebrow, title, nodes) {
@@ -929,6 +994,8 @@ els.profileButton.addEventListener('click', () => { els.profileMenu.hidden = !el
 els.logout.addEventListener('click', async () => {
   await api('/api/auth/logout', { method: 'POST', body: '{}' });
   state.eventSource?.close();
+  state.sessionToken = '';
+  sessionStorage.removeItem(SESSION_KEY);
   location.reload();
 });
 

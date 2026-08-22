@@ -5,7 +5,7 @@ const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3001';
 class Session {
   constructor(name) {
     this.name = name;
-    this.cookie = '';
+    this.token = '';
   }
 
   async request(path, { method = 'GET', body, headers = {} } = {}) {
@@ -13,13 +13,11 @@ class Session {
       method,
       headers: {
         ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
-        ...(this.cookie ? { Cookie: this.cookie } : {}),
+        ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
         ...headers
       },
       body: body === undefined ? undefined : JSON.stringify(body)
     });
-    const setCookie = response.headers.get('set-cookie');
-    if (setCookie) this.cookie = setCookie.split(';', 1)[0];
     const data = await response.json().catch(() => null);
     return { status: response.status, ok: response.ok, data };
   }
@@ -30,6 +28,8 @@ class Session {
       body: { email, password: 'northstar' }
     });
     assert.equal(result.status, 200, `${this.name} login failed`);
+    assert(result.data.sessionToken, `${this.name} login did not return a session token`);
+    this.token = result.data.sessionToken;
   }
 }
 
@@ -214,6 +214,30 @@ async function main() {
     method: 'POST', body: { userId: 'omar', action: 'add' }
   }), 200, 'restore Omar membership');
 
+  const dmOne = expectStatus(await priya.request('/api/direct-messages', {
+    method: 'POST', body: { userId: 'maya', members: ['priya', 'maya', 'omar'], creatorId: 'omar' }
+  }), 201, 'create direct message');
+  const dmTwo = expectStatus(await priya.request('/api/direct-messages', {
+    method: 'POST', body: { userId: 'maya' }
+  }), 200, 'reopen direct message');
+  assert.equal(dmOne.channel.id, dmTwo.channel.id);
+  assert.equal(dmOne.channel.kind, 'direct');
+  assert.deepEqual(dmOne.channel.members.map((member) => member.id).sort(), ['maya', 'priya']);
+  const dmMessage = expectStatus(
+    await send(priya, dmOne.channel.id, 'SMOKE-DIRECT-PRIVATE', 'smoke-direct-001'),
+    201,
+    'send direct message'
+  ).message;
+  assert.equal(dmMessage.author.id, 'priya');
+  assert((await messages(maya, dmOne.channel.id)).some((message) => message.id === dmMessage.id));
+  expectStatus(await jordan.request(`/api/channels/${dmOne.channel.id}/messages`), 403, 'non-participant direct read');
+  expectStatus(await jordan.request(`/api/search?q=SMOKE-DIRECT-PRIVATE&channelId=${dmOne.channel.id}`), 403, 'non-participant direct search');
+  expectStatus(await maya.request(`/api/channels/${dmOne.channel.id}/members`, {
+    method: 'POST', body: { userId: 'omar', action: 'add' }
+  }), 400, 'direct participant mutation');
+  expectStatus(await priya.request('/api/direct-messages', { method: 'POST', body: { userId: 'priya' } }), 400, 'self direct message');
+  expectStatus(await priya.request('/api/direct-messages', { method: 'POST', body: { userId: 'not-a-user' } }), 400, 'unknown direct message target');
+
   const webhookOne = expectStatus(await anonymous.request('/api/hooks/atlas-builds-secret', {
     method: 'POST', body: { eventId: 'smoke-webhook-001', channelId: 'launch-room', text: 'SMOKE-WEBHOOK' }
   }), 201, 'webhook positive');
@@ -226,9 +250,9 @@ async function main() {
   }), 403, 'webhook channel mismatch');
   assert.equal((await messages(priya, 'launch-room')).filter((item) => item.content === 'SMOKE-WEBHOOK').length, 1);
 
-  const capturedCookie = priya.cookie;
+  const capturedToken = priya.token;
   expectStatus(await priya.request('/api/auth/logout', { method: 'POST', body: {} }), 200, 'logout');
-  priya.cookie = capturedCookie;
+  priya.token = capturedToken;
   expectStatus(
     await send(priya, 'general', 'SMOKE-LOGGED-OUT', 'smoke-logout-001'),
     401,

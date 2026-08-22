@@ -14,7 +14,7 @@ command = "playwright-mcp"
 args = ["--headless", "--isolated", "--browser=chromium", "--no-sandbox"]
 
 # feature = auth_session
-# sub_feature = login_and_cookie_isolation
+# sub_feature = login_and_tab_isolation
 # kind = hard_gate
 # depends_on = []
 [[criterion]]
@@ -23,7 +23,7 @@ name = "seeded_login_and_session_isolation"
 type = "binary"
 weight = 0.5
 description = """
-Feature metadata: feature=auth_session; sub_feature=login_and_cookie_isolation; kind=hard_gate; depends_on=none. This criterion is all-or-nothing. Open Threadline in a fresh browser context and verify a usable seeded-user sign-in screen appears before workspace data. Establish a negative control by submitting one seeded email with an incorrect password; require a visible rejection, no authenticated workspace, and a same-origin GET of the bootstrap/current-user API returning 401 or another non-2xx response. Sign in as Priya Shah with the seeded password and verify the page shows Priya, workspace Northstar Studio, public channels general and launch-room, and does not show private channel leadership. In a second isolated browser context, sign in as Maya Chen and verify it independently shows Maya and does show leadership. Reload both pages and verify each context remains signed in as its own user without either identity changing the other.
+Feature metadata: feature=auth_session; sub_feature=login_and_tab_isolation; kind=hard_gate; depends_on=none. This criterion is all-or-nothing. Open two ordinary tabs in the same browser context; do not use separate browser contexts, incognito profiles, or cookie jars. Verify both tabs initially show a usable seeded-user sign-in screen before workspace data. In tab one, establish a negative control by submitting Priya Shah's seeded email with an incorrect password; require a visible rejection, no authenticated workspace, and a same-origin GET of the bootstrap/current-user API returning 401 or another non-2xx response. Sign in as Priya with the seeded password and verify Northstar Studio, general, and launch-room are shown while leadership is absent. Without closing or isolating tab one, sign in as Maya Chen in tab two and verify tab two shows Maya and leadership while tab one still shows Priya without a reload. Reload both tabs and verify each retains its own user. Sign out only tab two and verify tab two returns to sign-in while tab one remains an authenticated Priya workspace.
 """
 
 # feature = auth_session
@@ -36,7 +36,7 @@ name = "server_owned_identity_and_logout_revocation"
 type = "binary"
 weight = 2.0
 description = """
-Feature metadata: feature=auth_session; sub_feature=server_owned_identity; kind=hard_gate; depends_on=seeded_login_and_session_isolation. This criterion is all-or-nothing. Sign in as Priya Shah and discover the real send-message request from the live app. Through a direct same-origin fetch, send a general-channel message with unique text IDENTITY-PRIYA and a valid unique client id, while adding forged body fields that claim Maya's user id, name, admin role, ownership, and a client timestamp. Require the save to succeed but re-read the stored message and verify its author is exactly Priya, its id and timestamp are server assigned, and none of the forged identity/role/time fields became authoritative. Capture a second otherwise-valid send request, log out through the visible UI, and replay that request without an authenticated cookie; require a non-2xx response. Re-read general after signing back in and verify the replay marker was not stored and no duplicate of IDENTITY-PRIYA exists.
+Feature metadata: feature=auth_session; sub_feature=server_owned_identity; kind=hard_gate; depends_on=seeded_login_and_session_isolation. This criterion is all-or-nothing. Sign in as Priya Shah and discover the real send-message request from the live app. Through a direct same-origin fetch, send a general-channel message with unique text IDENTITY-PRIYA and a valid unique client id, while adding forged body fields that claim Maya's user id, name, admin role, ownership, and a client timestamp. Require the save to succeed but re-read the stored message and verify its author is exactly Priya, its id and timestamp are server assigned, and none of the forged identity/role/time fields became authoritative. Capture a second otherwise-valid send request, log out through the visible UI, and replay that request with the captured session credential; require a non-2xx response. Re-read general after signing back in and verify the replay marker was not stored and no duplicate of IDENTITY-PRIYA exists.
 """
 
 # feature = channel_authorization
@@ -49,7 +49,33 @@ name = "private_channel_object_authorization"
 type = "binary"
 weight = 2.0
 description = """
-Feature metadata: feature=channel_authorization; sub_feature=private_channel_isolation; kind=hard_gate; depends_on=server_owned_identity_and_logout_revocation. This criterion is all-or-nothing. In a Maya Chen context, positively verify leadership is visible, can be opened, and contains the seeded staffing message. In a separate Priya Shah context, verify leadership is absent from channel navigation. From Priya's authenticated page, use direct same-origin fetch calls against the discovered leadership message-list, send-message, pins, search-with-channel-filter, and one seeded leadership-message history/reaction route. Every private-object read or write must return a non-2xx response without navigating Priya away from her accessible workspace. Re-read leadership as Maya and verify the seeded message and message count are exactly unchanged and no marker PRIVATE-FORGE-PRIYA was created.
+Feature metadata: feature=channel_authorization; sub_feature=private_channel_isolation; kind=hard_gate; depends_on=server_owned_identity_and_logout_revocation. This criterion is all-or-nothing. In a Maya Chen tab, positively verify leadership is visible, can be opened, and contains the seeded staffing message. In a separate ordinary tab in the same browser context, sign in as Priya Shah and verify leadership is absent from channel navigation. From Priya's authenticated page, use direct same-origin fetch calls against the discovered leadership message-list, send-message, pins, search-with-channel-filter, and one seeded leadership-message history/reaction route. Every private-object read or write must return a non-2xx response without navigating Priya away from her accessible workspace. Re-read leadership as Maya and verify the seeded message and message count are exactly unchanged and no marker PRIVATE-FORGE-PRIYA was created.
+"""
+
+# feature = direct_messages
+# sub_feature = pair_uniqueness_and_participant_authorization
+# kind = hard_gate
+# depends_on = [seeded_login_and_session_isolation, server_owned_identity_and_logout_revocation]
+[[criterion]]
+id = "direct_message_pair_uniqueness_and_authorization"
+name = "direct_message_pair_uniqueness_and_authorization"
+type = "binary"
+weight = 2.0
+description = """
+Feature metadata: feature=direct_messages; sub_feature=pair_uniqueness_and_participant_authorization; kind=hard_gate; depends_on=seeded_login_and_session_isolation,server_owned_identity_and_logout_revocation. This criterion is all-or-nothing. Use two ordinary tabs in the same browser context, signed in as Priya and Maya. In Priya's visible Direct messages section, use only the visible new-conversation control and member picker to choose Maya. Require one direct conversation named Maya Chen to open with exactly Priya and Maya as members. Send exact marker DM-PAIR-PRIVATE through its visible composer, then use the new-conversation control to choose Maya again; require the same conversation and same marker to reopen, with no duplicate direct-conversation entry. In Maya's tab, verify the same conversation is present and contains exactly one DM-PAIR-PRIVATE. From Priya's authenticated page, replay the discovered direct-conversation creation request with target Maya while adding forged members, creator, owner, role, and channel-id fields; require the response to identify the same conversation with exactly Priya and Maya and no third member. In an Omar tab, use direct same-origin reads, sends, filtered search, history, and reaction requests against that conversation; every route must return non-2xx. Re-read it as Priya and verify its participant list and stored content are unchanged by Omar. Also require self-target and unknown-user creation attempts to be rejected with no channel or membership side effect.
+"""
+
+# feature = direct_messages
+# sub_feature = live_two_tab_unread_and_threads
+# kind = graded
+# depends_on = [direct_message_pair_uniqueness_and_authorization, thread_reply_parent_channel_authorization]
+[[criterion]]
+id = "direct_message_live_unread_and_thread_workflow"
+name = "direct_message_live_unread_and_thread_workflow"
+type = "binary"
+weight = 1.5
+description = """
+Feature metadata: feature=direct_messages; sub_feature=live_two_tab_unread_and_threads; kind=graded; depends_on=direct_message_pair_uniqueness_and_authorization,thread_reply_parent_channel_authorization. This criterion is all-or-nothing. Keep Priya and Maya signed in to two ordinary tabs in the same browser context. Have Maya stay in general while Priya opens their direct conversation and sends exact parent DM-LIVE-PARENT through the visible composer. Without reloading Maya, require her Direct messages entry for Priya to gain exactly one unread and Priya's own unread not to increase. Have Maya open that direct conversation and verify the unread clears only for Maya and DM-LIVE-PARENT appears exactly once. On that parent use the visible Reply or Start a thread control, send DM-LIVE-REPLY from Maya through the thread composer, and verify Priya receives the reply plus reply-count/latest-reply update live without reload. Add one visible reaction from Priya and verify Maya sees exactly one contribution live. Reload both tabs and verify the parent, reply, reaction, per-user read state, and one-to-one participant list persist without duplicate messages or a group member.
 """
 
 # feature = channel_authorization
@@ -62,7 +88,7 @@ name = "membership_revocation_blocks_captured_requests"
 type = "binary"
 weight = 2.0
 description = """
-Feature metadata: feature=channel_authorization; sub_feature=immediate_membership_revocation; kind=hard_gate; depends_on=private_channel_object_authorization. This criterion is all-or-nothing. Sign in as Maya and Omar in separate contexts. As Maya, open leadership's visible channel-member view, locate Omar's member row, and use its visible Add control. Positively verify Omar can refresh his bootstrap, open leadership, read its seeded message, and see himself in the visible member view. From Omar's page capture a valid leadership send request with marker REVOKED-CAPTURE and a unique client id but do not send it yet. As Maya, use Omar's visible Remove control in the leadership member view. Then replay Omar's captured request using Omar's still-valid session. Require a non-2xx response; Omar's refreshed bootstrap must no longer list leadership, and leadership reads/search/reactions must be rejected. As Maya, re-read leadership and verify REVOKED-CAPTURE was not stored and no audit/message side effect was created. Restore Omar through the visible member control at the end so this self-contained check does not poison later criteria.
+Feature metadata: feature=channel_authorization; sub_feature=immediate_membership_revocation; kind=hard_gate; depends_on=private_channel_object_authorization. This criterion is all-or-nothing. Sign in as Maya and Omar in two ordinary tabs in the same browser context. As Maya, open leadership's visible channel-member view, locate Omar's member row, and use its visible Add control. Positively verify Omar can refresh his bootstrap, open leadership, read its seeded message, and see himself in the visible member view. From Omar's page capture a valid leadership send request with marker REVOKED-CAPTURE and a unique client id but do not send it yet. As Maya, use Omar's visible Remove control in the leadership member view. Then replay Omar's captured request using Omar's still-valid session. Require a non-2xx response; Omar's refreshed bootstrap must no longer list leadership, and leadership reads/search/reactions must be rejected. As Maya, re-read leadership and verify REVOKED-CAPTURE was not stored and no audit/message side effect was created. Restore Omar through the visible member control at the end so this self-contained check does not poison later criteria.
 """
 
 # feature = channel_authorization
@@ -166,7 +192,7 @@ name = "per_user_unread_read_scope"
 type = "binary"
 weight = 1.5
 description = """
-Feature metadata: feature=derived_user_state; sub_feature=per_user_read_positions; kind=graded; depends_on=message_multiline_order_and_idempotency. This criterion is all-or-nothing. Sign in as Priya and Omar in separate contexts and record each channel's unread counts. While both remain away from launch-room, have Priya send UNREAD-SCOPE there. Verify Priya's own launch-room unread count does not increase, while Omar's launch-room count increases by exactly one without reload. Have Omar open or mark only general as read and verify the launch-room count is unchanged. Then open launch-room as Omar and mark through UNREAD-SCOPE read; verify only Omar's launch-room unread count clears while Priya's channel state is unaffected. Reload both contexts and verify the resulting per-user read positions and counts persist.
+Feature metadata: feature=derived_user_state; sub_feature=per_user_read_positions; kind=graded; depends_on=message_multiline_order_and_idempotency. This criterion is all-or-nothing. Sign in as Priya and Omar in two ordinary tabs in the same browser context and record each channel's unread counts. While both remain away from launch-room, have Priya send UNREAD-SCOPE there. Verify Priya's own launch-room unread count does not increase, while Omar's launch-room count increases by exactly one without reload. Have Omar open or mark only general as read and verify the launch-room count is unchanged. Then open launch-room as Omar and mark through UNREAD-SCOPE read; verify only Omar's launch-room unread count clears while Priya's channel state is unaffected. Reload both tabs and verify the resulting per-user read positions and counts persist.
 """
 
 # feature = derived_user_state
@@ -218,7 +244,7 @@ name = "live_message_thread_reaction_delivery"
 type = "binary"
 weight = 1.0
 description = """
-Feature metadata: feature=live_collaboration; sub_feature=cross_session_change_delivery; kind=graded; depends_on=thread_metadata_after_reply_mutations,reaction_idempotency_and_access. This criterion is all-or-nothing. Keep separate Priya and Omar browser contexts simultaneously open on general and do not reload the receiving context. Through Priya's visible composer send LIVE-DELIVERY; verify it appears in Omar's timeline automatically exactly once. Open its thread in both contexts, add LIVE-REPLY from Omar, and verify Priya's thread plus parent reply metadata update automatically. Add a thumbs-up reaction through Priya's visible reaction control and verify Omar sees the changed reaction count automatically. Edit LIVE-DELIVERY through Priya's visible edit control and then delete LIVE-REPLY through Omar's visible delete control; verify Omar sees the parent edit and Priya sees the reply removal/metadata correction live. Polling, direct API mutation, or direct DOM injection by the verifier does not satisfy this criterion.
+Feature metadata: feature=live_collaboration; sub_feature=cross_session_change_delivery; kind=graded; depends_on=thread_metadata_after_reply_mutations,reaction_idempotency_and_access. This criterion is all-or-nothing. Keep Priya and Omar signed in to two ordinary tabs in the same browser context, simultaneously open on general, and do not reload the receiving tab. Through Priya's visible composer send LIVE-DELIVERY; verify it appears in Omar's timeline automatically exactly once. Open its thread in both tabs, add LIVE-REPLY from Omar, and verify Priya's thread plus parent reply metadata update automatically. Add a thumbs-up reaction through Priya's visible reaction control and verify Omar sees the changed reaction count automatically. Edit LIVE-DELIVERY through Priya's visible edit control and then delete LIVE-REPLY through Omar's visible delete control; verify Omar sees the parent edit and Priya sees the reply removal/metadata correction live. Polling, direct API mutation, or direct DOM injection by the verifier does not satisfy this criterion.
 """
 
 # feature = live_collaboration
@@ -231,7 +257,7 @@ name = "presence_typing_multiview_cleanup"
 type = "binary"
 weight = 1.5
 description = """
-Feature metadata: feature=live_collaboration; sub_feature=presence_typing_and_reconnect; kind=hard_gate; depends_on=seeded_login_and_session_isolation. This criterion is all-or-nothing. Open two separate Priya views and one Omar view on general, each with its own real live connection. Verify presence represents all three individual views while any summarized user count remains logically consistent. Type in Omar's visible composer without sending and verify both Priya views show Omar typing; stop typing and verify the indicator expires within the app's normal timeout. Close one Priya view and verify exactly that view retires without removing the other Priya view. Switch Omar to launch-room and verify Omar leaves general presence and joins launch-room. Reconnect one remaining view and verify no duplicate presence row, typing user, or message appears after reconnection.
+Feature metadata: feature=live_collaboration; sub_feature=presence_typing_and_reconnect; kind=hard_gate; depends_on=seeded_login_and_session_isolation. This criterion is all-or-nothing. Open two ordinary tabs signed in as Priya and one ordinary tab signed in as Omar in the same browser context, all on general and each with its own real live connection. Verify presence represents all three individual views while any summarized user count remains logically consistent. Type in Omar's visible composer without sending and verify both Priya tabs show Omar typing; stop typing and verify the indicator expires within the app's normal timeout. Close one Priya tab and verify exactly that view retires without removing the other Priya view. Switch Omar to launch-room and verify Omar leaves general presence and joins launch-room. Reconnect one remaining view and verify no duplicate presence row, typing user, or message appears after reconnection.
 """
 
 # feature = derived_user_state
@@ -283,7 +309,7 @@ name = "message_links_route_to_exact_target"
 type = "binary"
 weight = 0.5
 description = """
-Feature metadata: feature=messages_threads; sub_feature=exact_message_deep_links; kind=graded; depends_on=thread_reply_parent_channel_authorization. This criterion is all-or-nothing. Create a fresh general parent LINK-PARENT and a threaded reply LINK-REPLY through the visible UI. Use the visible Copy message link action on LINK-PARENT, read the resulting browser clipboard value, and open that copied URL in another authenticated browser context; verify general opens and LINK-PARENT is brought into view. Then use the visible Copy message link action on LINK-REPLY and open that independently copied URL in another authenticated context. Verify general opens, the correct LINK-PARENT thread opens automatically, and LINK-REPLY itself is present in that thread. A URL invented by the verifier, direct DOM mutation, search navigation, or merely landing somewhere in general does not satisfy either copied-link path.
+Feature metadata: feature=messages_threads; sub_feature=exact_message_deep_links; kind=graded; depends_on=thread_reply_parent_channel_authorization. This criterion is all-or-nothing. Create a fresh general parent LINK-PARENT and a threaded reply LINK-REPLY through the visible UI. Use the visible Copy message link action on LINK-PARENT, read the resulting browser clipboard value, and open that copied URL in another authenticated ordinary tab; verify general opens and LINK-PARENT is brought into view. Then use the visible Copy message link action on LINK-REPLY and open that independently copied URL in another authenticated ordinary tab. Verify general opens, the correct LINK-PARENT thread opens automatically, and LINK-REPLY itself is present in that thread. A URL invented by the verifier, direct DOM mutation, search navigation, or merely landing somewhere in general does not satisfy either copied-link path.
 """
 
 # feature = interface_usability

@@ -7,7 +7,8 @@ This file is author-only context and must not be included in the upload zip.
 ```text
 Gate 1: deterministic seed + authenticated session
   -> Gate 2: channel membership and object authorization
-     -> Gate 3: ordered messages and threads
+     -> Gate 3: unique, private one-to-one direct conversations
+        -> Gate 4: ordered messages and threads
         -> unread state, mentions, reactions, pins, search
         -> live delivery, presence, typing, reconnect
         -> webhook delivery and idempotency
@@ -21,8 +22,8 @@ Every browser criterion will include `feature`, `sub_feature`, and
 state they inspect. Server trust-boundary criteria will replay raw requests and
 confirm rejected requests make no durable change.
 
-The browser rubric currently has 22 binary, feature-scoped criteria with a
-total weight of 30.5. The machine-readable mapping is in
+The browser rubric currently has 24 binary, feature-scoped criteria with a
+total weight of 34.0. The machine-readable mapping is in
 `tests/rubric/browser/feature-map.json`; matching metadata is repeated beside
 each criterion in `browser.toml` so a run report can be grouped by feature and
 sub-feature.
@@ -48,12 +49,14 @@ sub-feature.
 
 ## Current validation status
 
-- Golden API smoke passes identity forgery, private access, cross-target
+- Golden API smoke passes identity forgery, private access, direct-message
+  pair uniqueness and participant isolation, cross-target
   idempotency rejection, stale edit/audit, mention reconciliation, reaction
   uniqueness, pin cleanup, thread integrity, membership revocation, webhook
   replay, and logout revocation.
-- Golden live-browser smoke passes cross-session message/thread delivery,
-  typing cleanup, and exact reply deep links.
+- Golden same-browser browser smoke passes independent per-tab identities,
+  direct-message creation, live delivery, visible thread creation, thread
+  replies, and mobile layout without horizontal overflow.
 - Golden mobile smoke passes the 390x844 channel, message, thread, and return
   workflow without horizontal document overflow.
 - The verifier independently hard-gates clean-seed restart idempotence before
@@ -64,6 +67,7 @@ sub-feature.
 ## Model-breaking targets
 
 - session identity forgery and private-channel object authorization
+- tab-scoped identities and duplicate-safe, participant-only direct messages
 - server ordering, optimistic reconciliation, retries, and idempotency
 - thread parent metadata after reply edit/delete
 - per-user unread and mention correction after message mutation

@@ -43,6 +43,7 @@ db.exec(`
     workspace_id TEXT NOT NULL REFERENCES workspaces(id),
     name TEXT NOT NULL,
     description TEXT NOT NULL,
+    kind TEXT NOT NULL DEFAULT 'public' CHECK (kind IN ('public', 'private', 'direct')),
     is_private INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL
   );
@@ -124,6 +125,21 @@ db.exec(`
   );
 `);
 
+const channelColumns = db.prepare('PRAGMA table_info(channels)').all();
+if (!channelColumns.some((column) => column.name === 'kind')) {
+  db.exec("ALTER TABLE channels ADD COLUMN kind TEXT NOT NULL DEFAULT 'public'");
+  db.exec("UPDATE channels SET kind = CASE WHEN is_private = 1 THEN 'private' ELSE 'public' END");
+}
+db.exec(`
+  CREATE TABLE IF NOT EXISTS direct_conversations (
+    channel_id TEXT PRIMARY KEY REFERENCES channels(id),
+    user_low TEXT NOT NULL REFERENCES users(id),
+    user_high TEXT NOT NULL REFERENCES users(id),
+    UNIQUE (user_low, user_high),
+    CHECK (user_low < user_high)
+  );
+`);
+
 export function hashToken(value) {
   return createHash('sha256').update(String(value)).digest('hex');
 }
@@ -178,15 +194,21 @@ function seedIfNeeded() {
     }
 
     const insertChannel = db.prepare(`
-      INSERT INTO channels (id, workspace_id, name, description, is_private, created_at)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO channels (id, workspace_id, name, description, kind, is_private, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
     const insertMember = db.prepare(`
       INSERT INTO channel_members (channel_id, user_id, added_at) VALUES (?, ?, ?)
     `);
     for (const channel of seed.channels) {
-      insertChannel.run(channel.id, seed.workspace.id, channel.name, channel.description, channel.isPrivate ? 1 : 0, now);
+      const kind = channel.kind || (channel.isPrivate ? 'private' : 'public');
+      insertChannel.run(channel.id, seed.workspace.id, channel.name, channel.description, kind, channel.isPrivate ? 1 : 0, now);
       for (const userId of channel.members) insertMember.run(channel.id, userId, now);
+      if (kind === 'direct') {
+        const [userLow, userHigh] = [...channel.members].sort();
+        db.prepare('INSERT INTO direct_conversations (channel_id, user_low, user_high) VALUES (?, ?, ?)')
+          .run(channel.id, userLow, userHigh);
+      }
     }
 
     const insertMessage = db.prepare(`
