@@ -36,6 +36,7 @@ def log(msg: str) -> None:
 
 
 def run(cmd, **kwargs) -> subprocess.CompletedProcess:
+    kwargs.setdefault("timeout", 600)
     return subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", **kwargs)
 
 

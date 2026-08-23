@@ -25,6 +25,11 @@ Important grading rules:
   Capture the real method, route, body shape, version, and session credential from the live
   app. Do not invent a golden-only route or require a particular session-token
   representation.
+- When a criterion gives an exact route and request body, call that exact route
+  first. Do not search guessed alternatives or infer that the feature is absent
+  from UI controls, bundle text, source inspection, or unrelated 404 responses.
+  Reasoning must quote the exact requested route, HTTP status, relevant response
+  fields, and the resulting durable-state count.
 - The server, not a disabled control, hidden menu, client field, or browser
   storage, must enforce identity, role, membership, ownership, version, and
   idempotency rules.

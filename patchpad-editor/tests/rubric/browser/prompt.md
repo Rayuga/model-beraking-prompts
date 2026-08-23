@@ -36,7 +36,36 @@ Important grading rules:
   the API if the UI is virtualized or not all lines are visible.
 - For keyboard tests, click/focus the custom editor surface first. Prefer normal
   keyboard input where possible; use JavaScript evaluation only for direct API
-  probes or to inspect DOM/API state, not to "fix" the app.
+  probes, browser-clipboard setup/readback, or to inspect DOM/API state, not to
+  "fix" the app. Clipboard insertion, copying, and cutting must still use the
+  required real keyboard shortcuts.
+- When a criterion requires mouse selection, use Playwright's real mouse
+  actions only. Do not dispatch synthetic PointerEvent/MouseEvent objects,
+  invoke application handlers, mutate selection state, or substitute keyboard
+  selection. If the named mouse path does not work, fail that criterion.
+- Type every exact marker requested by a criterion. Do not shorten a word to
+  one character, test a smaller sample, or infer that untested Backspace,
+  Delete, Undo, Redo, clipboard, or multi-caret sub-steps probably work.
+- A shortened marker is an automatic failure for that criterion. For example,
+  `X`, `MC`, or `MC-` is not evidence for a required `MULTI`, and behavior
+  observed for the shorter text must not be extrapolated to the required text.
+- Count Undo and Redo commands exactly. When a criterion requires one Undo,
+  issue exactly one Undo and inspect the document immediately. If any character
+  from the edit remains, score `no`; do not continue undoing and then call the
+  criterion passed. Apply the same rule to one required Redo.
+- Verify exact resulting text, line, revision, and count values after each
+  step. A visual highlight, enabled control, source-code branch, or status
+  message alone does not prove the underlying document mutation.
+- Before assigning `yes`, the reasoning must state the exact marker or source
+  text used and the exact observed value after every required Undo/Redo or
+  mutation checkpoint. A statement such as "verified previously", "worked
+  consistently", or "equivalent behavior" without those values is
+  insufficient and must be scored `no`.
+- Do not award a criterion from source-code inspection or from behavior tested
+  in another criterion. Perform every named sub-step in the current criterion.
+- If any named sub-step cannot be performed through its required interaction
+  path, score the entire criterion as failed instead of finding an alternate
+  route to the same final state.
 
 Required API discovery for forged probes:
 

@@ -8,9 +8,9 @@ predictable editor behavior, saved revisions, and conflict-safe persistence.
 
 Seed the app from `/assets/incident_seed.json` on first startup. The seed file
 contains one document, a title, and enough structured text to exercise a long
-editor. Starting from an empty SQLite database must create the seeded document
-and its first revision. Starting again must not duplicate the document or
-revision.
+editor. Preserve its generation metadata and trailing sections exactly.
+Starting from an empty SQLite database must create the seeded document and its
+first revision. Starting again must not duplicate the document or revision.
 
 ## Required stack
 
