@@ -208,7 +208,6 @@ els.directMessageList.addEventListener('click', (event) => {
 async function loadChannel(channelId, { preserveScroll = false, updateHash = true } = {}) {
   const channel = state.bootstrap.channels.find((item) => item.id === channelId);
   if (!channel) return;
-  if (state.channelId && state.channelId !== channelId) await publishTyping(false);
   const oldScroll = els.messageScroller.scrollTop;
   state.channelId = channelId;
   state.messages = [];
@@ -522,8 +521,6 @@ els.messageInput.addEventListener('keydown', (event) => {
 });
 
 let typingTimer;
-let typingRetryTimer;
-let typingDesiredActive = false;
 els.messageInput.addEventListener('input', () => {
   els.sendButton.disabled = !els.messageInput.value.trim();
   updateMentionSuggestions();
@@ -699,7 +696,6 @@ function connectEvents() {
   source.addEventListener('ready', () => {
     els.connection.textContent = 'Live updates connected';
     publishPresence();
-    publishTyping();
   });
   source.addEventListener('presence', (event) => {
     const data = JSON.parse(event.data);
@@ -796,21 +792,10 @@ function renderPresence() {
 }
 
 async function publishTyping(active) {
-  if (typeof active === 'boolean') typingDesiredActive = active;
-  clearTimeout(typingRetryTimer);
-  if (!state.channelId) return;
-  if (state.eventSource?.readyState !== EventSource.OPEN) {
-    if (typingDesiredActive) typingRetryTimer = setTimeout(() => publishTyping(), 150);
-    return;
-  }
-  const channelId = state.channelId;
+  if (!state.channelId || state.eventSource?.readyState !== EventSource.OPEN) return;
   try {
-    await api('/api/typing', { method: 'POST', body: JSON.stringify({ channelId, viewId: state.viewId, active: typingDesiredActive }) });
-  } catch {
-    if (typingDesiredActive && state.channelId === channelId) {
-      typingRetryTimer = setTimeout(() => publishTyping(), 250);
-    }
-  }
+    await api('/api/typing', { method: 'POST', body: JSON.stringify({ channelId: state.channelId, viewId: state.viewId, active }) });
+  } catch { /* Typing feedback is transient. */ }
 }
 
 function renderTyping() {
