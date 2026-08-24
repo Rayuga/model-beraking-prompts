@@ -1,0 +1,459 @@
+{
+  "reward": {
+    "score": 0.0,
+    "criteria": [
+      {
+        "id": "book_l118_payment",
+        "name": "book_l118_payment",
+        "value": 0.0,
+        "raw": null,
+        "weight": 2.0,
+        "description": "From the catalog, open L-118's own profile \u2014 not K-055, D-004, or T-012. Verify the opened view shows L-118, a 70-200mm lens, Riverside, about $45/day, and a $400 deposit (not $200 or $80), plus start and end date inputs and a payment action. Fail immediately if the opened profile belongs to a different unit.\nThen, as Maya Chen, reserve specifically L-118 (the Riverside 70-200mm lens) for 2030-06-10 through 2030-06-14 through the visible UI and real Stripe Checkout. Before paying, verify checkout.stripe.com shows a total of about $641.31 (five inclusive midweek days at $45 is $225.00, no week rate below seven days, no weekend line, plus about $16.31 Riverside tax and a $400 deposit) attributable to L-118 or the 70-200mm lens \u2014 fail if the total is about $625 (rental+deposit with no tax), about $214 (tent), about $939 (drone), or $1. Complete Stripe Checkout using email maya.chen@example.com, card 4242 4242 4242 4242, expiry 12/34, CVC 123, cardholder Maya Chen, and ZIP/postal code 94103. Wait for the redirect back to localhost:3000 and verify a booking success / payment verified / reservation confirmed message is visible. Re-read L-118's catalog card: it must no longer read as a free walk-up / simply available for those dates (spoken for, reserved, or equivalent is fine). Fail if the wall card still presents L-118 as an ordinary available unit after the card cleared.\n",
+        "error": "judge timed out after 4500s"
+      },
+      {
+        "id": "payment_replay_no_duplicate",
+        "name": "payment_replay_no_duplicate",
+        "value": 0.0,
+        "raw": null,
+        "weight": 1.5,
+        "description": "Immediately after the booking-success confirmation for Maya's L-118 2030-06-10 through 2030-06-14 reservation, capture the Stripe Checkout session identifier from the return URL or the app's own network traffic. Then replay the payment three ways: (1) reload the current page; (2) navigate directly to the original return URL including its session identifier, twice; and (3) required \u2014 forge the app's own post-payment confirmation request directly via JavaScript evaluation, using that same session identifier, at least twice more. Also forge one confirmation carrying a fabricated or unknown session identifier and confirm it is refused and creates nothing. Then open Maya's reservations view and verify there is still exactly ONE reservation for L-118 on 2030-06-10 through 2030-06-14, still confirmed/paid, with the correct ~$225 rental, ~$16.31 tax, and ~$400 deposit. Fail if two or more rows exist for that unit/date range from the single original payment, or if replaying the confirmation duplicated, downgraded, or removed the reservation.\n",
+        "error": "judge timed out after 4500s"
+      },
+      {
+        "id": "overlap_same_unit_rejected",
+        "name": "overlap_same_unit_rejected",
+        "value": 0.0,
+        "raw": null,
+        "weight": 1.5,
+        "description": "After Maya's paid L-118 booking for 2030-06-10 through 2030-06-14 exists, stay as Maya and open L-118's booking view again. Attempt 2030-06-13 through 2030-06-16 (overlaps the 14th). Verify the app rejects this with a visible unavailable/overlap/conflict error and that the browser does NOT reach checkout.stripe.com. Then attempt 2030-06-14 through 2030-06-16 (shares the inclusive end day). That must also be rejected in the UI with no Stripe redirect. Then send both ranges as direct requests via JavaScript evaluation. Both must be refused server-side with an error status and no Checkout URL. Fail if hiding the dates in the UI while the endpoint still accepts them.\n",
+        "error": "judge timed out after 4500s"
+      },
+      {
+        "id": "cross_customer_same_unit_rejected",
+        "name": "cross_customer_same_unit_rejected",
+        "value": 0.0,
+        "raw": null,
+        "weight": 1.0,
+        "description": "Use the demo-user switcher to select Jordan Hale. As Jordan, open L-118 and attempt Maya's already-paid dates 2030-06-10 through 2030-06-14. Verify this is REJECTED with a visible unavailable/overlap/conflict error and that checkout.stripe.com is not reached \u2014 uniqueness is per serialized unit, not per customer. Then forge the same booking request while Jordan is the active identity. It must be refused server-side with no Checkout URL. Open Jordan's reservations and verify they are still empty. Switch back to Maya Chen and confirm her L-118 row is still exactly one confirmed booking for those dates. Fail if Jordan can obtain a Checkout URL, or if Maya's reservation was altered.\n",
+        "error": "judge timed out after 4500s"
+      },
+      {
+        "id": "adjacent_and_cross_item",
+        "name": "adjacent_and_cross_item",
+        "value": 0.0,
+        "raw": null,
+        "weight": 0.5,
+        "description": "Uniqueness is keyed per serialized unit and inclusive on both ends, so a shared calendar day is a conflict but the next day is free, and a different unit is entirely independent.\n(1) As Maya, with the paid L-118 hold on 2030-06-10 through 2030-06-14 in place, open L-118 for 2030-06-15 through 2030-06-16 \u2014 the day after the hold ends. This must be ACCEPTED and reach checkout.stripe.com at about $522.27. Abandon without paying by navigating to http://localhost:3000/.\n(2) As Maya, open T-012 (the Riverside tent) for 2030-06-10 through 2030-06-14 \u2014 exactly the dates the lens is held on. A tent and a lens are not the same physical thing, so this must also be ACCEPTED and reach checkout.stripe.com. Abandon without paying.\nFail if the adjacent day is refused, if booking one unit blocks an unrelated unit on the same dates, or if either abandoned session left a reservation row behind.\n",
+        "error": "judge timed out after 4500s"
+      },
+      {
+        "id": "long_hire_tent_payment",
+        "name": "long_hire_tent_payment",
+        "value": 0.0,
+        "raw": null,
+        "weight": 2.0,
+        "description": "This is the graded long-hire payment and it exercises the week rate, the per-weekend-day desk, and the tax base together. As Maya Chen, reserve T-012 (the Riverside tent, $25/day, $80 deposit) for 2030-07-15 through 2030-07-23 \u2014 nine inclusive days \u2014 through the visible UI and real Stripe Checkout.\nBefore paying, checkout.stripe.com must show a total of about $322.92, made of: a $202.50 kit line (nine days at $25 is $225.00, less the $22.50 week rate, because the paper is seven days or longer); $24.00 of weekend lines (2030-07-20 and 2030-07-21 are a Saturday and a Sunday, $12.00 each); about $16.42 of Riverside tax, which is 7.25% of $226.50 \u2014 the discounted kit line WITH the weekend money added, not the kit line alone and not the wall-card sum; and the $80.00 deposit.\nFail the criterion if the Stripe total is about $347.05 (the week rate was never applied), about $321.18 (tax charged on the kit line only, weekend money left out of the taxed base), about $345.31 (both of those wrong), about $310.05 (one flat weekend line instead of one per weekend day), or about $328.72 (tax charged on the deposit as well).\nComplete Stripe Checkout with maya.chen@example.com, card 4242 4242 4242 4242, expiry 12/34, CVC 123, cardholder Maya Chen, ZIP 94103. Return to localhost:3000, confirm a success message, and re-read Maya's reservations: the T-012 row must be confirmed/paid and must record a rental of about $202.50, a weekend line of about $24.00, tax of about $16.42, and a held deposit of about $80.00. Fail if the stored row shows the undiscounted $225.00 kit line.\n",
+        "error": "judge timed out after 4500s"
+      },
+      {
+        "id": "drone_payment_and_per_day_hull",
+        "name": "drone_payment_and_per_day_hull",
+        "value": 0.0,
+        "raw": null,
+        "weight": 2.0,
+        "description": "The insurance bureau bills the hull rider by the day, on cinema drones only.\n(1) As Maya Chen (she holds a current Drone Operator card), reserve D-004 (the Downtown drone) for 2030-07-01 through 2030-07-03 through the visible UI and real Stripe Checkout. Before paying, checkout.stripe.com must show about $939.20: a $360.00 kit line (three midweek days at $120, no week rate below seven days, no weekend line), about $34.20 Downtown tax at 9.5% of $360.00, a $45.00 hull rider (three days of cover), and the $500 deposit. Fail if the total is about $894.20 (no hull), about $943.48 (the hull was taxed as well), or about $990.98 (tax charged on the hull and the deposit too). Complete Checkout with maya.chen@example.com, card 4242 4242 4242 4242, expiry 12/34, CVC 123, cardholder Maya Chen, ZIP 94103, return to localhost:3000, and confirm the success message.\n(2) Required \u2014 the hull must scale with the days on the paper. As Maya, quote N-201 (the Pier drone, $95/day, $400 deposit) for 2030-08-05 through 2030-08-09 \u2014 five inclusive midweek days \u2014 and take it to checkout.stripe.com. The total must be about $978.50: a $475.00 kit line, about $28.50 Pier tax at 6%, a $75.00 hull rider (FIVE days of cover, not three), and the $400 deposit. Fail if the total is about $948.50, which is a flat $45 hull regardless of duration, or about $903.50 (no hull on a Pier drone), or about $995.13 (Downtown tax on Pier kit). Do NOT pay; abandon by navigating to http://localhost:3000/.\nFail if the drone payment did not go through, if the hull did not change between three days and five days, or if the abandoned N-201 session left a reservation row.\n",
+        "error": "judge timed out after 4500s"
+      },
+      {
+        "id": "abandoned_checkout_writes_nothing",
+        "name": "abandoned_checkout_writes_nothing",
+        "value": 0.0,
+        "raw": null,
+        "weight": 1.5,
+        "description": "A Checkout session is a quote, never a reservation, and nothing is posted to any desk until Stripe says paid. As Maya, open M-088 (the Downtown microphone) for 2030-08-20 through 2030-08-22 and go as far as checkout.stripe.com WITHOUT entering any card details. Then abandon by navigating to http://localhost:3000/.\nRequired checks afterwards:\n(1) Maya's reservations must contain no M-088 row in any status \u2014 not pending, not draft, not awaiting payment, not cancelled.\n(2) M-088's catalog card must still read as an ordinary available unit for those dates, and a different customer must still be able to quote M-088 for 2030-08-20 through 2030-08-22. Switch to Tess Okada, open M-088 for those dates, and confirm the app produces a quote or a Checkout URL rather than an unavailable/conflict error. Abandon that one too and switch back to Maya.\n(3) Read Maya's notice-desk copies, SMS copies, email copies, loyalty punches, and shop-diary holds. None of them may mention M-088. By this point in the run you have abandoned several other sessions as well; none of those units may appear on any desk either.\nFail if an abandoned session created a row in any status, blocked another customer, or left a paper, text, email, punch, or diary hold behind.\n",
+        "error": "judge timed out after 4500s"
+      },
+      {
+        "id": "deposit_amount_integrity",
+        "name": "deposit_amount_integrity",
+        "value": 0.0,
+        "raw": null,
+        "weight": 1.5,
+        "description": "The deposit and the daily rate come from the shop's own unit record, never from the request, and the week rate never touches a deposit. As Maya, forge booking requests for L-118 on a free midweek span (2030-09-23 through 2030-09-25) that inject client-supplied money. In each variant send every spelling together in the SAME request \u2014 `deposit`, `deposit_cents`, `depositUsd`, `deposit_usd`, `amount`, `price`, `rate`, `dailyRate`, `daily_rate_usd`, `rental_cents`, `total`, and `total_cents`:\n(1) A deposit of 1 (or 100 cents) against the $400 lens.\n(2) A daily rate of 1 against the $45 lens.\n(3) A total of 1.\nIf any variant is accepted, the Checkout URL it returns must still price the span at about $544.79 \u2014 three days at $45, about $9.79 Riverside tax, and the full $400 deposit. A refusal of the tampered payload also passes. Abandon any session that opens without paying.\nThen re-read Maya's already-paid L-118 row for 2030-06-10 through 2030-06-14: the held deposit must still be about $400 and the rental about $225. Fail if a client-supplied deposit, rate, or total reached Stripe or the ledger, or if the paid row moved.\n",
+        "error": "judge timed out after 4500s"
+      },
+      {
+        "id": "decoy_fields_and_form_switch",
+        "name": "decoy_fields_and_form_switch",
+        "value": 0.0,
+        "raw": null,
+        "weight": 1.5,
+        "description": "The server resolves everything from its own records for the identifier it was actually given, and stale form state must not leak from one unit into another.\n(1) As Maya, forge a booking naming T-012's real unit identifier for 2030-08-13 through 2030-08-15 while ALSO sending contradictory decoy fields in the same request: `asset_tag` / `assetTag` / `tag` set to L-118, `category` set to Lens, `replacement_value` set to 600, and a deposit of 400. If accepted, the Checkout URL must price the TENT \u2014 about $160.44 (three midweek days at $25, about $5.44 Riverside tax, $80 deposit) \u2014 never about $544.79 and never a $400 deposit. A refusal also passes. Abandon without paying.\n(2) In the browser UI, open L-118's booking view and part-fill the dates WITHOUT submitting. Then navigate to T-012's booking view, fill 2030-08-27 through 2030-08-29, and submit. The Checkout that opens must be for the tent at about $160.44, not for the lens. Abandon without paying.\nFail if a decoy tag, category, replacement value, or deposit steered the price, or if the half-filled lens form produced a lens Checkout from the tent's page.\n",
+        "error": "judge timed out after 4500s"
+      },
+      {
+        "id": "ledger_survives_payments",
+        "name": "ledger_survives_payments",
+        "value": 0.0,
+        "raw": null,
+        "weight": 1.0,
+        "description": "The shop books are the shop Postgres, and a paid row has to survive in them.\nRun this only once the three graded payments exist. Re-read Maya's reservations:\nL-118, T-012, and D-004 must all still be present, and L-118's held deposit must\nstill read as about $400 \u2014 not $4 and not $400.00 collapsed into pennies on the\npage. Also re-open the app's health or shop-status surface and confirm it still\nreports the Postgres ledger after the writes.\nFail if any paid row has vanished, if the lens deposit collapsed to a few dollars,\nif the figures re-read differently from what Stripe charged, or if the health\nsurface stopped answering once real rows existed.\n",
+        "error": "judge timed out after 4500s"
+      },
+      {
+        "id": "priya_hold_rejected",
+        "name": "priya_hold_rejected",
+        "value": 0.0,
+        "raw": null,
+        "weight": 1.0,
+        "description": "Switch to Priya Nair, whose account is on hold over an unresolved damage balance. Attempt to reserve K-055 for 2030-10-26 through 2030-10-27 through the visible UI. It must be refused with a visible error and no Stripe redirect. Then forge the same booking request while Priya is the active identity; it must be refused server-side with an error status and no Checkout URL. Open Priya's reservations and confirm no new row appeared.\nThen check the hold is a real manager decision rather than a fixed seed flag. Switch to Elena Voss and take Priya off hold through the manager's customer control. Switch back to Priya and issue the app's own quote request for K-055 on those same dates \u2014 it must now be ACCEPTED and return a quote or Checkout URL rather than a hold error. Do NOT navigate to Stripe and do NOT pay. Switch to Elena, put Priya back on hold, switch to Priya, and confirm the same request is refused again. Leave Priya ON HOLD.\nSwitch back to Maya afterwards. Fail if a held account can obtain a Checkout URL, if the manager cannot lift or reapply the hold, or if Priya ends this criterion off hold or holding a reservation.\n",
+        "error": "judge timed out after 4500s"
+      },
+      {
+        "id": "drone_cert_gate",
+        "name": "drone_cert_gate",
+        "value": 0.0,
+        "raw": null,
+        "weight": 1.5,
+        "description": "As Maya Chen, open the certifications / cards-on-file view and verify a current Drone Operator card through 2031-12-31 is visible. Switch to Jordan Hale and verify his Drone Operator card is present and expired on 2024-03-01. Switch to Chris Nguyen and verify he has no certification cards. Switch back to Maya afterwards.\nA drone needs a current Drone Operator card belonging to the person on the booking, and a card identifier typed into the request is not a card.\n(1) Switch to Jordan Hale, whose Drone Operator card expired 2024-03-01. Attempt to reserve D-004 for 2030-11-12 through 2030-11-14 through the UI. It must be refused with a visible error and no Stripe redirect.\n(2) Still as Jordan, forge the same booking request, this time including `certificationId`, `certification_id`, `certId`, and `certificationOverride` together \u2014 use Maya's real certification identifier if you can read it, otherwise a fabricated one. It must be refused server-side. Another customer's card does not count and a number in the request does not count.\n(3) Switch to Chris Nguyen, who holds no cards at all, and forge a D-004 booking for the same dates. It must be refused.\nPOSITIVE CONTROL \u2014 switch back to Maya, whose Drone Operator card is current through\n2031-12-31, and quote D-004 for those same 2030-11-12 through 2030-11-14 dates. It must\nbe accepted (a quote or a Checkout URL). Abandon without paying. This is required: the\ngate must turn away the expired and uncarded holders while still letting the carded one\nthrough, or an app that refuses every drone booking passes having enforced nothing.\nThen confirm neither Jordan nor Chris has a reservation. Fail if any of the three\nrefusal probes produced a Checkout URL or a reservation row, or if Maya's control quote\nwas refused.\n",
+        "error": "judge timed out after 4500s"
+      },
+      {
+        "id": "repair_and_retired_rejected",
+        "name": "repair_and_retired_rejected",
+        "value": 0.0,
+        "raw": null,
+        "weight": 1.0,
+        "description": "The repair bay and the retired shelf are not display labels.\n(0) POSITIVE CONTROL FIRST \u2014 before any refusal probe, establish that the booking\npath is alive for this date range. As Maya, quote K-055 (Riverside camera body,\non the floor and healthy) for 2030-10-14 through 2030-10-16 and confirm the app\nreturns a quote or a Checkout URL. Abandon it without paying. If this control does\nNOT succeed, fail this criterion \u2014 an app that refuses everything has not proved it\nenforces anything, and the refusals below would be meaningless.\n(1) Then, as Maya, attempt to reserve each of these for 2030-10-14 through\n2030-10-16, first through the visible UI where a control exists and then as a\nforged direct request: S-301 (Downtown PA speaker, in repair), W-044 (Riverside\nwireless kit, in repair), X-410 (Downtown lighting rig, retired), and F-612\n(Downtown fog machine, retired). All four must be refused server-side with an\nerror status and no Checkout URL.\nIf you did not run the K-055 control and all four refusal probes, fail. Fail if any\nin-repair or retired unit can be quoted, reaches Stripe, or produces a reservation row.\n",
+        "error": "judge timed out after 4500s"
+      },
+      {
+        "id": "weather_blocks_outdoor",
+        "name": "weather_blocks_outdoor",
+        "value": 0.0,
+        "raw": null,
+        "weight": 1.5,
+        "description": "There is no weather word in the customer UI. That is expected. Do not grep the client for weather strings.\nRequired writes \u2014 reuse the same quote or checkout request you already used for other bookings:\n(1) As Maya, POST T-012 for 2030-11-01 through 2030-11-03. The server must refuse (4xx, no Checkout URL). Then POST L-118 for those same November dates; a lens is not canvas, so that may reach Stripe \u2014 abandon if it does.\n(2) POST T-012 for 2030-10-30 through 2030-11-01 (clear late-October start, first gale day included). That must also be refused \u2014 the desk looks at every day on the paper, not only the first.\n(3) The canvas hold covers the whole outdoor-canvas category, not just tents. POST G-220 (the Pier generator) and then R-090 (the Pier rain fly), each for 2030-11-01 through 2030-11-03. Both must be refused.\nIf you did not POST those four canvas ranges, fail.\nThe L-118 November request in step (1) is a POSITIVE CONTROL and it is required, not\noptional: a lens is not canvas, so it must NOT be refused. Without it, an app that\nsimply refuses every November booking passes this criterion having enforced nothing.\nFail if any canvas range returns a Checkout URL or a 2xx quote, OR if the L-118\nNovember control was itself refused.\n",
+        "error": "judge timed out after 4500s"
+      },
+      {
+        "id": "dark_week_refuses_span",
+        "name": "dark_week_refuses_span",
+        "value": 0.0,
+        "raw": null,
+        "weight": 1.5,
+        "description": "There is no holiday word required in the customer UI. Do not grep the client for holiday slogans.\nRequired writes \u2014 reuse the same quote or checkout request you already used for other bookings:\n(1) As Maya, POST L-118 for 2030-12-24 through 2030-12-26. The server must refuse (4xx, no Checkout URL). Then POST T-012 for those same dark days; that must also be refused.\n(2) POST L-118 for 2030-12-23 through 2030-12-24 (a clear day that runs into the closed week). That must also be refused.\n(3) POST L-118 for 2030-12-31 through 2030-12-31 (New Year's Eve, also dark). That must also be refused.\n(4) POST L-118 for 2030-12-27 through 2030-12-28 (open days between the two closures). That may reach Stripe \u2014 abandon if it does.\nIf you did not POST those closed ranges, fail. Fail if any closed-day range returns a Checkout URL or a 2xx quote, or if the open span in step 4 was refused.\n",
+        "error": "judge timed out after 4500s"
+      },
+      {
+        "id": "pier_tax_desk",
+        "name": "pier_tax_desk",
+        "value": 0.0,
+        "raw": null,
+        "weight": 1.5,
+        "description": "The tax office follows the unit's own shop, not a city typed onto the request \u2014 and Pier is a third window at about 6%, not Downtown's 9.5%. As Maya, open C-077 (Pier crop-sensor camera body) and reserve 2030-09-10 through 2030-09-12 through the visible UI. This must be ACCEPTED and must reach checkout.stripe.com showing a total of about $309.00 \u2014 three inclusive midweek days at $50 plus about $9.00 pier tax at 6% plus a $150 deposit. Fail if the total is about $314.25 (Downtown 9.5% tax on a Pier body), about $310.88 (Riverside tax), about $300 (no tax), or about $159 with no deposit line. Do NOT enter card details; abandon by navigating to http://localhost:3000/ without paying. Then forge the same C-077 booking with locationId, location_id, shop, and location_name all set to Downtown together, and tax/taxCents injected to 0. If a Checkout URL is returned, Stripe must still show pier tax (~$309.00 shape), not Downtown tax. Abandon without paying. A refusal of the tampered payload also passes on that second probe. Fail if Pier kit ever quotes Downtown tax.\n",
+        "error": "judge timed out after 4500s"
+      },
+      {
+        "id": "tax_base_excludes_deposit_and_hull",
+        "name": "tax_base_excludes_deposit_and_hull",
+        "value": 0.0,
+        "raw": null,
+        "weight": 2.0,
+        "description": "The county taxes the invoiced kit line plus the weekend money, and nothing else \u2014 not the deposit, not the bureau's hull rider \u2014 and never a percentage the client sent.\n(1) Re-read Maya's three paid rows (or their notice-desk copies). L-118 must show about $16.31 tax on a $225.00 kit line with a $400 deposit \u2014 if the deposit were taxed it would read about $45.31. D-004 must show about $34.20 tax on a $360.00 kit line \u2014 if the $45.00 hull were taxed as well it would read about $38.48, and if the $500 deposit were taxed it would read about $81.70. T-012 must show about $16.42, which is 7.25% of the $202.50 kit line plus the $24.00 weekend line. Fail if any of the three tax figures is $0, if both Riverside and Downtown share one percentage, or if any tax figure matches a deposit-inclusive or hull-inclusive base.\n(2) As Maya, forge a booking for L-118 at 2030-08-06 through 2030-08-08 that also injects tax/taxCents/taxUsd/shopTax/taxRate/rate_bps set to 1 or 0 in the same request. If a Checkout URL is returned, the Stripe total must still be about $544.79, never $535.00 and never a client-supplied tax. A refusal of the tampered payload also passes. Abandon without paying.\n(3) As Maya, forge a T-012 booking for 2030-08-13 through 2030-08-15 that injects hull/premium/premium_cents/insurance set to 45 or 4500. If accepted, Stripe must stay at about $160.44 with no hull line \u2014 a tent never carries hull cover. Abandon. Then forge a D-004 booking for 2030-07-09 through 2030-07-11 injecting hull=0 or premium=1. If accepted, Stripe must still be about $939.20 with the full $45.00 hull. Abandon.\nFail if a tent grew a hull, a drone lost one, or a client-supplied tax figure reached Stripe.\n",
+        "error": "judge timed out after 4500s"
+      },
+      {
+        "id": "unknown_identity_rejected",
+        "name": "unknown_identity_rejected",
+        "value": 0.0,
+        "raw": null,
+        "weight": 1.5,
+        "description": "An identity that matches nobody in the shop is turned away rather than quietly becoming the default customer. Determine how the active identity travels (a header, a cookie, a body field, or a value in browser storage). Then issue the app's own reads and writes with that identity set to values that match no seeded person: a well-formed but unseeded UUID, the literal string \"admin\", the literal string \"customer\", and a seeded EMAIL address used where an id is expected if the app keys on ids. Do NOT test an absent or empty identity \u2014 a fresh browser with no identity set is required to open as Maya Chen, so that case is correct behaviour rather than a leak. For each, attempt to read reservations and to create a booking. Every one must be\nrefused with an error status.\nEVIDENCE \u2014 a rendered page is NOT evidence here. If you change a stored identity\nvalue, the page you are looking at still holds whatever it fetched under the previous\nidentity until it reloads; Maya's reservations still on screen after you edited\nstorage tells you nothing about what the server did. Judge this criterion only on the\nstatus code and body of a request you issued yourself. Record, for each of the four\nvalues, the exact value you sent and the exact HTTP status you got back. If you\ncannot produce a status code for all four, record UNREACHED rather than a failure \u2014\ndo not infer a leak from what the page was displaying.\n(5) THE OMITTED IDENTITY \u2014 this is a REQUIRED probe, not an optional one. Issue a\nrequest that carries NO identity at all: no `x-demo-user-id` header, no cookie, no\nquery parameter, nothing. Confirm from the actual outgoing request that the header is\ngenuinely absent rather than empty. Ask for reservations and then attempt a booking.\nBoth must be refused. An app that serves Maya Chen \u2014 or any customer \u2014 to a caller\nwho never said who they were has a default-identity fallback, and that is the\nheadline failure of this criterion.\nFail if any unknown identity, or the omitted identity, is served Maya's reservations,\nis served any customer's data, or can create a booking. Falling back to a default\ncustomer is the specific failure this criterion is looking for.\nAlso: as Maya, forge a booking for L-118 on a free midweek span (2030-10-07 through 2030-10-09). In THE SAME request include customer_id, customerId, user_id, userId, owner_id, and ownerId together, all set to Chris Nguyen's seeded id. Do not send only one spelling. If the server accepts it, follow the Checkout URL and verify the session is Maya's (maya.chen@example.com, L-118, about $544.79), not Chris's. Abandon without paying. Switch to Chris and confirm his reservations are still empty. Switch back to Maya: no unpaid L-118 row for those dates. Fail if the charge, the Stripe email, or a reservation row followed the typed Chris id.\n",
+        "error": "judge timed out after 4500s"
+      },
+      {
+        "id": "scan_gate_and_checkout_idempotent",
+        "name": "scan_gate_and_checkout_idempotent",
+        "value": 0.0,
+        "raw": null,
+        "weight": 1.5,
+        "description": "ORDERING GATE \u2014 CHECKING L-118 OUT IS A ONE-WAY DOOR.\nL-118 is the only reservation that may ever be legitimately checked out in this run;\nT-012 and D-004 must stay CONFIRMED throughout. So the moment L-118 leaves the\ncounter, the pre-checkout refusal window is closed forever and there is no substitute\npaper to probe. Run EVERY refusal probe below \u2014 the no-ticket attempt and the typed\nfake ticket such as SCAN-0001, against the still-CONFIRMED reservation \u2014 BEFORE you\nperform the real scanned check-out, through the UI or otherwise. Do not click a\ncheck-out control in the interface \"just to see what happens\": that is the door.\nIf you find L-118 already checked out before the refusal probes ran, that is a judge\nsequencing error rather than a submission failure; record UNREACHED and say so.\nNothing leaves the bay without a live serial scan, and the fleet serial desk must confirm the bay code before that scan ticket exists.\n(1) Switch to Sam Ortiz. Before any successful hand-over, forge a check-out request against Maya's paid L-118 reservation carrying NO scan ticket. It must be refused. Then forge one carrying a typed guess such as SCAN-0001 or the bay code itself as if it were a ticket. That must also be refused. Re-read the reservation: still confirmed, not checked out.\n(2) Using the app's own counter flow, obtain a real scan ticket for that reservation and check L-118 out. This must succeed. A 404, a missing scan surface, or a typed fake that never called the desk is a fail of this whole criterion, not a refusal pass.\n(3) Send the same successful check-out request a second and a third time. The reservation must remain checked out with a SINGLE check-out time \u2014 a second hand-over stamp, a duplicated row, or an error that leaves the record altered is a fail.\n(4) A spent scan is spent: forge a check-out that replays the scan ticket you already redeemed. It must be refused.\nFail if L-118 left the bay without a live scan, if the bay code was never confirmed with the fleet desk, or if the tablet double-firing produced two check-outs.\n",
+        "error": "judge timed out after 4500s"
+      },
+      {
+        "id": "return_and_idempotent",
+        "name": "return_and_idempotent",
+        "value": 0.0,
+        "raw": null,
+        "weight": 0.5,
+        "description": "Still as Sam Ortiz, take Maya's checked-out L-118 reservation back in through the app's own return control. This must succeed and the reservation must read as returned / awaiting inspection. Then send the same return request twice more via JavaScript evaluation: the reservation must stay returned with a single return time, and no deposit may be released twice. Re-read the reservation and confirm the held deposit is still about $400 with nothing captured and nothing released yet \u2014 the money is not settled until the inspection is decided. Do not return T-012 or D-004; they stay confirmed. Fail if the second or third return altered the record, released the deposit, or produced a second return stamp.\n",
+        "error": "judge timed out after 4500s"
+      },
+      {
+        "id": "pending_inspection_locks_unit",
+        "name": "pending_inspection_locks_unit",
+        "value": 0.0,
+        "raw": null,
+        "weight": 1.5,
+        "description": "A kit that has come home but that nobody has looked at yet is standing in the inspection corner, not on the floor. Run this while Maya's L-118 is returned and BEFORE any damage report is filed.\n(1) Switch to Maya and attempt to reserve L-118 for 2030-09-16 through 2030-09-18 \u2014 a free midweek span that the app quoted happily earlier in this run, before the lens came home. It must NOW be refused, through the UI and as a forged direct request, with an error status and no Checkout URL. Confirm L-118's catalog card no longer reads as an ordinary available walk-up.\n(2) Switch to Tess Okada and forge the same L-118 booking. It must also be refused \u2014 the lock is on the kit, not on the customer.\n(3) Switch to Noah Kim and attempt a van move of L-118 to Downtown through the app's own transfer flow, obtaining a real bureau stamp if the app offers one. The move must be refused and L-118 must still sit at Riverside. A kit awaiting inspection does not go in the van.\nPOSITIVE CONTROL \u2014 the lock must be on THIS kit and not a blanket outage. Still as\nMaya, quote K-055 (Riverside camera body, untouched by this run) for 2030-09-16 through\n2030-09-18. It must be accepted; abandon without paying.\nSwitch back afterwards. Fail if a returned-but-uninspected lens can be booked by anyone\nor moved between shops, or if the K-055 control was refused.\n",
+        "error": "judge timed out after 4500s"
+      },
+      {
+        "id": "media_ticket_required",
+        "name": "media_ticket_required",
+        "value": 0.0,
+        "raw": null,
+        "weight": 2.0,
+        "description": "A write-up without a photo-desk ticket for that return is just a story. Switch to Riley Okonkwo. Forge a damage filing against Maya's returned L-118 reservation with a $150 proposed deduction and NO media ticket at all \u2014 it must be refused. Then forge one carrying a typed guess such as TICKET-1234 or a random UUID as the ticket \u2014 it must also be refused, because a number someone typed is not a ticket the photo desk issued. Re-read the damage queue and confirm no report exists yet, and that L-118's deposit is untouched. Fail if a filing without a live photo-desk ticket was accepted.\n",
+        "error": "judge timed out after 4500s"
+      },
+      {
+        "id": "file_damage_and_self_approve_rejected",
+        "name": "file_damage_and_self_approve_rejected",
+        "value": 0.0,
+        "raw": null,
+        "weight": 1.5,
+        "description": "Writing up a return is assessor work. Against Maya's returned L-118 reservation, first forge a damage filing (description, severity, and a proposed deduction of $50) as each of: Sam Ortiz, Maya Chen, Noah Kim, Harper Singh, and Casey Bloom. Every one must be refused with an error status. After each, re-read the reservation and any damage queue and confirm no report was created.\nThen, still as Riley Okonkwo, obtain a real photo-desk media ticket for Maya's returned L-118 return through the app's own flow, and file a damage report against that return with a proposed deduction of $150 and the severity recorded as MAJOR. This must succeed \u2014 a 404 or a missing filing surface is a fail of this criterion, not a refusal pass. Confirm the report appears with a $150 proposal and that L-118 is now held against the write-up rather than back on the floor.\nThen, still as Riley, forge an approve request against her own report. It must be refused \u2014 the person who wrote it up does not decide it. Forge a deny request as Riley as well; that must also be refused. Also forge an inspect / clear-with-no-damage request against the same return while the $150 write-up is still open \u2014 it must be refused too, because an open write-up still needs a decision and clearing it would release the whole deposit behind the manager's back. Re-read the report and confirm it is still open/filed, with no reviewer recorded, and that Maya's deposit is still $400 held with nothing captured. Fail if Riley could decide her own write-up, or if the refused approval changed the report or the deposit.\n",
+        "error": "judge timed out after 4500s"
+      },
+      {
+        "id": "over_replacement_and_duplicate_file",
+        "name": "over_replacement_and_duplicate_file",
+        "value": 0.0,
+        "raw": null,
+        "weight": 1.5,
+        "description": "A damage bill larger than the kit is worth is refused outright rather than quietly capped, and one return takes at most one open write-up. L-118's replacement value is $600 and the held deposit is $400, so the most that can ever be taken is $400.\nORDERING GATE \u2014 RUN THIS CRITERION IN FULL BEFORE ANY APPROVE OR DENY.\nRiley's $150 report must still be OPEN when you start. Re-read the damage queue and\nconfirm the report exists with no reviewer recorded. If it has already been approved,\ndenied, or otherwise decided, the window for this criterion is gone and you must record\nUNREACHED \u2014 do not attempt to recreate it and do not score it on partial evidence.\n(1) As Riley, obtain a fresh media ticket and forge a SECOND damage filing against the same L-118 return for $2000. It must be refused. Critically, it must be refused rather than accepted-and-capped: re-read the damage queue and confirm no report with a $2000, $600, or $400 proposal was created and that the original $150 report is untouched.\n(2) Forge another filing against the same return for a modest $25 while the $150 report is still open. It must be refused \u2014 one actionable write-up per return.\n(3) Switch to Elena Voss and forge an approve request that carries its own `proposedUsd` / `proposed_cents` / `amount` of 2000 alongside the report id, to check the decision cannot raise the number that was filed. If it is accepted, the capture must still be $150. A refusal also passes.\nFail if a deduction above the deposit was stored, silently capped, or approved, or if a second open report was created.\n",
+        "error": "judge timed out after 4500s"
+      },
+      {
+        "id": "manager_approve_ledger_and_bay",
+        "name": "manager_approve_ledger_and_bay",
+        "value": 0.0,
+        "raw": null,
+        "weight": 2.0,
+        "description": "PRECONDITION \u2014 `over_replacement_and_duplicate_file` must already be complete. Approving\nor denying closes the reservation and permanently forecloses that criterion, so do not\nissue any decision until its probes are done. There is exactly one decision to make on\nthis report and it is an APPROVE. Never send a deny against Riley's $150 report as an\nexploratory action; the only graded deny is the replay in step (3), which comes after\nthe approval has already been recorded.\nSwitch to Elena Voss and approve Riley's $150 major write-up on Maya's L-118 return through the app's own decision control. This must succeed.\nRequired checks afterwards:\n(1) The reservation must be closed/settled with exactly $150.00 captured from the deposit and exactly $250.00 released \u2014 not $400 released, not $0 released, and not a second capture. Read this from Maya's reservation row.\n(2) Because Riley recorded the damage as major and Elena signed it off, L-118 must now be in the repair bay \u2014 its unit status must read as in repair, NOT back on the floor as available. Re-read L-118's catalog card and confirm it does not present as an ordinary rentable walk-up.\n(3) Forge a second approve request against the same report, and then a deny request against it. Both must be refused, and the capture must remain $150.00 with $250.00 released. A second capture or a further release is a fail.\n(4) As Maya, forge an approve request against that report. It must be refused \u2014 customers do not decide deposits.\nFail if the split is wrong, if a major write-up put the lens back on the shelf, or if the decision could be replayed.\n",
+        "error": "judge timed out after 4500s"
+      },
+      {
+        "id": "historical_rate_snapshot",
+        "name": "historical_rate_snapshot",
+        "value": 0.0,
+        "raw": null,
+        "weight": 0.5,
+        "description": "Changing the card on the wall does not rewrite paperwork that is already finished. As Elena Voss, change L-118's daily rate on its unit card from $45 to $95 through the manager's rate control. Confirm the catalog card now shows the new rate. Then switch to Maya Chen and re-read her closed L-118 reservation for 2030-06-10 through 2030-06-14: it must still show the rate that was paid \u2014 about $45/day, a rental of about $225.00, tax of about $16.31, and a held deposit of about $400.00 \u2014 with the $150.00 capture and $250.00 release unchanged. Also re-read the notice-desk copy for that ticket and confirm it still reads about $641.31. Fail if the closed row, or its desk copies, re-priced themselves against the new wall card.\n",
+        "error": "judge timed out after 4500s"
+      },
+      {
+        "id": "customer_isolation",
+        "name": "customer_isolation",
+        "value": 0.0,
+        "raw": null,
+        "weight": 1.5,
+        "description": "This shop is under a customer-confidentiality review. Read probes are graded on the RESPONSE BODY, not the rendered page \u2014 another identity's data present in the payload is a leak even if the interface never displays it.\nSwitch to Chris Nguyen, who books nothing and holds no cards. As Chris, issue the app's own reads for reservations, certifications, notice-desk copies, SMS copies, email copies, loyalty punches, hull binds, and shop-diary holds. None of the responses may contain Maya's reservations, Maya's certifications, her receipts, her texts, her emails, her punches, her binds, or her diary holds. Then, still as Chris, forge a direct read of Maya's specific L-118 reservation by its identifier \u2014 it must be refused or return nothing, never her row. Repeat the reservation read as Tess Okada and as Luis Ferreira. Switch back to Maya and confirm her own reads still return her three tickets. Fail if any other customer's identity can see any part of Maya's record.\n",
+        "error": "judge timed out after 4500s"
+      },
+      {
+        "id": "role_isolation_matrix",
+        "name": "role_isolation_matrix",
+        "value": 0.0,
+        "raw": null,
+        "weight": 1.5,
+        "description": "Each role does its own job and nothing else, and a role name typed onto a request is not a promotion. Run every probe as a forged direct request with the ATTACKING identity active \u2014 a hidden button is not enough. Do not aim any of these at T-012 or D-004 in a way that would succeed.\n(1) Harper Singh (night auditor) reads the books and must not mutate them. As Harper, forge: a customer booking for K-055 at 2030-11-18 through 2030-11-20; a check-out against Maya's closed L-118 reservation; a damage filing; a damage decision; and a unit repair/retire request. Every one must be refused. Harper's READ of reservations and receipts may legitimately succeed.\n(2) Wei Tan (insurance liaison) reads hull binds only. As Wei, forge a damage approval and a check-out request \u2014 both must be refused.\n(3) Casey Bloom (lot runner) fetches gear and drives nothing. As Casey, forge a van-move request for K-055 and a check-out request \u2014 both must be refused.\n(4) Omar Haddad (bay technician) issues scans. As Omar, forge a damage approval and a customer booking \u2014 both must be refused.\n(5) Role decoy: as Sam Ortiz, send `role=shop_manager` on the header AND the body AND the query of a single damage-approval request. It must be refused. Repeat with `role=damage_assessor` on a damage filing as Sam. Refused.\nCounter staff do not book rentals for themselves. Also forge a customer booking request for K-055 at 2030-11-04 through 2030-11-06 as Sam Ortiz, as Dana Ruiz, as Riley Okonkwo, and as Elena Voss \u2014 all four must be refused server-side with an error status and no Checkout URL.\nAfter every probe, re-read the affected record and confirm it is unchanged.\nSCOPE \u2014 score this criterion on the probes listed above and nothing else. The fail\nconditions are exactly these three: a listed refuse-probe succeeded; a typed role\nname granted a permission; or a staff identity obtained a Checkout URL or a\nreservation row. If you observe some other problem while working here \u2014 a read that\nlooks too permissive, an endpoint you think should be gated but this criterion did\nnot ask you to probe \u2014 write it in your reasoning as an observation and pass or fail\nthis criterion on its own listed probes regardless. Another criterion may own that\nbehaviour, and failing this one for it double-counts a single defect.\n",
+        "error": "judge timed out after 4500s"
+      },
+      {
+        "id": "paid_ticket_copies_everywhere",
+        "name": "paid_ticket_copies_everywhere",
+        "value": 0.0,
+        "raw": null,
+        "weight": 2.0,
+        "description": "Paper, text, email, diary hold, and \u2014 for members only \u2014 a loyalty punch all land the moment Stripe clears, carrying the same figures that went to Stripe.\n(1) Open Maya's receipt / notice-desk copies (or forge the app's own read of them). There must be a copy for L-118 totalling about $641.31 with about $16.31 tax; a copy for T-012 totalling about $322.92 with a kit line of about $202.50, a weekend line of about $24.00, and about $16.42 tax; and a copy for D-004 totalling about $939.20 with a hull line of about $45.00. Fail if the tent copy shows the undiscounted $225.00 kit line or a $347.05 total.\n(2) Required \u2014 also open (or forge the app's own read of) the SMS-desk texts, the email-desk copies, and the loyalty punches. Maya must have an SMS copy, an email copy, and a loyalty punch for EACH of those three paid tickets, with the same totals as the paper copies. A paper copy without the text, a text without the email, or an email without the punch is a fail.\n(3) Loyalty punches are member-only. Maya must have exactly three punches, one per paid reservation. Switch to Jordan Hale and to Chris Nguyen and confirm each has zero punches even though Maya paid. Chris must also see none of Maya's notice, SMS, or email copies, through the UI and through a forged read.\n(4) Switch back to Maya and confirm a shop-diary / calendar hold exists for L-118 on 2030-06-10 through 2030-06-14.\nFail if any paid ticket is missing from any of the three copy desks, if the figures disagree between desks, if Maya is missing a punch, if a walk-in has one, or if the diary never recorded the lens hold.\n",
+        "error": "judge timed out after 4500s"
+      },
+      {
+        "id": "hire_waiver_pdf_download",
+        "name": "hire_waiver_pdf_download",
+        "value": 0.0,
+        "raw": null,
+        "weight": 2.0,
+        "description": "After Maya's L-118 payment exists, the till must hand her the hire waiver PDF that already lives with the seed artifacts \u2014 a downloadable file, not a retyped paragraph. From Maya's own reservations / receipts surface, use the control that downloads the hire waiver for that L-118 paper (intent: download waiver / hire agreement / PDF). The response must be a PDF (`%PDF` magic or application/pdf) and the bytes must contain the phrase GEARVAULT HIRE WAIVER. A 404, an HTML page, or a generated stand-in that does not contain that phrase is a fail. Switch to Chris Nguyen and attempt the same download against Maya's L-118 identifier \u2014 it must be refused or return nothing, never her waiver. Switch back to Maya.\n",
+        "error": "judge timed out after 4500s"
+      },
+      {
+        "id": "ics_calendar_download",
+        "name": "ics_calendar_download",
+        "value": 0.0,
+        "raw": null,
+        "weight": 2.0,
+        "description": "After Maya's L-118 payment exists, the shop diary must also put a calendar file on her phone. From Maya's own reservations surface, use the control that downloads the calendar / .ics for that L-118 paper. The response body must be a real iCalendar document: it contains BEGIN:VCALENDAR and the lens dates 2030-06-10 and 2030-06-14 (or DTSTART/DTEND covering those all-day dates). Fail if there is no downloadable calendar file, if the body is JSON/HTML, or if the dates are missing. Chris must not receive Maya's calendar file.\n",
+        "error": "judge timed out after 4500s"
+      },
+      {
+        "id": "insurance_bind_signature",
+        "name": "insurance_bind_signature",
+        "value": 0.0,
+        "raw": null,
+        "weight": 2.0,
+        "description": "There is no customer signature checkbox. The bureau bind is written at pay time. Do not fail this because /js/app.js has no \"signature\" or \"consent\" string.\nRequired:\n(1) After Maya's paid D-004 exists, open the receipts / hull-bind surface and confirm exactly one bind for that drone payment, for about $45.00 / 4500 cents \u2014 matching the three days of cover on the paper.\n(2) Replay the app's own hull-bind WRITE (the bind/proxy POST the receipts page or payment path used to talk to the bureau \u2014 not a payments/confirm replay) as Maya or Sam, once with the signature header omitted and once with garbage in that same header. Both must be refused. The bind count must stay one \u2014 no second bind.\n(3) Forge one more bind replay carrying a valid-looking session id but a premium of 1 cent. It must be refused, because the bureau signs the premium as well as the session.\nIf you never forged those bind writes, or if you only replayed payment confirmation, fail. Fail if D-004 was paid with no bureau bind, if an unsigned bind is stored, or if the bind count moved.\n",
+        "error": "judge timed out after 4500s"
+      },
+      {
+        "id": "transfer_clerk_isolation",
+        "name": "transfer_clerk_isolation",
+        "value": 0.0,
+        "raw": null,
+        "weight": 2.0,
+        "description": "Noah Kim must be selectable on the demo-user switcher as the transfer clerk. Do not move D-004, T-012, or L-118 anywhere. Use K-055 (Riverside camera body) for the positive control.\nRequired forged-request probes \u2014 a hidden button is not enough:\n(1) As Noah, forge a customer booking request for K-055 at 2030-11-25 through 2030-11-27. It must be refused.\n(2) As Noah, forge a check-out request against Maya's still-confirmed T-012 reservation. It must be refused. Noah does not work the counter.\n(3) As Noah, forge an approve-damage request against Riley's already-decided L-118 report. It must be refused.\n(4) As Noah, forge a van-move request against K-055 that omits every transferStamp / stamp_id / stampId field, or sends a typed guess such as TR-9001. It must be refused. K-055 must still sit at Riverside.\n(5) Positive control: as Noah, use the app's own transfer flow (or the live stamp request the page actually sends) to obtain a real transfer-bureau stamp and successfully move K-055 to Downtown. Re-read the unit: it must now be at Downtown. Then obtain a second live stamp and move K-055 back to Riverside. Re-read: Riverside again. A 404, a missing transfer surface, or a typed fake stamp that never called the bureau is a fail of this whole id \u2014 not a refusal pass.\n(6) Required van-idle probe: as Noah, forge a van-move / transfer stamp request for K-055 whose MOVE DATE is during the dark week \u2014 send 2030-12-24 as moveDate/move_date/start (the day of the move, not whatever today happens to be). Asking the blackout desk about today while the move is Christmas week is the wrong question. The bureau must refuse because the van is idle on those move days. K-055 must still sit at Riverside.\n(7) Required spoken-for probe: as Noah, attempt to move T-012 \u2014 which is still on Maya's paid paper for 2030-07-15 through 2030-07-23 \u2014 to Downtown, obtaining a real bureau stamp if the app offers one. It must be refused; the van only takes kit that is genuinely idle on the floor. T-012 must still sit at Riverside.\n(8) As Sam Ortiz, forge the same K-055 transfer request (with or without a stamp). It must be refused. Sam does not drive the van.\nAfterwards T-012 and D-004 must still be confirmed, L-118's closed ledger must be unchanged, and K-055 must be back at Riverside. Fail if Noah is missing from the switcher, if any refuse-probe succeeded, if step 5 never moved the body, or if you transferred a graded unit.\n",
+        "error": "judge timed out after 4500s"
+      },
+      {
+        "id": "checkout_override_refused",
+        "name": "checkout_override_refused",
+        "value": 0.0,
+        "raw": null,
+        "weight": 2.0,
+        "description": "D-004 must still be CONFIRMED. Switch to Omar Haddad (bay technician) or Jules Adeyemi and obtain a REAL live serial-scan ticket for Maya's paid D-004 reservation through the app's own scan flow. Do not check D-004 out. The scan must exist and remain unused.\nThen switch to Sam Ortiz and forge ONE check-out request against that D-004 reservation that carries BOTH the live scan ticket AND the full override bundle in the same body: override, overrideCertification, certificationOverride, forceCheckout, skipCertificationCheck, managerApproved, and certificationId (use a fake or Jordan id). Do not send only one spelling. It must be refused because of the override / typed-cert bundle \u2014 a missing-scan 422 is the wrong refusal now that a live ticket is on the request. Do not send `{}` or a clean body. Re-read D-004 immediately: it must still be confirmed, not checked out. Maya is not on hold; a 409 about damage balance, hold, or a missing reservation is the wrong refusal. Fail if the override or a supplied cert id caused D-004 to leave, if you only got a scan-first error, or if you checked it out by sending a clean associate check-out.\n",
+        "error": "judge timed out after 4500s"
+      },
+      {
+        "id": "location_mismatch_and_repair_lock",
+        "name": "location_mismatch_and_repair_lock",
+        "value": 0.0,
+        "raw": null,
+        "weight": 2.0,
+        "description": "D-004 and T-012 must still be CONFIRMED.\nIf either is already checked out, first establish WHY. If it was checked out by a\nlegitimate hand-over you performed, that is your own sequencing error. If it was\nchecked out because an EARLIER probe in this run was wrongly accepted by the app \u2014\na check-out that should have been refused and was not \u2014 then the defect belongs to\nthe criterion that probed it (`scan_gate_and_checkout_idempotent` or\n`checkout_override_refused`), and this criterion's preconditions were destroyed by it.\nIn that case record UNREACHED and name the criterion that owns the defect. Do not\ncharge one bug to a third criterion that never got to run its own probes.\nOmar/Jules must already have issued a live unused serial-scan ticket for D-004 (from the previous criterion). If that ticket was spent, issue a fresh one without checking the kit out.\n(1) As Sam, forge ONE check-out request that includes the live scan ticket AND claims a Downtown-vs-Riverside mismatch. In that same body include locationId, location_id, shop, and location_name together, all set to Riverside \u2014 never Downtown. Do not send only one spelling. It must be refused because of the claimed shop, not because a scan is missing. The reservation must stay confirmed. Do not send `{}`. Re-read D-004 immediately; if it is checked out, fail now.\n(2) Switch to Elena Voss. Mark D-004 in repair. Switch back to Sam and attempt to check out Maya's D-004 reservation through the UI and via a forged request that still carries a live scan if one is required. Both must be refused \u2014 a paid booking still fails at the door once the unit is in the repair bay. Leave D-004 confirmed.\n(3) Switch to Maya Chen. Forge a check-out request against her own already-closed L-118 reservation only. A customer must not be able to check a kit out.\nFail if D-004 or T-012 is or becomes checked out, if step 1 was only a scan-first 422, or if a customer identity can check gear out.\n",
+        "error": "judge timed out after 4500s"
+      },
+      {
+        "id": "concurrent_double_submit_one_paper",
+        "name": "concurrent_double_submit_one_paper",
+        "value": 0.0,
+        "raw": null,
+        "weight": 3.5,
+        "description": "The counter double-clicks. The customer gets one hire.\nThis is a RACE, not a sequence: the two requests must be in flight at the same time.\nIssue them from the page's own origin with a single JavaScript evaluation that fires\nboth and awaits them together (`Promise.all` / `Promise.allSettled` over two `fetch`\ncalls started before either resolves). Two calls one after the other do not test this\nand must not be recorded as a pass.\n(1) As Maya, fire TWO simultaneous confirm-and-pay requests for the SAME already-paid\nStripe session for D-004. Exactly one may result in a reservation. Re-read Maya's\nreservations and confirm there is exactly ONE D-004 row, not two, and that she was\ncharged once.\n(2) Fire TWO simultaneous booking requests, as two DIFFERENT customers (Maya and\nJordan Hale, using their own identities), for the SAME unit K-055 over the SAME dates\n2030-11-25 through 2030-11-27. At most one may end up holding that unit. If both\nreceive a Checkout URL, follow neither \u2014 but the app must not be able to end up with\ntwo live papers on one unit for overlapping days. Abandon both.\n(3) Re-read the log as Elena: the double-submit in (1) must have produced ONE line,\nnot two.\nFail if two rows, two charges, two log lines, or two live papers on one unit resulted\n\u2014 and fail if you did not actually issue the requests concurrently.\n",
+        "error": "judge timed out after 4500s"
+      },
+      {
+        "id": "three_books_reconcile_to_the_penny",
+        "name": "three_books_reconcile_to_the_penny",
+        "value": 0.0,
+        "raw": null,
+        "weight": 3.5,
+        "description": "Stripe, the shop ledger, and what the customer was told are the same figures.\nTake D-004, Maya's paid drone hire (2030-07-01..03, Downtown).\n(1) STRIPE \u2014 open the Checkout session that paid for it and record the amount\nactually charged, and the line breakdown.\n(2) THE LEDGER \u2014 read the reservation from the app and record its total, its tax, its\nhull rider, and its held deposit.\n(3) THE COPY DESKS \u2014 read the receipt/notice desks for that hire and record the total\nthe customer was told.\nAll three must agree to the penny: about $939.20 total, with the $45.00 hull rider\nand the $500.00 deposit appearing in each. A figure that is right in the ledger and\nrounded, truncated, or recomputed differently on the notice is a fail \u2014 the customer\nwas told something the till cannot back.\n(4) Repeat the three-way check for T-012 (about $322.92) and confirm those agree too.\nFail if any of the three sources disagrees with the others by any amount, if a\nsource is missing the hull rider or the deposit, or if a desk reports a total it\nrecomputed rather than the one charged.\n",
+        "error": "judge timed out after 4500s"
+      },
+      {
+        "id": "manager_restores_from_repair_bay",
+        "name": "manager_restores_from_repair_bay",
+        "value": 0.0,
+        "raw": null,
+        "weight": 2.5,
+        "description": "Kit comes back from the repair bay by the manager's hand and nobody else's.\nUse W-044, the Riverside wireless kit that is in repair.\n(1) POSITIVE CONTROL \u2014 confirm W-044 is currently NOT bookable: as Maya, attempt to\nquote it for 2030-10-14 through 2030-10-16 and confirm it is refused.\n(2) REFUSALS \u2014 as Sam Ortiz (associate), then as Riley Chen (damage assessor), then as\nMaya (customer), attempt to restore W-044 to the floor, first through the UI where a\ncontrol exists and then as a forged direct request. All must be refused, and W-044 must\nstill read as in repair after each.\n(3) THE MANAGER \u2014 switch to Elena Voss and restore W-044 through the manager's own\ncontrol. This must succeed and W-044 must read as available.\n(4) It is ordinary floor stock again: as Maya, quote W-044 for those same dates. It must\nnow be ACCEPTED. Abandon without paying.\nFail if any non-manager restore succeeded, if the manager's restore was refused, if\nW-044 was bookable before the restore, or if it is still unbookable after it.\n",
+        "error": "judge timed out after 4500s"
+      },
+      {
+        "id": "restore_blocked_while_spoken_for",
+        "name": "restore_blocked_while_spoken_for",
+        "value": 0.0,
+        "raw": null,
+        "weight": 2.0,
+        "description": "The manager cannot pull a unit back onto the floor while it is spoken for.\nRun this AFTER `manager_restores_from_repair_bay` and BEFORE\n`customer_cancel_releases_deposit` \u2014 it needs T-012 still promised to a live paper.\nT-012 is Maya's paid tent, CONFIRMED and not yet gone out, so its unit is promised.\nAs Elena Voss, attempt to put T-012's unit back on the floor, through the UI where a\ncontrol exists and then as a forged direct request. It must be refused while that\npaper is live.\nRe-read afterwards: T-012's unit must be unchanged and still promised, and Maya's\nT-012 reservation must still be CONFIRMED with its deposit still held.\nPOSITIVE CONTROL \u2014 the refusal must be about the live paper and not about the manager\nbeing powerless. Confirm W-044, restored in the previous criterion, still reads as\navailable. If it does not, the manager's restore never worked and this criterion\nfails.\nDo NOT probe D-004 here: it is sitting in the repair bay from an earlier criterion,\nwhich is a different state with a different answer.\nFail if the restore succeeded, if T-012's unit or reservation changed, or if the\nW-044 control shows the manager's restore never worked.\n",
+        "error": "judge timed out after 4500s"
+      },
+      {
+        "id": "customer_cancel_releases_deposit",
+        "name": "customer_cancel_releases_deposit",
+        "value": 0.0,
+        "raw": null,
+        "weight": 3.0,
+        "description": "A paid paper that has not gone out can be called off by the customer who holds it,\nand the whole deposit comes back.\nUse T-012, Maya's paid tent for 2030-07-15 through 2030-07-23, which is CONFIRMED and\nhas NOT been checked out. Do not use L-118 or D-004.\n(1) As Maya, call the T-012 paper off through the app's own control. This must succeed\nand the reservation must read as cancelled.\n(2) Re-read it: the ENTIRE held deposit of about $80.00 must show as released, with\nnothing captured. Not part of it, not a fee retained \u2014 all of it.\n(3) Re-read T-012's unit card: it must be back on the floor as available, bookable\nagain. As Maya, quote T-012 for those same 2030-07-15 through 2030-07-23 dates and\nconfirm the app now accepts it. Abandon without paying.\n(4) Send the same cancel request twice more by forged direct request. The reservation\nmust stay cancelled with the deposit released exactly once \u2014 no second release, no\nchange to the released figure.\nFail if the cancel is refused, if any part of the deposit is retained or captured, if\nthe unit does not return to the floor, if the re-quote in step (3) is refused, or if a\nrepeat cancel released money a second time or altered the row.\n",
+        "error": "judge timed out after 4500s"
+      },
+      {
+        "id": "cancel_scope_and_state_gate",
+        "name": "cancel_scope_and_state_gate",
+        "value": 0.0,
+        "raw": null,
+        "weight": 3.0,
+        "description": "Calling off is the paper-holder's own act, and only while the kit is still on the shelf.\nRun this AFTER `customer_cancel_releases_deposit`.\n(1) STATE GATE \u2014 L-118's paper is no longer a live booking waiting on the shelf: it has\ngone out, come back, and been through the damage flow. As Maya, attempt to call it off,\nthrough the UI where a control exists and then as a forged direct request. It must be\nrefused \u2014 only a paid paper that has not gone out can be called off. Re-read L-118 and\nconfirm the attempt changed nothing: same status, same deposit figures as before you\ntried.\n(2) OWNERSHIP \u2014 switch to Jordan Hale and forge a cancel against Maya's D-004 paper,\nwhich is still CONFIRMED. It must be refused and D-004 must be unchanged.\n(3) STAFF \u2014 switch to Sam Ortiz, then to Elena Voss, and forge the same cancel against\nMaya's D-004 paper from each. Both must be refused; the counter and the manager do not\ncall off a customer's hire for them. D-004 must still be CONFIRMED with its deposit held.\nSwitch back to Maya afterwards.\nFail if any of these four probes succeeded, if D-004's or L-118's stored state changed,\nor if any deposit figure moved. A 404 that hides the record from a stranger counts as a\nrefusal for probe (2); a 403 counts for (3).\n",
+        "error": "judge timed out after 4500s"
+      },
+      {
+        "id": "audit_log_records_the_decisions",
+        "name": "audit_log_records_the_decisions",
+        "value": 0.0,
+        "raw": null,
+        "weight": 3.0,
+        "description": "Every decision that moves kit, money, or a customer's standing leaves a line in the log.\nRun this LAST, after the counter, damage, cancel and repair-bay work is finished.\nAs Elena Voss, open the shop's log of who did what and read it.\n(1) It must carry a line for each of these things that actually happened in this run:\nthe confirmation of a paid paper, the hand-over of kit at the counter, the taking of it\nback in, the clearing of an inspection, the filing of a damage report, a unit going into\nthe repair bay, a unit coming back out of it, a wall-card rate change, a customer being\nput on hold, and the paper that was called off. Quote the lines you find.\n(2) Each line must identify WHO did it, WHAT they did, and WHICH record it touched, and\nmust carry the record's state before and after where the action changed a state. A log\nthat records only a timestamp and a free-text sentence does not satisfy this.\n(3) The actor must be the person who actually did it. Spot-check three lines against\nwhat you did earlier in this run \u2014 the rate change must be attributed to Elena, the\nhand-over to Sam, the damage filing to Riley \u2014 and confirm the log does not attribute\neverything to one default identity.\nFail if any of the ten actions is missing, if lines do not carry actor / action /\nentity, or if the actor is wrong or is the same identity throughout.\n",
+        "error": "judge timed out after 4500s"
+      },
+      {
+        "id": "audit_log_read_gate",
+        "name": "audit_log_read_gate",
+        "value": 0.0,
+        "raw": null,
+        "weight": 2.5,
+        "description": "The log is the manager's and the night auditor's, and it is a record rather than a\nworkspace.\n(1) POSITIVE CONTROL \u2014 as Elena Voss (manager) and then as Harper Singh (night auditor),\nread the log. BOTH must succeed and return entries. If either is refused, this criterion\nfails: an app that hides the log from everyone has not implemented a gate.\n(2) REFUSALS \u2014 as Sam Ortiz (associate), Riley Chen (assessor), Wei Tan (insurance\nliaison), and Maya Chen (customer), attempt the same read, first through the UI where a\ncontrol exists and then as a forged direct request. All four must be refused with an\nerror status and no log entries in the body.\n(3) READING NEVER WRITES \u2014 as Harper, re-read the log twice and confirm the entry count\nis unchanged and no new line was created by the act of reading. Then, as Harper, forge a\nwrite against the log \u2014 an attempt to insert, edit, or delete an entry. It must be\nrefused, and the count must still be unchanged.\nFail if either permitted reader was refused, if any of the four refused roles obtained\nentries, if reading created a line, or if Harper could alter the log.\n",
+        "error": "judge timed out after 4500s"
+      },
+      {
+        "id": "idempotency_key_required_on_writes",
+        "name": "idempotency_key_required_on_writes",
+        "value": 0.0,
+        "raw": null,
+        "weight": 3.5,
+        "description": "Nothing that changes anything is done without a ticket number.\nProbe FIVE mutating routes, spread across roles, each as a forged direct request\ncarrying NO Idempotency-Key header at all:\n(1) as Maya, start a booking for L-118 over 2030-12-02 through 2030-12-04;\n(2) as Sam Ortiz, a check-out against any live reservation;\n(3) as Elena Voss, a wall-card rate change on K-055;\n(4) as Elena Voss, put Jordan Hale on hold;\n(5) as Riley Chen, file a damage report.\nEvery one must be refused with a 4xx that is specifically about the missing header.\nThen confirm nothing moved: probe (1) returned no Checkout URL and no session id;\nK-055's daily rate is unchanged; Jordan is not on hold; no new damage report exists;\nno kit changed hands. Read the shop's log as Elena and confirm none of these five\nleft a line.\nPOSITIVE CONTROL \u2014 the refusals must be about the missing ticket number, not about\nthe acts being impossible. Repeat probe (3), the K-055 rate change, with a fresh\nIdempotency-Key. It must now be ACCEPTED and the rate must change. (Set it back\nafterwards with another fresh key.)\nREADS ARE UNAFFECTED \u2014 as Maya, read reservations and read the catalog with no\nIdempotency-Key. Both must succeed.\nFail if any of the five keyless writes was accepted, if any state changed, if the\nkeyed retry of (3) was refused, or if a keyless read was refused.\n",
+        "error": "judge timed out after 4500s"
+      },
+      {
+        "id": "idempotent_replay_returns_same_answer",
+        "name": "idempotent_replay_returns_same_answer",
+        "value": 0.0,
+        "raw": null,
+        "weight": 3.5,
+        "description": "The same ticket number twice does the act once and answers the same way twice.\n(1) THE SIDE EFFECT HAPPENS ONCE \u2014 as Elena Voss, change K-055's wall card to a new\ndaily rate with an Idempotency-Key you choose and record in full. Send the\nbyte-identical request again with the SAME key, then a third time. Then read the\nshop's log as Elena: there must be exactly ONE `unit.rate` line for K-055 from this\nsequence, not two and not three. K-055's rate must equal the new figure, not the new\nfigure applied repeatedly.\n(2) THE ANSWER IS THE SAME ANSWER \u2014 each repeat must return the same status and a\nbody matching the first on every figure and identifier, not merely a similar-looking\nfresh one.\n(3) A SESSION IS NOT RE-CUT \u2014 as Maya, start a booking for L-118 over 2030-12-02\nthrough 2030-12-04 with a key you choose, and record the returned session id and\nquote. Send the identical request again with the SAME key. It must return the SAME\nCheckout session id and the SAME quote figures \u2014 a second, different Stripe session\nmeans the act was performed twice. Abandon without paying.\n(4) A replayed key must be ANSWERED, not rejected: none of the repeats above may\ncome back as an error.\nPut K-055's rate back to its original figure afterwards, using a fresh key.\nFail on a second log line, a second Stripe session, a changed figure between the\nfirst answer and a repeat, a compounded rate, or any repeat refused outright.\n",
+        "error": "judge timed out after 4500s"
+      },
+      {
+        "id": "idempotency_key_scope_and_conflict",
+        "name": "idempotency_key_scope_and_conflict",
+        "value": 0.0,
+        "raw": null,
+        "weight": 3.5,
+        "description": "A ticket number names one act, and it belongs to one person.\nRun this AFTER `idempotent_replay_returns_same_answer`; it reuses that criterion's\nbooking key from step (3).\n(1) CONFLICT \u2014 as Maya, reuse that exact key on a DIFFERENT request: same route, but\nK-055 instead of L-118, or different dates. It must be refused as a conflict. It must\nNOT be performed as a fresh act, and it must NOT replay the L-118 answer \u2014 check the\nbody: if it comes back carrying the L-118 session id, the app replayed rather than\nconflicted, and that is a fail.\n(2) DIFFERENT ROUTE, SAME KEY \u2014 as Maya, send that same key to a different mutating\nroute entirely. Refused as a conflict, not performed.\n(3) PER-PERSON SCOPE \u2014 switch to Jordan Hale and start a booking with that SAME key\nstring, for a unit and dates of his own that he is entitled to. It must be ACCEPTED\non its own merits. Jordan must never receive Maya's stored answer \u2014 check the session\nid differs from Maya's \u2014 and must not be refused merely because Maya used the string.\nAbandon without paying.\n(4) A REFUSAL DOES NOT SPEND A KEY \u2014 as Maya, with a brand-new key, attempt to book\nX-410 (retired). It will be refused on its own merits. Now reuse that same key for a\nlegitimate L-118 booking over 2030-12-02 through 2030-12-04. It must be ACCEPTED,\nbecause the first attempt never completed. Abandon without paying.\nFail if a conflict probe was accepted or silently replayed, if Jordan received Maya's\nsession or was refused for her key, or if a key was burned by a refusal.\n",
+        "error": "judge timed out after 4500s"
+      }
+    ],
+    "kind": "agent",
+    "judge": {
+      "agent": "claude-code",
+      "model": "anthropic/claude-sonnet-5",
+      "timeout": 4500,
+      "cwd": null,
+      "isolated": false,
+      "atif_trajectory": null,
+      "mode": "batched",
+      "mcp_servers": [
+        {
+          "name": "playwright",
+          "transport": "stdio",
+          "url": null,
+          "command": "playwright-mcp",
+          "args": [
+            "--headless",
+            "--isolated",
+            "--browser=chromium",
+            "--no-sandbox"
+          ],
+          "allowed_tools": []
+        }
+      ]
+    },
+    "judge_output": "",
+    "warnings": [
+      "judge timed out after 4500s; recording affected criteria as 0.0"
+    ]
+  }
+}

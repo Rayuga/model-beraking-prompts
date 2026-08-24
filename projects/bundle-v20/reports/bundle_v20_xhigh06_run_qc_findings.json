@@ -1,0 +1,112 @@
+{
+  "title": "Bundle V20 - Model Run XHigh 06 QC",
+  "subtitle": "Score and false-failure review of the completed OpenHands gpt-5.6-sol xhigh run.",
+  "note": "Scope: projects/bundle-v20/jobs/bundle-v20-gpt-5.6-sol-xhigh-06/bundle-v20__ihpAUi9. Evidence was checked against the Harbor results, phase reward details, verifier stdout, task configuration, and scoring implementation. No completed Oracle run for this Bundle task was found locally.",
+  "mode": "fresh",
+  "runs": [
+    {
+      "task": "webdev/gearvault-enterprise",
+      "model": "openhands / openrouter/openai/gpt-5.6-sol xhigh",
+      "reward": 0.15,
+      "pricing_score": 1.0,
+      "pricing_passed": 7,
+      "pricing_total": 7,
+      "browser_score": 0.0,
+      "browser_passed": 0,
+      "browser_total": 47,
+      "durability_raw_score": 0.1,
+      "durability_gated_score": 0.0,
+      "durability_passed": 1,
+      "durability_total": 7,
+      "failed_observed": 6,
+      "failed_unclassified": 47,
+      "agent_seconds": 684,
+      "verifier_seconds": 5767,
+      "note": "The trial completed without an exception and was not a no-op. The official reward is 0.15 = 0.15*1.0 + 0.65*0.0 + 0.20*0.0. The 47 browser zeros are timeout classifications, not observed application failures."
+    }
+  ],
+  "tasks": [
+    {
+      "name": "Bundle V20 Run XHigh 06",
+      "oracle": null,
+      "best_model": 0.15,
+      "headline": "The recorded 0.15 score is not a defensible measure of this submission: pricing genuinely passed 7/7, but the 65%-weighted browser phase timed out and converted all 47 unclassified criteria to zero. Most durability failures then cascaded from browser mutations that were never completed.",
+      "findings": [
+        {
+          "id": "BND06-01",
+          "sev": "P0",
+          "category": "Harness timeout attributed to model",
+          "location": "projects/bundle-v20/jobs/bundle-v20-gpt-5.6-sol-xhigh-06/bundle-v20__ihpAUi9/verifier/test-stdout.txt:32-148; projects/bundle-v20/bundle-v20/tests/test.py:916-956",
+          "what": "The single 47-criterion browser judge timed out after 4500 seconds. Every browser criterion received value 0 with the same timeout error, producing 0/47 and eliminating 65% of the possible score.",
+          "why": "No browser criterion was classified as an observed failure or an unreached application path. Harbor reports all 47 as unclassified. The judge nevertheless changed persistent state before timing out, including creating three paid reservations, so the blank 0/47 result discards real work rather than proving the app failed every feature.",
+          "impact": "The official 0.15 reward materially under-scores the submission and cannot support claims about which browser features passed or failed.",
+          "fix": "Split the browser rubric into smaller independently scored phases or batches with isolated judge sessions and persist completed criterion results incrementally. Do not convert a whole timed-out batch into 47 model failures.",
+          "evidence": "CONFIRMED: verifier stdout records 0 observed, 0 unreached, and 47 unclassified browser failures; reward-details gives every criterion error 'judge timed out after 4500s'.",
+          "verdict": "CONFIRMED"
+        },
+        {
+          "id": "BND06-02",
+          "sev": "P1",
+          "category": "Cascade into durability grading",
+          "location": "projects/bundle-v20/jobs/bundle-v20-gpt-5.6-sol-xhigh-06/bundle-v20__ihpAUi9/verifier/rewardkit-durability/reward-details.json; projects/bundle-v20/bundle-v20/tests/test.py:1182-1217",
+          "what": "Six durability criteria fail because expected checkout, return, damage, cancellation, rate-change, repair, and hold-lift mutations are absent after restart. Those mutations belong to the preceding browser journey, whose judge timed out before completing or recording results.",
+          "why": "The durability judge genuinely observed the post-restart database, so its observations are real. They do not independently prove persistence defects: for most missing records, the run provides no evidence that the prerequisite mutation succeeded before restart. The browser phase did create three paid papers and changed Priya's standing twice, showing only a partial journey occurred.",
+          "impact": "Treating all six as independent application failures double-penalizes the same browser timeout and makes the durability score unsuitable for defect counting.",
+          "fix": "Gate each durability assertion on durable proof that its prerequisite mutation completed, or have the durability phase establish its own state before restart. Classify missing prerequisites as unreached rather than observed persistence failures.",
+          "evidence": "PARTIAL: app health after restart passed. Certification enforcement also passed inside holds_and_certs_survive_restart, while the required final hold state did not. The remaining failed checks mostly report missing journey-created state.",
+          "verdict": "PARTIAL"
+        },
+        {
+          "id": "BND06-03",
+          "sev": "P0",
+          "category": "Secret in task source",
+          "location": "projects/bundle-v20/bundle-v20/task.toml:214 and :230",
+          "what": "A Stripe test secret key is embedded directly in the task configuration in both verifier and environment sections.",
+          "why": "A committed secret can be copied from the task bundle and used outside the intended run. Test-mode Stripe secrets are still account credentials and should be supplied through Harbor environment configuration.",
+          "impact": "This is a delivery and credential-hygiene blocker independent of the model score.",
+          "fix": "Rotate the exposed test key, remove it from task.toml and repository history, and inject STRIPE_SECRET_KEY through the run environment or platform secret store.",
+          "evidence": "CONFIRMED: both task configuration sections contain the same literal sk_test credential. The credential value is intentionally omitted from this report.",
+          "verdict": "CONFIRMED"
+        },
+        {
+          "id": "BND06-04",
+          "sev": "P2",
+          "category": "Artifact collection portability",
+          "location": "projects/bundle-v20/jobs/bundle-v20-gpt-5.6-sol-xhigh-06/bundle-v20__ihpAUi9",
+          "what": "Post-run artifact collection reported a Windows symlink privilege error while copying a node_modules symlink.",
+          "why": "The verifier had already produced its reward and a source snapshot, so this did not cause the 0.15 score. It can still make locally collected artifacts incomplete or make later review confusing.",
+          "impact": "The run is graded, but artifact export is less reliable on this Windows host.",
+          "fix": "Exclude dependency symlinks such as node_modules from artifact copying or dereference/package the source without them.",
+          "evidence": "CONFIRMED: artifact collection failed on symlinkat for /opt/gearvault-deps/node_modules after grading completed.",
+          "verdict": "CONFIRMED"
+        }
+      ]
+    }
+  ],
+  "blocks": [
+    {
+      "title": "Score conclusion",
+      "items": [
+        "Official score: 0.15.",
+        "Reliably measured portion: pricing 7/7, worth 0.15 of the final reward.",
+        "Unreliably measured portion: browser 0/47 because all 47 criteria timed out and were unclassified.",
+        "Durability: 1/7 raw, but six failures are contaminated by missing browser-journey prerequisites and should not be counted as six independent defects."
+      ]
+    },
+    {
+      "title": "False-failure conclusion",
+      "items": [
+        "All 47 browser failures are harness timeout artifacts, not verified feature failures.",
+        "The model did perform meaningful work: all pricing checks passed and the timed-out journey left three paid reservations in Postgres.",
+        "A fresh run with split browser batches is required before reporting a trustworthy model score or pass/fail count."
+      ]
+    },
+    {
+      "title": "Valid positive evidence",
+      "items": [
+        "Pricing composition, date validation, the 14-day cap, week-rate boundary, weekend per-day charging, Postgres health, and seeded catalog identification all passed.",
+        "The restarted app was healthy, rendered the seeded catalog and mark, rejected missing and unknown identities, and accepted a real seeded identity."
+      ]
+    }
+  ]
+}

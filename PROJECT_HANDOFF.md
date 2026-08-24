@@ -78,7 +78,7 @@ https://www.harborframework.com/docs/tasks/multi-step-tasks
 Folder:
 
 ```text
-medicare-appointment/
+projects/medicare-appointment/medicare-appointment/
 ```
 
 This is the sample/reference task. We used it to understand expected Harbor
@@ -151,31 +151,82 @@ What we took from them:
 
 ## Repo Structure
 
-Current important folders/files:
+Task-specific material is grouped under `projects/`. The actual Harbor task
+folder keeps its original name and sits beside its runs and generated artifacts:
 
 ```text
-patchpad-editor/
-gridforge-spreadsheet/
-medicare-appointment/
-patchpad-editor.zip
-gridforge-spreadsheet.zip
-PatchPad_Editor_QC.xlsx
-PatchPad_Editor_Run_QC.xlsx
-GridForge_Spreadsheet_QC.xlsx
-patchpad-editor_qc_findings.json
-patchpad-editor_run_qc_findings.json
-gridforge-spreadsheet_qc_findings.json
+projects/
+  bundle-v20/
+    bundle-v20/
+    jobs/
+    reports/
+    deliverables/
+    archives/
+  gridforge-spreadsheet/
+    gridforge-spreadsheet/
+    jobs/
+    reports/
+    deliverables/
+    archives/
+  medicare-appointment/
+    medicare-appointment/
+  patchpad-editor/
+    patchpad-editor/
+    jobs/
+    reports/
+    deliverables/
+    archives/
+  threadline-chat/
+    threadline-chat/
+    jobs/
+    reports/
+    deliverables/
+    archives/
 .qc_skill_tmp/
+.tools/
+PROJECT_HANDOFF.md
+Harbor + RewardKit — Team Kickstart.docx
+harbor-task-qc (1).skill
 ```
 
-Important generated/local-only item:
+Directory roles:
+
+- The repeated task-name directory is intentional. For example,
+  `projects/patchpad-editor/patchpad-editor/` is the Harbor task passed to `-p`.
+- `jobs/` contains raw Harbor Oracle and model runs with their original names.
+- `reports/` contains QC JSON, XLSX, DOCX and run inventories.
+- `deliverables/` contains upload ZIPs and delivery bundles.
+- `archives/` contains older run layouts that predate the current `jobs/` form.
+- Shared skills, tools and source documents stay at repository root.
+
+### Working With The Grouped Repository
+
+Treat each directory directly under `projects/` as one self-contained project
+workspace. The inner directory with the same name is the Harbor task; its
+siblings are authoring evidence and must not be included in the task upload.
+
+Use these path rules consistently:
 
 ```text
-.qc_run_job_675826d6_022707/
+Harbor task:  projects/<project>/<task-name>/
+Run output:   projects/<project>/jobs/<unchanged-job-name>/
+QC evidence:  projects/<project>/reports/
+Upload ZIPs:  projects/<project>/deliverables/
+Old formats:  projects/<project>/archives/
 ```
 
-That is only a temporary extraction of a model run zip. It is not required for
-the task package.
+For example, a Threadline model run from the repository root should use:
+
+```text
+-p ./projects/threadline-chat/threadline-chat
+--jobs-dir ./projects/threadline-chat/jobs
+```
+
+Run QC against only the intended task folder or run folder, not the whole
+`projects/` tree. Build upload ZIPs from the inner task folder so reports,
+historical jobs, archives, `CONTEXT.md`, dependencies and local databases do not
+leak into the portal bundle. Keep every task and job name unchanged when moving
+material between these locations; the parent grouping supplies the context.
 
 ## Standard Task Layout
 
@@ -219,13 +270,13 @@ portal expects otherwise. They should not include:
 Folder:
 
 ```text
-patchpad-editor/
+projects/patchpad-editor/patchpad-editor/
 ```
 
 Zip:
 
 ```text
-patchpad-editor.zip
+projects/patchpad-editor/deliverables/patchpad-editor-v1.2.0.zip
 ```
 
 Product idea:
@@ -300,13 +351,13 @@ PatchPad current status:
 Folder:
 
 ```text
-gridforge-spreadsheet/
+projects/gridforge-spreadsheet/gridforge-spreadsheet/
 ```
 
 Zip:
 
 ```text
-gridforge-spreadsheet.zip
+projects/gridforge-spreadsheet/deliverables/gridforge-spreadsheet.zip
 ```
 
 Product idea:
@@ -403,7 +454,7 @@ GridForge current status:
 Folder:
 
 ```text
-threadline-chat/
+projects/threadline-chat/threadline-chat/
 ```
 
 Product idea:
@@ -415,7 +466,7 @@ append-only audit history, and durable SQLite persistence.
 
 The golden app is implemented. Its feature dependency map and planned
 feature/sub-feature verifier metadata are recorded in
-`threadline-chat/CONTEXT.md`. The next authoring step is to review and write the
+`projects/threadline-chat/threadline-chat/CONTEXT.md`. The next authoring step is to review and write the
 verifiers feature by feature with the user; do not compress them into an opaque
 rubric before that review.
 
@@ -632,14 +683,14 @@ The extracted QC scripts are in:
 Useful commands:
 
 ```bash
-python .qc_skill_tmp/run_inventory.py patchpad-editor
-python .qc_skill_tmp/run_inventory.py gridforge-spreadsheet
+python .qc_skill_tmp/run_inventory.py projects/patchpad-editor/jobs
+python .qc_skill_tmp/run_inventory.py projects/gridforge-spreadsheet/jobs
 
-python .qc_skill_tmp/build_report.py patchpad-editor_qc_findings.json -o PatchPad_Editor_QC.xlsx
-python .qc_skill_tmp/audit_report.py PatchPad_Editor_QC.xlsx
+python .qc_skill_tmp/build_report.py projects/patchpad-editor/reports/patchpad_1_2_qc_findings.json -o projects/patchpad-editor/reports/PatchPad_1_2_QC.xlsx
+python .qc_skill_tmp/audit_report.py projects/patchpad-editor/reports/PatchPad_1_2_QC.xlsx
 
-python .qc_skill_tmp/build_report.py gridforge-spreadsheet_qc_findings.json -o GridForge_Spreadsheet_QC.xlsx
-python .qc_skill_tmp/audit_report.py GridForge_Spreadsheet_QC.xlsx
+python .qc_skill_tmp/build_report.py projects/gridforge-spreadsheet/reports/gridforge-spreadsheet_qc_findings.json -o projects/gridforge-spreadsheet/reports/GridForge_Spreadsheet_QC.xlsx
+python .qc_skill_tmp/audit_report.py projects/gridforge-spreadsheet/reports/GridForge_Spreadsheet_QC.xlsx
 ```
 
 For extracted run artifacts:
@@ -653,7 +704,7 @@ python .qc_skill_tmp/run_inventory.py <extracted-run-folder>
 PatchPad:
 
 ```bash
-cd patchpad-editor/solution/app
+cd projects/patchpad-editor/patchpad-editor/solution/app
 npm install
 npm start
 ```
@@ -661,9 +712,25 @@ npm start
 GridForge:
 
 ```bash
-cd gridforge-spreadsheet/solution/app
+cd projects/gridforge-spreadsheet/gridforge-spreadsheet/solution/app
 npm install
 npm start
+```
+
+Threadline:
+
+```bash
+cd projects/threadline-chat/threadline-chat/solution/app
+npm install
+npm start
+```
+
+For Harbor runs from repository root, use the task and job paths from the same
+project container, for example:
+
+```text
+-p ./projects/threadline-chat/threadline-chat
+--jobs-dir ./projects/threadline-chat/jobs
 ```
 
 Open:
@@ -695,7 +762,7 @@ Before upload:
 
 PatchPad:
 
-1. Upload current `patchpad-editor.zip`.
+1. Upload current `projects/patchpad-editor/deliverables/patchpad-editor-v1.2.0.zip`.
 2. Run Oracle.
 3. If Oracle fails, inspect failed verifier reasoning.
 4. If Oracle passes, run model trials and check whether compressed rubric keeps
@@ -703,7 +770,7 @@ PatchPad:
 
 GridForge:
 
-1. Rebuild `gridforge-spreadsheet.zip` before upload.
+1. Rebuild `projects/gridforge-spreadsheet/deliverables/gridforge-spreadsheet.zip` before upload.
 2. Run Oracle.
 3. If Oracle fails, fix golden/verifier first.
 4. If Oracle passes, run model trials.

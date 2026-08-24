@@ -1,0 +1,173 @@
+{
+  "mode": "fresh_qc",
+  "task": "webdev/threadline-chat",
+  "task_root": "threadline-chat",
+  "run_inventory": {
+    "harbor_oracle": {
+      "runs": 2,
+      "scores": [0.8971, 0.8971],
+      "passed": "22/24 in both runs",
+      "failed_criteria": [
+        "presence_typing_multiview_cleanup",
+        "webhook_secret_channel_and_idempotency"
+      ]
+    },
+    "model_runs": 0,
+    "note": "Both Oracle runs predate the typing-indicator and exact-webhook fixes. The post-fix source passes clean-seed API and real two-tab browser replay locally; a fresh Harbor Oracle is still required."
+  },
+  "summary": {
+    "open_p0": 1,
+    "open_p1": 0,
+    "open_p2": 0,
+    "open_p3": 0,
+    "resolved_during_qc": 12,
+    "status": "post_fix_ready_for_oracle",
+    "delivery_gate": "Do not submit until a fresh Harbor Oracle on the post-fix task scores 1.0."
+  },
+  "open_findings": [
+    {
+      "id": "THREADLINE-GATE-01",
+      "severity": "P0",
+      "category": "Golden-Solution",
+      "location": "jobs/threadline-oracle-01 and jobs/threadline-oracle-02",
+      "problem": "The only Harbor Oracle evidence scores 0.8971 rather than the required 1.0.",
+      "fix": "Run one fresh Oracle against the current post-fix task and require all 24 criteria to pass.",
+      "status": "open_release_gate",
+      "run_verdict": "CONFIRMED for archived runs; PARTIAL for current source because both former failures pass locally after their fixes."
+    }
+  ],
+  "resolved_findings": [
+    {
+      "id": "THREADLINE-QC-01",
+      "severity": "P1",
+      "category": "Verifier-Coverage",
+      "location": "tests/test.py: restart validation",
+      "problem": "The initial runner checked clean-seed idempotence but did not prove browser-created committed state survived a later server restart.",
+      "fix": "Added a schema-agnostic logical SQLite snapshot before and after a post-grading restart and made it a full-score gate.",
+      "status": "resolved",
+      "run_verdict": "CONFIRMED locally: both seed/restart and post-grading restart helpers pass against the golden app."
+    },
+    {
+      "id": "THREADLINE-QC-02",
+      "severity": "P1",
+      "category": "Verifier-Coverage",
+      "location": "tests/rubric/browser/browser.toml: visible interaction criteria",
+      "problem": "Several server checks could pass even if the corresponding edit, delete, reaction, pin, and membership controls were absent.",
+      "fix": "Required visible positive-control interactions and retained direct request replay only for forged, stale, revoked, or idempotent negative probes.",
+      "status": "resolved",
+      "run_verdict": "NOT EXERCISED by Harbor; golden visible message, thread, and mobile workflows pass locally."
+    },
+    {
+      "id": "THREADLINE-QC-03",
+      "severity": "P1",
+      "category": "Golden-Solution",
+      "location": "solution/app/public/js/app.js: copied message links",
+      "problem": "Copied links for replies targeted only the parent message, and same-document hash navigation did not open the linked thread.",
+      "fix": "Links now encode the exact reply and parent thread, startup and hash-change navigation share one handler, and the target reply is focused.",
+      "status": "resolved",
+      "run_verdict": "CONFIRMED locally: a copied reply link opens the exact parent thread and reply in another authenticated context."
+    },
+    {
+      "id": "THREADLINE-QC-04",
+      "severity": "P1",
+      "category": "Golden-Solution",
+      "location": "solution/app/src/index.js: message and reply idempotency",
+      "problem": "Reusing one client id against a different channel or thread could return an unrelated prior message instead of rejecting the inconsistent target.",
+      "fix": "Duplicate handling now confirms channel and parent identity and returns a conflict for cross-target reuse.",
+      "status": "resolved",
+      "run_verdict": "CONFIRMED locally by cross-channel and cross-parent replay probes."
+    },
+    {
+      "id": "THREADLINE-QC-05",
+      "severity": "P2",
+      "category": "Verifier-Strictness",
+      "location": "tests/rubric/browser/browser.toml: webhook, version, delete, and audit wording",
+      "problem": "The draft rubric required golden-specific details including HTTP 201, initial version 1, one deletion presentation, and one history display order.",
+      "fix": "Criteria now accept any successful 2xx, discover initial version V, accept removal or a content-free placeholder, and accept consistent oldest-first or newest-first history.",
+      "status": "resolved",
+      "run_verdict": "NOT EXERCISED by Harbor; source-to-instruction review confirms the private conventions were removed."
+    },
+    {
+      "id": "THREADLINE-QC-06",
+      "severity": "P2",
+      "category": "Packaging",
+      "location": "threadline-chat/.gitattributes and solution/solve.sh",
+      "problem": "Windows checkout could rewrite executable shell scripts to CRLF, and the solve fallback used npm install despite a committed lockfile.",
+      "fix": "Pinned shell files to LF and changed the fallback to npm ci.",
+      "status": "resolved",
+      "run_verdict": "CONFIRMED locally: the full Docker image builds and solve.sh plus the golden API smoke suite pass inside Linux."
+    },
+    {
+      "id": "THREADLINE-QC-07",
+      "severity": "P1",
+      "category": "Golden-Solution",
+      "location": "solution/app/src/index.js and public/js/app.js: session handling",
+      "problem": "Cookie-based sessions were shared by ordinary tabs, so a verifier could not keep two users independently signed in within one browser context.",
+      "fix": "Login now issues a server-backed credential stored in tab-scoped sessionStorage and sent on API/SSE requests; logout revokes only that credential.",
+      "status": "resolved",
+      "run_verdict": "CONFIRMED locally: Priya and Maya retain independent identities after simultaneous login and reload in two tabs of one Playwright context."
+    },
+    {
+      "id": "THREADLINE-QC-08",
+      "severity": "P1",
+      "category": "Golden-Solution",
+      "location": "solution/app: direct messages, thread affordance, and thread-open layout",
+      "problem": "The initial product lacked one-to-one messages, hid thread creation behind hover controls, and auto-placed the open thread into the central grid column while squeezing the channel.",
+      "fix": "Added unique participant-only direct conversations, a visible Direct messages picker, persistent Start a thread controls, richer seed conversations, and explicit channel/thread grid columns.",
+      "status": "resolved",
+      "run_verdict": "CONFIRMED locally: API and same-browser Playwright checks pass DM privacy/uniqueness, live message/reply delivery, visible thread creation, desktop geometry, and 390x844 mobile layout."
+    },
+    {
+      "id": "THREADLINE-QC-09",
+      "severity": "P1",
+      "category": "Golden-Solution",
+      "location": "solution/app/public/js/app.js: visible thread summary",
+      "problem": "The parent summary exposed reply count and latest time but omitted the participating users explicitly required by instruction.md.",
+      "fix": "The visible summary now renders participant names from replyParticipants between the reply count and latest-reply time.",
+      "status": "resolved",
+      "run_verdict": "CONFIRMED locally: the clean same-browser Playwright workflow passes after the rendering fix."
+    },
+    {
+      "id": "THREADLINE-QC-10",
+      "severity": "P0",
+      "category": "Golden-Solution",
+      "location": "solution/app/public/js/app.js and src/index.js: typing delivery",
+      "problem": "Both archived Oracle runs failed because another same-context tab did not visibly receive a typing indicator.",
+      "fix": "Publish typing only after the SSE connection is open, retry active signals while typing, broadcast per-channel users, render exact visible feedback, and expire it.",
+      "status": "resolved_locally_pending_oracle",
+      "run_verdict": "PARTIAL: archived Oracles confirm the original failure; on 2026-08-25 a real two-tab replay displayed exact text Omar Haddad is typing... and cleared it after expiry without reload."
+    },
+    {
+      "id": "THREADLINE-QC-11",
+      "severity": "P0",
+      "category": "Golden-Solution",
+      "location": "solution/app/src/index.js: POST /api/hooks/:token",
+      "problem": "Both archived Oracle runs reported that incoming webhook delivery could not be exercised.",
+      "fix": "Implement the seeded token route with channel binding, validation, durable idempotency, integration attribution, audit creation, and exact-route verifier wording.",
+      "status": "resolved_locally_pending_oracle",
+      "run_verdict": "PARTIAL: archived Oracles confirm the original failure; the post-fix clean-seed API smoke passes success, same-message replay, unknown secret, and channel mismatch."
+    },
+    {
+      "id": "THREADLINE-QC-12",
+      "severity": "P1",
+      "category": "Packaging",
+      "location": "threadline-chat.zip",
+      "problem": "The upload ZIP lagged behind app.js, browser.toml, and prompt.md and stored solve.sh and test.sh without executable bits.",
+      "fix": "Rebuilt the archive from the 19 canonical task files and set both shell entry points to mode 0755.",
+      "status": "resolved",
+      "run_verdict": "CONFIRMED locally: every archived file now matches the working task byte-for-byte, zip integrity passes, no junk or literal key is present, and both shell modes are 0755."
+    }
+  ],
+  "clean_checks": [
+    "Required Harbor task files and valid task.toml sections are present.",
+    "Reward floor is written before grading and BaseException is handled.",
+    "All long-running RewardKit subprocess work has an explicit timeout.",
+    "The Ubuntu base image, RewardKit, Claude Code, Playwright MCP, and golden Express dependency are pinned.",
+    "No committed database, node_modules directory, API key, private key, or host-specific absolute path is included.",
+    "There are 24 unique binary criteria and 24 matching feature metadata records, with total weight 34.0.",
+    "Every negative authorization criterion contains an allowed positive control and durable state re-read.",
+    "The golden backend and browser smoke suites pass, including direct messages, mobile, live same-context tab behavior, typing visibility and expiry, and exact webhook idempotency.",
+    "The rebuilt upload ZIP contains 19 canonical files, matches current source byte-for-byte, excludes author/runtime artifacts, and preserves executable shell modes.",
+    "The full environment Docker image builds and the golden solution runs in that image."
+  ]
+}

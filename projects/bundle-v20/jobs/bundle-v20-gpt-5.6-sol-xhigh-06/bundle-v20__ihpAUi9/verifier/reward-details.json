@@ -1,0 +1,96 @@
+{
+  "reward": {
+    "score": 0.1,
+    "criteria": [
+      {
+        "id": "paid_papers_survive_restart",
+        "name": "paid_papers_survive_restart",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 4.0,
+        "description": "The paid hires are still there after the shop was switched off and on again.\nAs Maya Chen, read her reservations.\n(1) D-004 must still be present and CONFIRMED. Its held deposit must still read\nabout $500.00 and its total about $939.20 \u2014 the same figures Stripe charged in the\njourney phase, not a recomputed guess and not a seed default.\n(2) L-118's paper must still be present and must still show the state the journey\nleft it in: gone out, come back, inspected, and its damage decision recorded. Its\ndeposit split must still show the approved deduction and the released remainder, to\nthe penny.\n(3) T-012's paper must still be present and must still read as called off, with its\nwhole $80.00 deposit released and nothing captured.\nFail if any paper vanished, if any figure reset to a seed value or to zero, if a\ncancelled paper came back as confirmed, or if a deposit split reverted.\n",
+        "reasoning": "OBSERVED-FAIL: Read Maya Chen's records via GET /api/me/records and GET /api/operations (as Elena). D-004 checks out: status PAID, deposit_cents 50000 ($500.00), total_cents 93920 ($939.20) - matches. But L-118's reservation record shows checked_out_at: null, returned_at: null, deposit_deduction_cents: 0 - none of the 'gone out, come back, inspected, damage decision recorded' state survived; it reads as an untouched paid booking. T-012's reservation shows status: \"PAID\", cancelled_at: null - it came back as a live confirmed booking rather than the cancelled-with-released-deposit state the journey left it in, which is explicitly called out as a fail condition ('if a cancelled paper came back as confirmed')."
+      },
+      {
+        "id": "unit_states_survive_restart",
+        "name": "unit_states_survive_restart",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 3.0,
+        "description": "Every unit is still resting where the journey phase left it.\nRead the catalog and check each of these against what the journey did:\n(1) D-004 is still in the repair bay \u2014 Elena put it there and never took it out.\n(2) W-044 is back on the floor and available \u2014 Elena restored it.\n(3) X-410 and F-612 are still retired; S-301 is still in repair.\n(4) T-012's unit is back on the floor, because its paper was called off.\n(5) K-055's wall card reads the ORIGINAL daily rate. The ticket-book criteria\nchanged it and put it back; if the restart resurrected the changed figure, or reset\nthe card to a seed value different from the original, that is a fail.\nFail if any unit's status or shop reverted to its seed value, or if a restore or a\nrepair marking was lost.\n",
+        "reasoning": "OBSERVED-FAIL: Read /api/operations unit list as Elena. D-004 shows status \"RESERVED\", not \"IN_REPAIR\" - the repair-bay placement from the journey did not survive. W-044 shows status \"IN_REPAIR\", not \"AVAILABLE\" - Elena's restore of this unit did not survive (or reverted). T-012's unit shows status \"RESERVED\", not back on the floor as \"AVAILABLE\", consistent with its reservation also incorrectly reading PAID instead of cancelled. X-410 and F-612 remain RETIRED and S-301 remains IN_REPAIR correctly, and K-055 reads $85.00/day, but the D-004/W-044/T-012 failures alone are sufficient to fail this criterion."
+      },
+      {
+        "id": "audit_log_survives_restart",
+        "name": "audit_log_survives_restart",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 3.0,
+        "description": "The log is append-only and it does not forget.\nAs Elena Voss, read the shop's log of who did what.\n(1) It must still carry the lines the journey phase created \u2014 the confirmations, the\nhand-over, the return, the inspection clearing, the damage filing, the repair\nmarking, the restore, the rate changes, the hold, and the cancellation.\n(2) Nothing may have been renumbered, reordered into a different sequence, or lost.\nSpot-check three lines and confirm actor, action and entity are intact, and that the\nbefore/after states are still recorded.\n(3) The log must not have GROWN from the restart itself: reboot is not an action.\nThere must be no new line attributing anything to the restart, and no duplicate copy\nof the journey's lines.\nPOSITIVE CONTROL \u2014 as Harper Singh, read it too and confirm the night auditor still\ngets entries, so a wholesale failure to read is distinguishable from a lost log.\nFail if lines are missing, duplicated, renumbered, stripped of actor or state, or if\nthe restart itself wrote entries.\n",
+        "reasoning": "OBSERVED-FAIL: Read /api/operations as Elena Voss (id 33333333-...) and as Harper Singh (id 10101010-...) - both return the identical 5-row audit log: 3 PAYMENT_CONFIRMED rows (D-004, T-012, L-118 purchases) and 2 CUSTOMER_STANDING_CHANGED rows for Priya Nair. There is no line for hand-over/checkout, return, inspection clearing, damage filing, repair marking, restore, rate change (unit.rate), or cancellation anywhere in the log, even though the journey phase is described as having performed all of these. The positive control (Harper's read) succeeds and matches Elena's read byte-for-byte, showing the log mechanism itself works but the content is missing the bulk of the journey's actions."
+      },
+      {
+        "id": "holds_and_certs_survive_restart",
+        "name": "holds_and_certs_survive_restart",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 2.5,
+        "description": "Customer standing is not seed data.\n(1) The journey phase put Priya Raman on hold and then lifted it. Read her standing:\nit must reflect the LIFTED state, not the seeded default and not the on-hold state.\nAs Priya, quote any available unit for a free midweek span and confirm she is\nallowed to book again. Abandon without paying.\n(2) Certification standing survived: as Jordan Hale, attempt to book D-004 for\n2030-11-12 through 2030-11-14. He must still be refused for his expired drone card.\nAs Maya, quote D-004 for those same dates and confirm she is still allowed, because\nher card is current. Abandon without paying.\nFail if a hold that was lifted came back, if a lifted hold reverted to on-hold, or if\ncertification gating reset such that an uncarded holder can now book.\n",
+        "reasoning": "OBSERVED-FAIL: As Priya Nair (cccccccc-...), attempted a live quote via POST /api/quotes for K-055 2030-09-16..18: got 422 {\"error\":\"This account is on hold until its outstanding balance is resolved.\"} and /api/people confirms account_status: \"ON_HOLD\" for her right now. The audit trail (read as Elena) shows her hold was lifted (ON_HOLD->ACTIVE at 19:22:25) but then a second entry placed her back on hold (ACTIVE->ON_HOLD at 19:22:49), so the persisted end-state is on-hold, not the lifted state the criterion requires. Certification gating (part 2) did work correctly: Jordan Hale forging a quote request for D-004 2030-11-12..14 got 422 'A current Drone Operator card through the return day is required.', while Maya Chen's identical request returned 200 with a full quote \u2014 but the overall criterion fails because part 1 (hold lifted) does not hold."
+      },
+      {
+        "id": "ticket_book_survives_restart",
+        "name": "ticket_book_survives_restart",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 2.5,
+        "description": "The book of ticket numbers is part of the books, not a cache.\nThe journey phase used an Idempotency-Key for a K-055 wall-card change and recorded\nthe answer it got.\n(1) Send that same request again, with that same key, now that the app has been\nrestarted. It must STILL replay the stored answer: same status, same body, same\nfigures. K-055's rate must not change again.\n(2) Read the log as Elena and confirm there is still exactly ONE `unit.rate` line for\nK-055 from that sequence \u2014 the replay must not have added a second.\nFail if the key was forgotten and the act was performed a second time, if the answer\ndiffers from the one first recorded, or if a second log line appeared. An app that\nkept its ticket book in memory will fail this, and that is the point: a ticket book\nthat does not survive a restart cannot protect a customer from a double charge\nduring the exact outage it exists for.\n",
+        "reasoning": "OBSERVED-FAIL: Read the full audit log as Elena Voss (/api/operations) - it contains zero unit.rate / rate-change entries for K-055 at all, when the criterion requires exactly one such line to persist from the journey's idempotency-keyed rate-change request. Since the record of that ticketed action is gone entirely (not present even once), the ticket book's own audit trail already fails the stated check before any replay could be meaningful, and there is no way to recover the original Idempotency-Key to attempt the replay since the request it belongs to left no trace."
+      },
+      {
+        "id": "nothing_reseeded_on_restart",
+        "name": "nothing_reseeded_on_restart",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 3.0,
+        "description": "Coming back up must not re-run the seed over live books.\n(1) Count the reservations across all customers. There must be exactly the papers the\njourney phase created \u2014 no duplicates of D-004, L-118 or T-012, and no extra rows\nthat look like a second seeding.\n(2) Count the units. There must still be eighteen, not thirty-six.\n(3) Read the demo roster: each seeded person must appear exactly once.\n(4) Read the damage queue: Riley's report on L-118 must appear exactly once, still\ncarrying its approved decision.\nFail on any duplicate row, any doubled catalog, any repeated roster entry, or any\nsign that startup re-applied seed data on top of a live ledger.\n",
+        "reasoning": "OBSERVED-FAIL: Reservation count (3, all Maya's: D-004/L-118/T-012), unit count (18, confirmed via catalog banner and /api/operations units array), and roster (16 people, each appearing once in /api/people) all check out with no duplicates. However, reading the damage queue as Riley Okonkwo (22222222-...) shows 'Active papers: Nothing is waiting in this queue' - completely empty, when the criterion requires Riley's L-118 report to appear exactly once with its approved decision still attached. It is not duplicated, it is entirely missing, which fails the explicit checklist item (4) of this criterion."
+      },
+      {
+        "id": "app_is_healthy_after_restart",
+        "name": "app_is_healthy_after_restart",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 2.0,
+        "description": "The shop actually opened again.\n(1) Open the app's health or shop-status surface. It must answer, and it must still\nreport the Postgres ledger as the system of record.\n(2) The catalog renders and the riverside mark is still on the page.\n(3) Identity still works: as Maya, a read succeeds; a request carrying no identity at\nall is still refused; an unseeded identity is still refused.\nFail if the app did not come back, if health reports a different store than it did\nbefore, or if identity handling reset to serving a default customer.\n",
+        "reasoning": "Fetched /api/health with Maya's x-demo-user header: 200 {\"ok\":true,\"database\":\"gearvault\",\"storage\":\"Postgres\",\"vendor_network\":true}. Catalog page renders 18 units and the 'Riverside river mark' img is present in the snapshot. Identity: GET /api/overview with no header -> 401 'Choose who is using GearVault before continuing.'; with a fabricated unseeded uuid (00000000-...) -> 401 'That person is not a GearVault demo user.'; with Maya's real id -> 200 with her data. All three identity checks behave correctly."
+      }
+    ],
+    "kind": "agent",
+    "judge": {
+      "agent": "claude-code",
+      "model": "anthropic/claude-sonnet-5",
+      "timeout": 1800,
+      "cwd": null,
+      "isolated": false,
+      "atif_trajectory": null,
+      "mode": "batched",
+      "mcp_servers": [
+        {
+          "name": "playwright",
+          "transport": "stdio",
+          "url": null,
+          "command": "playwright-mcp",
+          "args": [
+            "--headless",
+            "--isolated",
+            "--browser=chromium",
+            "--no-sandbox"
+          ],
+          "allowed_tools": []
+        }
+      ]
+    },
+    "judge_output": "{\"app_is_healthy_after_restart\": {\"score\": \"yes\", \"reasoning\": \"Fetched /api/health with Maya's x-demo-user header: 200 {\\\"ok\\\":true,\\\"database\\\":\\\"gearvault\\\",\\\"storage\\\":\\\"Postgres\\\",\\\"vendor_network\\\":true}. Catalog page renders 18 units and the 'Riverside river mark' img is present in the snapshot. Identity: GET /api/overview with no header -> 401 'Choose who is using GearVault before continuing.'; with a fabricated unseeded uuid (00000000-...) -> 401 'That person is not a GearVault demo user.'; with Maya's real id -> 200 with her data. All three identity checks behave correctly.\"}, \"audit_log_survives_restart\": {\"score\": \"no\", \"reasoning\": \"OBSERVED-FAIL: Read /api/operations as Elena Voss (id 33333333-...) and as Harper Singh (id 10101010-...) - both return the identical 5-row audit log: 3 PAYMENT_CONFIRMED rows (D-004, T-012, L-118 purchases) and 2 CUSTOMER_STANDING_CHANGED rows for Priya Nair. There is no line for hand-over/checkout, return, inspection clearing, damage filing, repair marking, restore, rate change (unit.rate), or cancellation anywhere in the log, even though the journey phase is described as having performed all of these. The positive control (Harper's read) succeeds and matches Elena's read byte-for-byte, showing the log mechanism itself works but the content is missing the bulk of the journey's actions.\"}, \"holds_and_certs_survive_restart\": {\"score\": \"no\", \"reasoning\": \"OBSERVED-FAIL: As Priya Nair (cccccccc-...), attempted a live quote via POST /api/quotes for K-055 2030-09-16..18: got 422 {\\\"error\\\":\\\"This account is on hold until its outstanding balance is resolved.\\\"} and /api/people confirms account_status: \\\"ON_HOLD\\\" for her right now. The audit trail (read as Elena) shows her hold was lifted (ON_HOLD->ACTIVE at 19:22:25) but then a second entry placed her back on hold (ACTIVE->ON_HOLD at 19:22:49), so the persisted end-state is on-hold, not the lifted state the criterion requires. Certification gating (part 2) did work correctly: Jordan Hale forging a quote request for D-004 2030-11-12..14 got 422 'A current Drone Operator card through the return day is required.', while Maya Chen's identical request returned 200 with a full quote \\u2014 but the overall criterion fails because part 1 (hold lifted) does not hold.\"}, \"nothing_reseeded_on_restart\": {\"score\": \"no\", \"reasoning\": \"OBSERVED-FAIL: Reservation count (3, all Maya's: D-004/L-118/T-012), unit count (18, confirmed via catalog banner and /api/operations units array), and roster (16 people, each appearing once in /api/people) all check out with no duplicates. However, reading the damage queue as Riley Okonkwo (22222222-...) shows 'Active papers: Nothing is waiting in this queue' - completely empty, when the criterion requires Riley's L-118 report to appear exactly once with its approved decision still attached. It is not duplicated, it is entirely missing, which fails the explicit checklist item (4) of this criterion.\"}, \"paid_papers_survive_restart\": {\"score\": \"no\", \"reasoning\": \"OBSERVED-FAIL: Read Maya Chen's records via GET /api/me/records and GET /api/operations (as Elena). D-004 checks out: status PAID, deposit_cents 50000 ($500.00), total_cents 93920 ($939.20) - matches. But L-118's reservation record shows checked_out_at: null, returned_at: null, deposit_deduction_cents: 0 - none of the 'gone out, come back, inspected, damage decision recorded' state survived; it reads as an untouched paid booking. T-012's reservation shows status: \\\"PAID\\\", cancelled_at: null - it came back as a live confirmed booking rather than the cancelled-with-released-deposit state the journey left it in, which is explicitly called out as a fail condition ('if a cancelled paper came back as confirmed').\"}, \"ticket_book_survives_restart\": {\"score\": \"no\", \"reasoning\": \"OBSERVED-FAIL: Read the full audit log as Elena Voss (/api/operations) - it contains zero unit.rate / rate-change entries for K-055 at all, when the criterion requires exactly one such line to persist from the journey's idempotency-keyed rate-change request. Since the record of that ticketed action is gone entirely (not present even once), the ticket book's own audit trail already fails the stated check before any replay could be meaningful, and there is no way to recover the original Idempotency-Key to attempt the replay since the request it belongs to left no trace.\"}, \"unit_states_survive_restart\": {\"score\": \"no\", \"reasoning\": \"OBSERVED-FAIL: Read /api/operations unit list as Elena. D-004 shows status \\\"RESERVED\\\", not \\\"IN_REPAIR\\\" - the repair-bay placement from the journey did not survive. W-044 shows status \\\"IN_REPAIR\\\", not \\\"AVAILABLE\\\" - Elena's restore of this unit did not survive (or reverted). T-012's unit shows status \\\"RESERVED\\\", not back on the floor as \\\"AVAILABLE\\\", consistent with its reservation also incorrectly reading PAID instead of cancelled. X-410 and F-612 remain RETIRED and S-301 remains IN_REPAIR correctly, and K-055 reads $85.00/day, but the D-004/W-044/T-012 failures alone are sufficient to fail this criterion.\"}}"
+  }
+}
