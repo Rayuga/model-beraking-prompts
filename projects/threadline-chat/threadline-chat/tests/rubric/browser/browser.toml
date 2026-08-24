@@ -31,18 +31,35 @@ This criterion is all-or-nothing. Open two ordinary tabs in the same browser con
 # kind = hard_gate
 # depends_on = [seeded_login_and_session_isolation]
 [[criterion]]
-id = "server_owned_identity_and_logout_revocation"
-name = "server_owned_identity_and_logout_revocation"
+id = "server_owned_message_identity"
+name = "server_owned_message_identity"
 type = "binary"
-weight = 2.0
+weight = 1.5
 description = """
-This criterion is all-or-nothing. Sign in as Priya Shah and discover the real send-message request from the live app. Through a direct same-origin fetch, send a general-channel message with unique text IDENTITY-PRIYA and a valid unique client id, while adding forged body fields that claim Maya's user id, name, admin role, ownership, and a client timestamp. Require the save to succeed but re-read the stored message and verify its author is exactly Priya, its id and timestamp are server assigned, and none of the forged identity/role/time fields became authoritative. Capture a second otherwise-valid send request, log out through the visible UI, and replay that request with the captured session credential; require a non-2xx response. Re-read general after signing back in and verify the replay marker was not stored and no duplicate of IDENTITY-PRIYA exists.
+This criterion is all-or-nothing. Perform every named step through an ordinary authenticated browser page; do not inspect application source, mutate the DOM or database, use a hidden route, or substitute a different endpoint or message as evidence. Sign in as Priya Shah, visibly open general, and before sending install browser-side network observation for fetch and XMLHttpRequest, or use equivalent browser network observation, so the exact request produced by the visible composer can be recorded. Through the visible composer send exact text IDENTITY-DISCOVERY-CONTROL once. Record that action's real request URL, method, content type, authentication mechanism, and complete body, then verify general contains exactly one IDENTITY-DISCOVERY-CONTROL message visibly authored by Priya Shah. If the generated request cannot be observed, fail rather than guessing an endpoint or payload.
+
+Clone the observed request without changing its implementation-specific structure or required fields. Give the cloned request a fresh valid idempotency/client identifier if the observed request uses one, change only its message content to exact text IDENTITY-FORGERY-PROBE, and add or replace identity-bearing values wherever that observed body format permits: Maya Chen's real seeded user id discovered from the authenticated app, author/user name Maya Chen, role admin, message owner Maya's id, message id 999999, and timestamp 2000-01-01T00:00:00.000Z. Send that clone through a direct same-origin fetch using Priya's still-active authenticated session. A secure result may either reject the forgery with a non-2xx response or accept the message while ignoring all forged authoritative values. If rejected, re-read general and require exactly zero occurrences of IDENTITY-FORGERY-PROBE. If accepted, re-read general and require exactly one occurrence whose visible/stored author is Priya Shah, whose id is not 999999, whose timestamp is not 2000-01-01T00:00:00.000Z, and whose stored ownership, role, and identity do not become Maya/admin values. Finally verify IDENTITY-DISCOVERY-CONTROL still occurs exactly once. If any step, exact value, count, named interaction path, or secure outcome check is missing, fail the entire criterion.
+"""
+
+# feature = auth_session
+# sub_feature = logout_revocation
+# kind = hard_gate
+# depends_on = [seeded_login_and_session_isolation, server_owned_message_identity]
+[[criterion]]
+id = "logout_revokes_captured_session"
+name = "logout_revokes_captured_session"
+type = "binary"
+weight = 1.5
+description = """
+This criterion is all-or-nothing. Perform every named step; do not use source inspection, direct database access, DOM mutation, a different protected endpoint, or the post-logout current credential as a substitute for replaying the captured pre-logout send. Sign in as Priya Shah, visibly open general, and install browser-side fetch/XMLHttpRequest observation, or equivalent browser network observation, before using the visible composer to send exact text LOGOUT-BASELINE-CONTROL once. Capture the exact successful send request including its real URL, method, content type, complete implementation-specific body, and the pre-logout session credential or authentication header used by that request. Verify general contains exactly one LOGOUT-BASELINE-CONTROL message visibly authored by Priya Shah. If the request or its pre-logout authentication cannot be captured, fail rather than guessing.
+
+Clone the captured successful request, preserve its endpoint and required body structure, replace its content with exact text LOGOUT-REPLAY-BLOCKED, and use a fresh valid idempotency/client identifier if the observed request uses one. Keep that clone and the captured pre-logout credential without sending it yet. Log out only through the visible account control and verify the page returns to the seeded-user sign-in screen with no authenticated workspace visible. Now replay the prepared clone through direct same-origin fetch while explicitly using the captured pre-logout credential. Require a non-2xx response. Sign in again as Priya through the visible sign-in form, visibly open general, and require exactly zero occurrences of LOGOUT-REPLAY-BLOCKED and exactly one occurrence of LOGOUT-BASELINE-CONTROL. If the replay succeeds, either count is wrong, logout was not performed visibly, a newly authenticated credential is used, or any named step is skipped, fail the entire criterion.
 """
 
 # feature = channel_authorization
 # sub_feature = private_channel_isolation
 # kind = hard_gate
-# depends_on = [server_owned_identity_and_logout_revocation]
+# depends_on = [server_owned_message_identity, logout_revokes_captured_session]
 [[criterion]]
 id = "private_channel_object_authorization"
 name = "private_channel_object_authorization"
@@ -55,7 +72,7 @@ This criterion is all-or-nothing. In a Maya Chen tab, positively verify leadersh
 # feature = direct_messages
 # sub_feature = pair_uniqueness_and_participant_authorization
 # kind = hard_gate
-# depends_on = [seeded_login_and_session_isolation, server_owned_identity_and_logout_revocation]
+# depends_on = [seeded_login_and_session_isolation, server_owned_message_identity]
 [[criterion]]
 id = "direct_message_pair_uniqueness_and_authorization"
 name = "direct_message_pair_uniqueness_and_authorization"
@@ -94,7 +111,7 @@ This criterion is all-or-nothing. Sign in as Maya and Omar in two ordinary tabs 
 # feature = channel_authorization
 # sub_feature = message_ownership_and_moderation
 # kind = hard_gate
-# depends_on = [server_owned_identity_and_logout_revocation]
+# depends_on = [server_owned_message_identity]
 [[criterion]]
 id = "message_moderation_and_ownership"
 name = "message_moderation_and_ownership"
