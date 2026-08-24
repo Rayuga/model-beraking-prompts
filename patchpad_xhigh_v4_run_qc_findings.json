@@ -1,0 +1,110 @@
+{
+  "title": "PatchPad Editor - Model Run V4 QC",
+  "subtitle": "False-positive review of the four failed browser criteria in the OpenHands gpt-5.6-sol xhigh run.",
+  "note": "Scope: jobs/patchpad-gpt-5.6-sol-xhigh-v4/patchpad-editor__fuynXJS. Evidence was checked against the verifier report, captured model source, current instruction and rubric, same-digest Oracle run patchpad-oracle-v1-2-02, and an independent Playwright replay using real mouse and keyboard input.",
+  "mode": "fresh",
+  "runs": [
+    {
+      "task": "webdev/patchpad-editor",
+      "model": "ORACLE",
+      "reward": 1.0,
+      "browser_score": 1.0,
+      "browser_passed": 20,
+      "browser_total": 20,
+      "note": "Oracle run patchpad-oracle-v1-2-02 passed 20/20. Its Harbor task digest exactly matches model run V4."
+    },
+    {
+      "task": "webdev/patchpad-editor",
+      "model": "openhands / openrouter/openai/gpt-5.6-sol xhigh",
+      "reward": 0.6842,
+      "browser_score": 0.6842,
+      "browser_passed": 16,
+      "browser_total": 20,
+      "agent_s": 595,
+      "verifier_s": 6100,
+      "note": "Valid graded run with no trial exception or no-op. Passed weight is 13.0 of 19.0; four 1.5-weight criteria failed."
+    }
+  ],
+  "tasks": [
+    {
+      "name": "PatchPad Run V4",
+      "oracle": 1.0,
+      "best_model": 0.6842,
+      "headline": "No behavioral false positive was found among the four failed criteria. All four failures reproduce, although two exact undo-grouping rules are only weakly stated in the instruction.",
+      "findings": [
+        {
+          "id": "PPV4-01",
+          "sev": "P2",
+          "category": "Failed-verifier fairness",
+          "location": "patchpad-editor/tests/rubric/browser/browser.toml:85; captured model public/editor.js:290-307",
+          "what": "selection_real_mouse_word_line_range_keyboard is a genuine failure. Real double-click and triple-click actions place a caret but do not select the requested word or logical line.",
+          "why": "The model tries to distinguish click counts with event.detail inside a pointerdown listener. In the tested Chromium path this does not provide the expected double/triple count, so the word and line branches are not reached.",
+          "impact": "The first mandatory mouse sub-check independently fails the all-or-nothing criterion. This is explicitly covered by the instruction's standard word and line mouse-selection requirement.",
+          "fix": "No verifier fix is needed. The model app should track click sequences reliably or use an event that supplies the click count for real mouse input.",
+          "evidence": "CONFIRMED: independent real Playwright double-click on Timeline followed by Backspace produced 'Tieline', not an empty line; real triple-click on Customer impact produced 'Custmer impact', not removal of the logical line. Undo restored both originals.",
+          "verdict": "CONFIRMED"
+        },
+        {
+          "id": "PPV4-02",
+          "sev": "P1",
+          "category": "Graded but weakly stated",
+          "location": "patchpad-editor/instruction.md:56-57; patchpad-editor/tests/rubric/browser/browser.toml:118; captured model public/editor.js:173-201 and :247-261",
+          "what": "undo_contiguous_typing_group correctly detects that one Undo removes only the final character of a contiguous typed marker, but the instruction never explicitly says contiguous typing must be grouped into one undoable edit.",
+          "why": "The instruction explicitly makes cut, paste, and a whole multi-caret edit atomic, while ordinary typing only receives a generic undo/redo requirement. The verifier adds a precise semantic grouping policy that is common editor behavior but not directly stated.",
+          "impact": "The observed app behavior is defective for a normal editor, so this is not a behavioral false positive. It remains a fairness risk because an implementation can follow every explicit atomicity sentence and still lose 1.5 weight here.",
+          "fix": "Add one concise requirement that a contiguous typing burst is one undoable edit, without exposing the verifier marker or exact test sequence.",
+          "evidence": "PARTIAL: independent replay produced 'TimelineUNDOGROUPTEST', then exactly one Undo left 'TimelineUNDOGROUPTES'. editor.js pushes a snapshot on every keypress. The failure is real; only its instruction coverage is incomplete.",
+          "verdict": "PARTIAL"
+        },
+        {
+          "id": "PPV4-03",
+          "sev": "P1",
+          "category": "Graded but weakly stated",
+          "location": "patchpad-editor/instruction.md:49-50 and :56-57; patchpad-editor/tests/rubric/browser/browser.toml:151; captured model public/editor.js:173-201 and :247-261",
+          "what": "undo_typed_selection_replacement_atomic is also behaviorally correct: one Undo leaves a partial replacement instead of restoring Timeline. However, typing over a selection as one atomic undo step is not explicitly stated.",
+          "why": "The instruction requires selection replacement and undo/redo separately, but its explicit one-edit guarantees name cut, paste, and multi-caret edits only. The criterion combines those requirements into a stricter grouping invariant.",
+          "impact": "The 1.5-weight failure reflects genuinely poor editor behavior but can be challenged as graded detail beyond the brief.",
+          "fix": "State that replacing a selection by typing is one undoable edit. Keep the exact text, one-Undo probe, and expected line values only in the verifier.",
+          "evidence": "PARTIAL: independent keyboard selection changed Timeline to 'REPLACE-ATOMIC'; exactly one Undo left 'REPLACE-ATOMI' rather than restoring Timeline. The captured implementation records every replacement character separately.",
+          "verdict": "PARTIAL"
+        },
+        {
+          "id": "PPV4-04",
+          "sev": "P2",
+          "category": "Failed-verifier fairness",
+          "location": "patchpad-editor/instruction.md:58-60; patchpad-editor/tests/rubric/browser/browser.toml:217; captured model public/editor.js:173-201 and :290-310",
+          "what": "multi_caret_full_typing_single_undo is a genuine and explicitly instructed failure. Three carets type in the correct locations, but one Undo removes only the last character at every caret.",
+          "why": "The multi-caret insertion itself is implemented, but each keypress becomes a separate undo snapshot. The instruction expressly says one Undo reverses the whole multi-caret edit.",
+          "impact": "The model fairly loses this 1.5 weight. The related Backspace/Delete sibling criterion still passes, so the rubric distinguishes multi-caret placement/deletion from typing-history atomicity.",
+          "fix": "No verifier or instruction change is needed; the model app must group the full multi-caret typing burst into one history operation.",
+          "evidence": "CONFIRMED: independent replay created exactly three carets and produced 'TimelineMULTI', 'Customer impactMULTI', and 'Action itemsMULTI'. One Undo left 'TimelineMULT', 'Customer impactMULT', and 'Action itemsMULT'.",
+          "verdict": "CONFIRMED"
+        }
+      ]
+    }
+  ],
+  "blocks": [
+    {
+      "title": "False-positive conclusion",
+      "items": [
+        "Zero of the four failed criteria is a behavioral false positive.",
+        "Two failures are fully fair and explicitly instructed: mouse word/line selection and full multi-caret edit undo.",
+        "Two failures reproduce but should receive a short generic instruction clarification: contiguous typing and typed selection replacement grouping."
+      ]
+    },
+    {
+      "title": "Independent replay",
+      "items": [
+        "Double-click plus Backspace changed Timeline to Tieline; triple-click plus Backspace changed Customer impact to Custmer impact.",
+        "One Undo changed UNDOGROUPTEST to UNDOGROUPTES and REPLACE-ATOMIC to REPLACE-ATOMI.",
+        "Three-caret typing produced complete MULTI insertions; one Undo left MULT at all three locations."
+      ]
+    },
+    {
+      "title": "Solvability",
+      "items": [
+        "The exact task digest used by model run V4 has a 20/20 Oracle result, so these checks remain solvable by the reference solution."
+      ]
+    }
+  ]
+}
