@@ -1,0 +1,139 @@
+# ============================================================================
+# Feature and gate map
+#
+# Criteria are grouped into FEATURES. Within a feature, some criteria are GATES:
+# properties an acceptable app must have — authorization, financial integrity,
+# durability, no-double-charge. A gate failure disqualifies its whole feature,
+# regardless of what else in that feature passed.
+#
+# The reason is the one the authoring guide gives: a submission must not be able
+# to average away an authorization bypass by passing twenty cosmetic checks. An
+# app that lets a rental associate walk kit out of the bay with no scan ticket
+# has not "mostly" implemented the counter — the counter does not work, and the
+# score should say so.
+#
+# Scoring:
+#   feature score = 0.0                      if any gate criterion in it failed
+#                 = weighted mean of its criteria   otherwise
+#   phase score   = weighted mean of features, each weighted by its total weight
+#
+# When everything passes, this is identical to a plain weighted mean over all
+# criteria. Gates only ever bite on a submission that already failed something
+# the guide calls unshippable.
+#
+# `gate = false` criteria are graded normally: business-rule behaviours where
+# partial credit is meaningful.
+# ============================================================================
+
+# ---------------------------------------------------------------- pricing ----
+
+[[feature]]
+name = "Shop surface and catalog"
+phase = "pricing"
+criteria = ["shop_mark_visible", "unit_resolved_without_tag", "shop_postgres_ledger"]
+gates = []
+
+[[feature]]
+name = "Quoting and the money pipeline"
+phase = "pricing"
+criteria = ["past_dates_rejected", "fortnight_cap", "week_rate_boundary",
+            "weekend_desk_counts_each_day"]
+# The composition order IS the product here. A quote that silently drops the
+# week rate is not a partially-correct quote, it is a wrong price.
+gates = ["week_rate_boundary", "weekend_desk_counts_each_day"]
+
+# ---------------------------------------------------------------- browser ----
+
+[[feature]]
+name = "Payments and settlement integrity"
+phase = "browser"
+criteria = ["book_l118_payment", "payment_replay_no_duplicate", "long_hire_tent_payment",
+            "drone_payment_and_per_day_hull", "abandoned_checkout_writes_nothing",
+            "deposit_amount_integrity", "decoy_fields_and_form_switch",
+            "ledger_survives_payments", "pier_tax_desk",
+            "tax_base_excludes_deposit_and_hull", "three_books_reconcile_to_the_penny"]
+# Double-charging a customer, billing a client-supplied figure, or three books
+# that disagree are all unshippable. Money is the one thing a rental shop
+# cannot be approximately right about.
+gates = ["payment_replay_no_duplicate", "deposit_amount_integrity",
+         "decoy_fields_and_form_switch", "three_books_reconcile_to_the_penny"]
+
+[[feature]]
+name = "Booking rules and availability"
+phase = "browser"
+criteria = ["overlap_same_unit_rejected", "cross_customer_same_unit_rejected",
+            "adjacent_and_cross_item", "weather_blocks_outdoor", "dark_week_refuses_span",
+            "historical_rate_snapshot", "concurrent_double_submit_one_paper"]
+# Selling one unit to two customers for the same days is the failure the whole
+# availability model exists to prevent.
+gates = ["overlap_same_unit_rejected", "concurrent_double_submit_one_paper"]
+
+[[feature]]
+name = "Identity, roles, and object-level authorization"
+phase = "browser"
+criteria = ["unknown_identity_rejected", "customer_isolation", "role_isolation_matrix",
+            "priya_hold_rejected", "drone_cert_gate", "repair_and_retired_rejected",
+            "transfer_clerk_isolation"]
+# The root gate. Every per-role and per-customer behaviour downstream is
+# meaningless if identity or object-level authorization does not hold.
+gates = ["unknown_identity_rejected", "customer_isolation", "role_isolation_matrix",
+         "transfer_clerk_isolation"]
+
+[[feature]]
+name = "The counter: check-out, return, inspection"
+phase = "browser"
+criteria = ["scan_gate_and_checkout_idempotent", "return_and_idempotent",
+            "pending_inspection_locks_unit", "checkout_override_refused",
+            "location_mismatch_and_repair_lock"]
+# Kit leaving the bay without a live scan, or an override being honoured, means
+# the counter's controls are decorative.
+gates = ["scan_gate_and_checkout_idempotent", "checkout_override_refused"]
+
+[[feature]]
+name = "Damage, deposits, and separation of duties"
+phase = "browser"
+criteria = ["media_ticket_required", "file_damage_and_self_approve_rejected",
+            "over_replacement_and_duplicate_file", "manager_approve_ledger_and_bay",
+            "insurance_bind_signature"]
+# An assessor closing her own case and releasing a customer's deposit is the
+# textbook separation-of-duties failure. It disqualifies the feature.
+gates = ["file_damage_and_self_approve_rejected", "over_replacement_and_duplicate_file"]
+
+[[feature]]
+name = "Cancellation and the repair-bay round trip"
+phase = "browser"
+criteria = ["manager_restores_from_repair_bay", "restore_blocked_while_spoken_for",
+            "customer_cancel_releases_deposit", "cancel_scope_and_state_gate"]
+# Calling off somebody else's hire, or pulling a unit off a live paper, are
+# state-machine violations that move money and kit.
+gates = ["cancel_scope_and_state_gate", "restore_blocked_while_spoken_for"]
+
+[[feature]]
+name = "Copies, downloads, and the audit trail"
+phase = "browser"
+criteria = ["paid_ticket_copies_everywhere", "hire_waiver_pdf_download",
+            "ics_calendar_download", "audit_log_records_the_decisions",
+            "audit_log_read_gate"]
+# A log anyone can read, or one that records nothing, is not an audit trail.
+gates = ["audit_log_read_gate"]
+
+[[feature]]
+name = "Idempotency: doing a thing once"
+phase = "browser"
+criteria = ["idempotency_key_required_on_writes", "idempotent_replay_returns_same_answer",
+            "idempotency_key_scope_and_conflict"]
+# Replay protection that does not replay is not replay protection.
+gates = ["idempotent_replay_returns_same_answer"]
+
+# ------------------------------------------------------------- durability ----
+
+[[feature]]
+name = "Durability: the books survive a restart"
+phase = "durability"
+criteria = ["paid_papers_survive_restart", "unit_states_survive_restart",
+            "audit_log_survives_restart", "holds_and_certs_survive_restart",
+            "ticket_book_survives_restart", "nothing_reseeded_on_restart",
+            "app_is_healthy_after_restart"]
+# Losing paid hires on restart, or re-seeding over live books, means there is no
+# ledger — only a convincing render. Either one disqualifies the phase.
+gates = ["paid_papers_survive_restart", "nothing_reseeded_on_restart"]

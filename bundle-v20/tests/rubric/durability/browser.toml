@@ -1,0 +1,176 @@
+[judge]
+judge = "claude-code"
+model = "anthropic/claude-sonnet-5"
+mode = "batched"
+timeout = 1800
+isolated = false
+prompt_template = "prompt.md"
+weight = 1.0
+
+[[judge.mcp_servers]]
+name = "playwright"
+transport = "stdio"
+command = "playwright-mcp"
+args = ["--headless", "--isolated", "--browser=chromium", "--no-sandbox"]
+
+# ============================================================================
+# Phase C — durability. The app process was STOPPED and STARTED again between
+# the journey phase and this one, against the same shop Postgres.
+#
+# Nothing here creates state. Every criterion re-reads what the journey phase
+# already established and asserts it survived the restart unchanged. An app
+# that kept its books in process memory, in a module-level array, or in the
+# browser will have lost them and will fail this phase wholesale — which is
+# the point. This is the cheapest way to tell a real ledger from a convincing
+# one, and it cannot be faked by a UI that merely re-renders.
+#
+# Scored independently and weighted 0.20 of the task reward.
+# ============================================================================
+
+# ============================================================================
+# Section 1 — the three paid holds
+# ============================================================================
+
+# ============================================================================
+# Section 1 — the books survived
+# ============================================================================
+
+[[criterion]]
+id = "paid_papers_survive_restart"
+name = "paid_papers_survive_restart"
+type = "binary"
+weight = 4.0
+description = """
+The paid hires are still there after the shop was switched off and on again.
+As Maya Chen, read her reservations.
+(1) D-004 must still be present and CONFIRMED. Its held deposit must still read
+about $500.00 and its total about $939.20 — the same figures Stripe charged in the
+journey phase, not a recomputed guess and not a seed default.
+(2) L-118's paper must still be present and must still show the state the journey
+left it in: gone out, come back, inspected, and its damage decision recorded. Its
+deposit split must still show the approved deduction and the released remainder, to
+the penny.
+(3) T-012's paper must still be present and must still read as called off, with its
+whole $80.00 deposit released and nothing captured.
+Fail if any paper vanished, if any figure reset to a seed value or to zero, if a
+cancelled paper came back as confirmed, or if a deposit split reverted.
+"""
+
+[[criterion]]
+id = "unit_states_survive_restart"
+name = "unit_states_survive_restart"
+type = "binary"
+weight = 3.0
+description = """
+Every unit is still resting where the journey phase left it.
+Read the catalog and check each of these against what the journey did:
+(1) D-004 is still in the repair bay — Elena put it there and never took it out.
+(2) W-044 is back on the floor and available — Elena restored it.
+(3) X-410 and F-612 are still retired; S-301 is still in repair.
+(4) T-012's unit is back on the floor, because its paper was called off.
+(5) K-055's wall card reads the ORIGINAL daily rate. The ticket-book criteria
+changed it and put it back; if the restart resurrected the changed figure, or reset
+the card to a seed value different from the original, that is a fail.
+Fail if any unit's status or shop reverted to its seed value, or if a restore or a
+repair marking was lost.
+"""
+
+[[criterion]]
+id = "audit_log_survives_restart"
+name = "audit_log_survives_restart"
+type = "binary"
+weight = 3.0
+description = """
+The log is append-only and it does not forget.
+As Elena Voss, read the shop's log of who did what.
+(1) It must still carry the lines the journey phase created — the confirmations, the
+hand-over, the return, the inspection clearing, the damage filing, the repair
+marking, the restore, the rate changes, the hold, and the cancellation.
+(2) Nothing may have been renumbered, reordered into a different sequence, or lost.
+Spot-check three lines and confirm actor, action and entity are intact, and that the
+before/after states are still recorded.
+(3) The log must not have GROWN from the restart itself: reboot is not an action.
+There must be no new line attributing anything to the restart, and no duplicate copy
+of the journey's lines.
+POSITIVE CONTROL — as Harper Singh, read it too and confirm the night auditor still
+gets entries, so a wholesale failure to read is distinguishable from a lost log.
+Fail if lines are missing, duplicated, renumbered, stripped of actor or state, or if
+the restart itself wrote entries.
+"""
+
+[[criterion]]
+id = "holds_and_certs_survive_restart"
+name = "holds_and_certs_survive_restart"
+type = "binary"
+weight = 2.5
+description = """
+Customer standing is not seed data.
+(1) The journey phase put Priya Raman on hold and then lifted it. Read her standing:
+it must reflect the LIFTED state, not the seeded default and not the on-hold state.
+As Priya, quote any available unit for a free midweek span and confirm she is
+allowed to book again. Abandon without paying.
+(2) Certification standing survived: as Jordan Hale, attempt to book D-004 for
+2030-11-12 through 2030-11-14. He must still be refused for his expired drone card.
+As Maya, quote D-004 for those same dates and confirm she is still allowed, because
+her card is current. Abandon without paying.
+Fail if a hold that was lifted came back, if a lifted hold reverted to on-hold, or if
+certification gating reset such that an uncarded holder can now book.
+"""
+
+[[criterion]]
+id = "ticket_book_survives_restart"
+name = "ticket_book_survives_restart"
+type = "binary"
+weight = 2.5
+description = """
+The book of ticket numbers is part of the books, not a cache.
+The journey phase used an Idempotency-Key for a K-055 wall-card change and recorded
+the answer it got.
+(1) Send that same request again, with that same key, now that the app has been
+restarted. It must STILL replay the stored answer: same status, same body, same
+figures. K-055's rate must not change again.
+(2) Read the log as Elena and confirm there is still exactly ONE `unit.rate` line for
+K-055 from that sequence — the replay must not have added a second.
+Fail if the key was forgotten and the act was performed a second time, if the answer
+differs from the one first recorded, or if a second log line appeared. An app that
+kept its ticket book in memory will fail this, and that is the point: a ticket book
+that does not survive a restart cannot protect a customer from a double charge
+during the exact outage it exists for.
+"""
+
+[[criterion]]
+id = "nothing_reseeded_on_restart"
+name = "nothing_reseeded_on_restart"
+type = "binary"
+weight = 3.0
+description = """
+Coming back up must not re-run the seed over live books.
+(1) Count the reservations across all customers. There must be exactly the papers the
+journey phase created — no duplicates of D-004, L-118 or T-012, and no extra rows
+that look like a second seeding.
+(2) Count the units. There must still be eighteen, not thirty-six.
+(3) Read the demo roster: each seeded person must appear exactly once.
+(4) Read the damage queue: Riley's report on L-118 must appear exactly once, still
+carrying its approved decision.
+Fail on any duplicate row, any doubled catalog, any repeated roster entry, or any
+sign that startup re-applied seed data on top of a live ledger.
+"""
+
+[[criterion]]
+id = "app_is_healthy_after_restart"
+name = "app_is_healthy_after_restart"
+type = "binary"
+weight = 2.0
+description = """
+The shop actually opened again.
+(1) Open the app's health or shop-status surface. It must answer, and it must still
+report the Postgres ledger as the system of record.
+(2) The catalog renders and the riverside mark is still on the page.
+(3) Identity still works: as Maya, a read succeeds; a request carrying no identity at
+all is still refused; an unseeded identity is still refused.
+Fail if the app did not come back, if health reports a different store than it did
+before, or if identity handling reset to serving a default customer.
+"""
+
+[scoring]
+aggregation = "weighted_mean"

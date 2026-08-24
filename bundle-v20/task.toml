@@ -1,0 +1,241 @@
+schema_version = "1.4"
+
+# Top-level only — do NOT nest under [verifier] (Harbor silently drops it there).
+artifacts = ["/app"]
+
+[task]
+name = "webdev/gearvault-enterprise"
+version = "9.1.0"
+description = """Build GearVault v5, a three-location equipment rental counter with eighteen serialized units, six customers, ten staff roles, shop Postgres as the ledger, and a pricing pipeline whose composition order is the difficulty: a shop week rate that takes a tenth off the kit line from the seventh day of a single paper, a weekend desk that bills each Saturday and each Sunday separately, a county tax desk charged on the discounted kit line plus the weekend money but never on the deposit or the hull rider, an insurance bureau that bills drone hull cover by the day, a fortnight cap on any one booking, three different shop tax windows, canvas weather holds, holiday closures and van-idle transfer blocks, serialized-unit overlap locking, Stripe Checkout as quote-not-hold, notice/SMS/email paid-ticket copies, fleet bay codes before serial scans, member-only loyalty punches, an inspection corner that locks a returned kit out of both the catalog and the van, major damage sending a kit to the repair bay on sign-off, role isolation across associate, assessor, manager, transfer clerk, bay technician, night auditor, insurance liaison and lot runner, a visible riverside river mark from the seed artifacts, a downloadable hire-waiver PDF that is the seed file itself, and a real iCalendar file on the paid paper — all from a deliberately underspecified brief in a single instruction.md that states the shop's symptoms rather than its invariants; graded by a RewardKit CUA browser judge that drives the UI end to end and then bypasses it with forged in-page requests to prove the rules are enforced server-side rather than only in the interface."""
+authors = [{ name = "Turing WebDev", email = "webdev@turing.com" }]
+keywords = ["vibe-code", "webdev", "fullstack", "nodejs", "postgres", "stripe", "rental", "reservations", "role-based-access"]
+
+[metadata]
+category = "web-development"
+difficulty = "hard"
+difficulty_explanation = """
+Small surface area with the difficulty concentrated in inference,
+composition order, authorization, and payment / deposit integrity rather
+than feature volume. The defining property of this task is that the brief
+does not state its own invariants. `/assets/instruction.md` is written as the shop
+describing its business, with the failures of the replaced binder buried
+in loose prose attributed to the shop manager ("two people showed up for
+the same 70-200 on overlapping weekends", "a fortnight on the lens came
+out cheaper per day than the same lens for five days", "the old till
+charged one flat weekend line however many weekend days were on the
+slip", "one man paid once and ended up on the books twice", "Riley
+approve her own write-up"). It is deliberately not a numbered list, not a
+fault report, and is framed as anecdote rather than requirement — the
+brief states outright that it is neither a specification nor a checklist.
+The anecdotes are also stripped of their reproduction steps: they give
+the symptom but not the path that produced it. A submission cannot
+therefore guard the one route it was handed; it has to decide what
+invariant was violated and enforce that invariant everywhere, on the
+server, where a forged request cannot walk around it.
+
+The hardest single thing in the task is that the money is a pipeline
+whose ORDER matters, and every stage of it is stated only as consequence.
+The shop's week rate takes a tenth off the kit line once one paper runs
+seven days or longer, it takes that tenth off the whole slip rather than
+only the days past the sixth, six days is still full price, and it never
+touches a deposit or the bureau's cover. The weekend desk bills once for
+each Saturday and each Sunday on the paper, so a Saturday-Sunday pair is
+exactly twice a lone Saturday. The county then taxes the discounted kit
+line WITH the weekend money added, and never the deposit and never the
+hull rider. The insurance bureau bills drone hull by the day and refuses
+to quote at all unless it is told the day count. Nothing goes on one
+paper for more than a fortnight. Each of those is derivable from the
+brief and each is a distinct, independently gradeable way to be wrong,
+so the rubric can separate a submission that missed the week rate from
+one that applied it at six days, from one that taxed the kit line alone,
+from one that flat-rated the weekend, from one that flat-rated the hull.
+The graded totals are chosen so those mistakes produce different numbers
+on the same paper — a correct pipeline, a missing week rate, a taxed base
+that omits weekend money, both kit-line errors together, a flat weekend
+line, and tax charged on the deposit each land on a distinct total the
+judge can pin without recomputing from first principles.
+
+The other rules the incidents imply, none of which are stated: uniqueness
+is keyed per serialized unit, so the same dates stay independently
+bookable for a camera body and a tent; date ranges are inclusive on both
+ends; a Friday-to-Sunday rental is three billable days; a Checkout Session
+is a quote and never a reservation, so nothing may be written in any
+status before Stripe verification and an abandoned session must leave the
+unit untouched and post nothing to any desk; one payment yields exactly
+one reservation across reloads, return-URL revisits, confirmation
+replays, and identity round-trips; rental and deposit are always
+recomputed from the unit master record; a past start date is refused;
+identity, role, and ownership are resolved server-side, with an unknown
+identity refused rather than defaulted to Maya Chen; Priya's ON_HOLD
+status blocks new paid reservations; drones require a current Drone
+Operator card on the reservation's customer at payment and again at
+check-out, with no override and no client-supplied certification id;
+in-repair and retired kit cannot be paid for or checked out; check-out is
+only from the reservation's pickup shop; check-out and return are
+idempotent; a kit that has come home and not yet been inspected is
+locked out of both the catalog and the van; Riley files damage and cannot
+approve it; a deduction above min(held deposit, replacement value) is
+refused rather than capped; one return accepts at most one open write-up;
+a write-up Riley recorded as major sends the kit to the repair bay when
+Elena signs it off rather than back onto the shelf; a closed reservation
+keeps its rate snapshot when the wall card changes; a refused mutation
+leaves the prior row exactly as it was; canvas is refused when the
+weather desk calls November severe, across the whole outdoor-canvas
+category and not only tents; the holiday desk's dark days refuse both
+bookings and van moves; the van only takes kit that is genuinely idle,
+never something already spoken for on a paid paper; a drone hull bind
+must carry HMAC-SHA256 of sessionId:premium_cents; Riley cannot file
+damage without a photo-desk media ticket; booking dates are calendar days
+only; a same-afternoon in-and-out is still one billable day; the tax desk
+answers only to the short shop-network names; and the books are shop
+Postgres storing pennies, not a local file and not the whole-dollar wall
+cards.
+
+The rubric is built so that inferring these well enough to decorate the
+interface is not enough. Most criteria pair the visible journey with
+forged in-page requests that bypass the UI entirely: a hidden taken unit,
+a disabled Check out control, a missing Approve button, a date min
+attribute, or a client-only hold flag all pass the visual check and then
+fail the probe if the endpoint still accepts the request. Read probes are
+graded on the response body rather than the rendered page, so an endpoint
+that returns another identity's data in fields the interface never
+displays still fails. Criteria are graded conjunctively — every sub-check
+in a criterion must hold — and the weighting puts the great majority of
+the total on the pricing-composition and enforcement criteria, so a
+polished catalog over an unguarded API scores poorly rather than
+respectably. Several criteria also withhold a unit's tag and require
+resolving one from category, shop, a stated deposit, or a stated
+replacement value, so a hardcoded route to L-118 fails even where the
+named-unit criteria pass.
+
+The vendor desks answer with numbers, not a route catalog. Discovering
+which figure to hand each desk, and what to do with the number that
+comes back, is the difficulty. The agent brief is a single
+`instruction.md`; there is no second cookbook under `/instructions`.
+
+Grading runs in two independently-scored phases against one persistent
+shop-Postgres instance, combined as 0.15 * pricing + 0.65 * browser + 0.20 * durability. The
+pricing phase grades the surface, the seeded catalog and the whole money
+pipeline, and it pays for nothing — so a submission whose composition
+order is correct banks that phase in full even if its Stripe hand-off
+later fails. The browser phase grades the paid journey and is itself one
+ordered journey: later criteria (replay, taken-unit, inspection lock,
+isolation, damage, the transfer suite) assume the paid reservations
+created by earlier criteria still exist, and that every other Checkout
+session opened along the way was abandoned unpaid and left no trace. A
+submission that fails the initial booking or payment-verification step
+therefore still loses much of that phase by cascade — but it no longer
+loses the pricing score with it, and the verifier reports observed
+failures separately from criteria the judge never reached, so a run
+blocked early is distinguishable from a run that was fully probed and
+got things wrong.
+"""
+task_id = "WEBDEV-GEARVAULT-ENTERPRISE-001"
+capabilities = ["backend-api", "frontend-ui", "persistence", "payments", "authorization"]
+
+[agent]
+# Wall-clock cap on agent *execution* (coding/building the app). Does NOT
+# control OpenHands harness install — that phase is a separate Harbor constant
+# (360s by default) and must be raised via job config
+# agent_setup_timeout_multiplier, not this field.
+timeout_sec = 10800.0
+network_mode = "public"
+
+[verifier]
+# RewardKit verifier, THREE independently-scored phases against one shop Postgres:
+#   reward = 0.15 * pricing + 0.65 * browser + 0.20 * durability
+# `pricing` (7 criteria) grades the surface, the seeded catalog and the money
+# pipeline. It pays for nothing, so it leaves the ledger clean for the second
+# phase and a correct pricing implementation scores even when the Stripe journey
+# later fails. `browser` (47 criteria) grades the paid journey, the gates, the
+# counter, damage, isolation, calling off, the repair-bay round trip and the log. Splitting them also gives each judge session a
+# fresh context budget: the single-phase judge was terminating around 21% of its
+# wall clock with required probes unrun.
+#
+# A THIRD phase, `durability` (7 criteria), runs after the app process has been
+# STOPPED and STARTED again against the same shop Postgres. It creates almost no
+# state: it re-reads what the journey established and asserts it survived. An
+# implementation that kept its books in process memory or in the browser looks
+# perfect for two phases and loses everything here. Vibe Code Bench reports that
+# model improvement is driven mainly by reducing outright failures rather than
+# incremental gains, and durability is where a convincing-but-hollow app breaks.
+#
+# GATES. Criteria are grouped into features by tests/rubric/features.toml, and
+# some are marked as gates: authorization, financial integrity, no-double-charge,
+# durability. A gate failure scores its WHOLE feature 0 rather than costing only
+# its own weight, so a submission cannot average away an authorization bypass by
+# passing twenty cosmetic checks. With every criterion passing this is identical
+# to a plain weighted mean, so the reference solution is unaffected.
+#
+# In all three phases a claude-code agent judge drives the app
+# through Playwright MCP the same way a real user would — browsing units,
+# booking and paying via live Stripe Checkout, checking gear out and back,
+# filing and approving damage, and switching identities via the demo-user
+# switcher to check isolation.
+#
+# It then goes a step further: many criteria require the judge to bypass the
+# interface and replay the app's own requests from the page via JavaScript
+# evaluation, so that UI-only enforcement (restricted dropdowns, min/max
+# attributes, hidden controls) fails. The judge is NOT given endpoint paths or
+# payload shapes — it discovers them by observing the traffic the submission's
+# own pages produce, so this stays implementation-agnostic.
+#
+# Timeout covers ALL THREE phases sequentially (pricing, browser, durability),
+# plus one app restart between the second and third. It is sized so the worst
+# case the inner caps allow actually fits: 3 x 4800s of RewardKit = 14400s, plus
+# app boot, npm, Postgres, the restart and the source snapshot. Sizing it any
+# tighter would make the per-phase caps meaningless — Harbor would kill the
+# verifier mid-phase and throw away the phases that had already been graded.
+# Expected real duration is far shorter: the judge timeouts sum to 8700s and
+# observed phases have run well inside them. Observed single-phase judge duration
+# was ~1990s; the two phases together are budgeted at 2 x 4800s of RewardKit with
+# the remainder for app boot, npm, Postgres and the source snapshot.
+#
+# Verifier egress (do not rely on provider defaults): OpenRouter judge
+# (openrouter.ai) and browser Checkout (checkout.stripe.com plus *.stripe.com
+# assets). Use public mode rather than a narrow allowlist — Stripe Checkout
+# loads many subdomains.
+timeout_sec = 15600.0
+network_mode = "public"
+
+[verifier.env]
+OPENROUTER_API_KEY = "${OPENROUTER_API_KEY}"
+ANTHROPIC_BASE_URL = "https://openrouter.ai/api"
+ANTHROPIC_AUTH_TOKEN = "${OPENROUTER_API_KEY}"
+ANTHROPIC_API_KEY = ""
+CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY = "1"
+REWARDKIT_JUDGE = "claude-code"
+REWARDKIT_MODEL = "anthropic/claude-sonnet-5"
+# Per-phase cap. Two phases run sequentially inside the one verifier timeout
+# below, so this is sized for the larger of the two with headroom, not for the
+# whole run: 2 x 4800 + startup still fits inside 10800.
+REWARDKIT_TIMEOUT_SEC = "4800"
+# Temporarily embedded for Harbor portal oracle until platform secrets land.
+STRIPE_SECRET_KEY = "sk_test_51TyVn6PP8JBZvwcOoICCfXoAtQc8XLQXtRrwiztzERoXiC9X485ReUk6tHhwSm2OOO7tDqOfq2VIkM5zFKwCs80f00B9DKpMv9"
+STRIPE_PUBLISHABLE_KEY = "pk_test_51TyVn6PP8JBZvwcOaAa3GfwbF7DAhDEMVQe4lM25uNUwX1SSxJ8SiSHCzleatXqzekjLahiD8yS9TUAk1nk6Zp7h00sEHIh5Nk"
+
+[solution]
+env = {}
+
+[environment]
+build_timeout_sec = 1800.0
+os = "linux"
+cpus = 4
+memory_mb = 8192
+storage_mb = 10240
+network_mode = "public"
+
+[environment.env]
+# Temporarily embedded for Harbor portal oracle until platform secrets land.
+STRIPE_SECRET_KEY = "sk_test_51TyVn6PP8JBZvwcOoICCfXoAtQc8XLQXtRrwiztzERoXiC9X485ReUk6tHhwSm2OOO7tDqOfq2VIkM5zFKwCs80f00B9DKpMv9"
+STRIPE_PUBLISHABLE_KEY = "pk_test_51TyVn6PP8JBZvwcOaAa3GfwbF7DAhDEMVQe4lM25uNUwX1SSxJ8SiSHCzleatXqzekjLahiD8yS9TUAk1nk6Zp7h00sEHIh5Nk"
+PORT = "3000"
+BASE_URL = "http://localhost:3000"
+APP_PUBLIC_URL = "http://localhost:3000"
+APP_PUBLIC_PORT = "3000"
+VENDOR_BASE_URL = "http://localhost:3101"
+VENDOR_PORT = "3101"
+VENDOR_TOKEN = "gv-vendor-dev"
+NOTICE_API_KEY = "gv-notice-dev"
+INSURANCE_HMAC_SECRET = "gv-hull-hmac-dev"
+DATABASE_URL = "postgres://gearvault:gearvault@127.0.0.1:5432/gearvault"

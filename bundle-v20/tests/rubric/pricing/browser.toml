@@ -1,0 +1,117 @@
+[judge]
+judge = "claude-code"
+model = "anthropic/claude-sonnet-5"
+mode = "batched"
+timeout = 2400
+isolated = false
+prompt_template = "prompt.md"
+weight = 1.0
+
+[[judge.mcp_servers]]
+name = "playwright"
+transport = "stdio"
+command = "playwright-mcp"
+args = ["--headless", "--isolated", "--browser=chromium", "--no-sandbox"]
+
+# ============================================================================
+# Phase A — surface, seed catalog, and what a day costs.
+#
+# Scored independently of the journey phase and weighted 0.30 of the task
+# reward. NOTHING here is paid: every quote is abandoned, so this phase
+# leaves the ledger exactly as it found it and the journey phase starts
+# from a clean shop. A submission whose pricing pipeline is correct earns
+# this phase in full even if it later fumbles the Stripe hand-off.
+#
+# Section 1 — surface, seed catalog, and the riverside mark
+# ============================================================================
+
+[[criterion]]
+id = "shop_mark_visible"
+name = "shop_mark_visible"
+type = "binary"
+weight = 1.5
+description = """
+Navigate to http://localhost:3000/. Verify the app loads as a GearVault equipment rental surface, Maya Chen is the active customer, no login/sign-in/registration/password flow is required, a visible demo-user/identity switcher can change the seeded user, and the gear catalog lists all eighteen seeded units across three shops (required samples: K-055 Camera Body at Riverside about $85/day deposit $200; L-118 70-200mm lens at Riverside about $45/day deposit $400; D-004 Drone at Downtown about $120/day deposit $500; T-012 Tent at Riverside about $25/day deposit $80; N-201 Drone at Pier about $95/day deposit $400; C-077 Camera Body at Pier about $50/day deposit $150).
+The riverside river mark from `/assets/artifacts/` must be visible on that live page (header or catalog) as an image a customer can see — not only a file sitting in a folder. Confirm an image whose accessible name or visible caption is the riverside / river mark is actually rendered (natural width and height both > 0). Fail if Maya is not the default customer, if fewer than eighteen units appear, if the mark is missing from the page, if it is CSS-only text, or if the img is collapsed/hidden.
+"""
+
+[[criterion]]
+id = "unit_resolved_without_tag"
+name = "unit_resolved_without_tag"
+type = "binary"
+weight = 0.5
+description = """
+Do not use asset tags for this criterion — both halves must be resolved from the catalog's own figures.
+(1) Open the Downtown drone's profile purely by matching category and shop. Verify the profile that opens is D-004, showing Drone, Downtown, about $120/day, deposit about $500, and that a Drone Operator certification is required. Fail if you open a Riverside unit or a speaker/lighting rig instead.
+(2) Identify the unit whose deposit is $400 AND whose replacement value is $600 by comparing the figures shown — do not reuse only the deposit as a stand-in, since another unit also carries a $400 deposit. Open that profile and verify it is L-118 (70-200mm lens, Riverside, about $45/day). Fail if you open a unit whose deposit is not $400 or whose replacement is not $600.
+"""
+
+[[criterion]]
+id = "shop_postgres_ledger"
+name = "shop_postgres_ledger"
+type = "binary"
+weight = 1.0
+description = """
+The shop books are the shop Postgres named in credentials, not a local file. Open the app's health or shop-status surface (the same one that reports the app is up), and the visible footer / demo chrome. Quote the footer text. It must contain the word Postgres. Fail if the footer is only a slogan, or if the page still says SQLite or a local-file ledger. Persistence across clicks is not enough. Fail if you never opened health and never quoted the footer. (The post-payment persistence re-read is graded separately in the journey phase as `ledger_survives_payments`; do not attempt any payment in this phase.)
+"""
+
+# ============================================================================
+# Section 2 — what a day costs, before any card is typed
+# Every quote in this section is ABANDONED. Do not pay for any of them.
+# ============================================================================
+
+[[criterion]]
+id = "past_dates_rejected"
+name = "past_dates_rejected"
+type = "binary"
+weight = 1.5
+description = """
+As Maya Chen, open L-118's booking view and attempt to reserve 2024-02-05 through 2024-02-07 — fixed calendar dates that are unambiguously in the past, NOT the server's today. Do NOT use today's date for this criterion; same-day booking on the server's today is valid elsewhere (`weekend_desk_counts_each_day`). Submit through the visible controls. Verify the app rejects the attempt with a visible error and that the browser does NOT navigate to checkout.stripe.com. Then send the same 2024-02-05 through 2024-02-07 range as a direct request via JavaScript evaluation, and also send 2024-02-06 through 2024-02-06 alone. Both must be refused server-side with an error status and no Checkout URL. A date-input `min` attribute alone does not satisfy this criterion.
+Then run these required direct-request probes on a booking view as Maya:
+(1) A reservation whose start date is not a date (for example "not-a-date", "2030-13-45", or an empty string) with an otherwise valid end. It must be refused with an error status and no Checkout URL.
+(2) A reservation whose end date is before its start (2030-06-14 through 2030-06-10) for L-118. It must be refused.
+(3) A reservation with the unit, the start date, or the end date omitted. It must be refused rather than defaulting to some unit or some weekend.
+(4) A reservation naming a unit identifier that belongs to no seeded unit, with 2030-06-20 through 2030-06-22. It must be refused.
+(5) As Maya, forge booking requests for L-118 on a free midweek span (2030-09-16 through 2030-09-18) that are not a calendar day on the paper. All of these must be refused with no Checkout URL: ISO timestamps with a timezone offset (2030-09-16T21:00:00-07:00 and 2030-09-18T00:00:00+05:30); 9/16/2030 through 9/18/2030; 2030-9-16 through 2030-9-18; 16-09-2030 through 18-09-2030; and 2030-09-16 21:00 through 2030-09-18. A server that silently shifts those onto a different calendar day also fails. Then forge the same span as plain 2030-09-16 / 2030-09-18; that may be accepted as far as Stripe, and if a Checkout URL appears the total must be about $544.79. Abandon without paying.
+Fail if a past start date created a Checkout session or a reservation, if any malformed probe was accepted, or if a timestamp, slashed, unpadded, or time-stamped date is accepted.
+"""
+
+[[criterion]]
+id = "fortnight_cap"
+name = "fortnight_cap"
+type = "binary"
+weight = 1.5
+description = """
+The shop does not put more than a fortnight on one paper. As Maya, using L-118:
+(1) Attempt 2030-10-07 through 2030-10-21 (fifteen inclusive days) through the visible UI. It must be refused with a visible error and no Stripe redirect. Forge the same fifteen-day range as a direct request; it must be refused server-side with an error status and no Checkout URL.
+(2) Attempt 2030-10-07 through 2030-10-20 (fourteen inclusive days — the longest the shop allows). This must be ACCEPTED and must reach checkout.stripe.com showing a total of about $1,059.59: a $567.00 kit line (fourteen days at $45 is $630.00 less the $63.00 week rate), $48.00 of weekend lines for the four weekend days in the span, about $44.59 Riverside tax, and the $400 deposit. Fail if the total is about $1,127.16 (no week rate), about $1,008.11 (no weekend lines), or about $1,056.11 (tax charged on the kit line with the weekend money left out). Do NOT enter card details; abandon by navigating to http://localhost:3000/ without paying.
+Fail if fifteen days is accepted anywhere, if fourteen days is refused, or if no unpaid L-118 row is left behind but the fourteen-day total was wrong.
+"""
+
+[[criterion]]
+id = "week_rate_boundary"
+name = "week_rate_boundary"
+type = "binary"
+weight = 2.0
+description = """
+The shop's week rate takes a tenth off the kit line once a single paper reaches seven days, and it takes it off the whole slip rather than only the days past the sixth. Six days is still full price. Grade this on K-055 (the Riverside camera body, $85/day, $200 deposit) — do not use L-118 or a tag you have not resolved.
+(1) As Maya, quote K-055 for 2030-09-16 through 2030-09-21 (six inclusive days). Read the app's own quote/checkout response for that span. The kit line must be $510.00 with NO week rate taken off, the weekend line must be $12.00 (one Saturday in the span), the Riverside tax must be about $37.85, and the total must be about $759.85. Fail if the kit line is $459.00 and the total about $705.15, which is the week rate wrongly applied at six days.
+(2) As Maya, quote K-055 for 2030-09-16 through 2030-09-22 (seven inclusive days) and take this one all the way to checkout.stripe.com. The Stripe total must be about $800.06 — a $535.50 kit line ($595.00 less the $59.50 week rate), $24.00 of weekend lines for the Saturday and the Sunday, about $40.56 Riverside tax, and the $200 deposit. Fail if the Stripe total is about $863.88 (no week rate at all), about $854.76 (a tenth taken off only the seventh day instead of the whole slip), or about $798.32 (tax charged on the kit line with the weekend money left out). Do NOT enter card details; abandon by navigating to http://localhost:3000/ without paying.
+Both halves must hold. Fail if the seventh day did not change the kit line, if the discount was applied at six days, if only the seventh day was discounted, or if the week rate came off the deposit.
+"""
+
+[[criterion]]
+id = "weekend_desk_counts_each_day"
+name = "weekend_desk_counts_each_day"
+type = "binary"
+weight = 2.0
+description = """
+The live weekend desk charges its line once for EACH Saturday and each Sunday on the paper. All three of these are L-118 quotes taken to checkout.stripe.com and then ABANDONED without paying — navigate to http://localhost:3000/ to abandon.
+(1) 2030-06-15 through 2030-06-15 (a lone Saturday). Stripe total must be about $461.13 — one day at $45, one $12.00 weekend line, about $4.13 Riverside tax, $400 deposit. Fail if it is about $448.26 (weekend desk ignored) or about $45 + $400 with no tax.
+(2) 2030-06-15 through 2030-06-16 (Saturday and Sunday). Stripe total must be about $522.27 — $90.00 kit line, $24.00 of weekend lines, about $8.27 tax, $400 deposit. Fail if it is about $509.40, which is a single flat weekend line instead of one per weekend day, or about $520.53.
+(3) 2030-09-16 through 2030-09-16 (a lone midweek Monday, and also the same-afternoon in-and-out case). Stripe total must be about $448.26 — one day at $45, NO weekend line, about $3.26 tax, $400 deposit. Fail if it is $400.00 (the day treated as free), about $461.13 (a weekend line on a Monday), or about $496.53 (two days).
+Fail if the Saturday-Sunday pair does not cost exactly twice the lone Saturday in weekend lines, or if any of the three totals is wrong.
+"""
+
+[scoring]
+aggregation = "weighted_mean"
