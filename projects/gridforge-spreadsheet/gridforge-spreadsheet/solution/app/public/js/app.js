@@ -6,7 +6,6 @@ const formulaBar = document.getElementById('formula-bar');
 const message = document.getElementById('message');
 const FUNCTIONS = ['SUM', 'AVG', 'MIN', 'MAX', 'COUNT'];
 const tabSessionId = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
-globalThis.gridforgeSessionId = tabSessionId;
 
 const state = {
   workbookId: null,

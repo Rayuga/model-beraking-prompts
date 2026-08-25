@@ -42,5 +42,7 @@ widget.
 - Morgan Lee
 - Priya Shah
 
-The user selector is intentionally lightweight. Saves include the selected
-user, and the server records per-cell edit history plus last-editor metadata.
+The user selector is intentionally lightweight. Each open view establishes a
+separate server-recognized editing session. Saves include the selected user,
+and the server verifies that user against the active session before recording
+per-cell history and last-editor metadata.

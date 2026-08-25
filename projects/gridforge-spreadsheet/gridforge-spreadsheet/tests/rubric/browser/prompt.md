@@ -44,15 +44,21 @@ Important grading rules:
 
 Required API discovery for forged probes:
 
-1. Observe or infer the workbook id and current revision from the app's own API
-   calls or UI state.
-2. For legitimate direct save probes, include the current visible user id and
-   the page's live session id exposed as `window.gridforgeSessionId`; forged
-   user probes should deliberately mismatch those values.
-3. Use `fetch` from the page origin to call the app's save endpoint with
-   intentionally stale or tampered data.
-4. A refusal is an HTTP error status or an explicit non-write response. A
-   successful response that overwrites content fails.
+1. Observe one successful save produced by the visible spreadsheet UI and
+   record its real URL, method, content type, authentication or editing-session
+   mechanism, and complete implementation-specific request body. Do not assume
+   a particular JavaScript global, cookie, header, field name or payload shape.
+2. Discover the workbook id, current revision, save endpoint and revision-list
+   endpoint from that request and the app's own API traffic.
+3. Clone the observed request only for a criterion's direct probes. Preserve
+   every implementation-specific field the criterion does not tell you to
+   change. For a user/session mismatch probe, deliberately change only the
+   claimed user while retaining the observed active session mechanism.
+4. Use same-origin `fetch` for stale or tampered probes. Report the exact HTTP
+   status and response body for every named probe; an omitted probe fails its
+   all-or-nothing criterion.
+5. A rejected write must return a non-2xx response in the 4xx range. A 2xx
+   response, a 5xx response or any mutation after rejection fails.
 
 Criteria:
 

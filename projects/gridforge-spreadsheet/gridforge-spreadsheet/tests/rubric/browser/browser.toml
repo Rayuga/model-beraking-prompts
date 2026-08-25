@@ -44,7 +44,7 @@ This criterion is all-or-nothing: if any sub-check fails, mark it failed. Select
 id = "formula_bar_raw_formula_and_precedence"
 name = "formula_bar_raw_formula_and_precedence"
 type = "binary"
-weight = 1.5
+weight = 1.0
 description = """
 This criterion is all-or-nothing: if any sub-check fails, mark it failed. Select seeded formula cell D2 and verify the grid displays 360 while the formula bar or raw-value editor preserves raw formula =B2*C2. Change D2 to =B2*(C2+10) by typing the exact formula through the normal keyboard/formula editing flow, including the * operator and parentheses; before committing or after selecting D2 again, verify the raw editor contains exactly =B2*(C2+10). Verify the grid displays 390. Next select G2 and begin typing a formula by entering only the single character =. Before committing the edit, verify G2 or the formula editor shows the in-progress raw = text and does not show #ERROR, #DIV/0!, #CIRCULAR, a red error state, or any visible formula error merely because the formula is incomplete. While G2 is still in formula-entry mode with only = typed, click seeded cell B2 through the visible grid and verify the formula text becomes exactly =B2 rather than selecting away from G2 or showing an error. Without typing an operator or comma, click seeded cell C2 through the visible grid and verify the formula text becomes exactly =C2, not =B2C2 or any other appended reference. Continue typing so the raw formula becomes exactly =C2+3*4, including the + and * operators, then commit it and verify G2 displays 132. Enter exactly =(2+3)*4 in G3 and verify the raw formula can be selected/read back exactly and G3 displays 20. Enter exactly =20/2+3*4 in G4 and verify G4 displays 22. Enter exactly =20/(2+3)*4 in G5 and verify G5 displays 16. If any operator character such as *, +, /, (, or ) replaces the formula instead of being inserted into the formula being typed, fail.
 """
@@ -53,7 +53,7 @@ This criterion is all-or-nothing: if any sub-check fails, mark it failed. Select
 id = "formula_reference_replacement_selection"
 name = "formula_reference_replacement_selection"
 type = "binary"
-weight = 2.0
+weight = 1.5
 description = """
 This criterion is all-or-nothing: if any sub-check fails, mark it failed. Use only the visible grid and normal formula editing UI. Select G6 and begin formula entry by typing exactly =. While G6 is still being edited, click B2 through the visible grid and verify the in-progress raw formula is exactly =B2. Select only the B2 text inside the raw formula editor or formula bar, then click C2 through the visible grid. Verify the in-progress raw formula becomes exactly =C2, not C2 without the leading equals sign, not =B2C2, and not any other appended or corrupted text. Continue typing +3*4 so the raw formula is exactly =C2+3*4, commit it, verify G6 displays 132, then select G6 again and verify the raw formula is still exactly =C2+3*4.
 """
@@ -68,12 +68,30 @@ This criterion is all-or-nothing: if any sub-check fails, mark it failed. Use th
 """
 
 [[criterion]]
-id = "range_functions_dependency_recalculation"
-name = "range_functions_dependency_recalculation"
+id = "formula_autocomplete_below_active_cell"
+name = "formula_autocomplete_below_active_cell"
 type = "binary"
-weight = 2.0
+weight = 0.5
 description = """
-This criterion is all-or-nothing: if any sub-check fails, mark it failed. Use only the visible spreadsheet UI and normal mouse/keyboard interactions; do not use direct API writes, DOM mutation, hidden routes, or manually typing the finished formula when a mouse reference action is required. Establish this criterion's own inputs by setting F22=3, F23=2, F24=5, and G22=120 through normal cell editing. Select H22, begin formula entry, and type exactly =SU. Verify a visible dropdown appears directly below the H22 cell being edited, not below the formula bar and not elsewhere in the toolbar or page, and that the dropdown contains SUM. Choose SUM from that below-cell dropdown, or otherwise complete the recommended SUM option from that dropdown, so the formula editor contains exactly =SUM(. With H22 still in formula-entry mode, use mouse down/drag/up on the grid to select F22:F24 as a formula reference, and verify the in-progress formula text becomes exactly =SUM(F22:F24. While still editing, verify F22:F24 is visibly highlighted or outlined as the referenced range. Type a comma, then click G22 through the visible grid and verify the formula text becomes exactly =SUM(F22:F24,G22. Type the closing parenthesis and press Enter. Verify H22 displays 130, then select H22 and verify the raw formula is exactly =SUM(F22:F24,G22). Next enter =AVG(F22:F24) in H23, =MIN(F22:F24) in H24, =MAX(F22:F24) in H25, and =COUNT(F22:F24) in H26 through normal formula editing. Verify H23 displays 3.3333333333333335 or a clearly equivalent 3.333333333333333 value, H24 displays 2, H25 displays 5, and H26 displays 3. Change F24 from 5 to 8 through normal cell editing. Without reloading the page, pressing a manual refresh control, or using direct API/DOM mutation, verify H22 displays 133, H23 displays 4.333333333333333 or a clearly equivalent 4.333333333333333 value, H24 displays 2, H25 displays 8, and H26 displays 3.
+This criterion is all-or-nothing: if any sub-check fails, mark it failed. Use only the visible spreadsheet UI and real mouse/keyboard input; do not modify DOM geometry, inject styles, call application handlers, use direct API writes, or relocate the dropdown. Confirm H20 is blank, select H20 through the visible grid, and type exactly =SU as normal formula input without committing it. Require a visible function-suggestion dropdown containing SUM to appear immediately below the actual H20 cell being edited. Read-only Playwright bounding-box measurement is allowed only after the visible dropdown appears: require its top edge to be 1 through 12 CSS pixels below H20's bottom edge and its left edge to be within 8 CSS pixels of H20's left edge. It must not appear below the formula bar or over a distant cell such as B2. Quote the measured H20 and dropdown rectangles in the reasoning. Choose the visible SUM suggestion with a real mouse click and require the in-progress raw formula to become exactly =SUM(. Press Escape once and require H20 to return to blank and the suggestion dropdown to disappear. Failure to anchor the dropdown to H20, interception by a dropdown rendered at an unrelated fixed position, a missing SUM option, or selection that does not produce exactly =SUM( fails.
+"""
+
+[[criterion]]
+id = "formula_mouse_range_reference_insertion"
+name = "formula_mouse_range_reference_insertion"
+type = "binary"
+weight = 1.0
+description = """
+This criterion is all-or-nothing: if any sub-check fails, mark it failed. Use only visible grid editing and real mouse down/drag/up input; direct API writes, DOM mutation, hidden routes, manually typing the F22:F24 reference, or clicking cells individually instead of dragging fail. Establish this criterion's own inputs by setting F22=3, F23=2, and F24=5 through normal cell editing. Select H22 and type exactly =SUM( through normal formula editing. While H22 remains in formula-entry mode, drag once from the visible F22 cell through F24. Require the in-progress raw formula to become exactly =SUM(F22:F24 and require every cell in F22:F24 to have a visible reference outline or highlight while editing. Type the closing parenthesis and press Enter; require raw formula =SUM(F22:F24) and displayed value 10 in H22. Change F24 from 5 to 8 through normal editing and, without reload or manual refresh, require H22 to recalculate to 13 while preserving raw formula =SUM(F22:F24). A drag that inserts only F22, loses formula-entry mode, omits the range highlight, or produces any manually repaired formula fails.
+"""
+
+[[criterion]]
+id = "multi_argument_functions_dependency_recalculation"
+name = "multi_argument_functions_dependency_recalculation"
+type = "binary"
+weight = 0.5
+description = """
+This criterion is all-or-nothing: if any sub-check fails, mark it failed. Use only normal visible cell and formula editing; do not use direct API writes, DOM mutation, hidden routes, or manually replace displayed results. Establish independent inputs F25=3, F26=2, F27=5, and G25=120 through normal cell editing. Enter the exact raw formulas =SUM(F25:F27,G25) in H25, =AVG(F25:F27,G25) in H26, =MIN(F25:F27,G25) in H27, =MAX(F25:F27,G25) in H28, and =COUNT(F25:F27,G25) in H29. Re-select every result cell and require those exact raw formulas to be preserved, including the comma and trailing G25 argument. Require displayed results H25=130, H26=32.5, H27=2, H28=120, and H29=4. Change G25 from 120 to 150 through normal cell editing. Without reload, a manual refresh control, or any API/DOM mutation, require H25=160, H26=40, H27=2, H28=150, and H29=4. Any function that ignores the trailing argument, treats the comma as invalid, loses its raw formula, or fails live dependency recalculation fails.
 """
 
 [[criterion]]
@@ -95,12 +113,39 @@ This criterion is all-or-nothing: if any sub-check fails, mark it failed. Select
 """
 
 [[criterion]]
+id = "rectangular_copy_cut_paste"
+name = "rectangular_copy_cut_paste"
+type = "binary"
+weight = 0.5
+description = """
+This criterion is all-or-nothing: if any sub-check fails, mark it failed. Use only the visible grid, visible name box, real browser clipboard, and normal Ctrl/Cmd+C, Ctrl/Cmd+X, and Ctrl/Cmd+V shortcuts; direct API writes, DOM mutation, hidden routes, manually retyping copied values, or synthetic clipboard events fail. Through normal cell editing set J55=COPY-A, K55=COPY-B, J56=COPY-C, and K56=COPY-D. Enter J55:K56 in the visible name box and press Enter; require that exact rectangle to be selected. Press Ctrl/Cmd+C once, enter M55 in the name box, press Enter, and press Ctrl/Cmd+V once. Require M55=COPY-A, N55=COPY-B, M56=COPY-C, and N56=COPY-D while J55:K56 remains unchanged. Select M55:N56 through the name box, press Ctrl/Cmd+X once, select P55 through the name box, and press Ctrl/Cmd+V once. Require M55:N56 to be blank and P55=COPY-A, Q55=COPY-B, P56=COPY-C, and Q56=COPY-D. J55:K56 must remain unchanged throughout.
+"""
+
+[[criterion]]
 id = "fill_numbers_and_formula_relative_refs"
 name = "fill_numbers_and_formula_relative_refs"
 type = "binary"
 weight = 0.5
 description = """
 Put 1 in M2 and 2 in M3 through normal cell editing, then select the full range M2:M7 and use the app's visible fill handle/control only to fill the blank cells in that selected range. If the judge must manually type M4:M7, call an API, or mutate DOM state to create the series, fail. Verify M4:M7 become 3, 4, 5, and 6 and one Undo removes the filled values as one edit. Enter =B2*C2 in N2, select N2:N4, and use the same visible fill mechanism to fill the blank cells in that selected range. Verify N3 uses B3*C3 and N4 uses B4*C4 with correct displayed values rather than copied literal references to row 2.
+"""
+
+[[criterion]]
+id = "sideways_fill_numbers_and_formula_refs"
+name = "sideways_fill_numbers_and_formula_refs"
+type = "binary"
+weight = 0.5
+description = """
+This criterion is all-or-nothing: if any sub-check fails, mark it failed. Use normal visible cell editing, the visible name box or a real range drag, the visible Fill Right control or horizontal fill handle, and visible Undo/Redo only; direct API writes, DOM mutation, hidden routes, or manually typing filled target cells fail. Confirm L60:O60 and K61:M61 are blank. Set J60=2 and K60=4 through normal cell editing, select exactly J60:O60, and activate Fill Right once. Require J60:O60 to contain exactly 2, 4, 6, 8, 10, 12. Press Undo once and require only generated L60:O60 to return to blank while J60=2 and K60=4 remain; press Redo once and require the complete sequence to return. Enter raw formula =J60*10 in J61, select exactly J61:M61, and activate Fill Right once. Require J61:M61 to preserve raw formulas =J60*10, =K60*10, =L60*10, and =M60*10 and display 20, 40, 60, and 80. Press Undo once and require K61:M61 to return to blank together while J61 remains unchanged, then press Redo once and require all three shifted formulas and results to return.
+"""
+
+[[criterion]]
+id = "find_replace_navigation_and_atomic_replace_all"
+name = "find_replace_navigation_and_atomic_replace_all"
+type = "binary"
+weight = 1.0
+description = """
+This criterion is all-or-nothing: if any sub-check fails, mark it failed. Use only normal visible grid editing and the visible Find, Replace, Find Next, Replace Current, Replace All, Undo, and Redo controls; direct API writes, DOM mutation, hidden routes, browser-storage edits, or manually changing matched cells fail. Set J50=FIND-QC-ONE, J51=FIND-QC-TWO, and J52=FIND-QC-THREE through normal cell editing, then select A1. Enter FIND-QC in the visible Find field. Activate Find Next four times and require the selected cell or visible match status to visit exactly J50, J51, J52, then J50, proving wraparound with exactly three matches. Enter REPLACED-QC in the visible Replace field and activate Replace Current once. Require J50=REPLACED-QC-ONE while J51=FIND-QC-TWO and J52=FIND-QC-THREE. Activate Replace All once and require J51=REPLACED-QC-TWO and J52=REPLACED-QC-THREE, with J50 unchanged. Press Undo exactly once and require J51 and J52 to return together to their exact FIND-QC values while J50 remains REPLACED-QC-ONE. Press Redo exactly once and require J51 and J52 to return together to their exact REPLACED-QC values without changing J50.
 """
 
 [[criterion]]
@@ -167,30 +212,48 @@ This criterion is all-or-nothing: if any sub-check fails, mark it failed. Use th
 """
 
 [[criterion]]
-id = "forged_save_identity_and_stale_rejections"
-name = "forged_save_identity_and_stale_rejections"
+id = "stale_save_and_workbook_identity_rejections"
+name = "stale_save_and_workbook_identity_rejections"
 type = "binary"
-weight = 2.0
+weight = 1.0
 description = """
-This criterion is all-or-nothing: if any sub-check fails, mark it failed. Use direct in-page fetch calls from the app origin to test server-side enforcement; do not rely on disabled controls, UI validation, DOM mutation, or hidden routes. Discover the real workbook id, current revision, save endpoint, revision-list endpoint, visible user id, and live session id from the live app/API. Record the base revision and keep an unchanged deep copy of that base workbook. Make one legitimate save using the current base revision, current visible user id, and current live session id that changes T2 to CURRENT-T2. Verify it succeeds, advances the stored revision, and creates exactly one expected saved revision. Record this new current revision and revision list as the protected post-save state. Using the older base revision and stale base-workbook copy, attempt another save that changes the same T2 cell to FORGED-STALE-OVERWRITE. Require an HTTP 409 rejection that identifies T2 as conflicting; then re-read the real workbook and verify T2 is still exactly CURRENT-T2. Next attempt identity forgeries: save to an unknown workbook id in the URL, save to the real URL while sending a different top-level body workbookId, save to the real URL with the correct top-level workbookId but a different nested workbook.id inside the workbook payload, save with the current live session id but a different valid userId, and save with a totally unknown userId. Require a non-2xx response for every identity probe. After each rejection, re-read the real workbook. At the end, verify its id and T2 value are unchanged, its current revision is still the recorded protected revision, and its revision list is exactly unchanged from the protected post-save list. Any rejected request that mutates content, changes identity, creates a revision, or silently reports success fails this criterion.
+This criterion is all-or-nothing: if any sub-check fails, mark it failed. Use the visible spreadsheet UI to produce and observe one successful save before sending any direct probe. Record its real URL, method, content type, editing-session or authentication mechanism, complete implementation-specific body, returned revision, and revision-list endpoint. Fail rather than guessing any request detail. Record revision R and an exact deep copy W of the workbook at R. Clone the observed request without changing fields not named here, use R and W, change only T2 to CURRENT-T2, and send it through direct same-origin fetch. Require HTTP 200 or 201, T2=CURRENT-T2, current revision R+1, and exactly one new revision. Record exact deep copies of this protected workbook response and revision list. Next send four otherwise-current independent clones: (1) use stale R and W while changing T2 to FORGED-STALE-OVERWRITE, requiring exact HTTP 409 with T2 identified as conflicting; (2) use an unknown workbook id in the URL; (3) use the real URL but a different top-level body workbookId; and (4) use the real URL and top-level id but a different nested workbook.id. Probes 2 through 4 must return 4xx, never 5xx. Report an explicit four-row table with probe number, exact status and response body. After every rejected probe, re-read the real workbook and revisions and require exact deep equality with the protected copies. Any omitted probe, guessed request shape, 2xx or 5xx rejection result, changed T2, changed identity, advanced revision, added revision or missing equality check fails.
 """
 
 [[criterion]]
-id = "api_rejects_invalid_revision_payloads"
-name = "api_rejects_invalid_revision_payloads"
+id = "api_rejects_invalid_revision_values"
+name = "api_rejects_invalid_revision_values"
 type = "binary"
 weight = 0.5
 description = """
-This criterion is all-or-nothing: if any sub-check fails, mark it failed. Use direct in-page fetch calls from the app origin; do not use the visible Save control, DOM mutation, or hidden routes for these invalid-payload probes. Discover the real workbook id, current revision, save endpoint, and revision-list endpoint. Record an exact deep copy of the current workbook response and revision list. Using otherwise current data, independently attempt saves with: missing baseRevision; null baseRevision; baseRevision encoded as a string; a fractional baseRevision; a negative baseRevision; a future unknown baseRevision; missing workbook; null workbook; workbook as an array; a workbook object with the correct id but no sheets; a workbook with an empty sheets array; a sheet with missing cells; cells supplied as an array; an invalid cell address; a non-string cell value; a changed workbook title; a changed sheet id; and a changed sheet name. Every probe must return a non-2xx response. After all probes, re-read the real workbook and revisions and verify exact deep equality with the recorded state: content, workbook and sheet identities, current revision, and revision list must all be unchanged. Any partial write, new revision, silent normalization, server error in the 5xx range, or accepted malformed request fails this criterion.
+This criterion is all-or-nothing: if any sub-check fails, mark it failed. Observe one exact successful save request produced by a visible edit, then fetch and record exact deep copies of the current workbook response and complete revision list. Using otherwise-current independent clones, attempt exactly six baseRevision probes: missing; null; the current integer encoded as a string; current revision plus 0.5; -1; and current revision plus 1000. Send every probe once through direct same-origin fetch. Require six 4xx responses, never 5xx, and report an explicit six-row table with probe name, exact status and response body. Re-read the workbook and revisions and require exact deep equality with both recorded copies. Any omitted probe, guessed request structure, 2xx or 5xx response, mutation, new revision or missing equality check fails.
+"""
+
+[[criterion]]
+id = "api_rejects_malformed_workbook_shapes"
+name = "api_rejects_malformed_workbook_shapes"
+type = "binary"
+weight = 0.5
+description = """
+This criterion is all-or-nothing: if any sub-check fails, mark it failed. Observe one exact successful save request produced by a visible edit, then fetch and record exact deep copies of the current workbook response and complete revision list. Using the current revision and otherwise-current independent clones, attempt exactly ten workbook probes: missing workbook; null workbook; workbook as an array; correct workbook id but missing sheets; empty sheets array; first sheet missing cells; cells as an array; cells object containing invalid address BADREF; cells object containing A1 with a numeric non-string value; and cells object containing A1 with a null non-string value. Send each probe once through direct same-origin fetch. Require ten 4xx responses, never 5xx, and report an explicit ten-row table with probe name, exact status and response body. Re-read the workbook and revisions and require exact deep equality with both recorded copies. Any omitted probe, guessed request structure, 2xx or 5xx response, silent normalization, mutation, new revision or missing equality check fails.
+"""
+
+[[criterion]]
+id = "api_rejects_immutable_metadata_changes"
+name = "api_rejects_immutable_metadata_changes"
+type = "binary"
+weight = 0.5
+description = """
+This criterion is all-or-nothing: if any sub-check fails, mark it failed. Observe one exact successful save request produced by a visible edit, then fetch and record exact deep copies of the current workbook response and complete revision list. Using the current revision and otherwise-current independent clones, attempt exactly three saves changing only: (1) workbook title; (2) first sheet id; and (3) first sheet name. Send each probe once through direct same-origin fetch. Require three 4xx responses, never 5xx, and report an explicit three-row table with probe name, exact status and response body. After every probe, re-read the workbook and revisions and require exact deep equality with both recorded copies. Any omitted probe, guessed request structure, 2xx or 5xx response, accepted metadata change, mutation, new revision or missing equality check fails.
 """
 
 [[criterion]]
 id = "api_session_user_mismatch_rejected"
 name = "api_session_user_mismatch_rejected"
 type = "binary"
-weight = 2.0
+weight = 1.0
 description = """
-This criterion is all-or-nothing: if any sub-check fails, mark it failed. Use direct in-page fetch calls from the app origin to test the save API trust boundary; do not rely on disabled controls, UI-only validation, DOM mutation, or hidden routes. Discover the real workbook id, current revision, save endpoint, revision-list endpoint, current visible user id, and current live session id from the live app/API. First make one legitimate save using the current visible user id and that same live session id, changing U2 to SESSION-OWNER-CHECK, and verify it succeeds, advances the current revision, and creates exactly one new revision. Record the resulting workbook, current revision, U2 value, and full revision list. Next attempt a save to the same real workbook using the recorded current revision and a workbook payload that changes U2 to IMPERSONATED-U2, but send the same live session id with a different seeded valid user id than the session's owner. Require a non-2xx response. Re-read the workbook and revisions after the rejected probe and verify U2 is still exactly SESSION-OWNER-CHECK, the current revision did not advance, and the revision list is byte-for-byte unchanged from the protected post-save list. Finally attempt the same probe with a totally unknown user id and require the same non-2xx/no-mutation result. Any accepted save, changed cell value, changed attribution, advanced revision, new revision row, or silent success fails this criterion.
+This criterion is all-or-nothing: if any sub-check fails, mark it failed. Use the visible spreadsheet UI to select one seeded user, make an edit to U2 with exact text SESSION-OWNER-CHECK, and observe the exact successful save produced by that action. Record its real URL, method, content type, complete implementation-specific body, claimed user value, and authentication or editing-session mechanism. If the request or session mechanism cannot be observed, fail rather than assuming a cookie, header, field name or JavaScript global. Require the legitimate save to succeed, advance the revision once, create exactly one revision and attribute U2 to the selected user. Record exact deep copies of the resulting workbook and revision list. Clone that successful request with the protected current revision and workbook, retain the exact observed active session mechanism, change only U2 to IMPERSONATED-U2 and the claimed user to a different seeded valid user, and send it once through direct same-origin fetch. Require a 4xx response, never 5xx. Repeat from the protected state with U2=UNKNOWN-USER-U2 and a totally unknown claimed user, again requiring 4xx and never 5xx. Report an explicit two-row table with probe name, exact status and response body. After every probe, re-read the workbook and revisions and require exact deep equality with the protected copies: U2, attribution, current revision and revision list must remain unchanged. Any guessed mechanism, omitted probe, 2xx or 5xx response, mutation, changed attribution, new revision or missing equality check fails.
 """
 
 [scoring]

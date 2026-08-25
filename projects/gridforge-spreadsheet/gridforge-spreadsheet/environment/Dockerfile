@@ -61,11 +61,18 @@ RUN pip3 install --break-system-packages --no-cache-dir \
 RUN mkdir -p /opt/playwright-browsers && \
     PW_CLI="$(npm root -g)/playwright/cli.js" && \
     if [ ! -f "$PW_CLI" ]; then PW_CLI="$(npm root -g)/@playwright/mcp/node_modules/playwright/cli.js"; fi && \
-    node "$PW_CLI" install --with-deps chromium && \
+    installed=0 && \
+    for attempt in 1 2 3 4 5; do \
+        if node "$PW_CLI" install --with-deps chromium; then installed=1; break; fi; \
+        echo "Playwright install attempt $attempt failed; retrying" >&2; \
+        sleep $((attempt * 5)); \
+    done && \
+    [ "$installed" = 1 ] && \
     chmod -R a+rX /opt/playwright-browsers
 
+COPY instructions/ /instructions/
 COPY assets/ /assets/
-RUN chmod -R a+rX /assets
+RUN chmod -R a+rX /instructions /assets
 
 WORKDIR /app
 CMD ["sleep", "infinity"]
