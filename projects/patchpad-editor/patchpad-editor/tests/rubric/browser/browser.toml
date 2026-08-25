@@ -1,9 +1,9 @@
 [judge]
 judge = "claude-code"
 model = "anthropic/claude-sonnet-5"
-mode = "batched"
+mode = "individual"
 timeout = 8400
-isolated = false
+isolated = true
 prompt_template = "prompt.md"
 weight = 1.0
 
@@ -13,17 +13,6 @@ transport = "stdio"
 command = "playwright-mcp"
 args = ["--headless", "--isolated", "--browser=chromium", "--no-sandbox"]
 
-# feature = seed_bootstrap
-# sub_feature = exact_generated_document
-[[criterion]]
-id = "seed_document_exact_structure"
-name = "seed_document_exact_structure"
-type = "binary"
-weight = 0.5
-description = """
-Feature metadata: feature=seed_bootstrap; sub_feature=exact_generated_document; kind=graded; depends_on=none. This criterion is all-or-nothing. Open the running app without a login step and establish a positive control that the custom editor is usable. Through the visible UI and a same-origin GET of the document API, verify exactly one document titled "Northwind API Incident Report" exists at saved revision 1 and contains exactly 1,226 logical lines before any edit. Verify line 1 is exactly "Incident: Northwind API latency event", line 18 is exactly "TODO: Replace temporary dashboard link before publishing.", line 24 is exactly "Log line 0001: region=us-east service=checkout marker=ALPHA-0001 status=observed note=repeatable text for editor offset validation.", line 623 contains both "Log line 0600:" and "marker=ALPHA-0600", line 1223 contains both "Log line 1200:" and "marker=ALPHA-1200", line 1225 is exactly "Reviewer notes", and line 1226 is exactly "The editor must preserve this tail sentinel: OMEGA-END-ANCHOR.". Any missing, unpadded, duplicated, reordered, or extra generated line fails.
-"""
-
 # feature = custom_editor
 # sub_feature = forbidden_native_surfaces
 [[criterion]]
@@ -32,7 +21,7 @@ name = "custom_editor_no_native_editing_surface"
 type = "binary"
 weight = 0.5
 description = """
-Feature metadata: feature=custom_editor; sub_feature=forbidden_native_surfaces_and_controls; kind=graded; depends_on=none. This criterion is all-or-nothing. Inspect the live editing surface and fail if it is a textarea, input, contenteditable element, or an editor supplied by Monaco, CodeMirror, ProseMirror, TipTap, Quill, Slate, Draft.js, or another editor widget. Search fields outside the editor are allowed. Verify discoverable controls by intent for Save, Undo, Redo, Find Next, Replace Current, Replace All, and revision history, plus visible saved/dirty and error/status regions. Click the visible custom editor with the real mouse, type the exact marker CUSTOM-SURFACE-PROOF with normal keyboard input, and verify that exact full marker appears once in the document. Do not dispatch synthetic events or invoke application handlers. Reload without saving, accept any unload dialog, and verify the marker is absent again.
+Feature metadata: feature=seed_bootstrap_and_custom_editor; sub_feature=exact_seed_forbidden_native_surfaces_and_controls; kind=graded; depends_on=preflight_manifest_restart. This criterion is all-or-nothing and is evaluated before criteria that save edits. Open the normal app without a login step and establish that the custom editor is usable. Through the visible UI and a same-origin GET of the document API, verify exactly one document titled "Northwind API Incident Report" exists at saved revision 1 and contains exactly 1,226 logical lines before any edit. Verify line 1 is exactly "Incident: Northwind API latency event", line 18 is exactly "TODO: Replace temporary dashboard link before publishing.", line 24 is exactly "Log line 0001: region=us-east service=checkout marker=ALPHA-0001 status=observed note=repeatable text for editor offset validation.", line 623 contains both "Log line 0600:" and "marker=ALPHA-0600", line 1223 contains both "Log line 1200:" and "marker=ALPHA-1200", line 1225 is exactly "Reviewer notes", and line 1226 is exactly "The editor must preserve this tail sentinel: OMEGA-END-ANCHOR.". Any missing, unpadded, duplicated, reordered, or extra generated line fails. Inspect the live editing surface and fail if it is a textarea, input, contenteditable element, or an editor supplied by Monaco, CodeMirror, ProseMirror, TipTap, Quill, Slate, Draft.js, or another editor widget. Search fields outside the editor are allowed. Verify discoverable controls by intent for Save, Undo, Redo, Find Next, Replace Current, Replace All, and revision history, plus visible saved/dirty and error/status regions. Click the visible custom editor with the real mouse, type the exact marker CUSTOM-SURFACE-PROOF with normal keyboard input, and verify that exact full marker appears once in the document. Do not dispatch synthetic events or invoke application handlers. Reload without saving, accept any unload dialog, and verify the marker is absent again.
 """
 
 # feature = persistence
@@ -65,7 +54,7 @@ name = "keyboard_navigation_exact_coordinates"
 type = "binary"
 weight = 1.0
 description = """
-Feature metadata: feature=cursor_navigation; sub_feature=exact_logical_coordinates; kind=graded; depends_on=seed_document_exact_structure. This criterion is all-or-nothing. Use the real mouse to place the caret at line 1 column 1, then use real key presses only. Four ArrowDown presses must report line 5 column 1. End must report line 5 column 9. ArrowDown must report line 6 column 9; Home must report line 6 column 1; ArrowLeft must cross the newline and report line 5 column 9; ArrowRight must return to line 6 column 1. Press End on line 6 and require line 6 column 59, then ArrowUp must clamp to line 5 column 9 and ArrowDown must restore the intended column at line 6 column 59. Finally use the real mouse to place the caret inside the final logical line, press End, and require line 1226 column 63. If any required key loses editor focus, selects a different line, or produces another coordinate, fail.
+Feature metadata: feature=cursor_navigation; sub_feature=exact_logical_coordinates; kind=graded; depends_on=preflight_manifest_restart. This criterion is all-or-nothing. Use the real mouse to place the caret at line 1 column 1, then use real key presses only. Four ArrowDown presses must report line 5 column 1. End must report line 5 column 9. ArrowDown must report line 6 column 9; Home must report line 6 column 1; ArrowLeft must cross the newline and report line 5 column 9; ArrowRight must return to line 6 column 1. Press End on line 6 and require line 6 column 59, then ArrowUp must clamp to line 5 column 9 and ArrowDown must restore the intended column at line 6 column 59. Finally use the real mouse to place the caret inside the final logical line, press End, and require line 1226 column 63. If any required key loses editor focus, selects a different line, or produces another coordinate, fail.
 """
 
 # feature = deletion
@@ -164,7 +153,7 @@ name = "find_replace_exact_counts_and_offsets"
 type = "binary"
 weight = 0.5
 description = """
-Feature metadata: feature=find_replace; sub_feature=wrap_counts_and_offset_integrity; kind=graded; depends_on=seed_document_exact_structure. This criterion is all-or-nothing. In the visible controls search TODO and require exactly 3 matches. Use Find Next repeatedly and copy each active selection to verify the exact three TODO lines are visited in document order and the fourth Find Next wraps to the first line. Set replacement to FOLLOWUP and Replace Current once; require exactly line 18 to become "FOLLOWUP: Replace temporary dashboard link before publishing.", with the other two TODO lines unchanged. Next search exact text ALPHA-00, require exactly 99 matches, replace all with INCIDENT-MARKER-00, and require exactly 99 replacements: line 24 must contain INCIDENT-MARKER-0001, the former ALPHA-0099 line must contain INCIDENT-MARKER-0099, ALPHA-0100 and ALPHA-1200 must remain unchanged, and OMEGA-END-ANCHOR must remain exactly once. One Undo must restore all 99 ALPHA-00 occurrences and remove all 99 replacement prefixes. Reload without saving afterward.
+Feature metadata: feature=find_replace; sub_feature=wrap_counts_and_offset_integrity; kind=graded; depends_on=preflight_manifest_restart. This criterion is all-or-nothing. In the visible controls search TODO and require exactly 3 matches. Use Find Next repeatedly and copy each active selection to verify the exact three TODO lines are visited in document order and the fourth Find Next wraps to the first line. Set replacement to FOLLOWUP and Replace Current once; require exactly line 18 to become "FOLLOWUP: Replace temporary dashboard link before publishing.", with the other two TODO lines unchanged. Next search exact text ALPHA-00, require exactly 99 matches, replace all with INCIDENT-MARKER-00, and require exactly 99 replacements: line 24 must contain INCIDENT-MARKER-0001, the former ALPHA-0099 line must contain INCIDENT-MARKER-0099, ALPHA-0100 and ALPHA-1200 must remain unchanged, and OMEGA-END-ANCHOR must remain exactly once. One Undo must restore all 99 ALPHA-00 occurrences and remove all 99 replacement prefixes. Reload without saving afterward.
 """
 
 # feature = long_document
@@ -175,7 +164,7 @@ name = "long_document_three_region_round_trip"
 type = "binary"
 weight = 0.5
 description = """
-Feature metadata: feature=long_document; sub_feature=three_region_round_trip; kind=graded; depends_on=seed_document_exact_structure. This criterion is all-or-nothing. Read and retain an unchanged baseline copy from the document API. Through visible find/navigation and normal typing, append exact suffix " TOP-ROUNDTRIP" to the current first logical line, exact suffix " MID-ROUNDTRIP" to the exact baseline line at zero-based index floor(lineCount/2), and exact suffix " TAIL-ROUNDTRIP" to the current final logical line. Save once and reload. Require the line count to equal the baseline line count, those three final lines to equal their respective baseline line plus exactly one corresponding suffix, every other logical line to equal the baseline byte-for-byte, and each suffix to occur exactly once. Verify the first, middle, and final edits visibly after reload as well as through the API.
+Feature metadata: feature=long_document; sub_feature=three_region_round_trip; kind=graded; depends_on=preflight_manifest_restart. This criterion is all-or-nothing. Read and retain an unchanged baseline copy from the document API. Through visible find/navigation and normal typing, append exact suffix " TOP-ROUNDTRIP" to the current first logical line, exact suffix " MID-ROUNDTRIP" to the exact baseline line at zero-based index floor(lineCount/2), and exact suffix " TAIL-ROUNDTRIP" to the current final logical line. Save once and reload. Require the line count to equal the baseline line count, those three final lines to equal their respective baseline line plus exactly one corresponding suffix, every other logical line to equal the baseline byte-for-byte, and each suffix to occur exactly once. Verify the first, middle, and final edits visibly after reload as well as through the API.
 """
 
 # feature = revision_history
@@ -200,17 +189,6 @@ description = """
 Feature metadata: feature=conflict_safety; sub_feature=chained_two_tab_conflicts; kind=graded; depends_on=none. This criterion is all-or-nothing. Open two ordinary tabs A and B on the same saved revision R. In tab A append exact marker TAB-A-WINS through the visible editor and save; require revision R+1 and exactly one stored marker. Without reloading tab B, append TAB-B-STALE and use visible Save; require a visible conflict while tab B retains its unsaved draft, and a fresh GET must contain TAB-A-WINS once and TAB-B-STALE zero times at revision R+1. Reload tab B, append TAB-B-REBASSED, save, and require revision R+2 with TAB-A-WINS and TAB-B-REBASSED each exactly once. Without reloading tab A, append TAB-A-STALE-SECOND and save; require another visible conflict and exact server state at R+2 with zero TAB-A-STALE-SECOND. A disabled button without a server attempt is insufficient.
 """
 
-# feature = conflict_safety
-# sub_feature = direct_api_rejection_matrix
-[[criterion]]
-id = "direct_api_save_rejection_nonmutation_matrix"
-name = "direct_api_save_rejection_nonmutation_matrix"
-type = "binary"
-weight = 1.0
-description = """
-Feature metadata: feature=conflict_safety; sub_feature=direct_api_rejection_matrix; kind=graded; depends_on=none. This criterion is all-or-nothing. Use same-origin fetch calls and the live app's real save route/body shape. Record base content, revision R, and the exact revision list. Make one legitimate save at R that appends API-CURRENT-WINS and require success at R+1 with exactly one new revision. Protect that exact post-save state. Using the older R and baseline content, attempt FORGED-STALE-OVERWRITE and require HTTP 409. Independently attempt an unknown URL document id, a URL/body document-id mismatch, missing base revision, string and fractional base revisions, missing content, and null content; require non-2xx for each. Finally send the protected content with the current R+1 base revision plus an extra forged currentRevision field; the server may reject it or ignore only that extra field, but it must not change content or create a revision. Re-read the real document and revision list after every probe. At the end require API-CURRENT-WINS exactly once, FORGED-STALE-OVERWRITE zero times, revision still R+1, and the revision list exactly equal to the protected post-save list. Any rejected request that mutates content or creates a revision fails.
-"""
-
 # feature = multi_caret
 # sub_feature = full_typing_single_undo
 [[criterion]]
@@ -219,7 +197,7 @@ name = "multi_caret_full_typing_single_undo"
 type = "binary"
 weight = 1.5
 description = """
-Feature metadata: feature=multi_caret; sub_feature=full_typing_single_undo; kind=graded; depends_on=custom_editor_no_native_editing_surface. This criterion is all-or-nothing. Use one real normal mouse click and two real Alt+Click mouse actions, never synthetic events or Ctrl/Cmd substitution, to place exactly three carets immediately after the words Timeline, impact, and items on three different visible logical lines. For each Alt+Click, send a real Alt key-down, perform the real mouse click while Alt remains held, and then send Alt key-up. Do not pass a modifiers option to mouse.click because that does not hold Alt for this interaction. Confirm exactly three visible carets. Type exactly MULTI using five normal sequential key presses: M, U, L, T, I. Do not type X, MC, MC-, M, or another shorter proxy. Require the exact affected lines to be "TimelineMULTI", "Customer impactMULTI", and "Action itemsMULTI", with no insertion on adjacent lines. Press Undo exactly once and inspect immediately: all three lines must be exactly "Timeline", "Customer impact", and "Action items". If one Undo leaves MULT, MUL, MU, M, or any other part of MULTI at even one caret, score no and do not issue more Undo commands to rescue the check. Press Redo exactly once and require all three complete MULTI insertions to return. The reasoning must quote all three exact lines before typing, after typing, after the single Undo, and after the single Redo; otherwise score no. Reload without saving afterward.
+Feature metadata: feature=multi_caret; sub_feature=full_typing_single_undo; kind=graded; depends_on=custom_editor_no_native_editing_surface. This criterion is all-or-nothing. Use one real normal mouse click and either two real Alt+Click actions or two real platform Ctrl/Cmd+Click actions, never synthetic events, to place exactly three carets immediately after the words Timeline, impact, and items on three different visible logical lines. Determine which permitted modifier the app supports on a fresh pair of carets; if the first modifier does not add a caret, clear the attempted carets before trying the other permitted modifier. Once a working modifier is found, use that same modifier for both added carets. Hold the chosen modifier key down during each real mouse click and release it afterward; do not dispatch synthetic mouse events or invoke handlers. Confirm exactly three visible carets. Type exactly MULTI using five normal sequential key presses: M, U, L, T, I. Do not type X, MC, MC-, M, or another shorter proxy. Require the exact affected lines to be "TimelineMULTI", "Customer impactMULTI", and "Action itemsMULTI", with no insertion on adjacent lines. Press Undo exactly once and inspect immediately: all three lines must be exactly "Timeline", "Customer impact", and "Action items". If one Undo leaves MULT, MUL, MU, M, or any other part of MULTI at even one caret, score no and do not issue more Undo commands to rescue the check. Press Redo exactly once and require all three complete MULTI insertions to return. The reasoning must quote the chosen modifier and all three exact lines before typing, after typing, after the single Undo, and after the single Redo; otherwise score no. Reload without saving afterward.
 """
 
 # feature = multi_caret
@@ -230,7 +208,18 @@ name = "multi_caret_backspace_delete_sibling"
 type = "binary"
 weight = 0.5
 description = """
-Feature metadata: feature=multi_caret; sub_feature=backspace_delete_sibling; kind=graded; depends_on=custom_editor_no_native_editing_surface. This criterion is all-or-nothing. Using only one real normal click and two real Alt+Click actions, create exactly three carets immediately after the final characters of Timeline, Customer impact, and Action items. For each Alt+Click, send a real Alt key-down, perform the real mouse click while Alt remains held, and then send Alt key-up. Do not pass a modifiers option to mouse.click because that does not hold Alt for this interaction. Press Backspace exactly once. Require the three complete lines to become exactly "Timelin", "Customer impac", and "Action item" while adjacent lines remain unchanged. Press Undo exactly once and require all three original lines to return. Clear the carets. Repeat the same real Alt key-down, mouse click, Alt key-up sequence for each added caret immediately before the first characters of Timeline, Customer impact, and Action items. Press Delete exactly once. Require the three complete lines to become exactly "imeline", "ustomer impact", and "ction items" while adjacent lines remain unchanged. Press Undo exactly once and require all three original lines to return. The reasoning must quote all three exact lines after Backspace, after its one Undo, after Delete, and after its one Undo. Testing only one caret, a shorter subset, or only one deletion key is an automatic failure. Reload without saving afterward.
+Feature metadata: feature=multi_caret; sub_feature=backspace_delete_sibling; kind=graded; depends_on=custom_editor_no_native_editing_surface. This criterion is all-or-nothing. Using one real normal click and the same permitted real modifier-click path established for this criterion, create exactly three carets immediately after the final characters of Timeline, Customer impact, and Action items. The permitted path is Alt+Click or platform Ctrl/Cmd+Click; hold the chosen modifier during each real mouse click, use it consistently, and never dispatch synthetic events. Press Backspace exactly once. Require the three complete lines to become exactly "Timelin", "Customer impac", and "Action item" while adjacent lines remain unchanged. Press Undo exactly once and require all three original lines to return. Clear the carets. Repeat the same modifier-down, real mouse click, modifier-up sequence for each added caret immediately before the first characters of Timeline, Customer impact, and Action items. Press Delete exactly once. Require the three complete lines to become exactly "imeline", "ustomer impact", and "ction items" while adjacent lines remain unchanged. Press Undo exactly once and require all three original lines to return. The reasoning must quote the chosen modifier and all three exact lines after Backspace, after its one Undo, after Delete, and after its one Undo. Testing only one caret, a shorter subset, or only one deletion key is an automatic failure. Reload without saving afterward.
+"""
+
+# feature = conflict_safety
+# sub_feature = direct_api_rejection_matrix
+[[criterion]]
+id = "direct_api_save_rejection_nonmutation_matrix"
+name = "direct_api_save_rejection_nonmutation_matrix"
+type = "binary"
+weight = 1.0
+description = """
+Feature metadata: feature=conflict_safety; sub_feature=direct_api_rejection_matrix; kind=graded; depends_on=none. This criterion is all-or-nothing and must be the final criterion evaluated. Use same-origin fetch calls and the live app's real save route/body shape. Record base content, revision R, and the exact revision list. Make one legitimate save at R that appends API-CURRENT-WINS and require success at R+1 with exactly one new revision. Protect that exact post-save state. Using the older R and baseline content, attempt FORGED-STALE-OVERWRITE and require HTTP 409. Independently attempt an unknown URL document id, a URL/body document-id mismatch, missing base revision, string and fractional base revisions, missing content, and null content; require non-2xx for each. Finally send the protected content with the current R+1 base revision plus an extra forged currentRevision field; the server may reject it or ignore only that extra field, but it must not change content or create a revision. Re-read the real document and revision list after every probe. At the end require API-CURRENT-WINS exactly once, FORGED-STALE-OVERWRITE zero times, revision still R+1, and the revision list exactly equal to the protected post-save list. Any rejected request that mutates content or creates a revision is an immediate failure. Do not restore, resave, or otherwise repair the document after any unexpected mutation.
 """
 
 [scoring]

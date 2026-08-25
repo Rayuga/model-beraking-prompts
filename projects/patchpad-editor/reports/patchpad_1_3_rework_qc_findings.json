@@ -1,0 +1,230 @@
+{
+  "title": "PatchPad Editor 1.3 - QC Rework",
+  "subtitle": "Closure review against PatchPad_Editor_QC.xlsx",
+  "note": "All 13 prior findings were rechecked. Static, local restart, and Docker golden checks completed on 2026-08-25; a fresh Harbor Oracle run remains the final release gate.",
+  "mode": "rework",
+  "runs": [
+    {
+      "task": "patchpad-editor",
+      "model": "ORACLE (prior 1.2 baseline)",
+      "reward": 1.0,
+      "prog": 1.0,
+      "agent_s": 7,
+      "verifier_s": 2509,
+      "note": "Superseded evidence: the prior batched judge relied on compacted-session summaries for seven criteria."
+    },
+    {
+      "task": "patchpad-editor",
+      "model": "gpt-5.6-sol (prior run)",
+      "reward": 0.6842,
+      "prog": 1.0,
+      "agent_s": 595,
+      "verifier_s": 6060,
+      "note": "Superseded score: the QC found multiple unsupported passes. The new evidence gate rejects the archived run's missing-marker reasoning."
+    }
+  ],
+  "tasks": [
+    {
+      "name": "PatchPad 1.3",
+      "oracle": 1.0,
+      "best_model": 0.6842,
+      "headline": "13 of 13 prior findings are structurally closed; run a fresh Oracle before release to replace the superseded 1.2 proof.",
+      "findings": [
+        {
+          "id": "PP-01",
+          "sev": "P0",
+          "category": "Grading correctness",
+          "location": "tests/rubric/browser/browser.toml [judge]; tests/test.py:EVIDENCE_TOKENS",
+          "what": "The prior batched judge awarded criteria without performing their exact named probes.",
+          "why": "Unsupported awards made the reported model score non-reproducible.",
+          "impact": "Incorrect positive training signal and an inflated model score.",
+          "fix": "Changed the agent judge to individual per-criterion calls and recompute reward after a marker-based evidence gate rejects incomplete or prior-session reasoning.",
+          "type": "Prior",
+          "status": "FIXED",
+          "action": "Confirm the next model run records zero evidence-gate false passes."
+        },
+        {
+          "id": "PP-02",
+          "sev": "P0",
+          "category": "Oracle validation",
+          "location": "tests/rubric/browser/browser.toml: mode = individual",
+          "what": "The prior Oracle used compacted context summaries for 7 of 20 criteria.",
+          "why": "A batched 20-criterion agent call exceeded practical context and did not prove the golden end to end.",
+          "impact": "The old Oracle 1.0 is superseded as release evidence.",
+          "fix": "Each criterion now runs in its own sequential Claude Code call; prior-session wording also fails the evidence gate.",
+          "type": "Prior",
+          "status": "FIXED",
+          "action": "Run a fresh Oracle and require full score with no prior-session language."
+        },
+        {
+          "id": "PP-03",
+          "sev": "P0",
+          "category": "Graded but not stated",
+          "location": "environment/instructions/editing.md",
+          "what": "Contiguous typing, typed selection replacement, Replace All atomicity, and redo invalidation were graded but absent from the brief.",
+          "why": "The rubric encoded golden-specific undo behavior the model was not told to implement.",
+          "impact": "A compliant submission could lose 4.0 weight for unstated behavior.",
+          "fix": "The Editing brief now states all four undo units in one concise paragraph.",
+          "type": "Prior",
+          "status": "FIXED",
+          "action": "None."
+        },
+        {
+          "id": "PP-04",
+          "sev": "P1",
+          "category": "Judge protocol",
+          "location": "tests/rubric/browser/prompt.md; browser.toml final criterion",
+          "what": "The prior judge repaired content after a destructive API probe and still passed the criterion.",
+          "why": "Repaired state is manufactured evidence rather than observed app behavior.",
+          "impact": "The API rejection award and all later shared-state checks were untrustworthy.",
+          "fix": "The API matrix is now last, mutation is an immediate failure, repair is forbidden, and repair language is rejected by the evidence gate.",
+          "type": "Prior",
+          "status": "FIXED",
+          "action": "None."
+        },
+        {
+          "id": "PP-05",
+          "sev": "P1",
+          "category": "Auditability",
+          "location": "tests/test.py:preserve_judge_transcripts()",
+          "what": "The prior run retained only free-text criterion reasoning and no Claude/Playwright transcript.",
+          "why": "Exact mouse and keyboard claims could not be independently audited.",
+          "impact": "Disputed awards had no inspectable tool-call trail.",
+          "fix": "New Claude Code JSONL sessions created during RewardKit are copied under rewardkit-browser/judge-transcripts with an index.",
+          "type": "Prior",
+          "status": "FIXED",
+          "action": "Verify the next Harbor artifact contains non-empty transcript JSONL files."
+        },
+        {
+          "id": "PP-06",
+          "sev": "P1",
+          "category": "Rubric ordering",
+          "location": "browser.toml first criterion; tests/test.py:finish_preflight()",
+          "what": "The pristine revision-1 seed check was not guaranteed to run before mutating criteria.",
+          "why": "The old batched judge evaluated it after a save and passed by inference.",
+          "impact": "The baseline for all later checks was unknown.",
+          "fix": "Individual mode evaluates the exact seed/custom-surface criterion first; a deterministic preflight independently checks manifest, non-empty SQLite, and unchanged logical DB state after restart.",
+          "type": "Prior",
+          "status": "FIXED",
+          "action": "None."
+        },
+        {
+          "id": "PP-07",
+          "sev": "P1",
+          "category": "Over-strict rubric",
+          "location": "browser.toml multi-caret criteria",
+          "what": "The brief allowed Alt+Click or Ctrl/Cmd+Click while both criteria required Alt only.",
+          "why": "A Ctrl/Cmd-only compliant editor would lose both multi-caret checks.",
+          "impact": "2.0 weight could be denied for a permitted implementation choice.",
+          "fix": "Both criteria now accept either real modifier-click path, require one path to be chosen cleanly, and require that path to be used consistently.",
+          "type": "Prior",
+          "status": "FIXED",
+          "action": "None."
+        },
+        {
+          "id": "PP-08",
+          "sev": "P2",
+          "category": "Archive hygiene",
+          "location": "solution/app/run-local.cmd",
+          "what": "A Windows launcher exposed a private relative Node toolchain path in shipped artifacts.",
+          "why": "It had no Linux-container function and leaked authoring-machine structure.",
+          "impact": "Visible packaging noise in the client artifact.",
+          "fix": "Deleted run-local.cmd from the solution app.",
+          "type": "Prior",
+          "status": "FIXED",
+          "action": "None."
+        },
+        {
+          "id": "PP-09",
+          "sev": "P2",
+          "category": "Stated but not graded",
+          "location": "tests/test.py:manifest_contract(), finish_preflight()",
+          "what": "Restart idempotency and APP_MANIFEST completeness were mandatory but ungraded.",
+          "why": "A reseeding app or incomplete manifest could score like a correct submission.",
+          "impact": "Two explicit delivery requirements had no training pressure.",
+          "fix": "A 0.5-weight deterministic preflight validates the start block, SQLite path, API route listing, non-empty database, and identical logical database digest and row counts after restart.",
+          "type": "Prior",
+          "status": "FIXED",
+          "action": "None."
+        },
+        {
+          "id": "PP-10",
+          "sev": "P2",
+          "category": "Result reporting",
+          "location": "tests/test.py:write_reward(), criteria_rows()",
+          "what": "Unweighted passed/total counts appeared beside a weighted score without being named as criterion counts.",
+          "why": "Readers could not reconcile 16/20 with the 13/19 weighted reward.",
+          "impact": "Confusing run metrics.",
+          "fix": "Metrics are explicitly named browser_criteria_passed/total and separately report browser_passed_weight/total_weight.",
+          "type": "Prior",
+          "status": "FIXED",
+          "action": "None."
+        },
+        {
+          "id": "PP-11",
+          "sev": "P3",
+          "category": "Harness robustness",
+          "location": "tests/test.py:clear_app_port(), wait_healthy()",
+          "what": "A stale process could theoretically occupy PORT and satisfy health checks after the intended app failed to bind.",
+          "why": "The old harness did not establish process ownership of the graded port.",
+          "impact": "No prior run was affected, but a future run could grade the wrong process.",
+          "fix": "The harness clears PORT with fuser before each start and fails health checks if the launched process exits.",
+          "type": "Prior",
+          "status": "FIXED",
+          "action": "None."
+        },
+        {
+          "id": "PP-12",
+          "sev": "P3",
+          "category": "Budget calibration",
+          "location": "task.toml [agent]",
+          "what": "The prior agent used about ten minutes of a three-hour allowance.",
+          "why": "This was informational and did not affect correctness.",
+          "impact": "None.",
+          "fix": "No change required; the difficult browser verifier, not agent wall time, defines task depth.",
+          "type": "Prior",
+          "status": "FIXED",
+          "action": "None."
+        },
+        {
+          "id": "PP-13",
+          "sev": "P3",
+          "category": "What is good",
+          "location": "tests/test.sh; tests/test.py; environment/assets; browser.toml",
+          "what": "The prior report recorded reward-on-crash, secret hygiene, deterministic seed arithmetic, and tiered weights as strengths.",
+          "why": "These controls needed to survive the rework.",
+          "impact": "Preserving them avoids regressions while closing the blockers.",
+          "fix": "All four strengths remain; crash guards and weight arithmetic were revalidated after the new preflight was added.",
+          "type": "Prior",
+          "status": "FIXED",
+          "action": "None."
+        }
+      ]
+    }
+  ],
+  "blocks": [
+    {
+      "title": "P0/P1 closure",
+      "items": [
+        "Per-criterion individual judging replaces the compacted 20-check session.",
+        "The score is recomputed after an exact-marker evidence gate, so unsupported yes verdicts no longer reach reward.json.",
+        "Undo granularity is now stated in the brief, both modifier-click choices are accepted, and probe repair is forbidden."
+      ]
+    },
+    {
+      "title": "Golden checks",
+      "items": [
+        "The environment image builds with /instructions and /assets readable.",
+        "The golden solution starts in Docker at revision 1 with one document, one revision, and exactly 1,226 expected lines.",
+        "The deterministic preflight passes locally with identical logical SQLite digests across restart."
+      ]
+    },
+    {
+      "title": "Release gate",
+      "items": [
+        "Run a fresh Oracle because the previous 1.0 used the superseded batched judge.",
+        "Check that rewardkit-browser/judge-transcripts/index.json lists non-empty JSONL session files."
+      ]
+    }
+  ]
+}

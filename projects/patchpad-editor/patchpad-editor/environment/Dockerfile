@@ -65,7 +65,8 @@ RUN mkdir -p /opt/playwright-browsers && \
     chmod -R a+rX /opt/playwright-browsers
 
 COPY assets/ /assets/
-RUN chmod -R a+rX /assets
+COPY instructions/ /instructions/
+RUN chmod -R a+rX /assets /instructions
 
 WORKDIR /app
 CMD ["sleep", "infinity"]
