@@ -1,17 +1,15 @@
-# PatchPad editor
+# PatchPad Editor
 
-Build PatchPad, a browser-based editor for long incident reports. It should
-feel like a real editor, not a CRUD form around a text field.
+I want to build PatchPad, a browser-based editor for long incident reports. The
+main work is the editing experience, revision history, and safe persistence.
 
-The complete brief is in `/instructions/`. Read every file before starting:
+The brief is split into these files under `/instructions/`:
 
-- `overview.md` - product scope, seed data, stack, and custom editor rules
-- `editing.md` - cursor, selection, clipboard, undo/redo, and multi-caret behavior
-- `persistence.md` - find/replace, saving, and revision history
-- `conflict-safety.md` - stale and malformed save protection
+- `overview.md` - product scope, seed data, stack, and editor foundation
+- `editing.md` - everyday editing, selection, clipboard, and multiple carets
+- `persistence.md` - find and replace, saving, and revision history
+- `conflict-safety.md` - concurrent and invalid save protection
 - `interface.md` - visible controls and feedback
 
-These files are one brief split by topic. None of them is optional.
-
-Seed data is under `/assets/incident_seed.json`. Nothing in the finished app
-should depend on somebody knowing a hidden route, request shape, or element id.
+Please read all of them before starting. Seed data is available at
+`/assets/incident_seed.json`.

@@ -1,16 +1,15 @@
 # Persistence
 
-Provide find and replace controls for the current document. Users can find
-matches, cycle through matches, replace the current match, and replace all
-matches.
+Provide find and replace for the open report, including moving through matches,
+replacing one match, and replacing all matches.
 
-Saving changed document content writes to SQLite and creates a new revision.
-Saving unchanged content must not create a duplicate revision. Reloading the
-page must show the last saved content. Unsaved edits are marked dirty and must
-not become saved merely because the page reloads.
+Show whether the report is saved or has unsaved changes. Saving changed content
+should create one new SQLite revision; saving unchanged content should not.
+Reloading should return to the latest saved content and discard anything that
+was never saved.
 
-Show revision history with at least the latest few saved revisions, including
-revision number and timestamp. Users can preview and restore a prior revision
-without corrupting the saved history. Restoring a revision loads it as an
-unsaved draft rather than saving immediately, and one undo returns to the draft
-that was present before the restore.
+Show revision numbers and timestamps in a revision history. People should be
+able to preview an older revision and restore it safely without damaging the
+saved history. Previewing must not change the saved report. Restoring an older
+revision should open it as an unsaved editor action so it can be undone before
+it is saved.

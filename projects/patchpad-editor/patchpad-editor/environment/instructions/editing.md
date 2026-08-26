@@ -1,24 +1,22 @@
 # Editing
 
-The editor opens the seeded document and supports normal text entry, new lines,
-Backspace, Delete, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Home, and End.
-Cursor movement must remain predictable across short and long logical lines.
+Support the normal things people expect from a text editor: typing, new lines,
+Backspace, Delete, arrow keys, Home and End. Show line numbers and the current
+cursor position.
 
-Support standard mouse and keyboard selection, including word, line, range,
-and full-document selection, and replace selected text by typing or pasting.
-Selection must continue beyond the visible editor while the view scrolls to
-keep extending it through the document.
+Include familiar keyboard behavior for moving or selecting by words, using Tab
+and Shift+Tab for indentation, and opening Find from the keyboard. Find results
+should be reachable in both directions without going back to the mouse.
 
-Users can copy selected text, cut selected text, and paste clipboard text copied
-from inside PatchPad or another application or browser tab. Preserve multiline
-and tabbed clipboard text. Cutting and pasting are each one undoable edit.
+Mouse and keyboard selection should work for words, lines, larger ranges, and
+the whole document. Selection should continue naturally when it moves beyond
+the visible part of a long report. Typing or pasting over a selection should
+replace it.
 
-Provide Undo and Redo as visible controls and through Ctrl/Cmd+Z and Ctrl/Cmd+Y
-or Ctrl/Cmd+Shift+Z. A contiguous run of typed characters at one caret, typing
-that replaces a selection, and a Replace All operation are each one undoable
-edit. Separate typing runs remain separate undo steps, and a new edit after an
-undo discards the redo path.
+Support copy, cut, and paste from PatchPad and from other applications, including
+multiline and tabbed clipboard text. Provide visible Undo and Redo controls as
+well as the usual keyboard shortcuts. Undo and Redo should behave like they do
+in familiar document editors such as Google Docs or Word.
 
-Users can create multiple carets with Alt+Click or Ctrl/Cmd+Click. Typing,
-Backspace, and Delete apply across all active carets, and one undo reverses the
-whole multi-caret edit.
+Allow multiple carets using Alt+Click or Ctrl/Cmd+Click. Typing, Backspace, and
+Delete should affect every active caret.

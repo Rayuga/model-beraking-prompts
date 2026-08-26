@@ -1,11 +1,9 @@
 # Interface
 
-Use labels and controls that are discoverable by intent. The app includes a
-document list or header showing the seeded document, a custom editor area, and
-visible controls for Save, Undo, Redo, Find Next, Replace Current, Replace All,
-and revision history.
+Keep the editor usable in a normal browser. Show the seeded report, editing
+surface, save state, revision, cursor position, and clear feedback when an
+action or save fails.
 
-Show line numbers, the current cursor position, saved revision, and whether the
-document is saved or dirty. Show visible errors for rejected saves and invalid
-actions. The product is judged by behavior rather than visual polish, but it
-must be usable in a normal browser.
+Make Save, Undo, Redo, Find Next, Replace Current, Replace All, and revision
+history easy to discover. Nothing should depend on hidden routes, magic element
+ids, or separate usage instructions.

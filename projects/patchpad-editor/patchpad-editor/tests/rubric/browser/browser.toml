@@ -3,7 +3,7 @@ judge = "claude-code"
 model = "anthropic/claude-sonnet-5"
 mode = "individual"
 timeout = 8400
-isolated = true
+isolated = false
 prompt_template = "prompt.md"
 weight = 1.0
 
@@ -57,6 +57,17 @@ description = """
 Feature metadata: feature=cursor_navigation; sub_feature=exact_logical_coordinates; kind=graded; depends_on=preflight_manifest_restart. This criterion is all-or-nothing. Use the real mouse to place the caret at line 1 column 1, then use real key presses only. Four ArrowDown presses must report line 5 column 1. End must report line 5 column 9. ArrowDown must report line 6 column 9; Home must report line 6 column 1; ArrowLeft must cross the newline and report line 5 column 9; ArrowRight must return to line 6 column 1. Press End on line 6 and require line 6 column 59, then ArrowUp must clamp to line 5 column 9 and ArrowDown must restore the intended column at line 6 column 59. Finally use the real mouse to place the caret inside the final logical line, press End, and require line 1226 column 63. If any required key loses editor focus, selects a different line, or produces another coordinate, fail.
 """
 
+# feature = cursor_navigation
+# sub_feature = word_navigation_and_selection
+[[criterion]]
+id = "word_navigation_and_selection_shortcuts"
+name = "word_navigation_and_selection_shortcuts"
+type = "binary"
+weight = 0.5
+description = """
+Feature metadata: feature=cursor_navigation; sub_feature=word_navigation_and_selection_shortcuts; kind=graded; depends_on=custom_editor_no_native_editing_surface. This criterion is all-or-nothing. Focus the visible editor on logical line 1 and press Home, requiring line 1 column 1. Use the real platform Ctrl/Cmd+ArrowRight shortcut once and require line 1 column 11 at the start of Northwind. Hold the same platform modifier plus Shift and press ArrowRight once; require line 1 column 21 and copy the live selection with Ctrl/Cmd+C, requiring the clipboard to equal exactly "Northwind " including its trailing space. Use modifier+Shift+ArrowLeft once and require the selection to collapse back at line 1 column 11. Then use modifier+ArrowLeft once and require line 1 column 1. Do not dispatch keyboard events, set selection state, or call editor handlers from JavaScript. The reasoning must quote all four coordinates and the exact copied selection.
+"""
+
 # feature = deletion
 # sub_feature = newline_boundary_join
 [[criterion]]
@@ -66,6 +77,17 @@ type = "binary"
 weight = 0.5
 description = """
 Feature metadata: feature=deletion; sub_feature=newline_boundary_join; kind=graded; depends_on=custom_editor_no_native_editing_surface. This criterion is all-or-nothing. At the document end create exactly three adjacent logical lines JOIN-LEFT, JOIN-RIGHT, and JOIN-TAIL through normal paste or keyboard input. Put the caret at the start of JOIN-RIGHT and press Backspace once; require the two lines to become exactly JOIN-LEFTJOIN-RIGHT followed by unchanged JOIN-TAIL, with the document line count reduced by one and no duplicated characters. Undo once and require all three original lines. Put the caret at the end of JOIN-LEFT and press Delete once; require exactly the same joined result and line count. Reload without saving and verify none of the JOIN markers persisted.
+"""
+
+# feature = editing
+# sub_feature = tab_indentation
+[[criterion]]
+id = "tab_indentation_and_reversal"
+name = "tab_indentation_and_reversal"
+type = "binary"
+weight = 0.5
+description = """
+Feature metadata: feature=editing; sub_feature=tab_and_shift_tab_indentation; kind=graded; depends_on=custom_editor_no_native_editing_surface. This criterion is all-or-nothing. Use the real mouse and keyboard to focus seeded logical line 5, whose exact value is Timeline, and press Home. Press Tab exactly once. Require focus to remain in the custom editor and line 5 to become an indented form of Timeline by adding only one to four leading whitespace characters, with Timeline itself byte-for-byte unchanged. Record that exact indented line. Press Shift+Tab exactly once and require line 5 to return exactly to Timeline. Press Undo exactly once and require the exact recorded indented line to return; press Redo exactly once and require exactly Timeline again. Adjacent lines must remain unchanged throughout. Reload without saving and require line 5 to remain Timeline. Browser focus traversal, insertion away from the line start, non-whitespace content changes, or multiple Tab/Shift+Tab presses fail.
 """
 
 # feature = selection
@@ -102,17 +124,6 @@ Feature metadata: feature=clipboard; sub_feature=external_multiline_and_internal
 """
 
 # feature = undo_redo
-# sub_feature = contiguous_typing_group
-[[criterion]]
-id = "undo_contiguous_typing_group"
-name = "undo_contiguous_typing_group"
-type = "binary"
-weight = 1.5
-description = """
-Feature metadata: feature=undo_redo; sub_feature=contiguous_typing_group; kind=graded; depends_on=custom_editor_no_native_editing_surface. This criterion is all-or-nothing. Click one visible location and type the complete contiguous text TYPING-GROUP-CHECK with normal sequential key presses, without moving the caret, clicking elsewhere, pasting, or shortening the marker. Require the complete marker to appear once. Press the visible Undo button exactly once and require the entire marker to disappear while all preceding text remains byte-for-byte unchanged. Press the visible Redo button exactly once and require the entire marker to return exactly once. Removing or restoring only one character fails. Reload without saving afterward.
-"""
-
-# feature = undo_redo
 # sub_feature = separate_edit_boundaries
 [[criterion]]
 id = "undo_separate_locations_and_redo_invalidation"
@@ -126,12 +137,12 @@ Feature metadata: feature=undo_redo; sub_feature=separate_full_typing_groups_and
 # feature = undo_redo
 # sub_feature = compound_command_atomicity
 [[criterion]]
-id = "undo_paste_cut_replace_all_atomic"
-name = "undo_paste_cut_replace_all_atomic"
+id = "undo_paste_cut_atomic"
+name = "undo_paste_cut_atomic"
 type = "binary"
 weight = 1.0
 description = """
-Feature metadata: feature=undo_redo; sub_feature=compound_command_atomicity; kind=graded; depends_on=clipboard_external_multiline_internal_exact. This criterion is all-or-nothing. Paste exact text "PASTE-A\nPASTE-B\nPASTE-C" once and require one Undo to remove all three lines and one Redo to restore all three. Select the complete phrase PASTE-B using keyboard selection, press Ctrl/Cmd+X, and require one Undo to restore the whole phrase. Create exact text "ATOM-X ATOM-X ATOM-X" using one paste, search ATOM-X, replace all with ATOM-Y using the visible control, and require one Undo to restore exactly three ATOM-X occurrences and zero ATOM-Y, followed by one Redo restoring exactly three ATOM-Y and zero ATOM-X. Any partial command reversal fails. Reload without saving afterward.
+Feature metadata: feature=undo_redo; sub_feature=paste_and_cut_atomicity; kind=graded; depends_on=clipboard_external_multiline_internal_exact. This criterion is all-or-nothing. Paste exact text "PASTE-A\nPASTE-B\nPASTE-C" once and require one Undo to remove all three lines and one Redo to restore all three. Select the complete phrase PASTE-B using keyboard selection, press Ctrl/Cmd+X, and require one Undo to restore the whole phrase and one Redo to remove it again. Any partial paste or cut reversal fails. Reload without saving afterward.
 """
 
 # feature = undo_redo
@@ -153,7 +164,18 @@ name = "find_replace_exact_counts_and_offsets"
 type = "binary"
 weight = 0.5
 description = """
-Feature metadata: feature=find_replace; sub_feature=wrap_counts_and_offset_integrity; kind=graded; depends_on=preflight_manifest_restart. This criterion is all-or-nothing. In the visible controls search TODO and require exactly 3 matches. Use Find Next repeatedly and copy each active selection to verify the exact three TODO lines are visited in document order and the fourth Find Next wraps to the first line. Set replacement to FOLLOWUP and Replace Current once; require exactly line 18 to become "FOLLOWUP: Replace temporary dashboard link before publishing.", with the other two TODO lines unchanged. Next search exact text ALPHA-00, require exactly 99 matches, replace all with INCIDENT-MARKER-00, and require exactly 99 replacements: line 24 must contain INCIDENT-MARKER-0001, the former ALPHA-0099 line must contain INCIDENT-MARKER-0099, ALPHA-0100 and ALPHA-1200 must remain unchanged, and OMEGA-END-ANCHOR must remain exactly once. One Undo must restore all 99 ALPHA-00 occurrences and remove all 99 replacement prefixes. Reload without saving afterward.
+Feature metadata: feature=find_replace; sub_feature=wrap_counts_and_offset_integrity; kind=graded; depends_on=preflight_manifest_restart. This criterion is all-or-nothing. In the visible controls search TODO and require exactly 3 matches. Use Find Next repeatedly and copy each active selection to verify the exact three TODO lines are visited in document order and the fourth Find Next wraps to the first line. Set replacement to FOLLOWUP and Replace Current once; require exactly line 18 to become "FOLLOWUP: Replace temporary dashboard link before publishing.", with the other two TODO lines unchanged. Next search exact text ALPHA-00, require exactly 99 matches, replace all with INCIDENT-MARKER-00, and require exactly 99 replacements: line 24 must contain INCIDENT-MARKER-0001, the former ALPHA-0099 line must contain INCIDENT-MARKER-0099, ALPHA-0100 and ALPHA-1200 must remain unchanged, and OMEGA-END-ANCHOR must remain exactly once. Reload without saving and require the original saved content to return.
+"""
+
+# feature = find_replace
+# sub_feature = keyboard_focus_and_cycle
+[[criterion]]
+id = "keyboard_find_focus_and_cycle"
+name = "keyboard_find_focus_and_cycle"
+type = "binary"
+weight = 0.5
+description = """
+Feature metadata: feature=find_replace; sub_feature=keyboard_focus_forward_backward_and_escape; kind=graded; depends_on=custom_editor_no_native_editing_surface. This criterion is all-or-nothing. Focus the custom editor and press the real platform Ctrl/Cmd+F shortcut exactly once. Require the app's visible Find input, not the browser find UI, to receive focus. Type TODO with normal sequential key presses. Press Enter exactly once and require the active editor selection to be the TODO on logical line 18; copy it with Ctrl/Cmd+C and require the clipboard to equal exactly TODO. Press Enter exactly once more and require the selected TODO to be on logical line 19. Press Shift+Enter exactly once and require selection to return to the TODO on line 18. Press Escape exactly once and require keyboard focus to return to the custom editor. Do not click Find Next, dispatch keyboard events, invoke handlers, or mutate focus/selection from JavaScript. The reasoning must quote the focused control, exact selected text, and lines after forward, second-forward, and backward navigation.
 """
 
 # feature = long_document
