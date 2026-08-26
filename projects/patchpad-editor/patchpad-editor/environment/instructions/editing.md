@@ -8,6 +8,8 @@ Include familiar keyboard behavior for moving or selecting by words, using Tab
 and Shift+Tab for indentation, and opening Find from the keyboard. Find results
 should be reachable in both directions without going back to the mouse.
 
+Support emoji and other common special characters in the editor.
+
 Mouse and keyboard selection should work for words, lines, larger ranges, and
 the whole document. Selection should continue naturally when it moves beyond
 the visible part of a long report. Typing or pasting over a selection should

@@ -14,7 +14,8 @@ revision.
 - No external database or hosted spreadsheet service.
 - `package.json` must expose a working `npm start` command.
 - Put `APP_MANIFEST.md` beside `package.json` with a fenced `bash start` block,
-  the database path, and the main API routes.
+  the SQLite file path (using `.db`, `.sqlite`, or `.sqlite3`), and the main
+  workbook and revision API routes.
 
 ## Custom spreadsheet surface
 

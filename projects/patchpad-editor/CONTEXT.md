@@ -9,8 +9,6 @@ Potential advanced editor work:
 - Indent or outdent every line touched by a multi-line selection with Tab and
   Shift+Tab.
 - Support PageUp and PageDown while keeping the intended cursor column.
-- Treat emoji and combined accented characters as single visible units during
-  navigation, selection, Backspace, and Delete.
 - Support familiar whole-word deletion shortcuts with Ctrl/Cmd+Backspace and
   Ctrl/Cmd+Delete.
 - Let keyboard selections extend, shrink, and reverse direction without losing

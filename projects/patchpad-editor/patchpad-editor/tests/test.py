@@ -31,7 +31,7 @@ APP_SOURCE_DIR = LOG_DIR / "app-source"
 HEALTH_TIMEOUT_SEC = 90.0
 DEFAULT_START_COMMAND = "npm start"
 START_BLOCK_RE = re.compile(r"```bash start\s*\n(.*?)```", re.DOTALL)
-BROWSER_WEIGHT_TOTAL = 18.5
+BROWSER_WEIGHT_TOTAL = 19.5
 PREFLIGHT_WEIGHT = 0.5
 EVIDENCE_TOKENS = {
     "custom_editor_no_native_editing_surface": ["Northwind API Incident Report", "line 1226", "ALPHA-0600", "OMEGA-END-ANCHOR", "CUSTOM-SURFACE-PROOF"],
@@ -41,6 +41,8 @@ EVIDENCE_TOKENS = {
     "word_navigation_and_selection_shortcuts": ["line 1 column 1", "line 1 column 11", "line 1 column 21", "Northwind"],
     "backspace_delete_exact_line_join": ["JOIN-LEFTJOIN-RIGHT", "JOIN-TAIL", "Backspace", "Delete"],
     "tab_indentation_and_reversal": ["Timeline", "Tab", "Shift Tab", "Undo", "Redo"],
+    "unicode_grapheme_backspace_delete": ["UNICODE-BACKSPACE", "UNICODE-DELETE", "Backspace", "Delete", "Undo"],
+    "unicode_grapheme_navigation_selection": ["UNICODE-NAV", "ArrowRight", "clipboard"],
     "selection_real_mouse_word_line_range_keyboard": ["Timeline", "Customer impact", "Checkout requests", "DONE"],
     "selection_autoscroll_exact_offscreen_range": ["ALPHA-0010", "ALPHA-0060", "mouse", "keyboard"],
     "clipboard_external_multiline_internal_exact": ["EXTERNAL-A", "EXTERNAL-B", "EXTERNAL-C"],
@@ -529,7 +531,7 @@ def main() -> int:
             "no_op": no_op,
             "start_command": command,
             "reward_breakdown": {
-            "formula": "(browser_score * 18.5 + preflight_passed * 0.5) / 19.0",
+            "formula": "(browser_score * 19.5 + preflight_passed * 0.5) / 20.0",
                 "preflight": preflight,
                 "browser": browser,
             },

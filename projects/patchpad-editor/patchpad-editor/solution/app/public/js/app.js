@@ -1,4 +1,5 @@
 const DEFAULT_DOCUMENT_ID = 'incident-alpha';
+const graphemeSegmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
 
 const state = {
   documentId: DEFAULT_DOCUMENT_ID,
@@ -833,16 +834,32 @@ function outdentCurrentLine() {
 
 function previousPosition(pos) {
   const p = normalizePos(pos);
-  if (p.col > 0) return { line: p.line, col: p.col - 1 };
+  if (p.col > 0) return { line: p.line, col: previousGraphemeBoundary(state.lines[p.line], p.col) };
   if (p.line > 0) return { line: p.line - 1, col: state.lines[p.line - 1].length };
   return p;
 }
 
 function nextPosition(pos) {
   const p = normalizePos(pos);
-  if (p.col < state.lines[p.line].length) return { line: p.line, col: p.col + 1 };
+  if (p.col < state.lines[p.line].length) return { line: p.line, col: nextGraphemeBoundary(state.lines[p.line], p.col) };
   if (p.line < state.lines.length - 1) return { line: p.line + 1, col: 0 };
   return p;
+}
+
+function previousGraphemeBoundary(text, index) {
+  let previous = 0;
+  for (const segment of graphemeSegmenter.segment(text)) {
+    if (segment.index >= index) break;
+    previous = segment.index;
+  }
+  return previous;
+}
+
+function nextGraphemeBoundary(text, index) {
+  for (const segment of graphemeSegmenter.segment(text)) {
+    if (segment.index > index) return segment.index;
+  }
+  return text.length;
 }
 
 function normalizePos(pos) {
