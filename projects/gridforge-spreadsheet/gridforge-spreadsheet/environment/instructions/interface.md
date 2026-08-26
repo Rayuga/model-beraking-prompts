@@ -1,22 +1,14 @@
-# Interface
+# Interface expectations
 
-Keep the controls understandable by their labels and placement. The exact
-routes, element ids and styling are up to you.
+Use labels and controls that are discoverable by intent. Nothing should require
+a hidden route, magic element id, or external instructions to use. The app
+should include:
 
-People need to be able to find:
+- A workbook title or workbook list showing the seeded workbook.
+- A custom grid area.
+- Save, undo, redo, formula editing, fill, find, replace, name-box navigation,
+  and revision history controls.
+- Visible errors for invalid formulas, rejected saves, and invalid actions.
 
-- the Northwind Operations Plan workbook and Plan sheet
-- the seeded-user selector and current user
-- a custom spreadsheet grid with row and column headers
-- the selected address and raw value/formula
-- Save, Undo and Redo
-- Fill Down and Fill Right
-- Find Next, Replace Current and Replace All
-- the name box
-- cell history and revision history
-- live presence, remote selections and their legend
-- visible dirty, saving, saved, failed, invalid-formula and conflict feedback
-
-The spreadsheet should remain usable in a normal browser. A fixed overlay,
-dialog or suggestion list must not block unrelated cells or make the grid
-uneditable.
+The product is judged by behavior, not visual polish, but the spreadsheet
+should be usable in a normal browser.

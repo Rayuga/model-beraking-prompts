@@ -1,64 +1,67 @@
-# Collaboration and save safety
+# Collaboration and edit history
 
-GridForge has a small seeded-user selector so changes can be attributed to a
-person. No password flow is required. The signed-in person should always be
-clear in the interface.
+GridForge has a small seeded-user login so edits can be attributed to people.
+Users should be able to sign in as one of the seeded users, edit the workbook,
+and see who last changed a selected cell.
 
-## Editing sessions and attribution
+Track edit history at the cell level. When a cell value changes, record the
+previous value, the new value, the signed-in user, and the time of the change.
+Users should be able to inspect the history for a selected cell.
 
-- Every open workbook view is a distinct server-recognized editing session.
-- Bind that session to the seeded user selected in that view.
-- Attribute saved cell changes to the session's user, not merely to a user id
-  claimed by the request body.
-- Reject a save when its editing session is missing or unknown, or when a
-  claimed user does not own that session.
-- How the session is transported is up to the implementation. It may use a
-  cookie, header, request field or another normal mechanism; no particular
-  JavaScript global or field name is required.
+## Editing sessions
 
-For every changed cell, keep the previous value, new value, signed-in user and
-server time. People should be able to inspect this history for the selected
-cell and see who last changed it.
+Treat every open workbook view as a distinct server-recognized editing session
+bound to the seeded user selected in that view. Attribute saves to that session's
+user. Reject saves with a missing or unknown session, or when a request claims a
+different user from the one bound to the session.
 
-## Live views
+## Live collaboration
 
-- Presence and selections update across open views without reload.
-- Show who is present and how many views each person has open.
-- Two views belonging to the same person remain two independent sessions.
-- Draw another view's selection as a colored boundary without covering or
-  replacing cell contents.
-- Keep a compact legend near the top connecting each color to the person's name
-  and selected address.
-- Give two views from the same person different colors without inventing tab
-  names or numbers.
-- Moving a selection, changing the selected user or closing a view retires the
-  old presence and selection promptly.
+Make the workbook feel shared while people have it open. Presence and current
+selections should stay in sync across open views without a reload. Show who is
+there and how many views each person has open; opening the workbook twice should
+still create two independent editing sessions for that person.
 
-## Concurrent changes
+Use a familiar spreadsheet-style presence treatment for remote selections.
+Outline another person's current cell or range in their color while leaving the
+cell interior and its contents clear and editable. A compact legend near the top
+should connect each color with the person's name and current address. If one
+person has multiple views open, give those selections different colors instead
+of inventing names or numbers for their browser tabs.
 
-- A clean view receives a newly saved remote change automatically.
-- A view with an unsaved change in another cell keeps its draft and merges the
-  remote cell.
-- If both views changed the same cell, keep the local draft visible as a
-  conflict and reject the losing save rather than overwriting either value.
-- Different-cell changes based on the same saved revision should both survive.
+Presence should follow what is actually active. Moving a selection, switching
+the selected user, or closing a view should retire the old visual cue rather
+than leaving stale names or outlines behind. When several people land on the
+same cell, keep each of their colors recognizable.
 
-## Save API trust boundary
+A clean view should display a newly saved remote change automatically. If a
+view has an unsaved edit in a different cell, merge the remote change while
+preserving the local draft. If both views changed the same cell, preserve the
+local draft and show a visible conflict instead of silently replacing either
+value.
 
-Every save carries the revision from which editing began. Enforce all save
-rules on the server rather than relying on disabled controls, hidden fields,
-browser storage or client validation.
+When two users edit different cells from the same saved workbook version, both
+changes should be kept. When two users edit the same cell from the same saved
+workbook version, the later save should be rejected with a visible conflict
+message instead of overwriting the earlier user's edit.
 
-Reject a request without writing anything or creating a revision when it has:
+## Conflict safety
 
-- an unknown workbook id or disagreement between URL and payload workbook ids
-- a missing, malformed, negative, fractional, string or unknown future base
-  revision
-- a missing or malformed workbook, sheets or cells structure
-- an invalid cell address or a non-string cell value
-- a changed workbook title, sheet id or sheet name in an ordinary cell save
-- a missing or unknown editing session, or a user/session mismatch
+Every workbook save must include the revision number that the browser started
+editing from. The server should compare what changed since that version. If a
+newer save changed different cells, keep both users' changes. If a newer save
+changed the same cell, reject the later save with a visible conflict message and
+do not overwrite the earlier user's cell value.
 
-A rejected request must not partially change content, attribution, workbook or
-sheet identity, the current revision, or revision history. Treat unexpected
-server errors as failures rather than silently normalizing bad data.
+The server must enforce these rules. Do not rely only on a disabled Save
+button, client-side checks, hidden fields, or browser storage. A request with an
+unknown workbook id, a mismatched workbook id, or an invalid base revision must
+be rejected without changing the stored workbook.
+
+Treat the save API as a trust boundary. Reject missing, malformed, or
+structurally inconsistent workbook data and invalid revision values without
+partially changing the workbook or creating a revision.
+
+Cell-save requests must not rename the workbook or change sheet identity
+metadata. Reject payloads that change the workbook title or a sheet's id or
+name without modifying stored data or creating a revision.

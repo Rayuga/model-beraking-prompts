@@ -1,0 +1,5 @@
+import test from 'node:test';import assert from 'node:assert/strict';import{lineStarts,lineAt,mergedSelections,applyRanges,History}from'../public/editor-model.js';
+test('line positions stay predictable across unequal lines',()=>{const starts=lineStarts('abc\nx\nlong line');assert.deepEqual(starts,[0,4,6]);assert.equal(lineAt(starts,0),0);assert.equal(lineAt(starts,5),1);assert.equal(lineAt(starts,14),2)});
+test('simultaneous caret edits use original offsets',()=>{const result=applyRanges('alpha beta',[[0,0],[6,6]],'X');assert.equal(result.text,'Xalpha Xbeta');assert.deepEqual(result.carets.map(c=>c.head),[1,8])});
+test('overlapping selections merge for one safe edit',()=>{assert.deepEqual(mergedSelections([{anchor:1,head:4},{anchor:3,head:7},{anchor:9,head:9}]),[[1,7],[9,9]])});
+test('history groups contiguous typing and clears redo after a new edit',()=>{const h=new History(),group=Symbol();h.record({text:'',carets:[]},group);h.record({text:'a',carets:[]},group);assert.equal(h.undo.length,1);assert.equal(h.back({text:'ab',carets:[]}).text,'');assert.equal(h.redo.length,1);h.record({text:'x',carets:[]});assert.equal(h.redo.length,0)});

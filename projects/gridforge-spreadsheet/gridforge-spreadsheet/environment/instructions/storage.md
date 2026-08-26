@@ -1,33 +1,17 @@
-# Storage and revisions
+# Persistence and revisions
 
-SQLite is the record of truth for the workbook, raw formulas, edit attribution
-and revisions. Browser storage may hold temporary interface preferences but is
-not the workbook database.
+GridForge should autosave workbook changes after the user pauses editing. Users
+should not need to press Save for ordinary edits. The UI should show whether
+changes are dirty, saving, saved, or failed to save. A visible Save control can
+still be provided as a manual "save now" action.
 
-## Saving
+Saving changed workbook content writes to SQLite and creates a new revision.
+Saving unchanged content must not create a duplicate revision. Reloading the
+page must show the last saved workbook, including raw formulas and evaluated
+values. Edits that have not finished saving should not be presented as saved.
 
-- Autosave after the user pauses editing; ordinary work should not depend on
-  pressing Save.
-- Show dirty, saving, saved and failed states honestly.
-- A visible Save control may offer “save now”.
-- Saving changed workbook content creates one revision.
-- Saving unchanged content does not create a duplicate revision.
-- Do not call an edit saved before the server has committed it.
-- Reloading shows the last committed cells and raw formulas.
-
-## Revision history
-
-- Show revision number and timestamp.
-- Previewing an old revision does not change live content, dirty state or saved
-  history.
-- Restoring an old revision loads it as an unsaved draft rather than immediately
-  creating another revision.
-- Treat the complete restore as one undoable action so one Undo returns the
-  workbook to its pre-restore state.
-- Autosaved and manually saved changes appear in the same history.
-
-## Startup
-
-Starting with an empty database creates the seed once. Restarting against that
-same database preserves committed changes and leaves the logical SQLite content
-unchanged unless a real user action changed it.
+Show a revision history with revision number and timestamp. Users must be able
+to preview and restore a prior revision without corrupting the saved history.
+Restoring a revision should load it as an unsaved draft and behave as one
+undoable action, so Undo returns to the workbook state from before the restore.
+Autosaved changes should appear in revision history just like manual saves.
