@@ -5,8 +5,8 @@
 Local two-player play • deterministic game rules • reversible moves • durable match state
 
 DropLine is a browser-based four-in-a-row game for two people sharing one
-device. The product is deliberately smaller than GridForge and PatchPad, but it
-must behave like a complete game rather than a decorative board.
+device. Its scope follows the new client's target-model and evaluation brief,
+and it must behave like a complete game rather than a decorative board.
 
 ## Overview
 

@@ -3,10 +3,9 @@
 ## Summary
 
 DropLine will be a medium-difficulty Harbor WebDev task aimed initially at
-GPT-5.4-mini. It will use the same task structure, split instructions, golden
-solution, deterministic browser rubric, and QC process used by the existing
-projects, while keeping the product smaller and easier than GridForge and
-PatchPad.
+GPT-5.4-mini. It follows the new client's target-model and evaluation brief
+while retaining the task structure, split instructions, golden solution,
+deterministic browser rubric, and QC process used by the existing projects.
 
 The game is local Red-versus-Yellow Connect Four on a standard seven-column by
 six-row board. Red starts the first round. The players alternate accepted moves,
