@@ -1,17 +1,13 @@
 # Persistence and revisions
 
-GridForge should autosave workbook changes after the user pauses editing. Users
-should not need to press Save for ordinary edits. The UI should show whether
-changes are dirty, saving, saved, or failed to save. A visible Save control can
-still be provided as a manual "save now" action.
+Save workbook changes automatically and make the current save state clear. A
+manual Save action can still be available when someone wants to save now.
 
-Saving changed workbook content writes to SQLite and creates a new revision.
-Saving unchanged content must not create a duplicate revision. Reloading the
-page must show the last saved workbook, including raw formulas and evaluated
-values. Edits that have not finished saving should not be presented as saved.
+Keep saved workbook data in SQLite and create revisions only when something has
+actually changed. Opening the workbook again should show the latest saved cells
+and formulas, without presenting unfinished work as saved.
 
-Show a revision history with revision number and timestamp. Users must be able
-to preview and restore a prior revision without corrupting the saved history.
-Restoring a revision should load it as an unsaved draft and behave as one
-undoable action, so Undo returns to the workbook state from before the restore.
-Autosaved changes should appear in revision history just like manual saves.
+Provide a revision history with timestamps so people can preview or restore an
+earlier version. A restored version should begin as a draft, remain undoable,
+and preserve the existing history. Include automatically saved versions in the
+same history.

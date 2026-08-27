@@ -1,16 +1,18 @@
-# Task: GridForge Spreadsheet
+# GridForge spreadsheet
 
-Build **GridForge**, a browser-based spreadsheet engine for operations planning.
-It is not a CRUD dashboard. The core deliverable is a custom spreadsheet grid
-with formula evaluation, range editing, saved workbook revisions, and
-conflict-safe persistence.
+I want to build GridForge, a browser spreadsheet for an operations team. It
+should feel like a small real spreadsheet, not a CRUD table with editable
+fields.
 
-The complete brief is split by topic under `/instructions/`. Read every file:
+The details are in `/instructions/`. Read all of these before starting:
 
-- `overview.md` - data, stack, and the custom spreadsheet surface
-- `spreadsheet.md` - grid editing, formulas, clipboard, fill, and find/replace
-- `collaboration.md` - users, live views, attribution, sessions, and conflicts
-- `storage.md` - autosave, persistence, and revision history
-- `interface.md` - visible controls and feedback
+- `overview.md` - what we are building and the allowed stack
+- `spreadsheet.md` - grid editing, formulas, clipboard, fill and find/replace
+- `collaboration.md` - people, live views, attribution and save safety
+- `storage.md` - SQLite, autosave and revision history
+- `interface.md` - the controls and feedback people need to see
 
-Seed data is under `/assets/workbook_seed.json`.
+These files are one brief split by topic. None of them is optional.
+
+Seed data is under `/assets/workbook_seed.json`. Nothing in the finished app
+should depend on somebody knowing a hidden route, request shape or element id.

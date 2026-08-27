@@ -1,4 +1,5 @@
 const DEFAULT_DOCUMENT_ID = 'incident-alpha';
+const graphemeSegmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
 
 const state = {
   documentId: DEFAULT_DOCUMENT_ID,
@@ -28,17 +29,28 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 function bindControls() {
+  const findBox = document.getElementById('find-box');
   document.getElementById('save-btn').addEventListener('click', saveDocument);
   document.getElementById('undo-btn').addEventListener('click', undo);
   document.getElementById('redo-btn').addEventListener('click', redo);
   document.getElementById('find-next-btn').addEventListener('click', findNext);
   document.getElementById('replace-current-btn').addEventListener('click', replaceCurrent);
   document.getElementById('replace-all-btn').addEventListener('click', replaceAll);
-  document.getElementById('find-box').addEventListener('input', (event) => {
+  findBox.addEventListener('input', (event) => {
     state.query = event.target.value;
     state.activeMatch = -1;
     recomputeMatches();
     render();
+  });
+  findBox.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      if (event.shiftKey) findPrevious();
+      else findNext();
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      editor.focus();
+    }
   });
 
   editor.addEventListener('keydown', onKeyDown);
@@ -232,6 +244,18 @@ function onPaste(event) {
 function onKeyDown(event) {
   if (event.metaKey || event.ctrlKey) {
     const key = event.key.toLowerCase();
+    if (key === 'f') {
+      event.preventDefault();
+      const findBox = document.getElementById('find-box');
+      findBox.focus();
+      findBox.select();
+      return;
+    }
+    if (key === 'arrowleft' || key === 'arrowright') {
+      event.preventDefault();
+      moveCaretByWord(key === 'arrowleft' ? 'left' : 'right', event.shiftKey);
+      return;
+    }
     if (key === 'z') {
       event.preventDefault();
       if (event.shiftKey) redo();
@@ -293,7 +317,8 @@ function onKeyDown(event) {
   }
   if (event.key === 'Tab') {
     event.preventDefault();
-    insertText('  ');
+    if (event.shiftKey) outdentCurrentLine();
+    else insertText('  ');
     return;
   }
   if (event.key.length === 1 && !event.altKey) {
@@ -762,18 +787,79 @@ function moveCaret(key, selecting) {
   scrollCaretIntoView();
 }
 
+function moveCaretByWord(direction, selecting) {
+  state.typingGroup = null;
+  const old = { ...state.caret };
+  const content = textContent();
+  let index = positionToIndex(state.caret);
+  if (!selecting && state.selection) {
+    const range = selectionRange();
+    index = positionToIndex(direction === 'left' ? range.start : range.end);
+  }
+  if (direction === 'right') {
+    while (index < content.length && !/\s/.test(content[index])) index += 1;
+    while (index < content.length && /\s/.test(content[index])) index += 1;
+  } else {
+    while (index > 0 && /\s/.test(content[index - 1])) index -= 1;
+    while (index > 0 && !/\s/.test(content[index - 1])) index -= 1;
+  }
+  state.caret = indexToPosition(index);
+  state.preferredCol = state.caret.col;
+  state.extraCarets = [];
+  if (selecting) {
+    const anchor = state.selection?.anchor || old;
+    state.selection = samePos(anchor, state.caret) ? null : { anchor, head: { ...state.caret } };
+  } else {
+    state.selection = null;
+  }
+  render();
+  scrollCaretIntoView();
+}
+
+function outdentCurrentLine() {
+  const line = state.caret.line;
+  const current = state.lines[line];
+  const removable = current.startsWith('\t') ? 1 : Math.min((current.match(/^ */)?.[0].length || 0), 2);
+  if (!removable) return;
+  pushUndo();
+  state.lines[line] = current.slice(removable);
+  state.caret.col = Math.max(0, state.caret.col - removable);
+  state.selection = null;
+  state.extraCarets = [];
+  state.preferredCol = state.caret.col;
+  markDirty();
+  recomputeMatches();
+  render();
+}
+
 function previousPosition(pos) {
   const p = normalizePos(pos);
-  if (p.col > 0) return { line: p.line, col: p.col - 1 };
+  if (p.col > 0) return { line: p.line, col: previousGraphemeBoundary(state.lines[p.line], p.col) };
   if (p.line > 0) return { line: p.line - 1, col: state.lines[p.line - 1].length };
   return p;
 }
 
 function nextPosition(pos) {
   const p = normalizePos(pos);
-  if (p.col < state.lines[p.line].length) return { line: p.line, col: p.col + 1 };
+  if (p.col < state.lines[p.line].length) return { line: p.line, col: nextGraphemeBoundary(state.lines[p.line], p.col) };
   if (p.line < state.lines.length - 1) return { line: p.line + 1, col: 0 };
   return p;
+}
+
+function previousGraphemeBoundary(text, index) {
+  let previous = 0;
+  for (const segment of graphemeSegmenter.segment(text)) {
+    if (segment.index >= index) break;
+    previous = segment.index;
+  }
+  return previous;
+}
+
+function nextGraphemeBoundary(text, index) {
+  for (const segment of graphemeSegmenter.segment(text)) {
+    if (segment.index > index) return segment.index;
+  }
+  return text.length;
 }
 
 function normalizePos(pos) {
@@ -855,6 +941,26 @@ function findNext() {
     return;
   }
   state.activeMatch = (state.activeMatch + 1) % state.matches.length;
+  const match = state.matches[state.activeMatch];
+  state.selection = {
+    anchor: { line: match.line, col: match.col },
+    head: { line: match.line, col: match.endCol }
+  };
+  state.caret = { line: match.line, col: match.endCol };
+  state.extraCarets = [];
+  render();
+  scrollCaretIntoView();
+}
+
+function findPrevious() {
+  state.query = document.getElementById('find-box').value;
+  recomputeMatches();
+  if (!state.matches.length) {
+    state.activeMatch = -1;
+    render();
+    return;
+  }
+  state.activeMatch = state.activeMatch <= 0 ? state.matches.length - 1 : state.activeMatch - 1;
   const match = state.matches[state.activeMatch];
   state.selection = {
     anchor: { line: match.line, col: match.col },

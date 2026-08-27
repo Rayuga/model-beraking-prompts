@@ -1,0 +1,273 @@
+{
+  "title": "GridForge Spreadsheet — Harbor Task Rework QC",
+  "subtitle": "Re-check of the 2026-08-25 tracker after instruction, rubric, packaging, and verifier changes.",
+  "note": "Static rework QC completed 2026-08-26. The latest available oracle used an older 27-criterion rubric and scored 0.9808; the current 19-criterion task still requires a fresh oracle run.",
+  "mode": "rework",
+  "runs": [
+    {
+      "task": "GridForge",
+      "model": "ORACLE (older 27-criterion rubric)",
+      "reward": 0.9808,
+      "agent_s": 1,
+      "verifier_s": 5119,
+      "note": "Failed revision_history_preview_restore_undo; not proof for the current rubric."
+    },
+    {
+      "task": "GridForge",
+      "model": "gpt-5.6-sol xhigh (older 27-criterion rubric)",
+      "reward": 0.8824,
+      "agent_s": 487,
+      "verifier_s": 4699,
+      "note": "Failed mouse range-reference continuation and stale-save rejection; not a current-rubric run."
+    }
+  ],
+  "tasks": [
+    {
+      "name": "GridForge",
+      "oracle": 0.9808,
+      "best_model": 0.8824,
+      "headline": "16 prior findings rechecked: 15 fixed and 1 partial; one new blocker remains until the rewritten task passes a fresh oracle run.",
+      "findings": [
+        {
+          "id": "GF-01",
+          "sev": "P0",
+          "category": "Prompt",
+          "location": "environment/instructions/collaboration.md — Editing sessions",
+          "what": "Prior finding: save-to-session user binding was graded but not stated.",
+          "why": "The reworked brief now says every view has its own editing session tied to its selected seeded user, and server saves must match it.",
+          "impact": "The previously private identity invariant is now part of the task contract.",
+          "fix": "No further change required.",
+          "type": "Prior",
+          "status": "FIXED",
+          "action": "Keep the concise editing-session paragraph."
+        },
+        {
+          "id": "GF-02",
+          "sev": "P0",
+          "category": "Verifier-Strictness",
+          "location": "tests/rubric/browser/prompt.md — Required API discovery",
+          "what": "Prior finding: the judge named the golden-only window.gridforgeSessionId global.",
+          "why": "The literal is gone. The prompt now requires discovery from an observed legitimate save and forbids assuming a global, cookie, header, or field name.",
+          "impact": "Correct alternative session implementations are no longer coupled to the oracle's JavaScript shape.",
+          "fix": "No further change required.",
+          "type": "Prior",
+          "status": "FIXED",
+          "action": "Retain implementation-agnostic discovery."
+        },
+        {
+          "id": "GF-03",
+          "sev": "P0",
+          "category": "Verifier-Coverage",
+          "location": "tests/rubric/browser/browser.toml — stale_save_and_workbook_identity_rejections; api_session_user_mismatch_rejected",
+          "what": "Prior finding: overlapping identity probes received contradictory verdicts and made the score irreproducible.",
+          "why": "Workbook/stale probes and session/user probes now live in separate criteria with explicit per-probe evidence tables.",
+          "impact": "The same identity behavior is no longer independently and inconsistently scored twice.",
+          "fix": "No further change required; confirm with the fresh oracle run.",
+          "type": "Prior",
+          "status": "FIXED",
+          "action": "Verify both rows during the next oracle run."
+        },
+        {
+          "id": "GF-04",
+          "sev": "P1",
+          "category": "Verifier-Coverage",
+          "location": "tests/rubric/browser/browser.toml — find_replace_navigation_and_atomic_replace_all",
+          "what": "Prior finding: mandatory find/replace behavior was not graded.",
+          "why": "A dedicated 1.0-weight criterion now checks navigation, wraparound, current replacement, Replace All, Undo, and Redo.",
+          "impact": "The feature now contributes to the training signal.",
+          "fix": "No further change required.",
+          "type": "Prior",
+          "status": "FIXED",
+          "action": "Keep the criterion."
+        },
+        {
+          "id": "GF-05",
+          "sev": "P1",
+          "category": "Verifier-Strictness",
+          "location": "tests/rubric/browser/browser.toml — formula criteria",
+          "what": "Prior finding: two high-weight formula checks depended on the same B2/dropdown geometry collision.",
+          "why": "The reworked criteria use distinct cells and workflows: B2/C2, B3/C3, I10, H22 and F22:F24. Suggestions are graded at the cell being edited.",
+          "impact": "One positional collision no longer determines multiple independent formula scores.",
+          "fix": "No further change required.",
+          "type": "Prior",
+          "status": "FIXED",
+          "action": "Retain distinct targets."
+        },
+        {
+          "id": "GF-06",
+          "sev": "P1",
+          "category": "Verifier-Strictness",
+          "location": "tests/rubric/browser/browser.toml and prompt.md — direct save probes",
+          "what": "Prior finding: large conjunctive criteria passed without executing every probe.",
+          "why": "Probe families were separated, and every remaining matrix now requires an explicit numbered status/body/equality table; prompt.md says an omitted probe fails.",
+          "impact": "Partial execution is visible and cannot silently become a pass under the written grading contract.",
+          "fix": "No static change required; inspect the next oracle reasoning table.",
+          "type": "Prior",
+          "status": "FIXED",
+          "action": "Confirm complete tables in the fresh run."
+        },
+        {
+          "id": "GF-07",
+          "sev": "P2",
+          "category": "Packaging",
+          "location": "Git modes: solution/solve.sh, tests/test.sh, tests/test.py",
+          "what": "Prior finding: shipped executable modes were absent.",
+          "why": "solve.sh and test.sh are now tracked as 100755, but test.py remains 100644. test.py is invoked explicitly through python3, so this remaining mode is non-blocking.",
+          "impact": "The actual Harbor entry scripts are executable; only the directly interpreted Python helper remains non-executable.",
+          "fix": "Optionally mark tests/test.py executable before packaging for complete closure.",
+          "type": "Prior",
+          "status": "PARTIAL",
+          "action": "Verify final archive modes."
+        },
+        {
+          "id": "GF-08",
+          "sev": "P2",
+          "category": "Hygiene",
+          "location": "solution/app and task.toml artifacts exclusions",
+          "what": "Prior finding: node_modules, databases, sidecars, and bytecode shipped with the task.",
+          "why": "Those files are absent from the current solution tree, and artifact collection excludes node_modules and database files.",
+          "impact": "The deliverable and collected model app are reviewable and no longer dominated by generated files.",
+          "fix": "No further change required.",
+          "type": "Prior",
+          "status": "FIXED",
+          "action": "Preserve exclusions during packaging."
+        },
+        {
+          "id": "GF-09",
+          "sev": "P2",
+          "category": "Hygiene",
+          "location": "solution/app/run-local.cmd",
+          "what": "Prior finding: a private Windows toolchain path shipped in the solution.",
+          "why": "run-local.cmd has been removed from the task tree.",
+          "impact": "The client bundle no longer exposes irrelevant local tooling layout.",
+          "fix": "No further change required.",
+          "type": "Prior",
+          "status": "FIXED",
+          "action": "Keep the file out of the upload."
+        },
+        {
+          "id": "GF-10",
+          "sev": "P2",
+          "category": "Packaging",
+          "location": "task.toml — artifacts",
+          "what": "Prior finding: /app artifact collection failed on the model submission.",
+          "why": "Artifact collection now excludes node_modules and database files while retaining the application source.",
+          "impact": "Future job bundles should retain reviewable model output without size/file-count failure.",
+          "fix": "Confirm status=ok in the next run manifest.",
+          "type": "Prior",
+          "status": "FIXED",
+          "action": "Check the fresh job's artifacts/manifest.json."
+        },
+        {
+          "id": "GF-11",
+          "sev": "P2",
+          "category": "Verifier-Strictness",
+          "location": "environment/instructions/overview.md; tests/test.py:manifest_error",
+          "what": "Prior finding: the hard manifest gate used unstated filename and route-count conventions.",
+          "why": "The brief now requires a .db/.sqlite/.sqlite3 SQLite path and the main workbook and revision routes, matching the deterministic parser's extension and two-route expectations.",
+          "impact": "A zero-score manifest gate now enforces a stated contract.",
+          "fix": "No further change required.",
+          "type": "Prior",
+          "status": "FIXED",
+          "action": "Keep manifest wording and parser aligned."
+        },
+        {
+          "id": "GF-12",
+          "sev": "P2",
+          "category": "Prompt",
+          "location": "environment/instructions/spreadsheet.md — Formulas",
+          "what": "Prior finding: mixed range-plus-cell function arguments were graded but not stated.",
+          "why": "The brief now says functions accept the usual combinations of values, cells, and ranges.",
+          "impact": "The multi-argument calculation criterion is supported without exposing its exact test formula.",
+          "fix": "No further change required.",
+          "type": "Prior",
+          "status": "FIXED",
+          "action": "Retain the concise function-input sentence."
+        },
+        {
+          "id": "GF-13",
+          "sev": "P2",
+          "category": "Packaging",
+          "location": "task.toml — phase timeouts",
+          "what": "Prior finding: agent and verifier each had six-hour budgets despite much shorter observed runs.",
+          "why": "Budgets are now 2 hours for the agent and 4 hours for the verifier, with RewardKit capped at 3.5 hours; prior worst observed verification was about 85 minutes.",
+          "impact": "Hung runs no longer consume six hours per phase while retaining substantial headroom.",
+          "fix": "No further change required.",
+          "type": "Prior",
+          "status": "FIXED",
+          "action": "Reassess only if the current 19-criterion run exceeds the new budget."
+        },
+        {
+          "id": "GF-14",
+          "sev": "P3",
+          "category": "Verifier-Coverage",
+          "location": "tests/rubric/browser/browser.toml — navigation, clipboard, fill and history criteria",
+          "what": "Prior finding: several explicitly required spreadsheet behaviors were not asserted.",
+          "why": "The current rubric checks the full navigation key sequence, TSV/CSV paste plus copy/cut, both fill directions, cell-history timestamps, and arithmetic operators. The concise brief groups these as normal spreadsheet behavior.",
+          "impact": "The former coverage gaps now have direct scoring evidence.",
+          "fix": "No further change required.",
+          "type": "Prior",
+          "status": "FIXED",
+          "action": "Keep the combined criteria."
+        },
+        {
+          "id": "GF-15",
+          "sev": "P3",
+          "category": "Verifier-Coverage",
+          "location": "tests/rubric/browser/browser.toml — workbook_load_custom_surface_status",
+          "what": "Prior finding: distant anchor scrolling was duplicated across two weighted criteria.",
+          "why": "The first-load criterion no longer repeats A14/A40/A80. Distant-row integrity remains only in the autosave/reload persistence journey.",
+          "impact": "Broken long scrolling no longer loses weight twice for the same check.",
+          "fix": "No further change required.",
+          "type": "Prior",
+          "status": "FIXED",
+          "action": "Keep anchors in the persistence criterion only."
+        },
+        {
+          "id": "GF-16",
+          "sev": "P3",
+          "category": "Hygiene",
+          "location": ".gitattributes",
+          "what": "Prior finding: mixed CRLF/LF islands obscured rework provenance.",
+          "why": "The task now includes a .gitattributes rule enforcing LF for text files.",
+          "impact": "Future checkouts and archives have stable line endings and cleaner diffs.",
+          "fix": "Normalize once during the next commit if Git reports residual working-tree churn.",
+          "type": "Prior",
+          "status": "FIXED",
+          "action": "Confirm the final archive uses LF."
+        },
+        {
+          "id": "GF-17",
+          "sev": "P0",
+          "category": "Golden-Solution",
+          "location": "jobs/gridforge-oracle-03 and current tests/rubric/browser/browser.toml",
+          "what": "The current 19-criterion reworked task has no matching clean oracle run. The latest available oracle used an older 27-criterion rubric and scored 0.9808 rather than 1.0.",
+          "why": "An oracle below 1.0 is a ship blocker, and an older run cannot prove a materially rewritten rubric and instruction set.",
+          "impact": "The task is not yet proven solvable under the exact verifier that would ship.",
+          "fix": "Run the oracle on the current folder, investigate any failed row, and require 1.0 before running the model or shipping.",
+          "type": "New",
+          "status": "OPEN",
+          "origin": "Introduced by rework",
+          "action": "Provide an OpenRouter key to run the current oracle."
+        }
+      ]
+    }
+  ],
+  "blocks": [
+    {
+      "title": "Ship blocker",
+      "items": [
+        "GF-17: obtain a 1.0 oracle result against the current 19-criterion task before treating this rework as complete."
+      ]
+    },
+    {
+      "title": "What is strong",
+      "items": [
+        "Session discovery is implementation-agnostic and no longer names a golden-only JavaScript global.",
+        "SQLite startup/restart idempotence and reward-on-crash safeguards remain deterministic.",
+        "Server rejection criteria use observed same-origin request replay and verify non-mutation.",
+        "The instruction set is now split by topic and reads like a product brief without dropping the graded feature families."
+      ]
+    }
+  ]
+}

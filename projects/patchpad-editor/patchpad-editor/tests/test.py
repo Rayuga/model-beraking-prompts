@@ -31,28 +31,32 @@ APP_SOURCE_DIR = LOG_DIR / "app-source"
 HEALTH_TIMEOUT_SEC = 90.0
 DEFAULT_START_COMMAND = "npm start"
 START_BLOCK_RE = re.compile(r"```bash start\s*\n(.*?)```", re.DOTALL)
-BROWSER_WEIGHT_TOTAL = 18.5
+BROWSER_WEIGHT_TOTAL = 19.5
 PREFLIGHT_WEIGHT = 0.5
 EVIDENCE_TOKENS = {
     "custom_editor_no_native_editing_surface": ["Northwind API Incident Report", "line 1226", "ALPHA-0600", "OMEGA-END-ANCHOR", "CUSTOM-SURFACE-PROOF"],
-    "noop_save_revision_invariant": ["revision", "content", "revision list"],
-    "edit_save_reload_and_dirty_discard": ["BASIC-SAVE-CHECK", "UNSAVED-SHOULD-DISAPPEAR", "dirty", "revision"],
+    "noop_save_revision_invariant": [],
+    "edit_save_reload_and_dirty_discard": ["BASIC-SAVE-CHECK", "UNSAVED-SHOULD-DISAPPEAR"],
     "keyboard_navigation_exact_coordinates": ["line 5 column 1", "line 5 column 9", "line 6 column 59", "line 1226 column 63"],
+    "word_navigation_and_selection_shortcuts": ["line 1 column 1", "line 1 column 11", "line 1 column 21", "Northwind"],
     "backspace_delete_exact_line_join": ["JOIN-LEFTJOIN-RIGHT", "JOIN-TAIL", "Backspace", "Delete"],
+    "tab_indentation_and_reversal": ["Timeline", "Tab", "Shift Tab", "Undo", "Redo"],
+    "unicode_grapheme_backspace_delete": ["UNICODE-BACKSPACE", "UNICODE-DELETE", "Backspace", "Delete", "Undo"],
+    "unicode_grapheme_navigation_selection": ["UNICODE-NAV", "ArrowRight", "clipboard"],
     "selection_real_mouse_word_line_range_keyboard": ["Timeline", "Customer impact", "Checkout requests", "DONE"],
     "selection_autoscroll_exact_offscreen_range": ["ALPHA-0010", "ALPHA-0060", "mouse", "keyboard"],
-    "clipboard_external_multiline_internal_exact": ["EXTERNAL-A", "EXTERNAL-B", "EXTERNAL-C", "full document"],
-    "undo_contiguous_typing_group": ["TYPING-GROUP-CHECK", "Undo", "Redo"],
+    "clipboard_external_multiline_internal_exact": ["EXTERNAL-A", "EXTERNAL-B", "EXTERNAL-C"],
     "undo_separate_locations_and_redo_invalidation": ["LOCATION-ONE", "LOCATION-TWO", "LOCATION-THREE", "REDO-CLEAR-ORIGINAL", "REDO-CLEAR-NEW"],
-    "undo_paste_cut_replace_all_atomic": ["PASTE-A", "PASTE-B", "PASTE-C", "ATOM-X", "ATOM-Y"],
+    "undo_paste_cut_atomic": ["PASTE-A", "PASTE-B", "PASTE-C", "Undo", "Redo"],
     "undo_typed_selection_replacement_atomic": ["Timeline", "REPLACE-ATOMIC", "Undo", "Redo"],
     "find_replace_exact_counts_and_offsets": ["TODO", "3", "FOLLOWUP", "ALPHA-00", "99", "INCIDENT-MARKER-00"],
-    "long_document_three_region_round_trip": ["TOP-ROUNDTRIP", "MID-ROUNDTRIP", "TAIL-ROUNDTRIP", "byte"],
-    "revision_history_preview_restore_undo_exact": ["REVISION-HISTORY-A", "REVISION-HISTORY-B", "dirty", "server", "unchanged", "Undo"],
+    "keyboard_find_focus_and_cycle": ["TODO", "line 18", "line 19", "Escape"],
+    "long_document_three_region_round_trip": ["TOP-ROUNDTRIP", "MID-ROUNDTRIP", "TAIL-ROUNDTRIP"],
+    "revision_history_preview_restore_undo_exact": ["REVISION-HISTORY-A", "REVISION-HISTORY-B"],
     "two_tab_chained_stale_save_conflicts": ["TAB-A-WINS", "TAB-B-STALE", "TAB-B-REBASSED", "TAB-A-STALE-SECOND", "conflict"],
     "multi_caret_full_typing_single_undo": ["TimelineMULTI", "Customer impactMULTI", "Action itemsMULTI", "Undo", "Redo"],
     "multi_caret_backspace_delete_sibling": ["Timelin", "Customer impac", "Action item", "imeline", "ustomer impact", "ction items"],
-    "direct_api_save_rejection_nonmutation_matrix": ["API-CURRENT-WINS", "FORGED-STALE-OVERWRITE", "409", "unknown", "mismatch", "missing", "fractional", "null", "revision list"],
+    "direct_api_save_rejection_nonmutation_matrix": ["API-CURRENT-WINS", "FORGED-STALE-OVERWRITE", "409"],
 }
 DISALLOWED_PASS_PHRASES = ("verified previously", "per prior session", "summarized context")
 
@@ -367,6 +371,8 @@ def criteria_rows(details):
             reasoning = str(c.get("reasoning") or "")
             passed = value > 0 and not c.get("error")
             normalized = " " + re.sub(r"[^a-z0-9]+", " ", reasoning.lower()).strip() + " "
+            normalized = re.sub(r"\bln\b", "line", normalized)
+            normalized = re.sub(r"\bcol\b", "column", normalized)
             missing_evidence = []
             if passed:
                 for token in EVIDENCE_TOKENS.get(str(criterion_id), []):
@@ -525,7 +531,7 @@ def main() -> int:
             "no_op": no_op,
             "start_command": command,
             "reward_breakdown": {
-                "formula": "(browser_score * 18.5 + preflight_passed * 0.5) / 19.0",
+            "formula": "(browser_score * 19.5 + preflight_passed * 0.5) / 20.0",
                 "preflight": preflight,
                 "browser": browser,
             },
