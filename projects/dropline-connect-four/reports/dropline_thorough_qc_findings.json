@@ -1,0 +1,257 @@
+{
+  "title": "DropLine Connect Four - Thorough Harbor Task QC",
+  "subtitle": "Rework review using the harbor-task-qc skill, local executable checks, and preserved Harbor run evidence.",
+  "note": "Rechecked 2026-08-28. Golden engine, Docker, startup, browser rendering, architecture enforcement, timeout handling, and judge metadata checks passed locally. The Oracle attempt reached RewardKit but could not grade because the supplied OpenRouter key had expired.",
+  "mode": "rework",
+  "tasks": [
+    {
+      "name": "DropLine",
+      "headline": "Golden behavior and all identified task-side P1/P2 fixes are clean; a fresh API key is required to obtain the remaining Oracle score of exactly 1.0.",
+      "findings": [
+        {
+          "id": "DL-P01",
+          "type": "Prior",
+          "sev": "P0",
+          "status": "FIXED",
+          "category": "Packaging",
+          "location": "environment/Dockerfile:15-27",
+          "what": "The prior unavailable Ubuntu curl revision is now pinned to curl=8.5.0-2ubuntu10.13.",
+          "action": "No action. Keep the working pin and revalidate it whenever the image is rebuilt for delivery.",
+          "evidence": "FIXED. A clean docker build of dropline-connect-four-qc completed and reused the pinned apt layer successfully."
+        },
+        {
+          "id": "DL-P02",
+          "type": "Prior",
+          "sev": "P1",
+          "status": "FIXED",
+          "category": "Verifier-Coverage",
+          "location": "tests/rubric/browser/browser.toml:winning_cells_exact_highlight",
+          "what": "The prior Red-only winning-treatment coverage now includes an exact Yellow horizontal win and checks exactly four highlighted Yellow cells.",
+          "action": "No action. Preserve the Yellow positive control.",
+          "evidence": "FIXED. The live browser sequence 7,1,7,2,6,3,6,4 produced Yellow wins, Yellow score 1, and four winning cells."
+        },
+        {
+          "id": "DL-P03",
+          "type": "Prior",
+          "sev": "P2",
+          "status": "FIXED",
+          "category": "Verifier-Coverage",
+          "location": "tests/rubric/browser/browser.toml:in_progress_reload_exact_state",
+          "what": "The versioned dropline:v1 storage requirement is now inspected and compared with visible state before and after reload.",
+          "action": "No action. Behavioral storage validation now accepts equivalent internal representations.",
+          "evidence": "FIXED for coverage. A live browser check confirmed version 1, 42 cells, persisted Undo/Redo state, and successful Redo after reload."
+        },
+        {
+          "id": "DL-N01",
+          "type": "New",
+          "sev": "P0",
+          "status": "OPEN",
+          "origin": "Carry-over of a prior finding",
+          "category": "Golden-Solution",
+          "location": "jobs/dropline-connect-four-oracle-01/*/verifier/report.json",
+          "what": "The complete Harbor Oracle path reached RewardKit, but grading stopped before criterion 1 because the supplied OpenRouter API key returned HTTP 401 `API key expired`.",
+          "why": "Engine and scripted browser checks prove substantial behavior, but they do not prove that RewardKit, the Luna judge, rubric parsing, startup orchestration, and final reward arithmetic complete together.",
+          "impact": "The task can still fail or score below 1.0 in the client harness, which means solvability is unproven.",
+          "fix": "Provide a fresh OpenRouter API key, rerun one Harbor Oracle job, and require reward 1.0 with all 26 browser criteria present and graded before delivery.",
+          "action": "Rerun and inspect Oracle with a valid key; do not ship until it returns exactly 1.0.",
+          "evidence": "PARTIAL. Preflight passed, judge policy matched, and the fixed Chromium browser was available. RewardKit returned 0 graded criteria solely because OpenRouter rejected the expired key."
+        },
+        {
+          "id": "DL-N02",
+          "type": "New",
+          "sev": "P1",
+          "status": "FIXED",
+          "origin": "Pre-existing, missed in QC1",
+          "category": "Prompt",
+          "location": "tests/test.py:manifest_checks and restart_preflight",
+          "what": "The weighted preflight now grades successful first start and restart without requiring APP_MANIFEST.md or private /health and /api/config route documentation.",
+          "why": "This is graded-but-not-stated. A correct Node/Express game that starts with npm start and renders at / can lose the preflight point solely because it did not guess private harness documentation.",
+          "impact": "A behaviorally correct submission can lose 0.5 of 20 points for undocumented files and routes.",
+          "fix": "Make the preflight grade only successful first start and restart, using npm start as the fallback; treat APP_MANIFEST.md and named health/config routes as optional unless they are added to the brief.",
+          "action": "No action. Keep optional manifest start-command discovery as an ungraded convenience.",
+          "evidence": "FIXED. manifest_checks and all manifest/route penalties were removed from restart_preflight; Python compilation and container startup pass."
+        },
+        {
+          "id": "DL-N03",
+          "type": "New",
+          "sev": "P1",
+          "status": "FIXED",
+          "origin": "Pre-existing, missed in QC1",
+          "category": "Verifier-Strictness",
+          "location": "tests/rubric/browser/browser.toml; tests/rubric/browser/prompt.md",
+          "what": "Unrelated criteria now begin in fresh isolated browser storage instead of routing setup through Reset Match.",
+          "why": "A single Reset Match defect can prevent unrelated gravity, win, draw, history, persistence, keyboard, motion, and responsive checks from reaching their feature. Reset is therefore implicitly worth almost the entire browser score.",
+          "impact": "One bounded feature defect can cascade into roughly 19 of 19.5 browser points, materially distorting model capability.",
+          "fix": "Start unrelated criteria in a fresh isolated browser state and reserve Reset Match for its dedicated criterion and cases where reset itself is the transition under test.",
+          "action": "No action before Oracle. Confirm individual runs start fresh in the Oracle evidence.",
+          "evidence": "FIXED statically. Universal Reset setup was removed; Reset remains only in its dedicated behavior and one explicitly named mid-criterion motion reset."
+        },
+        {
+          "id": "DL-N04",
+          "type": "New",
+          "sev": "P1",
+          "status": "FIXED",
+          "origin": "Introduced by rework",
+          "category": "Verifier-Strictness",
+          "location": "tests/rubric/browser/browser.toml:in_progress_reload_exact_state",
+          "what": "The persistence criterion now requires the complete semantic dropline:v1 state while explicitly accepting equivalent property names, nesting, coordinate bases, and Redo representations.",
+          "why": "A correct implementation can persist the complete match under dropline:v1 with one-based coordinates, a snapshot-based Redo stack, or different property names and still satisfy every stated reload behavior.",
+          "impact": "A valid persistence implementation can incorrectly lose a 1.5-weight criterion.",
+          "fix": "Keep the required storage key/version/42 row-major board facts, then grade Redo persistence behaviorally after reload instead of requiring the golden solution's exact Redo object shape.",
+          "action": "No action. Preserve the behavioral Redo-after-reload proof.",
+          "evidence": "FIXED. The zero-based private Redo-object assertion and private key-shape coupling were removed."
+        },
+        {
+          "id": "DL-N05",
+          "type": "New",
+          "sev": "P1",
+          "status": "FIXED",
+          "origin": "Pre-existing, missed in QC1",
+          "category": "Verifier-Strictness",
+          "location": "tests/rubric/browser/browser.toml:keyboard_left_right_and_drop; keyboard_home_end_boundaries_and_focus",
+          "what": "Both keyboard criteria now inspect the actually focused column control and no longer require the golden solution's selected-column text readout.",
+          "why": "A correct roving-tabindex implementation with an obvious focus ring and no textual selected-column readout satisfies the product brief but fails the rubric wording.",
+          "impact": "Correct keyboard navigation can lose two criteria totaling 1.0 browser weight.",
+          "fix": "Grade actual focused column, boundary behavior, and token placement. Require a text readout only if the brief explicitly mandates one.",
+          "action": "No action. Preserve the exact key, boundary, focus, placement, turn, and history checks.",
+          "evidence": "FIXED. Static scan finds no selected-feedback requirement; the scripted keyboard browser flow still passes."
+        },
+        {
+          "id": "DL-N06",
+          "type": "New",
+          "sev": "P2",
+          "status": "FIXED",
+          "origin": "Pre-existing, missed in QC1",
+          "category": "Verifier-Strictness",
+          "location": "tests/rubric/browser/browser.toml:bootstrap_accessible_board_and_controls; preview_drop_motion_and_reduced_motion; full_board_draw_exact",
+          "what": "Accessibility and draw checks now accept semantic equivalent wording, motion checks are behavior-based, and the private 1-second/0.01-second thresholds were removed.",
+          "why": "The brief requires semantic row/column/state names, a visible draw, a short finite transition, and suppressed reduced motion; it does not define those exact strings or numeric cutoffs.",
+          "impact": "Alternative accessible wording or reasonable motion timing can cause false failures despite correct behavior.",
+          "fix": "Judge semantic accessible names and equivalent draw wording; either state timing limits in interface.md or relax them to a defensible broad bound plus a clear reduced-motion decrease.",
+          "action": "No action. Oracle should confirm the judge can obtain the behavior-based transition evidence.",
+          "evidence": "FIXED statically. Exact punctuation, draw wording, and private numeric animation limits no longer control the verdict."
+        },
+        {
+          "id": "DL-N07",
+          "type": "New",
+          "sev": "P1",
+          "status": "FIXED",
+          "origin": "Introduced by rework",
+          "category": "Hygiene",
+          "location": "solution/app/node_modules",
+          "what": "The ignored node_modules directory was moved outside the task root while package-lock.json remains present.",
+          "why": "Git ignore protects commits, but a manual folder ZIP or portal upload can still include ignored files. The artifact exclusion only applies when Harbor collects /app after a run.",
+          "impact": "The delivered archive can contain unnecessary dependencies, platform-specific files, and avoidable size/noise.",
+          "fix": "Remove solution/app/node_modules before packaging and generate the archive from tracked task files only.",
+          "action": "No action. Continue packaging from tracked files and keep node_modules outside the task.",
+          "evidence": "FIXED. Filesystem verification reports solution/app/node_modules absent, and container solve still passes with baked dependencies."
+        },
+        {
+          "id": "DL-N08",
+          "type": "New",
+          "sev": "P2",
+          "status": "FIXED",
+          "origin": "Pre-existing, missed in QC1",
+          "category": "Packaging",
+          "location": "tests/test.py:ensure_dependencies",
+          "what": "The npm ci/npm install subprocess is the only verifier subprocess without a timeout.",
+          "why": "A stalled registry or install script can consume the full outer verifier timeout instead of producing a controlled zero and useful report.",
+          "impact": "A rollout can become an infrastructure timeout rather than a clearly diagnosed dependency failure.",
+          "fix": "Give the dependency subprocess a bounded timeout, catch TimeoutExpired, write npm-install.log, and return false.",
+          "action": "No action. Preserve the 900-second install timeout and explicit timeout log.",
+          "evidence": "FIXED statically. ensure_dependencies now bounds npm ci/install to 900 seconds, catches TimeoutExpired, writes npm-install.log, and returns false."
+        },
+        {
+          "id": "DL-N09",
+          "type": "New",
+          "sev": "P2",
+          "status": "FIXED",
+          "origin": "Pre-existing, missed in QC1",
+          "category": "Verifier-Coverage",
+          "location": "environment/instructions/overview.md; tests/test.py:architecture_checks",
+          "what": "The brief's Node.js, Express, plain HTML/CSS/JavaScript, no React/game-framework, and no runtime-CDN contract is now mechanically checked during preflight.",
+          "why": "Browser behavior alone cannot distinguish the mandated implementation from React, another server framework, or runtime CDN code.",
+          "impact": "A submission can violate explicit architecture requirements and still receive full browser credit.",
+          "fix": "Add a low-weight source/package preflight for the stated stack restrictions, or remove restrictions that are not product requirements.",
+          "action": "No action. Keep the source/package checks aligned with the stated architecture contract.",
+          "evidence": "FIXED. The checker requires Express, rejects listed UI/game framework dependencies, and rejects runtime external asset/CDN references. It passes the golden solution."
+        },
+        {
+          "id": "DL-N10",
+          "type": "New",
+          "sev": "P3",
+          "status": "UNKNOWN",
+          "origin": "Pre-existing, missed in QC1",
+          "category": "Packaging",
+          "location": "solution/solve.sh; tests/test.sh",
+          "what": "Executable archive modes cannot be verified because the task is untracked and no delivery ZIP exists.",
+          "why": "Windows filesystem modes do not prove the Unix executable bits that will be stored in the final archive.",
+          "impact": "A badly created ZIP could make Harbor unable to execute solve.sh or test.sh.",
+          "fix": "After creating the delivery ZIP, inspect each entry's external_attr and require executable mode for both shell scripts.",
+          "action": "Verify archive modes at packaging time.",
+          "evidence": "NOT EXERCISED. There is no DropLine delivery archive to inspect."
+        },
+        {
+          "id": "DL-N11",
+          "type": "New",
+          "sev": "P3",
+          "status": "OPEN",
+          "origin": "Pre-existing, missed in QC1",
+          "category": "Verifier-Strictness",
+          "location": "task.toml verifier timeout; tests/rubric/browser/browser.toml judge timeout",
+          "what": "RewardKit is serialized to one agent and one LLM, while 26 individual criteria each allow 900 seconds. Their theoretical ceiling exceeds the 13,200-second RewardKit timeout.",
+          "why": "The configuration is likely sufficient for normal runs, but a slow yet progressing evaluation can be killed before all criteria are returned, forcing the completeness gate to zero the entire score.",
+          "impact": "Slow infrastructure can appear as a model score of zero.",
+          "fix": "Use observed Oracle/model durations to calibrate per-criterion and global timeouts, and retain the exact-26 completeness diagnostic.",
+          "action": "Reassess after the first Oracle run; lower per-item timeout or raise the global cap based on evidence.",
+          "evidence": "NOT EXERCISED. No run durations exist yet; this is a latent ceiling mismatch only."
+        }
+      ]
+    }
+  ],
+  "blocks": [
+    {
+      "title": "Prior finding closure",
+      "items": [
+        "3 of 3 prior fixes remain present and pass current local checks.",
+        "The verifier-calibration findings DL-N02 through DL-N09 were corrected without changing the required game behavior."
+      ]
+    },
+    {
+      "title": "Executed validation",
+      "items": [
+        "Parsed task.toml and browser.toml: 26 unique binary criteria, browser weight 19.5, preflight weight 0.5, total 20.0.",
+        "Ran all 16 Node engine tests locally and in the exact rebuilt Docker image: 16/16 passed both times.",
+        "Started the golden in the task image, verified /health and /api/config, and rendered exactly 42 grid cells with the pinned Chromium executable.",
+        "Verified Codex CLI 0.150.1, Chromium 152.0.7977.8, and Playwright MCP 0.0.79 in the rebuilt image.",
+        "Attempted Harbor Oracle: task preflight passed and judge policy matched, but the supplied OpenRouter key was expired before any criterion could be graded.",
+        "Ran headless Chromium at desktop and 375x760; no horizontal overflow and all primary controls were usable.",
+        "Ran 11 scripted browser flows covering gravity, full-column rejection, four Red win directions, Yellow win, draw, terminal Undo/Redo/reload, next round/reset, persisted Redo, and keyboard controls.",
+        "Verified the no-package failure path writes reward.json, reward.txt, and report.json with reward 0.0."
+      ]
+    },
+    {
+      "title": "Clean areas",
+      "items": [
+        "No embedded credential, host-specific path, database, Python cache, TODO/FIXME marker, or source syntax issue was found inside the Harbor task.",
+        "Golden rule math, score reversal, branch invalidation, round starter alternation, and reload idempotency passed executable tests.",
+        "The split instruction files and seed asset are coherent and available under /instructions and /assets."
+      ]
+    }
+  ],
+  "coverage_matrix": [
+    {"requirement": "7x6 accessible DOM grid and seeded identity", "criteria": ["bootstrap_accessible_board_and_controls", "initial_red_turn_and_empty_state"], "coverage": "covered"},
+    {"requirement": "Gravity, alternation, and full-column rejection", "criteria": ["mouse_drop_obeys_gravity", "stacking_and_turn_alternation", "full_column_rejection_invariant"], "coverage": "covered"},
+    {"requirement": "Horizontal, vertical, and both diagonal wins", "criteria": ["horizontal_four_win", "vertical_four_win", "rising_diagonal_four_win", "falling_diagonal_four_win"], "coverage": "covered"},
+    {"requirement": "Yellow win and exact winning treatment", "criteria": ["winning_cells_exact_highlight"], "coverage": "covered"},
+    {"requirement": "Terminal lock and draw", "criteria": ["terminal_board_blocks_moves", "full_board_draw_exact"], "coverage": "covered"},
+    {"requirement": "History and one-piece Undo/Redo", "criteria": ["move_history_exact_order", "undo_one_piece_and_turn", "redo_one_piece_and_turn"], "coverage": "covered"},
+    {"requirement": "Redo invalidation and terminal score reversal", "criteria": ["redo_invalidation_after_new_move", "undo_result_reopens_and_reverses_score", "redo_result_reapplies_once"], "coverage": "covered"},
+    {"requirement": "Next Round and Reset Match", "criteria": ["next_round_preserves_score_and_alternates_starter", "reset_match_clears_everything"], "coverage": "covered"},
+    {"requirement": "Versioned browser persistence", "criteria": ["in_progress_reload_exact_state", "completed_reload_undo_redo_score_recovery"], "coverage": "covered behaviorally"},
+    {"requirement": "Keyboard controls", "criteria": ["keyboard_left_right_and_drop", "keyboard_home_end_boundaries_and_focus"], "coverage": "covered"},
+    {"requirement": "Preview, motion, and reduced motion", "criteria": ["preview_drop_motion_and_reduced_motion"], "coverage": "covered behaviorally"},
+    {"requirement": "375-pixel responsive layout", "criteria": ["responsive_board_no_overflow"], "coverage": "covered"},
+    {"requirement": "Node/Express/plain JS/no React/no CDN architecture", "criteria": ["restart_preflight architecture_checks"], "coverage": "covered mechanically"}
+  ]
+}

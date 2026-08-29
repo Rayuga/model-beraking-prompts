@@ -1,0 +1,489 @@
+[judge]
+judge = "codex"
+model = "openai/gpt-5.6-luna"
+mode = "individual"
+timeout = 900
+reasoning_effort = "medium"
+isolated = false
+prompt_template = "prompt.md"
+weight = 1.0
+
+[[judge.mcp_servers]]
+name = "playwright"
+transport = "stdio"
+command = "playwright-mcp"
+args = ["--headless", "--isolated", "--executable-path=/usr/local/bin/chromium", "--no-sandbox"]
+
+# feature = bootstrap_and_board
+# sub_feature = accessible_surface
+# depends_on = []
+[[criterion]]
+id = "bootstrap_accessible_board_and_controls"
+name = "bootstrap_accessible_board_and_controls"
+type = "binary"
+weight = 0.5
+description = """
+This criterion is all-or-nothing. Follow these steps using only the visible page and read-only accessibility/DOM inspection:
+1. Open the running app. Require title `DropLine` and subtitle `Four in a Row`.
+2. Require exactly seven visible column controls numbered 1 through 7.
+3. Require visible turn/result status, Red wins, Yellow wins, Draws, Move history, Undo, Redo, Next Round, and Reset Match.
+4. Inspect the board. Require an accessible DOM grid with exactly 42 cells arranged as six rows by seven columns. Fail if it is Canvas, an image map, or a third-party game widget.
+5. Inspect all 42 accessible cell names. Every name must semantically identify its one-based row, one-based column, and Empty/Red/Yellow state. Specifically confirm that the top-left cell is identified as row 1, column 1, Empty and the bottom-right cell as row 6, column 7, Empty; accept equivalent wording and punctuation.
+Fail if any title, control, count, dimension, board type, or semantic accessible cell identity differs.
+"""
+
+# feature = bootstrap_and_board
+# sub_feature = initial_state
+# depends_on = [bootstrap_accessible_board_and_controls]
+[[criterion]]
+id = "initial_red_turn_and_empty_state"
+name = "initial_red_turn_and_empty_state"
+type = "binary"
+weight = 0.5
+description = """
+This criterion is all-or-nothing. Follow these steps:
+1. Open the app in the fresh isolated browser run.
+2. Count occupied cells. Require exactly 0.
+3. Require visible status identifying Red's turn and scores Red wins=0, Yellow wins=0, Draws=0.
+4. Require exactly 0 move-history entries.
+5. Require Undo, Redo, and Next Round disabled, and all seven column controls enabled.
+Report the occupied-cell count, three scores, history count, and status. Fail if any value or enabled state differs.
+"""
+
+# feature = gameplay
+# sub_feature = gravity
+# depends_on = [bootstrap_accessible_board_and_controls, initial_red_turn_and_empty_state]
+[[criterion]]
+id = "mouse_drop_obeys_gravity"
+name = "mouse_drop_obeys_gravity"
+type = "binary"
+weight = 0.5
+description = """
+This criterion is all-or-nothing. Use the real mouse and visible controls only:
+1. Open the app in the fresh isolated browser run.
+2. Click the visible column 4 control exactly once.
+3. Require exactly one occupied cell: Row 6 column 4=Red. Require every other cell, including Row 5 column 4, to remain Empty.
+4. Require visible Yellow's turn.
+5. Require exactly one history entry identifying Move 1, Red, column 4.
+Fail if the move is performed by keyboard or hidden means, lands in another row/column, creates another piece, leaves the wrong turn, or produces different history.
+"""
+
+# feature = gameplay
+# sub_feature = stacking_and_turns
+# depends_on = [mouse_drop_obeys_gravity]
+[[criterion]]
+id = "stacking_and_turn_alternation"
+name = "stacking_and_turn_alternation"
+type = "binary"
+weight = 0.5
+description = """
+This criterion is all-or-nothing. Follow these steps with visible column controls:
+1. Open the app in the fresh isolated browser run.
+2. Click columns in exact order 4, 4, 2.
+3. Require exactly three occupied cells: Row 6 column 4=Red, Row 5 column 4=Yellow, and Row 6 column 2=Red. Require no gap in column 4.
+4. Require visible Yellow's turn.
+5. Require exactly three history entries in order: Move 1 Red column 4; Move 2 Yellow column 4; Move 3 Red column 2.
+Fail for any wrong cell, color, turn, occupied count, gap, history value, or history order.
+"""
+
+# feature = gameplay
+# sub_feature = invalid_full_column
+# depends_on = [stacking_and_turn_alternation]
+[[criterion]]
+id = "full_column_rejection_invariant"
+name = "full_column_rejection_invariant"
+type = "binary"
+weight = 1.0
+description = """
+This criterion is all-or-nothing. Follow these steps in order using the visible UI and real mouse clicks only:
+1. Open the app in the fresh isolated browser run.
+2. Click the visible column 1 control exactly six times. Confirm column 1 is now full: Row 6=Red, Row 5=Yellow, Row 4=Red, Row 3=Yellow, Row 2=Red, and Row 1=Yellow. Confirm the status is Red's turn, history contains exactly six entries, and Red wins=0, Yellow wins=0, Draws=0. If this positive-control state is not exact, fail.
+3. Before attempting another move, record all 42 cell states, the visible status, the complete history text and count, and all three scores.
+4. Click the visible column 1 control exactly once more with the real mouse. Do not click a different column and do not use keyboard, DOM mutation, storage, or synthetic events.
+5. Require visible feedback explaining that column 1 is full. Then compare against the values recorded in step 3: all 42 cells must be identical, the status must still be Red's turn, history must still contain the same six entries, and all three scores must still be zero.
+Fail if the seventh attempt places a piece, changes the turn, adds or changes history, changes a score, or produces no visible rejection. A disabled column control by itself is not sufficient evidence because this criterion requires the user to receive visible rejection feedback for the attempted full-column move.
+"""
+
+# feature = win_detection
+# sub_feature = horizontal
+# depends_on = [stacking_and_turn_alternation]
+[[criterion]]
+id = "horizontal_four_win"
+name = "horizontal_four_win"
+type = "binary"
+weight = 1.0
+description = """
+This criterion is all-or-nothing. Follow these steps with visible column controls:
+1. Open the app in the fresh isolated browser run.
+2. Click columns in exact order 1, 7, 2, 7, 3, 6, 4.
+3. Require Row 6 columns 1, 2, 3, and 4 all Red.
+4. Require visible Red wins result and scores Red wins=1, Yellow wins=0, Draws=0.
+5. Require exactly seven history entries.
+Fail if the exact sequence is not used or any expected cell, result, score, or history count differs.
+"""
+
+# feature = win_detection
+# sub_feature = vertical
+# depends_on = [stacking_and_turn_alternation]
+[[criterion]]
+id = "vertical_four_win"
+name = "vertical_four_win"
+type = "binary"
+weight = 1.0
+description = """
+This criterion is all-or-nothing. Follow these steps with visible column controls:
+1. Open the app in the fresh isolated browser run.
+2. Click columns in exact order 1, 2, 1, 2, 1, 2, 1.
+3. Require column 1 rows 6, 5, 4, and 3 all Red. Require column 2 rows 6, 5, and 4 all Yellow.
+4. Require visible Red wins result, Red wins score=1, and exactly seven history entries.
+Fail if a different sequence or win direction is used, or any stack, result, score, or history count differs.
+"""
+
+# feature = win_detection
+# sub_feature = rising_diagonal
+# depends_on = [stacking_and_turn_alternation]
+[[criterion]]
+id = "rising_diagonal_four_win"
+name = "rising_diagonal_four_win"
+type = "binary"
+weight = 1.0
+description = """
+This criterion is all-or-nothing. Follow these steps with visible column controls:
+1. Open the app in the fresh isolated browser run.
+2. Click columns in exact order 1, 2, 2, 3, 4, 3, 3, 4, 5, 4, 4.
+3. Require exactly 11 accepted moves.
+4. Require these four cells to be Red: Row 6 column 1, Row 5 column 2, Row 4 column 3, Row 3 column 4.
+5. Require visible Red wins result and Red wins score=1.
+Fail if the exact rising diagonal is absent, a different diagonal is used as evidence, or the move count, result, or score differs.
+"""
+
+# feature = win_detection
+# sub_feature = falling_diagonal
+# depends_on = [stacking_and_turn_alternation]
+[[criterion]]
+id = "falling_diagonal_four_win"
+name = "falling_diagonal_four_win"
+type = "binary"
+weight = 1.0
+description = """
+This criterion is all-or-nothing. Follow these steps with visible column controls:
+1. Open the app in the fresh isolated browser run.
+2. Click columns in exact order 7, 6, 6, 5, 4, 5, 5, 4, 3, 4, 4.
+3. Require exactly 11 accepted moves.
+4. Require these four cells to be Red: Row 3 column 4, Row 4 column 5, Row 5 column 6, Row 6 column 7.
+5. Require visible Red wins result and Red wins score=1.
+Fail if the exact falling diagonal is absent, a rising diagonal is used as evidence, or the move count, result, or score differs.
+"""
+
+# feature = round_result
+# sub_feature = exact_winning_treatment
+# depends_on = [horizontal_four_win]
+[[criterion]]
+id = "winning_cells_exact_highlight"
+name = "winning_cells_exact_highlight"
+type = "binary"
+weight = 0.5
+description = """
+This criterion is all-or-nothing. Follow these steps:
+1. Open the app in the fresh isolated browser run.
+2. Click visible columns in exact order 7, 1, 7, 2, 6, 3, 6, 4.
+3. Require visible Yellow wins result, scores Yellow wins=1, Red wins=0, Draws=0, and exactly eight history entries.
+4. Inspect the rendered winning treatment read-only. Require exactly four highlighted cells: Row 6 columns 1, 2, 3, and 4, all Yellow.
+5. Require both Red pieces in column 7 and both Red pieces in column 6 not highlighted.
+Fail for a Red-only implementation, missing or extra highlighted cells, row-wide/all-Yellow highlighting, wrong scores/history, or status-only evidence with no cell treatment.
+"""
+
+# feature = round_result
+# sub_feature = terminal_lock
+# depends_on = [horizontal_four_win]
+[[criterion]]
+id = "terminal_board_blocks_moves"
+name = "terminal_board_blocks_moves"
+type = "binary"
+weight = 0.5
+description = """
+This criterion is all-or-nothing. Follow these steps:
+1. Open the app, then click visible columns in exact order 1, 7, 2, 7, 3, 6, 4.
+2. Confirm the positive-control state: Red wins, Red wins score=1, exactly seven history entries, and the expected seven-piece board.
+3. Record all 42 cells, the complete history, all scores, and the result status.
+4. Require all seven column controls unavailable for play. Require Undo and Next Round available.
+5. If any column control remains enabled, attempt one normal visible post-result move. Never force-click or dispatch an event.
+6. Require no eighth piece and require every recorded board cell, history entry, score, and result to remain unchanged.
+Fail if a terminal move is accepted, any terminal state mutates, or the required terminal control states differ.
+"""
+
+# feature = round_result
+# sub_feature = draw
+# depends_on = [stacking_and_turn_alternation]
+[[criterion]]
+id = "full_board_draw_exact"
+name = "full_board_draw_exact"
+type = "binary"
+weight = 1.5
+description = """
+This criterion is all-or-nothing. Follow these steps with real visible column clicks:
+1. Open the app in the fresh isolated browser run.
+2. Click this exact 42-move sequence without skipping or reordering a move: 4,4,4,4,4,4,3,3,3,3,3,3,5,2,5,6,5,5,5,5,2,2,2,2,2,6,1,6,6,6,6,1,1,1,1,1,7,7,7,7,7,7.
+3. Require exactly 42 occupied cells and exactly 42 history entries.
+4. Require a visible result that clearly identifies the round as a draw, accepting equivalent wording, and scores Draws=1, Red wins=0, Yellow wins=0.
+5. Require exactly zero winning-highlight cells and all seven column controls unavailable.
+Fail if a premature win occurs, any move differs, the board/history is not full, a winning cell is highlighted, or the result/score/control state differs.
+"""
+
+# feature = history
+# sub_feature = accepted_move_order
+# depends_on = [stacking_and_turn_alternation]
+[[criterion]]
+id = "move_history_exact_order"
+name = "move_history_exact_order"
+type = "binary"
+weight = 0.5
+description = """
+This criterion is all-or-nothing. Follow these steps:
+1. Open the app, then click visible columns in exact order 4, 4, 2, 6.
+2. Require exactly four history rows in order: Move 1 Red column 4; Move 2 Yellow column 4; Move 3 Red column 2; Move 4 Yellow column 6.
+3. Click column 1 exactly six times. Require history to grow from four to exactly ten entries.
+4. Click full column 1 once more. Require history to remain exactly ten entries.
+5. Re-read the first four rows and require them unchanged from step 2.
+Fail for wrong numbering, player, column, order, changed earlier rows, or a history entry for the rejected seventh column-1 attempt.
+"""
+
+# feature = undo_redo
+# sub_feature = single_piece_undo
+# depends_on = [move_history_exact_order]
+[[criterion]]
+id = "undo_one_piece_and_turn"
+name = "undo_one_piece_and_turn"
+type = "binary"
+weight = 0.5
+description = """
+This criterion is all-or-nothing. Follow these steps:
+1. Open the app, then click visible columns in exact order 4, 4, 2.
+2. Confirm exactly three pieces and visible Yellow's turn.
+3. Click visible Undo exactly once.
+4. Require only Row 6 column 2 to become Empty. Require Row 6 column 4=Red and Row 5 column 4=Yellow to remain unchanged.
+5. Require exactly two history entries, visible Red's turn, Undo available, and Redo available.
+Fail if Undo removes more than one piece, removes the wrong piece, leaves move 3 in history, restores the wrong turn, or gives incorrect control states.
+"""
+
+# feature = undo_redo
+# sub_feature = single_piece_redo
+# depends_on = [undo_one_piece_and_turn]
+[[criterion]]
+id = "redo_one_piece_and_turn"
+name = "redo_one_piece_and_turn"
+type = "binary"
+weight = 0.5
+description = """
+This criterion is all-or-nothing. Follow these steps:
+1. Open the app, then click visible columns in exact order 4, 4, 2.
+2. Click visible Undo exactly once, then visible Redo exactly once.
+3. Require Row 6 column 2 restored as Red. Require Row 6 column 4=Red and Row 5 column 4=Yellow unchanged.
+4. Require exactly three history entries in their original order and visible Yellow's turn.
+5. Require Redo disabled.
+Fail if Redo restores more than one piece, uses another cell, duplicates/reorders history, restores the wrong turn, or remains available without another Undo.
+"""
+
+# feature = undo_redo
+# sub_feature = branch_invalidation
+# depends_on = [undo_one_piece_and_turn, redo_one_piece_and_turn]
+[[criterion]]
+id = "redo_invalidation_after_new_move"
+name = "redo_invalidation_after_new_move"
+type = "binary"
+weight = 1.0
+description = """
+This criterion is all-or-nothing. Follow these steps:
+1. Open the app, then click visible columns in exact order 4, 4, 2.
+2. Click Undo exactly once. Require Row 6 column 2=Empty and Redo available.
+3. Make a different visible move by clicking column 6 once.
+4. Require Row 6 column 6=Red, Row 6 column 2 still Empty, visible Yellow's turn, and exactly three history entries whose third entry is Red column 6.
+5. Require Redo disabled. If it remains enabled, click it normally once and fail if any state changes.
+Fail if the abandoned column-2 move returns, Redo remains usable, or any expected cell, turn, or history value differs.
+"""
+
+# feature = undo_redo
+# sub_feature = terminal_reversal
+# depends_on = [horizontal_four_win, undo_one_piece_and_turn]
+[[criterion]]
+id = "undo_result_reopens_and_reverses_score"
+name = "undo_result_reopens_and_reverses_score"
+type = "binary"
+weight = 1.5
+description = """
+This criterion is all-or-nothing. Follow these steps:
+1. Open the app, then click visible columns in exact order 1, 7, 2, 7, 3, 6, 4.
+2. Confirm Red wins, Red wins score=1, exactly seven history entries, all column controls locked, and exactly four winning cells.
+3. Click visible Undo exactly once.
+4. Require Row 6 column 4=Empty while Row 6 columns 1, 2, and 3 remain Red.
+5. Require playing state with Red's turn, Red wins score=0, exactly six history entries, zero winning cells, all column controls enabled, and Redo available.
+Fail if more than one piece is removed or any stale result, score, winning treatment, terminal lock, turn, or history remains.
+"""
+
+# feature = undo_redo
+# sub_feature = terminal_redo
+# depends_on = [undo_result_reopens_and_reverses_score]
+[[criterion]]
+id = "redo_result_reapplies_once"
+name = "redo_result_reapplies_once"
+type = "binary"
+weight = 0.5
+description = """
+This criterion is all-or-nothing. Follow these steps:
+1. Open the app and play exact visible columns 1, 7, 2, 7, 3, 6, 4.
+2. Click Undo exactly once, then Redo exactly once.
+3. Require Row 6 column 4 restored Red, visible Red wins result, Red wins score exactly 1, and exactly seven history entries.
+4. Require exactly four winning cells at Row 6 columns 1 through 4, all column controls locked, and Redo disabled.
+5. Reload the page once. Require the same terminal board/history/result and Red wins score still exactly 1.
+Fail for score 2, missing terminal lock/treatment, altered history/board, or a Redo action that does not reapply exactly one result.
+"""
+
+# feature = match_management
+# sub_feature = next_round
+# depends_on = [horizontal_four_win]
+[[criterion]]
+id = "next_round_preserves_score_and_alternates_starter"
+name = "next_round_preserves_score_and_alternates_starter"
+type = "binary"
+weight = 1.0
+description = """
+This criterion is all-or-nothing. Follow these steps:
+1. Open the app and complete Red's horizontal win with exact visible columns 1, 7, 2, 7, 3, 6, 4.
+2. Click visible Next Round exactly once.
+3. Require all 42 cells Empty, zero history entries, zero winning cells, and visible Yellow's turn.
+4. Require scores Red wins=1, Yellow wins=0, Draws=0; Undo and Redo disabled; and all seven column controls enabled.
+5. Click column 5 exactly once. Require Row 6 column 5=Yellow and visible Red's turn.
+Fail if Red starts again, any prior board/history/treatment remains, a score is cleared/changed, or the first new-round move differs.
+"""
+
+# feature = match_management
+# sub_feature = reset_match
+# depends_on = [next_round_preserves_score_and_alternates_starter]
+[[criterion]]
+id = "reset_match_clears_everything"
+name = "reset_match_clears_everything"
+type = "binary"
+weight = 0.5
+description = """
+This criterion is all-or-nothing. Follow these steps:
+1. Open the app and complete Red's horizontal win with columns 1, 7, 2, 7, 3, 6, 4.
+2. Click Next Round, click columns 5 and 6, then click Undo once. Confirm Redo is available so the match contains board, score, history, and Redo state.
+3. Click visible Reset Match exactly once.
+4. Require all 42 cells Empty, Red's turn, all three scores zero, zero history entries, zero winning cells, Undo/Redo/Next Round disabled, and all columns enabled.
+5. Reload once and require the exact same reset state.
+Fail if any piece, score, Yellow starter, history, winning treatment, or Redo entry survives Reset Match or reload.
+"""
+
+# feature = persistence
+# sub_feature = unfinished_round
+# depends_on = [undo_one_piece_and_turn, redo_one_piece_and_turn]
+[[criterion]]
+id = "in_progress_reload_exact_state"
+name = "in_progress_reload_exact_state"
+type = "binary"
+weight = 1.5
+description = """
+This criterion is all-or-nothing. Follow these steps:
+1. Open the app, click visible columns 4, 4, 2, 6, then click Undo once.
+2. Require Row 6 column 4=Red, Row 5 column 4=Yellow, Row 6 column 2=Red, Row 6 column 6=Empty, Yellow's turn, exactly three history entries, zero scores, Undo available, and Redo available.
+3. Read localStorage without modifying it. Require a parseable `dropline:v1` value representing version 1 and the complete visible state: exactly 42 row-major board entries matching the grid, Yellow to move, Red as round starter, a playing round with no winning cells, three accepted history entries, one available Redo move, and zero scores. Accept equivalent property names, nesting, coordinate bases, and Redo representations; do not require the golden solution's private JSON shape.
+4. Reload normally. Require every visible cell, turn, history entry, score, Undo state, and Redo state from step 2 unchanged.
+5. Click Redo exactly once after reload. Require Row 6 column 6=Yellow, the original four history entries, Red's turn, and Redo disabled.
+Fail for missing/wrong-version storage, visible/stored disagreement, lost reload state, or reaching the final state through a new move instead of the persisted Redo.
+"""
+
+# feature = persistence
+# sub_feature = completed_round_recovery
+# depends_on = [undo_result_reopens_and_reverses_score, redo_result_reapplies_once]
+[[criterion]]
+id = "completed_reload_undo_redo_score_recovery"
+name = "completed_reload_undo_redo_score_recovery"
+type = "binary"
+weight = 0.5
+description = """
+This criterion is all-or-nothing. Follow these steps:
+1. Open the app and play exact visible columns 1, 7, 2, 7, 3, 6, 4. Require Red wins and Red wins score=1.
+2. Reload the page twice. After each reload require Red score exactly 1. After the second, also require Red wins status, exactly seven history entries, and the same four winning cells.
+3. Click Undo exactly once. Require playing state, Red's turn, Red wins score=0, exactly six history entries, Row 6 column 4=Empty, and Redo available.
+4. Click Redo exactly once. Require the original terminal board, Red wins status, exactly seven history entries, and Red wins score exactly 1.
+5. Reload once more and require the same terminal state with Red wins score still exactly 1.
+Fail for duplicate scoring, lost/changed terminal state, or restored history that cannot perform the required Undo and Redo.
+"""
+
+# feature = keyboard
+# sub_feature = navigation_and_placement
+# depends_on = [bootstrap_accessible_board_and_controls, mouse_drop_obeys_gravity]
+[[criterion]]
+id = "keyboard_left_right_and_drop"
+name = "keyboard_left_right_and_drop"
+type = "binary"
+weight = 0.5
+description = """
+This criterion is all-or-nothing. Use real keyboard keys only; do not click column controls, dispatch events, or call DOM focus methods:
+1. Open the app in the fresh isolated browser run so no control initially has mouse focus.
+2. Press Tab until the first visible column control receives keyboard focus. Require the Column 1 control itself to be focused.
+3. Press ArrowRight twice. Require the Column 3 control itself to be focused.
+4. Press Enter once. Require Row 6 column 3=Red, focus still on Column 3, and Yellow's turn.
+5. Press ArrowLeft once. Require the Column 2 control itself to be focused.
+6. Press Space once. Require Row 6 column 2=Yellow, focus still on Column 2, Red's turn, and exactly two history entries in the played order.
+Fail if any named keyboard path is replaced, focus/selection differs, a token lands elsewhere, or turn/history differs.
+"""
+
+# feature = keyboard
+# sub_feature = home_end_boundaries
+# depends_on = [keyboard_left_right_and_drop]
+[[criterion]]
+id = "keyboard_home_end_boundaries_and_focus"
+name = "keyboard_home_end_boundaries_and_focus"
+type = "binary"
+weight = 0.5
+description = """
+This criterion is all-or-nothing. Use real keyboard input only:
+1. Open the app, then press Tab until Column 1 is focused.
+2. Press End. Require the Column 7 control itself to have keyboard focus.
+3. Press ArrowRight twice. Require focus to remain on Column 7 without wrapping or escaping.
+4. Press Home. Require the Column 1 control itself to have keyboard focus.
+5. Press ArrowLeft twice. Require focus to remain on Column 1 without wrapping or escaping.
+6. Press Enter once. Require Row 6 column 1=Red, Yellow's turn, and keyboard focus still on Column 1.
+Fail for a mouse substitute, focus escape, wraparound, wrong selected column, or wrong token placement/turn.
+"""
+
+# feature = interface
+# sub_feature = preview_and_motion
+# depends_on = [mouse_drop_obeys_gravity]
+[[criterion]]
+id = "preview_drop_motion_and_reduced_motion"
+name = "preview_drop_motion_and_reduced_motion"
+type = "binary"
+weight = 0.5
+description = """
+This criterion is all-or-nothing. Do not mutate CSS/classes or dispatch synthetic events:
+1. Use normal motion settings and open the app in the fresh isolated browser run.
+2. Hover column 3 with the real mouse without clicking. Require a visible Red preview aligned to column 3 with non-color `R` identity.
+3. Click column 3 once. Require Row 6 column 3=Red and visible evidence of a finite drop transition that starts and then settles. After the transition, require the token to remain in Row 6 column 3.
+4. Use Playwright media emulation to set `prefers-reduced-motion: reduce`, then click Reset Match.
+5. Hover column 2. Require the same Red `R` preview, then click column 2 once.
+6. Require Row 6 column 2=Red with no active nonessential drop motion. Read-only animation/computed-style inspection may confirm that no drop animation is active; do not require a private numeric duration.
+Fail for a missing/misaligned preview, color-only preview, missing/infinite normal transition, visible reduced-motion animation, or changed placement behavior.
+"""
+
+# feature = interface
+# sub_feature = responsive_layout
+# depends_on = [bootstrap_accessible_board_and_controls]
+[[criterion]]
+id = "responsive_board_no_overflow"
+name = "responsive_board_no_overflow"
+type = "binary"
+weight = 0.5
+description = """
+This criterion is all-or-nothing. Follow these steps:
+1. Set the real browser viewport to exactly 375 by 760 and open the app in the fresh isolated browser run.
+2. Require document scrollWidth no greater than innerWidth.
+3. Require the complete seven-column board, all seven column controls, Undo, Redo, Next Round, and Reset Match within the viewport's horizontal bounds and usable without horizontal scrolling. Vertical scrolling is permitted.
+4. Click visible column 7 once with the real mouse. Require Row 6 column 7=Red.
+5. Measure again and require no horizontal overflow after the move.
+Fail for clipped/off-screen columns, overlapping primary controls, inaccessible column 7, incorrect placement, or any initial/post-move horizontal overflow.
+"""
+
+[scoring]
+aggregation = "weighted_mean"

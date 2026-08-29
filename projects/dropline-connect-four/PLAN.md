@@ -49,9 +49,6 @@ Use a versioned `dropline:v1` localStorage value containing:
 - current-round history and redo entries with player, row, and column;
 - Red-win, Yellow-win, and draw counters.
 
-Malformed or incompatible saved data should fall back to a clean match without
-preventing the app from opening.
-
 ## Task instructions
 
 Keep the main `instruction.md` short and human-written. It will direct the agent
@@ -91,7 +88,7 @@ DOM, call application handlers, or use hidden setup routes.
 
 | # | Criterion | Weight |
 |---:|---|---:|
-| 1 | `bootstrap_exact_board_and_controls` | 0.5 |
+| 1 | `bootstrap_accessible_board_and_controls` | 0.5 |
 | 2 | `initial_red_turn_and_empty_state` | 0.5 |
 | 3 | `mouse_drop_obeys_gravity` | 0.5 |
 | 4 | `stacking_and_turn_alternation` | 0.5 |
@@ -112,10 +109,10 @@ DOM, call application handlers, or use hidden setup routes.
 | 19 | `next_round_preserves_score_and_alternates_starter` | 1.0 |
 | 20 | `reset_match_clears_everything` | 0.5 |
 | 21 | `in_progress_reload_exact_state` | 1.5 |
-| 22 | `completed_reload_does_not_double_count` | 0.5 |
+| 22 | `completed_reload_undo_redo_score_recovery` | 0.5 |
 | 23 | `keyboard_left_right_and_drop` | 0.5 |
 | 24 | `keyboard_home_end_boundaries_and_focus` | 0.5 |
-| 25 | `hover_preview_and_drop_motion` | 0.5 |
+| 25 | `preview_drop_motion_and_reduced_motion` | 0.5 |
 | 26 | `responsive_board_no_overflow` | 0.5 |
 
 Each criterion will establish its own state using visible Reset Match or a

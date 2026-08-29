@@ -128,14 +128,13 @@ accepted mutation. It contains:
 - Red-win, Yellow-win, and draw counters.
 
 Reloading an unfinished or completed round restores the exact visible state.
-Restoring a completed round does not record its score again. Malformed or
-incompatible saved data opens as a clean match instead of breaking startup.
+Restoring a completed round does not record its score again.
 
 ## Feature and sub-feature matrix
 
 | Feature | Sub-feature | Required result |
 |---|---|---|
-| Bootstrap and board | Exact board | One empty 7×6 board with seven drop controls |
+| Bootstrap and board | Accessible board | One empty 7×6 board with seven drop controls and cell names that identify position and token state |
 | Bootstrap and board | Initial state | Red turn, zero scores, empty history |
 | Gameplay | Gravity | Piece occupies the lowest free cell |
 | Gameplay | Stacking | Later pieces stack immediately above existing pieces |
@@ -157,10 +156,11 @@ incompatible saved data opens as a clean match instead of breaking startup.
 | Match management | Next Round | Preserve scores and alternate starter |
 | Match management | Reset Match | Clear board, histories and scores; restore Red starter |
 | Persistence | In-progress reload | Restore exact board, turn, history and controls |
-| Persistence | Completed reload | Restore result without duplicate score |
+| Persistence | Completed reload | Restore the result without duplicate score and preserve score-aware terminal Undo/Redo |
 | Keyboard | Column movement | Left/Right/Home/End select correct visible column |
 | Keyboard | Piece placement | Enter/Space follows the same rules as mouse input |
-| Interface | Polish and responsive layout | Preview, motion and narrow-screen usability |
+| Interface | Preview and motion | Show the active-color preview and finite drop motion, while suppressing nonessential motion under reduced-motion preferences |
+| Interface | Responsive layout | Keep the complete board and primary controls usable at a narrow viewport |
 
 ## Deterministic game scenarios
 
@@ -210,13 +210,15 @@ Expected result:
 1. Reset the match.
 2. Play the horizontal Red-win sequence.
 3. Confirm Red's score becomes one and further board input is refused.
-4. Undo once.
-5. Redo once.
+4. Reload and confirm the result and score remain unchanged.
+5. Undo once.
+6. Redo once.
 
 Expected result:
 
-- Undo removes the final Red piece, reopens the round, and returns Red's score
-  to zero.
+- Reload does not count the completed result again.
+- Undo after reload removes the final Red piece, reopens the round, and returns
+  Red's score to zero.
 - Redo restores the exact piece, result, winning highlight, and Red score once.
 
 ### Workflow 4 — Continue a match
@@ -247,7 +249,7 @@ Expected result:
 
 | # | Verifier ID | Feature / sub-feature | Weight | Deterministic judgment |
 |---:|---|---|---:|---|
-| 1 | `bootstrap_exact_board_and_controls` | Bootstrap / exact surface | 0.5 | Require 42 cells, seven column controls, status, scores, history and match controls |
+| 1 | `bootstrap_accessible_board_and_controls` | Bootstrap / accessible surface | 0.5 | Require 42 cells, seven column controls, status, scores, history and match controls; every cell must expose its row, column and empty/Red/Yellow state through an accessible name |
 | 2 | `initial_red_turn_and_empty_state` | Bootstrap / initial state | 0.5 | Require empty board, Red turn and zero scores |
 | 3 | `mouse_drop_obeys_gravity` | Gameplay / gravity | 0.5 | One real click places Red only in the bottom cell |
 | 4 | `stacking_and_turn_alternation` | Gameplay / stacking and turns | 0.5 | Repeated column clicks stack with exact alternating colors |
@@ -268,10 +270,10 @@ Expected result:
 | 19 | `next_round_preserves_score_and_alternates_starter` | Match / next round | 1.0 | Clear board/history, retain score and make Yellow the next starter |
 | 20 | `reset_match_clears_everything` | Match / reset | 0.5 | Clear state and scores, return Red starter, and persist reset |
 | 21 | `in_progress_reload_exact_state` | Persistence / unfinished round | 1.5 | Reload preserves exact visible state and functional Undo/Redo |
-| 22 | `completed_reload_does_not_double_count` | Persistence / terminal round | 0.5 | Repeated reloads retain one result increment |
+| 22 | `completed_reload_undo_redo_score_recovery` | Persistence / terminal recovery | 0.5 | Repeated reloads retain one result increment; Undo after reload reopens the round and reverses the score, and Redo restores both exactly once |
 | 23 | `keyboard_left_right_and_drop` | Keyboard / navigation and placement | 0.5 | Real arrows and Enter/Space select and play expected columns |
 | 24 | `keyboard_home_end_boundaries_and_focus` | Keyboard / boundaries | 0.5 | Home/End and boundary arrows keep board focus in columns 1–7 |
-| 25 | `hover_preview_and_drop_motion` | Interface / interaction polish | 0.5 | Visible preview matches active color and accepted token has finite drop motion |
+| 25 | `preview_drop_motion_and_reduced_motion` | Interface / interaction motion | 0.5 | Visible preview matches the active color, an accepted token has finite drop motion normally, and emulated reduced-motion preference suppresses nonessential motion without changing placement |
 | 26 | `responsive_board_no_overflow` | Interface / responsive layout | 0.5 | At 375px, all columns and primary controls remain visible and usable |
 
 The browser total is 19.5 points. A separate 0.5-point preflight validates the

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<!-- FROZEN BASELINE. Do not edit: changing this silently reprices every rollout
+     ever scored against it. It is deliberately competent-but-plain — a correct
+     Snake with no retro treatment and minimal affordances, so the judge has a
+     stable, beatable opponent. Treat it like a versioned artifact. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Snake</title>
+<style>
+  body { font-family: sans-serif; background: #222; color: #eee;
+         display: flex; flex-direction: column; align-items: center; padding: 24px; }
+  canvas { border: 1px solid #555; background: #111; }
+  #hud { margin: 10px 0; font-size: 16px; }
+  button { margin: 6px 4px; padding: 6px 14px; font-size: 14px; }
+</style>
+</head>
+<body>
+  <h1>Snake</h1>
+  <div id="hud">Score: <span id="score">0</span></div>
+  <canvas id="c" width="400" height="400"></canvas>
+  <div>
+    <button id="restart">Restart</button>
+  </div>
+  <p>Use the arrow keys to move.</p>
+<script>
+const c = document.getElementById('c'), ctx = c.getContext('2d');
+const N = 20, CELL = c.width / N;
+let snake, dir, food, score, dead, timer;
+
+function reset() {
+  snake = [{x: 10, y: 10}];
+  dir = {x: 1, y: 0};
+  score = 0; dead = false;
+  placeFood();
+  document.getElementById('score').textContent = '0';
+}
+function placeFood() {
+  food = {x: Math.floor(Math.random() * N), y: Math.floor(Math.random() * N)};
+}
+function step() {
+  if (dead) return;
+  const head = {x: snake[0].x + dir.x, y: snake[0].y + dir.y};
+  if (head.x < 0 || head.y < 0 || head.x >= N || head.y >= N ||
+      snake.some(s => s.x === head.x && s.y === head.y)) {
+    dead = true; draw(); return;
+  }
+  snake.unshift(head);
+  if (head.x === food.x && head.y === food.y) {
+    score++; document.getElementById('score').textContent = score; placeFood();
+  } else {
+    snake.pop();
+  }
+  draw();
+}
+function draw() {
+  ctx.fillStyle = '#111'; ctx.fillRect(0, 0, c.width, c.height);
+  ctx.fillStyle = '#e33';
+  ctx.fillRect(food.x * CELL, food.y * CELL, CELL, CELL);
+  ctx.fillStyle = '#4c4';
+  snake.forEach(s => ctx.fillRect(s.x * CELL, s.y * CELL, CELL - 1, CELL - 1));
+  if (dead) {
+    ctx.fillStyle = '#fff'; ctx.font = '28px sans-serif';
+    ctx.fillText('Game Over', 130, 200);
+  }
+}
+addEventListener('keydown', e => {
+  const m = {ArrowUp: [0,-1], ArrowDown: [0,1], ArrowLeft: [-1,0], ArrowRight: [1,0]}[e.key];
+  if (!m) return;
+  if (m[0] === -dir.x && m[1] === -dir.y) return;
+  dir = {x: m[0], y: m[1]};
+});
+document.getElementById('restart').onclick = reset;
+reset();
+timer = setInterval(step, 120);
+</script>
+</body>
+</html>

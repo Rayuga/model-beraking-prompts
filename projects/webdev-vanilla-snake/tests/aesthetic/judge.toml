@@ -1,0 +1,62 @@
+# The bridge from Code Arena's PAIRWISE signal to an ABSOLUTE RL reward.
+#
+# The arena scores a model by beating a random opponent, which is not
+# reproducible and therefore useless as a reward. Arena-Hard-Auto solves this by
+# freezing ONE baseline and judging every model against it. We do the same: the
+# opponent is a checked-in reference implementation that never changes, so the
+# same rollout always scores the same number.
+#
+# The three criteria are Code Arena's own published voting dimensions.
+
+[judge]
+judge = "anthropic/claude-opus-4-5"
+files = ["/app/index.html"]
+reference = "/tests/baseline/baseline.html"
+reasoning_effort = "medium"
+timeout = 420
+
+prompt_template = """
+You are judging a submitted web app against a FROZEN BASELINE implementation of
+the same prompt. Both are single self-contained HTML files.
+
+The original user prompt was:
+  "Make me a raw html / css / js canvas implementation of Snake. Give it a
+   beautiful retro aesthetic. Pay special attention to usability, UI design, and
+   extra controls / affordances that a user might want. Don't use any js
+   libraries, make it raw."
+
+Judge as a Code Arena voter would: you have roughly 60 seconds and you are
+looking at the app, not admiring the source. Reward what a user would notice.
+Do NOT reward code comments, architecture, or accessibility markup — those are
+invisible in this setting and measurably do not move the vote.
+
+Score each criterion for the SUBMISSION relative to the BASELINE.
+
+{criteria}
+"""
+
+[[criterion]]
+description = "Functionality — is this a genuinely playable Snake game (movement, growth, food, collision, score), at least as complete as the baseline?"
+type = "likert"
+points = 5
+weight = 3.0
+
+[[criterion]]
+description = "Usability — are the controls discoverable, is state (score, game-over, pause) legible, and are the affordances the prompt asked for actually present?"
+type = "likert"
+points = 5
+weight = 2.0
+
+[[criterion]]
+description = "Fidelity — does it deliver the requested 'beautiful retro aesthetic' as a deliberate visual treatment rather than default browser styling?"
+type = "likert"
+points = 5
+weight = 2.0
+
+[[criterion]]
+description = "Would a Code Arena voter pick this submission over the baseline in a blind side-by-side?"
+type = "binary"
+weight = 3.0
+
+[scoring]
+aggregation = "weighted_mean"

@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SNAKE // 1984</title>
+<style>
+  :root{--neon:#39ff14;--amber:#ffb000;--pink:#ff2d95;--bg:#080a06;--panel:#11150d}
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;display:flex;flex-direction:column;align-items:center;
+       justify-content:center;gap:14px;padding:20px;font-family:"Courier New",monospace;
+       color:var(--neon);background:radial-gradient(ellipse at 50% 0%,#1b2410 0%,var(--bg) 70%)}
+  h1{margin:0;font-size:30px;letter-spacing:.32em;text-shadow:0 0 8px var(--neon),0 0 22px #1d7a0d;
+     animation:flick 3.2s infinite}
+  @keyframes flick{0%,96%,100%{opacity:1}97%{opacity:.55}98%{opacity:.9}}
+  @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.14)}}
+  .hud{display:flex;gap:26px;font-size:14px;letter-spacing:.14em;color:var(--amber);
+       text-shadow:0 0 6px rgba(255,176,0,.55)}
+  .hud b{color:var(--neon);font-size:19px}
+  .hud .up{animation:pulse .35s ease}
+  .stage{position:relative;padding:12px;border-radius:6px;background:var(--panel);
+         border:2px solid #2c3a1c;box-shadow:0 0 0 2px #0c0f08,0 14px 44px rgba(0,0,0,.75),
+         inset 0 0 60px rgba(57,255,20,.05)}
+  canvas{display:block;background:linear-gradient(160deg,#0d1208,#060803);image-rendering:pixelated;
+         border-radius:3px}
+  .scan{position:absolute;inset:12px;pointer-events:none;border-radius:3px;
+        background:repeating-linear-gradient(0deg,rgba(0,0,0,.28) 0 1px,transparent 1px 3px)}
+  .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+  button{font:inherit;font-size:12px;letter-spacing:.16em;padding:9px 17px;cursor:pointer;
+         color:var(--neon);background:#141a0c;border:1px solid #33471f;border-radius:3px;
+         transition:background .18s ease,color .18s ease,transform .12s ease,box-shadow .18s ease}
+  button:hover{background:var(--neon);color:#08120a;transform:translateY(-2px);
+               box-shadow:0 0 16px rgba(57,255,20,.6)}
+  button:active{transform:translateY(0)}
+  button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+  .hint{font-size:11px;letter-spacing:.18em;color:#6f8a4e}
+  .over{position:absolute;inset:12px;display:none;flex-direction:column;align-items:center;
+        justify-content:center;gap:8px;border-radius:3px;background:rgba(6,9,3,.9);
+        color:var(--pink);text-shadow:0 0 12px var(--pink);letter-spacing:.2em}
+  .over.on{display:flex}
+</style>
+</head>
+<body>
+  <h1>🐍 SNAKE</h1>
+  <div class="hud">
+    <span>SCORE <b id="score">0</b></span>
+    <span>BEST <b id="best">0</b></span>
+    <span>SPEED <b id="lvl">1</b></span>
+  </div>
+
+  <div class="stage">
+    <canvas id="c" width="420" height="420"></canvas>
+    <div class="scan"></div>
+    <div class="over" id="over"><div>GAME OVER</div><div style="font-size:12px">PRESS R TO RETRY</div></div>
+  </div>
+
+  <div class="row">
+    <button id="pause">⏸ PAUSE</button>
+    <button id="restart">↻ RESTART</button>
+    <button id="speed">⚡ SPEED</button>
+  </div>
+  <p class="hint">ARROWS OR WASD &nbsp;·&nbsp; SPACE PAUSE &nbsp;·&nbsp; R RESTART</p>
+
+<script>
+(function(){
+  const c=document.getElementById('c'),x=c.getContext('2d');
+  const N=21,CELL=c.width/N;
+  const $=id=>document.getElementById(id);
+  let snake,dir,queued,food,score,best=0,dead,paused,tick,acc,speed,lvl;
+
+  function reset(){
+    snake=[{x:10,y:10},{x:9,y:10},{x:8,y:10}];
+    dir={x:1,y:0};queued=[];score=0;dead=false;paused=false;
+    speed=130;lvl=1;acc=0;spawn();sync();$('over').classList.remove('on');
+  }
+  function spawn(){
+    do{food={x:(Math.random()*N)|0,y:(Math.random()*N)|0};}
+    while(snake.some(s=>s.x===food.x&&s.y===food.y));
+  }
+  function sync(){
+    $('score').textContent=score;$('best').textContent=best;$('lvl').textContent=lvl;
+  }
+  function bump(){
+    const e=$('score');e.classList.remove('up');void e.offsetWidth;e.classList.add('up');
+  }
+  function step(){
+    if(dead||paused)return;
+    if(queued.length){const d=queued.shift();
+      if(!(d.x===-dir.x&&d.y===-dir.y))dir=d;}
+    const h={x:snake[0].x+dir.x,y:snake[0].y+dir.y};
+    if(h.x<0||h.y<0||h.x>=N||h.y>=N||snake.some(s=>s.x===h.x&&s.y===h.y)){
+      dead=true;best=Math.max(best,score);sync();$('over').classList.add('on');return;
+    }
+    snake.unshift(h);
+    if(h.x===food.x&&h.y===food.y){
+      score++;bump();spawn();
+      if(score%4===0&&speed>60){speed-=10;lvl++;}
+      sync();
+    } else snake.pop();
+  }
+  function draw(){
+    x.fillStyle='#0a0f06';x.fillRect(0,0,c.width,c.height);
+    x.strokeStyle='rgba(57,255,20,.06)';x.lineWidth=1;
+    for(let i=1;i<N;i++){
+      x.beginPath();x.moveTo(i*CELL,0);x.lineTo(i*CELL,c.height);x.stroke();
+      x.beginPath();x.moveTo(0,i*CELL);x.lineTo(c.width,i*CELL);x.stroke();
+    }
+    const t=performance.now()/300;
+    x.shadowBlur=14;x.shadowColor='#ff2d95';x.fillStyle='#ff2d95';
+    const p=1+Math.sin(t)*0.12,s=CELL*0.72*p,o=(CELL-s)/2;
+    x.fillRect(food.x*CELL+o,food.y*CELL+o,s,s);
+    x.shadowColor='#39ff14';
+    snake.forEach((sg,i)=>{
+      x.shadowBlur=i===0?18:8;
+      x.fillStyle=i===0?'#b6ff8f':`hsl(100,90%,${52-Math.min(i,14)*1.8}%)`;
+      x.fillRect(sg.x*CELL+1,sg.y*CELL+1,CELL-2,CELL-2);
+    });
+    x.shadowBlur=0;
+  }
+  let last=0;
+  function loop(ts){
+    const dt=ts-last;last=ts;acc+=dt;
+    while(acc>=speed){acc-=speed;step();}
+    draw();requestAnimationFrame(loop);
+  }
+  const MAP={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0],
+             w:[0,-1],s:[0,1],a:[-1,0],d:[1,0]};
+  addEventListener('keydown',e=>{
+    const k=e.key.length===1?e.key.toLowerCase():e.key;
+    if(k===' '){paused=!paused;e.preventDefault();return;}
+    if(k==='r'){reset();return;}
+    const m=MAP[k];
+    if(m){e.preventDefault();if(queued.length<2)queued.push({x:m[0],y:m[1]});}
+  });
+  $('pause').onclick=()=>{paused=!paused;};
+  $('restart').onclick=reset;
+  $('speed').onclick=()=>{speed=speed>70?speed-20:130;lvl=Math.max(1,((130-speed)/10|0)+1);sync();};
+  reset();requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

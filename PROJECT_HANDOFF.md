@@ -24,7 +24,8 @@ We want tasks where:
 - Oracle/golden run scores `1.0`.
 - Model runs score below about `0.7`.
 - The task uses the single-step Harbor layout.
-- Instructions live in one agent-facing file: `instruction.md`.
+- Every task has an agent-facing `instruction.md`. Newer tasks keep it short
+  and refer to topic files under `environment/instructions/`.
 - Verifiers live under `tests/rubric/browser/`.
 - Criteria weights stay between `0.5` and `2.0`.
 - Easy related checks are merged so they do not inflate model scores.
@@ -168,6 +169,13 @@ projects/
     reports/
     deliverables/
     archives/
+  dropline-connect-four/
+    dropline-connect-four/
+    reports/
+    CONTEXT.md
+    PLAN.md
+    DropLine_Feature_Verifier_Spec.md
+    DropLine_Feature_Verifier_Spec.docx
   medicare-appointment/
     medicare-appointment/
   patchpad-editor/
@@ -264,6 +272,8 @@ portal expects otherwise. They should not include:
 - `__pycache__`
 - `.pyc`
 - local server job files
+- `environment/codex-config.toml`; generate any verifier-only Codex configuration
+  at runtime under the verifier log directory instead
 
 ## Task 1: PatchPad Editor
 
@@ -672,6 +682,62 @@ mutated by earlier criteria. For the next task, create this feature/gate map
 before writing `instruction.md` and verifier descriptions, rather than
 retrofitting it after rubric compression.
 
+## DropLine Connect Four
+
+DropLine starts the newer, intentionally smaller client workstream. The task is
+compact enough to audit end to end, but its difficulty comes from one coherent
+game state machine rather than from a large enterprise feature count. The
+target coding model is `gpt-5.4-mini`; later comparison runs may use Sonnet 4.5
+and Haiku 4.5. Browser judging is configured through RewardKit's native
+`codex` adapter with `openai/gpt-5.6-luna` and no Sonnet fallback.
+
+Task root:
+
+```text
+projects/dropline-connect-four/dropline-connect-four/
+```
+
+Authoring-only context outside the upload root:
+
+```text
+projects/dropline-connect-four/CONTEXT.md
+projects/dropline-connect-four/PLAN.md
+projects/dropline-connect-four/DropLine_Feature_Verifier_Spec.md
+projects/dropline-connect-four/DropLine_Feature_Verifier_Spec.docx
+```
+
+The implementation is complete and currently has:
+
+- a short `instruction.md` plus six topic files under
+  `environment/instructions/`
+- a seeded 7-column by 6-row local two-player game
+- exact gravity, Red and Yellow wins, all four win directions, draw and
+  terminal locking
+- single-move Undo/Redo, branch invalidation, and terminal score reversal
+- alternating round starters, Reset Match, and exact move history
+- versioned `dropline:v1` browser persistence with reload-safe terminal history
+- mouse and full keyboard play, named DOM cells, motion/reduced motion, and a
+  true 375-pixel responsive layout
+- 26 feature/sub-feature browser criteria totaling 19.5 points, plus a 0.5
+  startup preflight for a 20-point task
+- native `codex` judge configuration using `openai/gpt-5.6-luna`
+
+Validation completed on 2026-08-27:
+
+- task TOML, browser TOML, JSON, Python, and JavaScript parsing passed
+- 16/16 game-engine tests passed locally and inside the exact Docker image
+- the Docker image built after updating the moved Ubuntu curl revision
+- `solution/solve.sh` completed successfully in the image
+- a containerized server passed `/health` and returned the expected seeded
+  `/api/config`
+- desktop, keyboard, terminal reload/Undo/Redo, reduced-motion, and real
+  375-pixel browser checks passed locally
+- static QC found no remaining P0/P1 defects; evidence is in
+  `projects/dropline-connect-four/reports/dropline_static_qc_findings.json`
+
+The remaining release gate is a Harbor Oracle run. Do not run the target model
+until Oracle scores exactly `1.0`.
+
 ## QC Skill
 
 The extracted QC scripts are in:
@@ -725,6 +791,14 @@ npm install
 npm start
 ```
 
+DropLine:
+
+```bash
+cd projects/dropline-connect-four/dropline-connect-four/solution/app
+npm install
+npm start
+```
+
 For Harbor runs from repository root, use the task and job paths from the same
 project container, for example:
 
@@ -774,6 +848,29 @@ GridForge:
 2. Run Oracle.
 3. If Oracle fails, fix golden/verifier first.
 4. If Oracle passes, run model trials.
+
+DropLine:
+
+1. Run Harbor Oracle against
+   `projects/dropline-connect-four/dropline-connect-four/`.
+2. Require Oracle score `1.0`; fix any browser-judge issue before model runs.
+3. Run `gpt-5.4-mini` once after Oracle passes.
+4. Review whether the 26 atomic criteria produce meaningful, diagnosable
+   failures without harness artifacts.
+
+PixelDeck:
+
+1. Task root: `projects/webdev-vanilla-pixeldeck/`.
+2. Category: Generative Art & Animation; app type: Paint / drawing toy.
+3. The prompt is adapted from WebDev Arena question
+   `aa9a73ebdb77d2e8388f21aaabcc6a93` ("Online version of classic Microsoft
+   Paint"), whose recorded outcome was `tie (bothbad)`.
+4. The deliverable is one self-contained `/app/index.html` with no libraries.
+5. Deterministic local verification: golden `1.0`; frozen plain baseline
+   `0.647`. The aesthetic judge still needs a Harbor/Oracle run with its judge
+   key before delivery.
+6. Run Oracle first and require `1.0`, then run one `gpt-5.4-mini` model trial
+   and inspect the per-dimension report.
 
 ## Git Notes
 

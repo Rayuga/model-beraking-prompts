@@ -1,0 +1,258 @@
+[judge]
+judge = "codex"
+model = "openai/gpt-5.6-luna"
+mode = "batched"
+timeout = 16200
+isolated = false
+prompt_template = "prompt.md"
+weight = 1.0
+
+[[judge.mcp_servers]]
+name = "playwright"
+transport = "stdio"
+command = "playwright-mcp"
+args = ["--headless", "--isolated", "--executable-path=/usr/local/bin/chromium", "--no-sandbox"]
+
+# Each criterion is binary, weight 1; reward = passed / 24. 22 of the 24 are
+# NON-OBVIOUS buried cross-domain BREAKERS — 17 secondary-derived-record cascades
+# plus 5 edge-case compositions (rule-intersection boundary, degenerate state,
+# multi-hop statement, two-book reconciliation, cycle-count variance) — each keyed
+# on an EXACT derived value un-guessable without the buried rule; the remaining 2
+# are anchors (seed-roster loaded; site-isolation rejects an unknown identity). PASS only on a
+# positive exact match — see the strict grading + OBSERVE-THEN-REPLAY route/field
+# discovery rules at the top of prompt.md: the /api/... paths and field names in
+# each criterion are the GOLDEN REFERENCE shape, not literal paths; discover the
+# submission's own routes from its traffic and a 404 on a reference path is not a
+# failure. Drive each journey ONCE and read the artifacts; never re-drive per
+# criterion. Charges and GL lines are read by their SOURCE ref, never their own id.
+
+# ═══ COVERAGE — cross-domain conjunctions a rules-correct build passes ════════
+
+[[criterion]]
+id = "x_critical_lab_reverses_posted_charge_gl"
+name = "x_critical_lab_reverses_posted_charge_gl"
+type = "binary"
+weight = 1
+description = """
+Domains lab+pharmacy+billing+compliance for PAT-40. DISP-40 had already been dispensed and billed 6000 when LAB-40 came back critical, so the charge must be CLAWED BACK, not just held. Forge GET /api/lab-results/LAB-40 → critical=true (potassium 6.9). Forge GET /api/dispenses/DISP-40 → status=REVERSED, hold_reason=CRITICAL_LAB_HOLD. Forge GET /api/charges?ref=DISP-40 → the DISPENSE charge with status=REVERSED. Forge GET /api/gl/lines?ref=DISP-40 → the dept=PHARMACY lines: a line_type=REVENUE amount_cents=6000 AND a line_type=REVERSAL amount_cents=-6000, so the PHARMACY lines for DISP-40 SUM TO 0. Fail unless the posted charge was reversed to a net-zero PHARMACY position (a mere HELD status with no reversal line FAILS), party_id=PAT-40 throughout.
+"""
+
+[[criterion]]
+id = "x_critical_lab_freezes_patient_sibling_orders"
+name = "x_critical_lab_freezes_patient_sibling_orders"
+type = "binary"
+weight = 1
+description = """
+Domains lab+imaging+transport+clinic for PAT-40. The critical value puts a safety hold on the patient that FREEZES their OTHER still-open orders. Forge GET /api/lab-results/LAB-40 → critical=true. Forge GET /api/imaging-studies/IMG-40B → status=HELD, block_reason=CRITICAL_LAB_HOLD (the patient's other open scan is frozen). Forge GET /api/dispatches/DSP-40B → status=FROZEN, refuse_reason=CRITICAL_LAB_HOLD (the patient's booked ride is frozen). Both must carry party_id=PAT-40. Fail unless the critical value froze BOTH the sibling imaging study and the sibling dispatch (freezing only the dispense FAILS).
+"""
+
+[[criterion]]
+id = "x_denied_claim_contractual_balance"
+name = "x_denied_claim_contractual_balance"
+type = "binary"
+weight = 1
+description = """
+Domains billing+clinic+compliance+imaging for PAT-42. CLM-42 (charge 63000) came back DENIED; the payer keeps an 18% contractual allowance, so the patient balance is the charge LESS 18%, not the raw charge. Forge GET /api/claims/CLM-42 → status=DENIED, deny_reason=PRIOR_AUTH_REQUIRED. Forge GET /api/charges?ref=CLM-42 → a source_type=PATIENT_BALANCE charge with amount_cents=51660 (63000 − 18% = 63000 − 11340), party_id=PAT-42. Forge GET /api/imaging-studies/IMG-42 → party_id=PAT-42. Fail unless the patient balance is EXACTLY 51660 (a balance of 63000, the raw charge, FAILS).
+"""
+
+[[criterion]]
+id = "x_denied_claim_contra_revenue_rework"
+name = "x_denied_claim_contra_revenue_rework"
+type = "binary"
+weight = 1
+description = """
+Domains billing+compliance+clinic+imaging for PAT-42 (contrast charge 63000, DENIED for prior-auth). The 18% the payer kept must book as a negative contra-revenue. Forge GET /api/claims/CLM-42 → status=DENIED. Forge GET /api/gl/lines?ref=CLM-42 → a dept=BILLING line_type=CONTRA_REVENUE amount_cents=-11340 (the negative kept-back allowance), party_id=PAT-42. Fail unless CLM-42 is DENIED and the -11340 BILLING contra-revenue exists exactly.
+"""
+
+[[criterion]]
+id = "x_controlled_dispense_mints_dea_form"
+name = "x_controlled_dispense_mints_dea_form"
+type = "binary"
+weight = 1
+description = """
+Domains pharmacy+supply+compliance+clinic for PAT-44. A controlled fill mints a discrete DEA form record (a numbered slip), distinct from the ledger/charge. Forge GET /api/dispenses/DISP-44 → status=DISPENSED, qty=6. Forge GET /api/supply-movements?ref=DISP-44 → a DECREMENT qty=6. Forge GET /api/dea-forms?dispense=DISP-44 → a record with a NON-EMPTY form_no, dispense_id=DISP-44, party_id=PAT-44, qty=6. Fail unless the discrete DEA form record exists for DISP-44 (a fill with movements but no DEA form record FAILS).
+"""
+
+[[criterion]]
+id = "x_controlled_low_value_no_dea_audit"
+name = "x_controlled_low_value_no_dea_audit"
+type = "binary"
+weight = 1
+description = """
+Domains pharmacy+compliance+supply+clinic for PAT-45 (the both-directions control). DISP-45 is worth 9000 (3 × 3000), BELOW the $150 line, so it mints the form but NO audit memo. Forge GET /api/dispenses/DISP-45 → status=DISPENSED, qty=3. Forge GET /api/dea-forms?dispense=DISP-45 → a record with a non-empty form_no. Forge GET /api/gl/lines?ref=DISP-45 → there is NO dept=COMPLIANCE line_type=DEA_AUDIT line. Fail if a DEA_AUDIT memo was posted for this below-threshold fill, or if the DEA form is missing.
+"""
+
+# ── Family D: period-close whole-SKU on-hand reconciliation identity ──
+[[criterion]]
+id = "x_period_close_whole_sku_reconciles"
+name = "x_period_close_whole_sku_reconciles"
+type = "binary"
+weight = 1
+description = """
+Domains pharmacy+supply+compliance+billing for PAT-46. SKU-RECON opened the period at 100 units; two fills drew 4 and 6. At the close the shelf's CLOSING ON-HAND VALUE must square: opening value (100 × 3000 = 300000) − Σ COGS (30000) == stored on_hand × unit cost. Forge GET /api/skus/SKU-RECON → on_hand=90. Forge GET /api/supply-movements?ref=DISP-46A → DECREMENT qty=4; ?ref=DISP-46B → DECREMENT qty=6. Forge GET /api/gl/lines?ref=SKU-RECON → a dept=SUPPLY line_type=RECONCILIATION amount_cents=270000 (== 90 × 3000 == 300000 − 30000). Fail unless the reconciliation line is EXACTLY 270000 (a reconciliation equal to the 30000 drawdown, or a divergent figure from a missed movement, FAILS).
+"""
+
+[[criterion]]
+id = "x_period_close_reconcile_cogs_matches"
+name = "x_period_close_reconcile_cogs_matches"
+type = "binary"
+weight = 1
+description = """
+Domains pharmacy+supply+billing+compliance for PAT-46 (the cost-of-goods side of the square). Forge GET /api/gl/lines?ref=DISP-46A → a dept=SUPPLY line_type=COGS amount_cents=12000 (4 × 3000). Forge GET /api/gl/lines?ref=DISP-46B → a dept=SUPPLY line_type=COGS amount_cents=18000 (6 × 3000). The two COGS lines must sum to 30000, the total drawdown value. Fail unless both COGS lines are present and exact.
+"""
+
+# ── Family E: past-due balance → collections hold freezes new orders (3 domains) ──
+[[criterion]]
+id = "x_collections_hold_freezes_clinic_order"
+name = "x_collections_hold_freezes_clinic_order"
+type = "binary"
+weight = 1
+description = """
+Domains billing+clinic+compliance+lab for PAT-47. PAT-47 owes 74000 (over $600), so a collections hold freezes their NEW orders. Forge GET /api/financial-holds/PAT-47 → status=ACTIVE, reason=COLLECTIONS_HOLD, outstanding_cents=74000. Forge GET /api/orders/ORD-47 → status=BLOCKED, block_reason=COLLECTIONS_HOLD, party_id=PAT-47 (the new lab order is frozen by the money hold). Fail unless the collections hold exists AND froze the new clinic order.
+"""
+
+[[criterion]]
+id = "x_no_collections_hold_below_threshold"
+name = "x_no_collections_hold_below_threshold"
+type = "binary"
+weight = 1
+description = """
+Domains billing+clinic+compliance+imaging for PAT-48 (the both-directions BOUNDARY control). The collections hold fires only when the statement balance is strictly OVER $600 (> 60000 cents); a balance that lands EXACTLY on the line raises NO hold. PAT-48's non-contrast IMG-48 charges 69000, so the statement = 69000 − 4000 copay − 5000 write-off = 60000 exactly ($600.00, ON the line, NOT over it) → NO hold. Forge GET /api/financial-holds/PAT-48 → null/absent (no active hold). Forge GET /api/orders/ORD-48 → status=OPEN, block_reason null (the new order is NOT frozen). Forge GET /api/patients/PAT-48/statement → total_cents=60000. Fail if a collections hold exists for PAT-48, if its new order ORD-48 is blocked, or if the statement total_cents is not exactly 60000 (a build that thresholds with >= wrongly turns this on-the-line patient over; the naive 39000 balance is wrong).
+"""
+
+# ── Family F: pulled copay nets revenue to zero + mints a refund voucher ──
+[[criterion]]
+id = "x_copay_reversal_nets_revenue_zero"
+name = "x_copay_reversal_nets_revenue_zero"
+type = "binary"
+weight = 1
+description = """
+Domains pharmacy+billing+compliance+supply for PAT-49. DISP-49 had a settled $40 copay, then the fill was pulled; the booked revenue must be UNDONE TO ZERO. Forge GET /api/dispenses/DISP-49 → status=REVERSED, hold_reason=REVERSED_AFTER_SETTLE. Forge GET /api/gl/lines?ref=DISP-49 → the dept=PHARMACY lines SUM TO 0 (a REVENUE 4000 and a REVERSAL -4000) AND a dept=COMPLIANCE line_type=LIABILITY amount_cents=-4000. Forge GET /api/charges?ref=DISP-49 → a source_type=CREDIT charge amount_cents=-4000. Forge GET /api/supply-movements?ref=DISP-49 → a RECEIPT of SKU-SED (drug returned). Fail unless the pharmacy revenue nets to zero AND the credit/liability/return all posted.
+"""
+
+[[criterion]]
+id = "x_copay_reversal_mints_refund_record"
+name = "x_copay_reversal_mints_refund_record"
+type = "binary"
+weight = 1
+description = """
+Domains pharmacy+billing+compliance+clinic for PAT-49. Pulling the paid copay mints a discrete numbered REFUND voucher. Forge GET /api/refunds?ref=DISP-49 → a record with a NON-EMPTY refund_no, amount_cents=4000, party_id=PAT-49. Forge GET /api/charges?ref=DISP-49 → the source_type=COPAY charge with status=REVERSED. Fail unless the discrete refund record exists (a reversal with no refund voucher FAILS).
+"""
+
+# ── Family H: lapsed credential freezes the panel + retro-sweeps open claims ──
+[[criterion]]
+id = "x_lapsed_credential_freezes_panel"
+name = "x_lapsed_credential_freezes_panel"
+type = "binary"
+weight = 1
+description = """
+Domains compliance+clinic+pharmacy+imaging for PRV-LAPSE / PAT-51. A lapse doesn't leave the panel pending — it FREEZES it. Forge GET /api/credentials/PRV-LAPSE → status=LAPSED. Forge GET /api/panels/PANEL-LAPSE → status=FROZEN, block_reason=CREDENTIAL_LAPSED (hard frozen, not PENDING). Forge GET /api/dispenses/DISP-51 → hold_reason=CREDENTIAL_LAPSED. Forge GET /api/imaging-studies/IMG-51 → block_reason=CREDENTIAL_LAPSED. Fail unless the panel is FROZEN (a panel left PENDING FAILS).
+"""
+
+[[criterion]]
+id = "x_lapsed_credential_retro_flags_open_claim"
+name = "x_lapsed_credential_retro_flags_open_claim"
+type = "binary"
+weight = 1
+description = """
+Domains compliance+billing+clinic+imaging for PAT-51. The lapse retro-sweeps the doctor's already-open claim. Forge GET /api/credentials/PRV-LAPSE → status=LAPSED. Forge GET /api/claims/CLM-51 → block_reason=CREDENTIAL_LAPSED, provider_id=PRV-LAPSE (an open claim carrying the lapsed doctor's name is swept to read the lapse). Forge GET /api/imaging-studies/IMG-51 → party_id=PAT-51. Fail unless the open claim was retro-flagged CREDENTIAL_LAPSED.
+"""
+
+# ── Family J: cancelled run nets the reserved fare to zero ──
+[[criterion]]
+id = "x_transport_cancel_reversal_nets_gl"
+name = "x_transport_cancel_reversal_nets_gl"
+type = "binary"
+weight = 1
+description = """
+Domains transport+billing+compliance+supply for PAT-52. DSP-52 was booked then cancelled NO_SHOW; the reserved fare must be UNDONE TO ZERO. Forge GET /api/dispatches/DSP-52 → status=CANCELLED, refuse_reason=NO_SHOW. Forge GET /api/charges?ref=DSP-52 → the TRANSPORT charge with status=REVERSED. Forge GET /api/gl/lines?ref=DSP-52 → the dept=TRANSPORT lines SUM TO 0 (a REVENUE 20000 and a REVERSAL -20000). Forge GET /api/rigs/RIG-52 → status=AVAILABLE. Forge GET /api/supply-movements?ref=DSP-52 → a RECEIPT of SKU-O2 (reserved cylinder returned). Fail unless the fare nets to zero, the rig is released, and the oxygen is returned.
+"""
+
+# ── Family K: critical-lab priority ride carries a $75 surcharge on its own line ──
+[[criterion]]
+id = "x_priority_dispatch_surcharge_fare"
+name = "x_priority_dispatch_surcharge_fare"
+type = "binary"
+weight = 1
+description = """
+Domains transport+lab+billing+clinic for PAT-53. A critical-lab patient rides priority, and a priority ride is 27500, not the flat 20000. Forge GET /api/lab-results/LAB-53 → critical=true. Forge GET /api/dispatches/DSP-53 → priority=true, status=COMPLETED, charge_cents=27500 (200.00 fare + 75.00 surcharge). Forge GET /api/charges?ref=DSP-53 → amount_cents=27500. Forge GET /api/encounters/ENC-53 → party_id=PAT-53. Fail unless the priority fare is EXACTLY 27500 (a flat 20000 FAILS).
+"""
+
+[[criterion]]
+id = "x_priority_surcharge_separate_gl_line"
+name = "x_priority_surcharge_separate_gl_line"
+type = "binary"
+weight = 1
+description = """
+Domains transport+billing+compliance+lab for PAT-53. The $75 surcharge posts as its OWN transport line, not folded into the fare. Forge GET /api/gl/lines?ref=DSP-53 → the dept=TRANSPORT lines: a line_type=REVENUE amount_cents=20000 AND a SEPARATE line_type=PRIORITY_SURCHARGE amount_cents=7500 (the two sum to 27500), party_id=PAT-53. Fail unless the separate PRIORITY_SURCHARGE line of 7500 exists (a single 27500 revenue line with no surcharge line FAILS).
+"""
+
+# ═══ EDGE-CASE COMPOSITIONS + ANCHORS / AUTHZ ═════════════════════════════════
+# a_seed_roster_loaded (seed smoke) and z_site_isolation_unknown_identity (authz)
+# are the two denominator anchors; the five x_* between them are cross-domain
+# edge-case compositions (boundary / degenerate / multi-hop / two-book / variance).
+
+[[criterion]]
+id = "a_seed_roster_loaded"
+name = "a_seed_roster_loaded"
+type = "binary"
+weight = 1
+description = """
+Seed-parity smoke. Forge GET /api/patients → includes PAT-01, PAT-40 and PAT-CTL. Forge GET /api/providers → includes PRV-01 and PRV-LAPSE. Forge GET /api/skus → includes SKU-O2, SKU-CONTRAST, SKU-SED and SKU-RECON. Fail if seeded roster ids are missing.
+"""
+
+[[criterion]]
+id = "x_priorauth_facility_boundary"
+name = "x_priorauth_facility_boundary"
+type = "binary"
+weight = 1
+description = """
+Domains imaging+billing+compliance+clinic for PAT-PB (BOUNDARY: the $500 prior-auth line is on the CLAIM CHARGE — which includes the facility fee — not the bare procedure). Discover the submission's imaging-study and claim reads (observe-then-replay). Read IMG-PB1 → base_cents=42000, charge_cents=50400 (42000 + facility 8400), and its claim CLM-PB1 → prior_auth=REQUIRED — the $420 base is under $500, but the facility fee carries the claim charge to 50400, over the line. Read IMG-PB2 → base_cents=41000, charge_cents=49200 (41000 + facility 8200), and CLM-PB2 → prior_auth=NONE (49200 at/under the line). Fail unless BOTH directions hold: a build that thresholds on the bare procedure marks PB1 NONE and FAILS.
+"""
+
+[[criterion]]
+id = "x_zero_base_contrast_degenerate"
+name = "x_zero_base_contrast_degenerate"
+type = "binary"
+weight = 1
+description = """
+Domains imaging+supply+billing+compliance for PAT-ZB (DEGENERATE: a dye add-on read filed with NO base procedure). Read IMG-ZB → contrast=true, base_cents=0, facility_fee_cents=0 (a fifth of zero) and charge_cents=15000 (the $150 dye alone). Read the GL lines for IMG-ZB → an IMAGING REVENUE line amount_cents=15000 AND a SUPPLY COGS line amount_cents=15000 (the bottle still bills and still costs supply). Read the supply movements for IMG-ZB → a SKU-CONTRAST DECREMENT. Fail unless the charge is EXACTLY 15000 with facility 0 (a build that applies the facility fee to the contrast, or bills a base, or skips the supply cost, FAILS).
+"""
+
+[[criterion]]
+id = "x_multi_charge_statement_composition"
+name = "x_multi_charge_statement_composition"
+type = "binary"
+weight = 1
+description = """
+Domains imaging+lab+transport+billing+clinic for PAT-MC (MULTI-HOP statement). PAT-MC has a contrast scan (facility on the base only → 63000), a lab draw (5000) and a transport run (20000). Read the patient statement for PAT-MC → charges_total_cents=88000, copay_cents=4000, adjustment_cents=5000, total_cents=79000 (Σ charges − copay − write-off, copay before the write-off). Fail unless total_cents is EXACTLY 79000 — a build that puts the facility fee on base+contrast makes the scan 66000 and the total 82000 and FAILS; a build that misorders or drops the write-off FAILS.
+"""
+
+[[criterion]]
+id = "x_ledger_shelf_reconcile_variance"
+name = "x_ledger_shelf_reconcile_variance"
+type = "binary"
+weight = 1
+description = """
+Domains pharmacy+supply+compliance for the Fentanyl shelf (TWO-BOOK reconciliation). The controlled book and the physical shelf are separate ledgers that must tie. Read the Fentanyl controlled-ledger → balance=170, receipt_count=3, dispense_count=2. Read SKU-FENT → on_hand=168. The 2-unit gap is a shrinkage that books to supply at unit cost. Read the GL lines for SKU-FENT → a SUPPLY line amount_cents=6000 (|170 − 168| × 3000). Fail unless the ledger reads 170, the shelf reads 168, AND the exact 6000 variance line exists (a build that treats the two books independently and never posts the gap FAILS).
+"""
+
+[[criterion]]
+id = "x_glove_cyclecount_variance_composition"
+name = "x_glove_cyclecount_variance_composition"
+type = "binary"
+weight = 1
+description = """
+Domains supply+billing+compliance for SKU-GLOVE (cycle-count variance). Read the CC-GLOVE cycle count → counted=95, system_qty=97, variance_cents=200 (|97 − 95| × unit cost 100), flagged=false (the count is not yet due). Read SKU-GLOVE → on_hand=97. Read the GL lines for CC-GLOVE → a SUPPLY line amount_cents=200 (the variance booked for the exact dollar gap). Fail unless variance_cents is EXACTLY 200 AND the SUPPLY variance line of 200 exists (a build that records the count but never books the dollar gap FAILS).
+"""
+
+[[criterion]]
+id = "z_site_isolation_unknown_identity"
+name = "z_site_isolation_unknown_identity"
+type = "binary"
+weight = 1
+description = """
+Authorization — site isolation + unknown identity. PAT-SITEB belongs to SITE-B. Forge GET /api/patients/PAT-SITEB as the SITE-A clinician (X-User-Id=bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb) → 404 or 403. As an unseeded X-User-Id (99999999-0000-0000-0000-000000000000) → 401 with NO fallback to the administrator. As the SITE-B clinician (44444444-4444-4444-4444-444444444444) → 200, and as Ada Admin → 200. Fail if a cross-site read or an unknown identity is honoured.
+"""
+
+# ═══ DRIVEN FLOWS (real integrations; grade the app's own recorded state) ═════

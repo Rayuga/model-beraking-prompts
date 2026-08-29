@@ -70,7 +70,38 @@ of the areas identified as having useful headroom in the supplied measurements.
   the complete rubric deterministically before the GPT-5.4-mini run.
 - Run Oracle and task QC before running the target model.
 - Keep planning documents and this context file outside the Harbor upload ZIP.
+- Do not ship `environment/codex-config.toml`; `tests/test.py` creates the
+  verifier-only Codex configuration under its temporary `CODEX_HOME`.
 
 The Docketlight-style reference material for DropLine is now recorded beside
 this file as `DropLine_Feature_Verifier_Spec.md` and
 `DropLine_Feature_Verifier_Spec.docx`.
+
+## First target-model run
+
+Run this from Windows **Command Prompt**, from the repository root. The carets
+are CMD continuation characters. Set the key in that terminal first; never put
+the real key in this file or commit it.
+
+```bat
+cd C:\Users\abc\Documents\turing-workspace\webdev-model-breaking
+set "OPENROUTER_API_KEY=replace-with-your-key"
+
+harbor run ^
+  -p ".\projects\dropline-connect-four\dropline-connect-four" ^
+  -a openhands ^
+  -m openrouter/openai/gpt-5.4-mini ^
+  --env docker ^
+  --ak reasoning_effort=high ^
+  --ak version=0.62.0 ^
+  --ae "OPENROUTER_API_KEY=%OPENROUTER_API_KEY%" ^
+  --ve "OPENROUTER_API_KEY=%OPENROUTER_API_KEY%" ^
+  --jobs-dir ".\projects\dropline-connect-four\jobs" ^
+  --job-name "dropline-connect-four-gpt-5.4-mini-high-01" ^
+  -n 1 ^
+  --yes
+```
+
+This intentionally runs exactly one `gpt-5.4-mini` attempt. Do not add the
+Docketlight `-p`, job directory, job name, or absent `Harbor/.env` argument.
+Run it only after the DropLine Oracle scores exactly `1.0`.
