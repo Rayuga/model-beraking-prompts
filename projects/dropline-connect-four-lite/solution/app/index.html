@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DropLine</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #f7f8fb;
+      --muted: #aeb7c8;
+      --page: #11141a;
+      --panel: #1b2029;
+      --board: #2878d0;
+      --board-edge: #15589f;
+      --empty: #0d1118;
+      --red: #ff4f5e;
+      --yellow: #ffd24a;
+      --focus: #8dd7ff;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: radial-gradient(circle at 50% 15%, #273041 0, var(--page) 52%);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    main {
+      width: min(760px, 100%);
+      display: grid;
+      gap: 18px;
+    }
+
+    header {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(2rem, 8vw, 4.5rem);
+      line-height: .9;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: .95rem;
+    }
+
+    .status-panel {
+      min-width: 190px;
+      padding: 13px 16px;
+      border: 1px solid #394356;
+      border-radius: 6px;
+      background: var(--panel);
+      text-align: right;
+      box-shadow: 0 12px 30px #0006;
+    }
+
+    #status {
+      margin: 0;
+      font-size: 1.1rem;
+      font-weight: 800;
+    }
+
+    #feedback {
+      min-height: 1.25em;
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: .82rem;
+    }
+
+    .game-shell {
+      display: grid;
+      gap: 8px;
+    }
+
+    .column-controls,
+    #board {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+    }
+
+    .column-controls { gap: 6px; }
+
+    .column-control {
+      height: 44px;
+      border: 1px solid #475268;
+      border-radius: 6px;
+      background: #202631;
+      color: var(--ink);
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 140ms ease, background 140ms ease, border-color 140ms ease;
+    }
+
+    .column-control:hover:not(:disabled) {
+      transform: translateY(-2px);
+      border-color: var(--focus);
+      background: #2b3442;
+    }
+
+    .column-control:focus-visible,
+    #new-game:focus-visible {
+      outline: 3px solid var(--focus);
+      outline-offset: 2px;
+    }
+
+    .column-control:disabled {
+      cursor: not-allowed;
+      opacity: .45;
+    }
+
+    #board {
+      aspect-ratio: 7 / 6;
+      gap: clamp(5px, 1vw, 10px);
+      padding: clamp(9px, 2vw, 18px);
+      border: 2px solid #55a8f1;
+      border-bottom: 10px solid var(--board-edge);
+      border-radius: 8px;
+      background: var(--board);
+      box-shadow: 0 24px 50px #0008, inset 0 1px #ffffff55;
+    }
+
+    .cell {
+      position: relative;
+      min-width: 0;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      background: var(--empty);
+      box-shadow: inset 0 5px 10px #000b, 0 1px #ffffff44;
+    }
+
+    .cell::after {
+      content: "";
+      position: absolute;
+      inset: 8%;
+      border-radius: inherit;
+      background: transparent;
+    }
+
+    .cell.red::after {
+      background: var(--red);
+      box-shadow: inset 0 -8px 0 #b72c39, inset 0 5px 0 #ff929b;
+    }
+
+    .cell.yellow::after {
+      background: var(--yellow);
+      box-shadow: inset 0 -8px 0 #c59810, inset 0 5px 0 #fff1a4;
+    }
+
+    .cell.placed::after { animation: settle 240ms cubic-bezier(.2, .8, .3, 1.25); }
+
+    .cell.winning {
+      outline: 4px solid white;
+      outline-offset: -5px;
+      filter: drop-shadow(0 0 8px #fff);
+    }
+
+    @keyframes settle {
+      from { transform: translateY(-55%) scale(.82); opacity: .25; }
+      to { transform: translateY(0) scale(1); opacity: 1; }
+    }
+
+    footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      color: var(--muted);
+    }
+
+    .keys { margin: 0; font-size: .85rem; }
+
+    kbd {
+      display: inline-block;
+      min-width: 1.7em;
+      padding: 2px 5px;
+      border: 1px solid #4b566a;
+      border-bottom-width: 3px;
+      border-radius: 4px;
+      background: #202631;
+      color: var(--ink);
+      text-align: center;
+      font: inherit;
+    }
+
+    #new-game {
+      min-height: 42px;
+      padding: 0 18px;
+      border: 0;
+      border-radius: 6px;
+      background: var(--ink);
+      color: #11141a;
+      font: inherit;
+      font-weight: 900;
+      cursor: pointer;
+      transition: transform 140ms ease, background 140ms ease;
+    }
+
+    #new-game:hover { transform: translateY(-2px); background: #dce8f6; }
+
+    @media (max-width: 560px) {
+      body { padding: 14px; place-items: start center; }
+      main { gap: 14px; }
+      header { align-items: stretch; flex-direction: column; gap: 12px; }
+      h1 { font-size: 2.6rem; }
+      .status-panel { min-width: 0; text-align: left; }
+      .column-control { height: 38px; font-size: .82rem; }
+      footer { align-items: stretch; flex-direction: column; }
+      #new-game { width: 100%; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>DropLine</h1>
+        <p class="subtitle">Local two-player Connect Four</p>
+      </div>
+      <section class="status-panel" aria-live="polite" aria-atomic="true">
+        <p id="status">Red's turn</p>
+        <p id="feedback">Choose a column</p>
+      </section>
+    </header>
+
+    <section class="game-shell" aria-label="Connect Four game">
+      <div class="column-controls" aria-label="Column controls"></div>
+      <div id="board" role="grid" aria-label="Connect Four board"></div>
+    </section>
+
+    <footer>
+      <p class="keys"><kbd>Left</kbd> <kbd>Right</kbd> choose a column &nbsp; <kbd>Enter</kbd> drop</p>
+      <button id="new-game" type="button">New game</button>
+    </footer>
+  </main>
+
+  <script>
+    (() => {
+      const ROWS = 6;
+      const COLS = 7;
+      const boardElement = document.querySelector('#board');
+      const controlsElement = document.querySelector('.column-controls');
+      const statusElement = document.querySelector('#status');
+      const feedbackElement = document.querySelector('#feedback');
+      const newGameButton = document.querySelector('#new-game');
+
+      let board;
+      let current;
+      let outcome;
+      let winningCells;
+      let lastPlaced;
+
+      const keyFor = (row, col) => `${row}:${col}`;
+
+      function startGame() {
+        board = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+        current = 'red';
+        outcome = null;
+        winningCells = new Set();
+        lastPlaced = null;
+        feedbackElement.textContent = 'Choose a column';
+        render();
+        controlsElement.querySelector('button')?.focus();
+      }
+
+      function playerName(player) {
+        return player === 'red' ? 'Red' : 'Yellow';
+      }
+
+      function findWinningLine(row, col) {
+        const player = board[row][col];
+        const directions = [[0, 1], [1, 0], [1, 1], [1, -1]];
+        for (const [dr, dc] of directions) {
+          const line = [[row, col]];
+          for (const sign of [-1, 1]) {
+            let r = row + dr * sign;
+            let c = col + dc * sign;
+            const side = [];
+            while (r >= 0 && r < ROWS && c >= 0 && c < COLS && board[r][c] === player) {
+              side.push([r, c]);
+              r += dr * sign;
+              c += dc * sign;
+            }
+            if (sign < 0) line.unshift(...side.reverse());
+            else line.push(...side);
+          }
+          if (line.length >= 4) {
+            const placedIndex = line.findIndex(([r, c]) => r === row && c === col);
+            const start = Math.max(0, Math.min(placedIndex, line.length - 4));
+            return line.slice(start, start + 4);
+          }
+        }
+        return null;
+      }
+
+      function drop(column) {
+        if (outcome) return;
+        let row = ROWS - 1;
+        while (row >= 0 && board[row][column]) row--;
+        if (row < 0) {
+          feedbackElement.textContent = `Column ${column + 1} is full`;
+          return;
+        }
+
+        board[row][column] = current;
+        lastPlaced = keyFor(row, column);
+        const line = findWinningLine(row, column);
+        if (line) {
+          outcome = current;
+          winningCells = new Set(line.map(([r, c]) => keyFor(r, c)));
+          feedbackElement.textContent = 'Four connected';
+        } else if (board.every(cells => cells.every(Boolean))) {
+          outcome = 'draw';
+          feedbackElement.textContent = 'Board complete';
+        } else {
+          current = current === 'red' ? 'yellow' : 'red';
+          feedbackElement.textContent = 'Choose a column';
+        }
+        render();
+      }
+
+      function render() {
+        boardElement.replaceChildren();
+        for (let row = 0; row < ROWS; row++) {
+          for (let col = 0; col < COLS; col++) {
+            const value = board[row][col];
+            const cell = document.createElement('div');
+            const state = value ? playerName(value) : 'empty';
+            cell.className = `cell${value ? ` ${value}` : ''}`;
+            cell.setAttribute('role', 'gridcell');
+            cell.setAttribute('aria-label', `Row ${row + 1}, column ${col + 1}, ${state}`);
+            if (winningCells.has(keyFor(row, col))) {
+              cell.classList.add('winning');
+              cell.setAttribute('aria-label', `${cell.getAttribute('aria-label')}, winning`);
+            }
+            if (lastPlaced === keyFor(row, col)) cell.classList.add('placed');
+            boardElement.append(cell);
+          }
+        }
+
+        if (outcome === 'draw') statusElement.textContent = 'Draw';
+        else if (outcome) statusElement.textContent = `${playerName(outcome)} wins`;
+        else statusElement.textContent = `${playerName(current)}'s turn`;
+
+        controlsElement.querySelectorAll('button').forEach((button, col) => {
+          button.disabled = Boolean(outcome);
+          button.setAttribute('aria-disabled', String(Boolean(outcome)));
+          button.title = `Drop in column ${col + 1}`;
+        });
+      }
+
+      for (let col = 0; col < COLS; col++) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'column-control';
+        button.dataset.column = String(col);
+        button.setAttribute('aria-label', `Drop in column ${col + 1}`);
+        button.textContent = String(col + 1);
+        button.addEventListener('click', () => drop(col));
+        button.addEventListener('keydown', event => {
+          let next = col;
+          if (event.key === 'ArrowLeft') next = Math.max(0, col - 1);
+          else if (event.key === 'ArrowRight') next = Math.min(COLS - 1, col + 1);
+          else if (event.key === 'Home') next = 0;
+          else if (event.key === 'End') next = COLS - 1;
+          else return;
+          event.preventDefault();
+          controlsElement.querySelectorAll('button')[next].focus();
+        });
+        controlsElement.append(button);
+      }
+
+      newGameButton.addEventListener('click', startGame);
+      startGame();
+    })();
+  </script>
+</body>
+</html>

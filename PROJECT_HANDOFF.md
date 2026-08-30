@@ -688,8 +688,8 @@ DropLine starts the newer, intentionally smaller client workstream. The task is
 compact enough to audit end to end, but its difficulty comes from one coherent
 game state machine rather than from a large enterprise feature count. The
 target coding model is `gpt-5.4-mini`; later comparison runs may use Sonnet 4.5
-and Haiku 4.5. Browser judging is configured through RewardKit's native
-`codex` adapter with `openai/gpt-5.6-luna` and no Sonnet fallback.
+and Haiku 4.5. The current verifier is deterministic Playwright and does not
+use RewardKit, an LLM judge, or an API key.
 
 Task root:
 
@@ -718,11 +718,11 @@ The implementation is complete and currently has:
 - versioned `dropline:v1` browser persistence with reload-safe terminal history
 - mouse and full keyboard play, named DOM cells, motion/reduced motion, and a
   true 375-pixel responsive layout
-- 26 feature/sub-feature browser criteria totaling 19.5 points, plus a 0.5
-  startup preflight for a 20-point task
-- native `codex` judge configuration using `openai/gpt-5.6-luna`
+- 13 deterministic browser feature groups plus stack/start/restart preflight
+- separate verifier-container execution and an unprivileged submitted app
+- binary delivery reward with detailed JSON and CTRF diagnostics
 
-Validation completed on 2026-08-27:
+Validation completed on 2026-08-29:
 
 - task TOML, browser TOML, JSON, Python, and JavaScript parsing passed
 - 16/16 game-engine tests passed locally and inside the exact Docker image
@@ -734,9 +734,13 @@ Validation completed on 2026-08-27:
   375-pixel browser checks passed locally
 - static QC found no remaining P0/P1 defects; evidence is in
   `projects/dropline-connect-four/reports/dropline_static_qc_findings.json`
+- Harbor Oracle job `dropline-oracle-deterministic-04` scored exactly `1.0`:
+  13 checks passed, zero failed, preflight passed, and no exception occurred
 
-The remaining release gate is a Harbor Oracle run. Do not run the target model
-until Oracle scores exactly `1.0`.
+The upload archive is
+`projects/dropline-connect-four/deliverables/dropline-connect-four.zip`.
+The remaining measurement is one target-model run; do not tune the verifier
+from the reference implementation after seeing that result.
 
 ## QC Skill
 
@@ -821,16 +825,21 @@ is not on PATH. Install Node.js or reopen the terminal after PATH is fixed.
 Before upload:
 
 1. Confirm `task.toml` parses.
-2. Confirm `tests/rubric/browser/browser.toml` parses.
-3. Confirm all criterion weights are between `0.5` and `2.0`.
-4. Confirm no zero-weight criteria.
-5. Confirm the zip does not contain `node_modules`, DB files, logs, caches, or
+2. In `task.toml`, interpolate only the four provider keys supported by the
+   platform: `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `OPENAI_API_KEY`, and
+   `OPENROUTER_API_KEY`. Bake every other required value into `environment/`
+   rather than declaring `${VAR}` in `[environment]`; unsupported substitutions
+   make review runs appear stuck during preparation.
+3. If the task has a browser TOML rubric, confirm it parses.
+4. For weighted rubrics, confirm weights are between `0.5` and `2.0`.
+5. For weighted rubrics, confirm there are no zero-weight criteria.
+6. Confirm the zip does not contain `node_modules`, DB files, logs, caches, or
    `__pycache__`.
-6. Confirm `tests/test.sh` and `solution/solve.sh` are executable in the zip.
-7. Run Oracle.
-8. If Oracle is not `1.0`, fix before running model trials.
-9. Run model trials.
-10. Target model score: below `0.7`.
+7. Confirm `tests/test.sh` and `solution/solve.sh` are executable in the zip.
+8. Run Oracle.
+9. If Oracle is not `1.0`, fix before running model trials.
+10. Run model trials.
+11. Target model score: below `0.7`.
 
 ## Current Next Steps
 
@@ -851,12 +860,31 @@ GridForge:
 
 DropLine:
 
-1. Run Harbor Oracle against
-   `projects/dropline-connect-four/dropline-connect-four/`.
-2. Require Oracle score `1.0`; fix any browser-judge issue before model runs.
-3. Run `gpt-5.4-mini` once after Oracle passes.
-4. Review whether the 26 atomic criteria produce meaningful, diagnosable
-   failures without harness artifacts.
+1. Upload `projects/dropline-connect-four/deliverables/dropline-connect-four.zip`.
+2. Oracle is complete at `1.0` in `dropline-oracle-deterministic-04`.
+3. Run `gpt-5.4-mini` once.
+4. Review the 13 deterministic check outcomes for genuine product defects;
+   do not treat setup exceptions as model failures.
+
+DropLine Lite:
+
+1. Task root: `projects/dropline-connect-four-lite/`.
+2. This is the intentionally simplified CodeArena-style variant: one
+   self-contained `/app/index.html`, with no backend, seed data, persistence, or
+   Undo/Redo.
+3. Version 2 follows the Oriel Permitworks structure: a short top-level brief,
+   three files in `environment/instructions/`, golden HTML under
+   `solution/app/`, and an equal-weight segmented RewardKit browser rubric under
+   `tests/rubric/browser/`.
+4. The browser rubric has 15 equal-weight criteria in 8 fresh judge sessions covering the
+   file contract, initial board, gravity/full columns, all win directions,
+   terminal locking, exact draw, new game, keyboard play, and 375px layout.
+5. The v1 deterministic Oracle evidence and old ZIP were moved to
+   `archives/dropline-connect-four-lite-v1/`. They do not validate the new v2
+   verifier architecture. Run a new Oracle with Docker and `OPENROUTER_API_KEY`
+   before upload.
+6. The known platform-review risk is conceptual difficulty because Connect Four
+   is deliberately familiar, matching the supplied vanilla Snake direction.
 
 PixelDeck:
 

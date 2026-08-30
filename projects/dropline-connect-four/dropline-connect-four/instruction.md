@@ -12,6 +12,18 @@ brief split by topic and none is optional.
 
 The initial product data is available at `/assets/dropline_seed.json`.
 
+## Delivery
+
+Place the finished application in `/app`. Include an `APP_MANIFEST.md` with
+this fenced start block:
+
+```bash start
+npm start
+```
+
+The running application must expose `GET /health` for readiness checks and
+`GET /api/config` for the supplied DropLine configuration.
+
 The finished application should open directly into a usable match. It must not
 need a route, selector, or implementation detail explained before somebody can
 play it.

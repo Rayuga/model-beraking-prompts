@@ -1,0 +1,415 @@
+# Oriel Permitworks browser rubric. Segments use fresh judges against one
+# continuous SQLite database; only the final segment restarts the app.
+
+[judge]
+judge = "claude-code"
+model = "openai/gpt-5.6-luna"
+mode = "batched"
+timeout = 7200
+isolated = false
+prompt_template = "prompt.md"
+weight = 1.0
+
+[[judge.mcp_servers]]
+name = "playwright"
+transport = "stdio"
+command = "playwright-mcp"
+args = ["--headless", "--isolated", "--browser=chromium", "--no-sandbox"]
+
+[[criterion]]
+id = "wrong_password"
+name = "wrong_password"
+type = "binary"
+weight = 1.0
+description = """
+Open the staff sign-in and attempt to sign in as `clerk.nadi@oriel.test` with
+an incorrect password. Confirm the attempt fails clearly and no protected
+permit workspace or permit data is shown. Exact wording is not prescribed.
+"""
+
+[[criterion]]
+id = "nadi_identity"
+name = "nadi_identity"
+type = "binary"
+weight = 1.0
+description = """
+Sign in as `clerk.nadi@oriel.test` with `password123`. Confirm a usable permit
+workspace opens and identifies Nadi as a NORTH clerk.
+"""
+
+[[criterion]]
+id = "oz_identity"
+name = "oz_identity"
+type = "binary"
+weight = 1.0
+description = """
+Sign in as `supervisor.oz@oriel.test` with `password123`. Confirm the workspace
+identifies Oz as a NORTH supervisor and exposes supervisor-appropriate work.
+"""
+
+[[criterion]]
+id = "mira_identity"
+name = "mira_identity"
+type = "binary"
+weight = 1.0
+description = """
+Sign in as `inspector.mira@oriel.test` with `password123`. Confirm the workspace
+identifies Mira as a NORTH inspector and shows assigned field work.
+"""
+
+[[criterion]]
+id = "vik_identity"
+name = "vik_identity"
+type = "binary"
+weight = 1.0
+description = """
+Sign in as `controller.vik@oriel.test` with `password123`. Confirm the workspace
+identifies Vik as Finance with all-district scope.
+"""
+
+[[criterion]]
+id = "sign_out"
+name = "sign_out"
+type = "binary"
+weight = 1.0
+description = """
+Sign in as Nadi and record a successful protected browser request. Sign out
+through the UI, then replay that same request. Confirm the browser returns to a
+signed-out state and the replay is refused or returns no protected data. Do not
+require a particular session transport, response shape, or failure status.
+"""
+
+[[criterion]]
+id = "delivery_runtime"
+name = "delivery_runtime"
+type = "binary"
+weight = 1.0
+description = """
+Confirm the live product is a coherent, usable desktop municipal permit desk,
+not a blank or broken page. Inspect submitted `package.json` only as plain data
+and confirm the delivered app uses Node, Express, and SQLite. Exact versions and
+layout are not prescribed.
+"""
+
+[[criterion]]
+id = "delivery_manifest"
+name = "delivery_manifest"
+type = "binary"
+weight = 1.0
+description = """
+Inspect submitted `APP_MANIFEST.md` and the app-root `Dockerfile` only as plain
+data. The manifest must contain a valid `bash start` fenced start command and
+briefly describe the authenticated browser/server connection. The Dockerfile
+must expose port 3000. Exact prose is not prescribed.
+"""
+
+[[criterion]]
+id = "dashboard_summary"
+name = "dashboard_summary"
+type = "binary"
+weight = 1.0
+description = """
+As Nadi, confirm the signed-in workspace shows a useful summary derived from
+her seeded permits: a visible permit count, an open-work count, and an
+outstanding-assessment money total. Empty or decorative cards do not pass.
+"""
+
+[[criterion]]
+id = "queue_fields"
+name = "queue_fields"
+type = "binary"
+weight = 1.0
+description = """
+As Nadi, confirm the populated permit registry visibly identifies rows by
+reference, applicant, parcel, district, assessment status or amount, and
+workflow state. Use at least one real seeded row as evidence.
+"""
+
+[[criterion]]
+id = "clerk_district_scope"
+name = "clerk_district_scope"
+type = "binary"
+weight = 1.0
+description = """
+As NORTH clerk Nadi, confirm NORTH positive-control permits `PER-N-DRAFT` and
+`PER-N-ASSIGN` appear while SOUTH control `PER-S-CONTROL` does not. As SOUTH
+clerk Suri, confirm `PER-S-CONTROL` appears and the two named NORTH records do
+not. Each view must contain its positive controls; an empty queue does not pass.
+"""
+
+[[criterion]]
+id = "reviewer_assignment_scope"
+name = "reviewer_assignment_scope"
+type = "binary"
+weight = 1.0
+description = """
+As NORTH reviewer Arden, confirm independently assigned permits
+`PER-N-APPROVE` and `PER-N-REVIEW-CORRECT` are visible, while unassigned
+`PER-N-ASSIGN` and SOUTH `PER-S-REVIEW` are absent. The assigned NORTH permits
+are the positive controls.
+"""
+
+[[criterion]]
+id = "finance_scope_and_note_redaction"
+name = "finance_scope_and_note_redaction"
+type = "binary"
+weight = 1.0
+description = """
+As Finance controller Vik, confirm the registry includes NORTH
+`PER-N-RECEIPT` and SOUTH `PER-S-CONTROL`. Open NORTH `PER-N-HOLD` and confirm
+its fee facts are visible while its restricted reviewer note is explicitly
+redacted or absent. A blank queue is not a pass.
+"""
+
+[[criterion]]
+id = "permit_detail_facts"
+name = "permit_detail_facts"
+type = "binary"
+weight = 1.0
+description = """
+As Nadi, open `PER-N-DRAFT`. Confirm detail visibly shows Juniper Works,
+parcel `PAR-N-100`, zone R2, Residential Addition, $9,000 valuation, $610 permit
+fee, $50 statutory levy, draft state, and revision 1.
+"""
+
+[[criterion]]
+id = "certified_terminal_view"
+name = "certified_terminal_view"
+type = "binary"
+weight = 1.0
+description = """
+As supervisor Oz, open seeded terminal permit `PER-N-CERT`. Confirm its
+certificate, settled assessment, passed foundation and final inspections, and
+certified state are visible. Confirm the product offers no workflow-changing
+action for this terminal permit. Refresh or reopen it and confirm it remains
+unchanged.
+"""
+
+[[criterion]]
+id = "permit_intake"
+name = "permit_intake"
+type = "binary"
+weight = 1.0
+description = """
+As Nadi, create a draft with reference `ORI-CORE-260828`, applicant `Core
+Addition`, parcel `PAR-N-100`, and valuation $12,000. Refresh the registry and
+confirm it appears once as a NORTH draft with Residential Addition, a $730
+permit fee, and a separate $50 statutory levy.
+"""
+
+[[criterion]]
+id = "submit_draft"
+name = "submit_draft"
+type = "binary"
+weight = 1.0
+description = """
+As Nadi, open independently seeded draft `PER-N-SUBMIT`, submit it through the
+UI, then refresh or reopen it and confirm the persisted state is submitted.
+"""
+
+[[criterion]]
+id = "assign_reviewer"
+name = "assign_reviewer"
+type = "binary"
+weight = 1.0
+description = """
+As supervisor Oz, open independently seeded submitted permit `PER-N-ASSIGN`,
+commit its assignment to NORTH reviewer Arden, then refresh or reopen it.
+Confirm Arden remains the assignee and the state is plans review. A local-only
+selection without a persisted write does not pass.
+"""
+
+[[criterion]]
+id = "approve_plans"
+name = "approve_plans"
+type = "binary"
+weight = 1.0
+description = """
+As assigned reviewer Arden, open independently seeded `PER-N-APPROVE`, approve
+its plans with a review note, then refresh or reopen it. Confirm the persisted
+state is plans approved and the saved note is visible to Arden.
+"""
+
+[[criterion]]
+id = "require_corrections"
+name = "require_corrections"
+type = "binary"
+weight = 1.0
+description = """
+As assigned reviewer Arden, open independently seeded
+`PER-N-REVIEW-CORRECT`, require corrections with a meaningful note, then
+refresh or reopen it. Confirm corrections-required state and the saved note.
+"""
+
+[[criterion]]
+id = "correction_reset"
+name = "correction_reset"
+type = "binary"
+weight = 1.0
+description = """
+As Nadi, open independently seeded corrections permit `PER-N-RESET`, note its
+existing assessment and waiver, replace the valuation field's existing value
+with $15,000, and file that correction.
+Refresh or reopen it. Confirm revision increased, state returned to plans
+review, the fee recomputed to $850, and stale assessment, waiver, zoning, and
+inspection completion are cleared.
+"""
+
+[[criterion]]
+id = "zoning_assessment"
+name = "zoning_assessment"
+type = "binary"
+weight = 1.0
+description = """
+As NORTH zoning officer Kael, open independently seeded plans-approved permit
+`PER-N-ZONE`, approve zoning through the UI, then refresh or reopen it. Confirm
+it is fee due and has one visible assessment composed of its stored $1,040
+permit fee plus separate $100 statutory levy, totaling $1,140.
+"""
+
+[[criterion]]
+id = "waiver_request"
+name = "waiver_request"
+type = "binary"
+weight = 1.0
+description = """
+As Nadi, open independently seeded `PER-N-WAIVER-SMALL`, request a $400 fee
+waiver, then refresh or reopen it. Confirm the $400 request persists as pending
+and the assessment remains outstanding while approval is pending.
+"""
+
+[[criterion]]
+id = "small_waiver_approval"
+name = "small_waiver_approval"
+type = "binary"
+weight = 1.0
+description = """
+As supervisor Oz, open independently seeded `PER-N-WAIVER-APPROVE`, approve its
+pending $400 waiver, then refresh or reopen it. Confirm the waiver is approved,
+the $50 statutory levy remains due, and the total due is reduced from $980 to
+$580.
+"""
+
+[[criterion]]
+id = "large_waiver_dual_control"
+name = "large_waiver_dual_control"
+type = "binary"
+weight = 1.0
+description = """
+On independently seeded `PER-N-WAIVER-LARGE`, record supervisor Oz's approval
+of the pending $700 waiver. Refresh and confirm the waiver is still pending and
+the $2,100 total is unchanged. Then sign in as Finance controller Vik, approve
+the same waiver, refresh or reopen it, and confirm it is approved with $1,400
+due, including the unchanged $100 statutory levy.
+"""
+
+[[criterion]]
+id = "exact_receipt"
+name = "exact_receipt"
+type = "binary"
+weight = 1.0
+description = """
+As Finance controller Vik, open independently seeded `PER-N-RECEIPT`, record
+one receipt for its exact $820 outstanding assessment with a non-empty receipt
+key, then refresh or reopen it. Confirm one $820 settlement persists and no
+second payment is invited for the settled assessment.
+"""
+
+[[criterion]]
+id = "assign_inspector"
+name = "assign_inspector"
+type = "binary"
+weight = 1.0
+description = """
+As supervisor Oz, open independently seeded paid and zoning-approved permit
+`PER-N-INSPECT`, assign NORTH inspector Mira, then refresh or reopen it. Confirm
+Mira remains the assignee and the state is ready for inspection.
+"""
+
+[[criterion]]
+id = "foundation_sequence"
+name = "foundation_sequence"
+type = "binary"
+weight = 1.0
+description = """
+As assigned inspector Mira, open independently seeded `PER-N-SEQUENCE`.
+Schedule its foundation inspection for an available slot, record a passing
+result, then refresh or reopen it. Confirm the foundation pass persists and the
+next offered inspection type is Final rather than Foundation.
+"""
+
+[[criterion]]
+id = "slot_conflict"
+name = "slot_conflict"
+type = "binary"
+weight = 1.0
+description = """
+As Mira, observe that `PER-N-SLOT` already has an active foundation inspection
+at 2026-09-15 09:00 UTC. On independently seeded `PER-N-SEQUENCE`, attempt to
+schedule an eligible inspection at that same active slot. Confirm the product
+clearly refuses the conflict and a refresh shows no duplicate active booking.
+Use the existing booking as a positive control; absence of both does not pass.
+"""
+
+[[criterion]]
+id = "failed_inspection_rework"
+name = "failed_inspection_rework"
+type = "binary"
+weight = 1.0
+description = """
+As Mira, open independently seeded `PER-N-FAIL` and record its scheduled
+foundation inspection as failed. Refresh or reopen it and confirm the permit
+is corrections required, zoning approval and pass indicators are cleared, the
+failed field record remains visible, and no further inspection action is
+offered.
+"""
+
+[[criterion]]
+id = "final_inspection"
+name = "final_inspection"
+type = "binary"
+weight = 1.0
+description = """
+As Mira, open independently seeded `PER-N-FINAL`, whose foundation has already
+passed and final is scheduled. Record the final as passed, then refresh or
+reopen it. Confirm both passed inspection records and both completion
+indicators persist.
+"""
+
+[[criterion]]
+id = "certificate_release"
+name = "certificate_release"
+type = "binary"
+weight = 1.0
+description = """
+As supervisor Oz, open independently seeded `PER-N-CERT-READY`, which is paid,
+zoning approved, and has both inspections passed. Issue its certificate, then
+refresh or reopen it. Confirm one certificate persists, the permit is
+certified, and no further workflow-changing action is available.
+"""
+
+[[criterion]]
+id = "audit_evidence"
+name = "audit_evidence"
+type = "binary"
+weight = 1.0
+description = """
+As administrator Elsa, load the audit evidence through the UI. Confirm the
+non-empty record visibly identifies actors, actions, affected entities,
+timestamps, and revisions where relevant. Use the published seeded baseline as
+an independent positive control; when preceding writes succeeded, confirm their
+activity is also present. Decorative headings or an empty table do not pass.
+"""
+
+[[criterion]]
+id = "restart_persistence"
+name = "restart_persistence"
+type = "binary"
+weight = 1.0
+description = """
+The verifier has stopped and restarted the submitted app without deleting its
+data. Sign in as Nadi and confirm created application `ORI-CORE-260828` and the
+submitted state of `PER-N-SUBMIT` still appear exactly once. Also sign in as Oz
+and confirm issued certificate `PER-N-CERT-READY` still appears as certified.
+Fail if the app reset, duplicated records, or does not recover.
+"""

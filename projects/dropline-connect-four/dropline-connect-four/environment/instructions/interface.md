@@ -6,7 +6,9 @@ visible controls with correct disabled states.
 
 Each board cell needs an accessible name that identifies its row, column, and
 empty, Red, or Yellow state. Tokens should also include a non-color identity so
-that color is not the only way to understand the board.
+that color is not the only way to understand the board. While a result is
+active, the four winning cells must also identify themselves as winning in
+their accessible names.
 
 Use a short, finite drop transition for accepted pieces and a clear treatment
 for winning pieces. Respect reduced-motion preferences by suppressing

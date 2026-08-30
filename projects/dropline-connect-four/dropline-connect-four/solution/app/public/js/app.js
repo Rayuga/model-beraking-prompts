@@ -139,7 +139,8 @@ function renderBoard() {
       }
       if (state.winningCells.includes(index)) cell.classList.add("is-winning");
       if (animatedCell === index) cell.classList.add("is-dropping");
-      cell.setAttribute("aria-label", `Row ${row + 1}, column ${column + 1}: ${player ? playerName(player) : "Empty"}`);
+      const winningLabel = state.winningCells.includes(index) ? ", winning" : "";
+      cell.setAttribute("aria-label", `Row ${row + 1}, column ${column + 1}: ${player ? playerName(player) : "Empty"}${winningLabel}`);
     }
   }
 }
