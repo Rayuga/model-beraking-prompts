@@ -1,0 +1,106 @@
+schema_version = "1.4"
+
+# Top-level only — do NOT nest under [verifier] (Harbor silently drops it there).
+artifacts = ["/app"]
+
+[task]
+name = "webdev/signalworks"
+version = "1.0.0"
+description = "Build Signalworks, the back office of a rail signalling control centre: incidents on a live railway, response teams and their competences, jobs, inspections that gate return to service, dual-approved possession and isolation plans, line blockages, staged handback, and a settlement round where service impact and labour both turn into money. The brief is the control room, the crews, the workshop, the engineering office and the safety office describing what went wrong in their own words — every rate is stated, and which rules collide is not. Graded by a RewardKit CUA browser judge that navigates only by what the app renders and replays the app's own writes as forgeries, so a credible-looking read-only control room scores nothing."
+authors = [{ name = "Turing WebDev", email = "webdev@turing.com" }]
+keywords = ["vibe-code", "webdev", "fullstack", "nodejs", "sqlite", "auth", "authorization", "rail", "operations", "settlement"]
+
+[metadata]
+category = "web-development"
+difficulty = "hard"
+difficulty_explanation = """
+The difficulty is breadth first and precision second, in that order.
+
+Thirteen feature families sit on one railway: incident lifecycle, team and asset
+assignment, inspection holds, safety holds, competence and rostering, dual-approved
+possession control, staged handback, immutability and corrections, cross-role
+isolation, identity and audit, restart durability, delay settlement and labour
+settlement. Each writes records the others read. A submission that builds a
+credible-looking control room and stops has built perhaps a fifth of what is
+graded, and the rubric never lets it recover that by guessing: the judge
+navigates only by the links, buttons and forms the app actually renders, so a
+route with no screen behind it scores nothing.
+
+On top of that surface, the settlement families are exact. Delay penalty bands
+are MARGINAL, so a flat top-band rate over the whole delay is wrong by more than
+double. An incident falling wholly inside a declared major-disruption window is
+charged flat at the middle band instead, which is neither the banded figure nor
+the naive one. A mutual-aid credit offsets the penalty and not the delay minutes,
+never takes a settlement below zero, and is NOT consumed when there is no penalty
+to offset. Labour merges: two callouts by one technician that overlap or merely
+touch are one callout, so the four-hour minimum applies once rather than twice,
+while overtime runs on hours actually worked and the night premium on night
+minutes actually worked rather than on the padded minimum.
+
+Several gates fire at a different moment than the obvious one. A technician's
+competence is checked when the work is EXECUTED, not when it was assigned. A
+possession plan needs a second, different approver, and a material edit after
+approval invalidates that approval until it is given again. An asset whose
+inspection has lapsed cannot return to service even after its repair is complete.
+
+Cross-record consequences are graded, not just the primary action: a settled
+incident writes its own ledger entries, closing a settlement period turns a
+correction from an edit into an appended offset, and the audit trail refuses
+every attempt to change it.
+
+No route, field name, element id, label or status spelling is prescribed anywhere
+in the brief, and none is asserted by the rubric. The submission is graded on a
+suite of 20 criteria (each of the original 10 conjunctive criteria split into
+two finer checks — an A setup/positive-control half and a B strict-enforcement
+half), every one weight 1, graded as one
+ordered journey against a single continuous database — the strongest
+authorization, dual-control and precision breakers across the surface.
+"""
+task_id = "WEBDEV-SIGNALWORKS-001"
+capabilities = ["backend-api", "frontend-ui", "persistence", "auth", "authorization"]
+active_target_model = "openrouter/openai/gpt-5.4-mini"
+active_target_reasoning_effort = "high"
+planned_target_models = [
+  "openrouter/anthropic/claude-sonnet-4.5",
+  "openrouter/anthropic/claude-haiku-4.5",
+]
+judge_backend = "codex"
+judge_model = "openai/gpt-5.6-luna"
+judge_reasoning_effort = "max"
+
+[agent]
+timeout_sec = 14400.0
+network_mode = "public"
+
+[verifier]
+# RewardKit verifier: a claude-code agent judge drives the app through Playwright
+# MCP, observes the rendered UI, and replays the UI's own recorded write requests
+# as forgeries through the page context to verify server-side enforcement.
+#
+# Timeout hierarchy, sized so no segment can be starved (10 segments, each
+# guaranteed at least SEGMENT_TIMEOUT_MIN_SEC=1500s):
+#   n_segments x MIN (10 x 1500 = 15000) < tests/test.py judge cap (24000)
+#     < verifier.timeout_sec (28000)
+# JUDGE < verifier means an overrun still reports the criteria already earned
+# rather than the 0.0 placeholder.
+timeout_sec = 28000.0
+network_mode = "public"
+
+[verifier.env]
+# Judge = codex CUA (openai/gpt-5.6-luna @ max) via OpenRouter. codex auths from
+# OPENAI_API_KEY (RewardKit runs `codex login --with-api-key`) and routes through
+# the OpenRouter provider block that tests/test.py writes to CODEX_HOME/config.toml.
+OPENROUTER_API_KEY = "${OPENROUTER_API_KEY}"
+OPENAI_API_KEY = "${OPENROUTER_API_KEY}"
+OPENAI_BASE_URL = "https://openrouter.ai/api/v1"
+REWARDKIT_JUDGE = "codex"
+REWARDKIT_MODEL = "openai/gpt-5.6-luna"
+REWARDKIT_REASONING_EFFORT = "max"
+
+[environment]
+build_timeout_sec = 1800.0
+os = "linux"
+cpus = 4
+memory_mb = 8192
+storage_mb = 10240
+network_mode = "public"

@@ -1,0 +1,275 @@
+[judge]
+judge = "codex"
+model = "openai/gpt-5.6-luna"
+# Reasoning effort for a codex agent judge is set via CODEX_HOME/config.toml
+# (model_reasoning_effort="max"), written by tests/test.py — NOT via a [judge]
+# field or REWARDKIT_REASONING_EFFORT (harbor-rewardkit 0.1.7 ignores both for
+# an agent judge).
+mode = "batched"
+timeout = 9300
+isolated = false
+prompt_template = "prompt.md"
+weight = 1.0
+
+[[judge.mcp_servers]]
+name = "playwright"
+transport = "stdio"
+command = "playwright-mcp"
+args = ["--headless", "--isolated", "--executable-path=/usr/local/bin/chromium", "--no-sandbox"]
+
+
+# ============================================================================
+# Signalworks — RewardKit browser rubric (REDUCED SET).
+#
+# 20 binary criteria, every one weight 1, graded as ONE ordered journey against
+# a single continuous database. Legs inside a criterion are conjunctive: any
+# failed leg fails the whole criterion, and the discriminating leg is
+# deliberately last.
+#
+# This is a trimmed-then-split suite: the 10 strongest breakers from the original
+# 40, each split into two finer checks (20 total) for a fast, high-
+# fidelity run: the strongest authorization / dual-control / precision breakers
+# that a correct golden passes and a weaker agent does not. Segmented at most
+# TWO criteria per judge session (segments.json) so no criterion is graded on a
+# screen it shares with another — recall-inflation is designed out.
+#
+# No route, URL path, request field name, element id, button label or status
+# spelling is prescribed to the submission anywhere in the brief, so none is
+# asserted here. What is asserted is behaviour and computed values, both of
+# which the brief states in full (environment/instructions/behaviour.md) from
+# the roster in environment/assets/artifacts/signalworks_seed_data.json.
+# ============================================================================
+
+
+# --------------------------------------------------- 1. boot and audit
+
+[[criterion]]
+id = "boot_board_incidents"
+name = "boot_board_incidents"
+type = "binary"
+weight = 1.0
+description = """
+Open http://localhost:3000/ with a fresh, signed-out browser. Verify there is a way to authenticate (an email field, a password field and a submit control), then sign in as `signaller@signalworks.test` / `password123`.
+1. A control-room board or incident area is reachable from this role's navigation, and a sign-out control exists.
+2. All six live incidents are visible on it: `INC-OP-1001`, `INC-OP-1002`, `INC-OP-1003`, `INC-OP-1004`, `INC-OP-1005` and `INC-OP-1006`. Fail if any of the six is missing.
+3. Both line sections are visible and can be told apart: `SEC-UP-MAIN` (Up Main, Ashfield to Kerrow) and `SEC-DOWN-MAIN` (Down Main, Kerrow to Ashfield).
+"""
+
+[[criterion]]
+id = "boot_asset_detail_overdue"
+name = "boot_asset_detail_overdue"
+type = "binary"
+weight = 1.0
+description = """
+Signed in as `signaller@signalworks.test` / `password123`:
+1. An asset area is reachable and lists the seeded units, and an asset shows its kind, its section, its state and the date its inspection is next due — spot-check `SIG-204` (a signal on the Down Main, reading failed), `TC-304` (a track circuit on the Down Main, under maintenance) and `PTS-101` (points on the Up Main, in service, inspection due `2027-03-31`).
+2. Discriminating leg: open `PTS-R7-EXP` and verify the screen makes its overdue inspection OBVIOUS — an explicit overdue flag, warning or equivalent marker — as well as showing the date `2020-06-30`. A screen that only prints the date and leaves the reader to work out that it has gone by fails.
+"""
+
+[[criterion]]
+id = "audit_readable_and_scoped"
+name = "audit_readable_and_scoped"
+type = "binary"
+weight = 1.0
+description = """
+Everything of consequence goes to an audit trail that is readable to those entitled and closed to those who are not.
+1. Sign in as `admin@signalworks.test` / `password123` and open the audit trail. Confirm it carries entries for work already done in this journey — a possession approved, a blockage placed or lifted, a job claimed, an incident cleared, or a settlement run. Note how many entries it shows.
+2. Positive control: read a single audit entry successfully and record the shape of that read.
+3. Discriminating leg: sign in as `teamlead@signalworks.test` and replay the recorded audit READ — the trail is not general reading, so it must return 4xx or a body carrying no audit rows.
+"""
+
+[[criterion]]
+id = "audit_append_only_immutable"
+name = "audit_append_only_immutable"
+type = "binary"
+weight = 1.0
+description = """
+The audit trail is append-only: never editable, never deleted. Signed in as `admin@signalworks.test` / `password123`, having read a single audit entry and recorded the shape of that read:
+1. Replay that read as a `DELETE` against the same entry. It must return 4xx.
+2. Replay it as a `PATCH`, and again as a `PUT`, against the same entry, each carrying a changed detail or actor. Every one must return 4xx.
+3. Discriminating leg: re-read the trail and confirm the entry is still there with its original actor and detail, and that the number of entries has not gone down. A mutation that returns a redirect or a 2xx, even if the row happens to stay unchanged, fails this criterion.
+"""
+
+[[criterion]]
+id = "assign_race_single_holder"
+name = "assign_race_single_holder"
+type = "binary"
+weight = 1.0
+description = """
+`JOB-RACE-3301` sits open on `PTS-102` where both Ashfield desks can see it.
+1. As `teamlead@signalworks.test`, claim `JOB-RACE-3301` for `TEAM-A`. This must be ACCEPTED. Record the shape of the claim write.
+2. Sign out and sign in as `teamlead2@signalworks.test` / `password123` — the second desk. Open `JOB-RACE-3301`. The app must not let a second team take a job that is already held: EITHER an attempt to claim it for `TEAM-B` is refused with a visible error naming `TEAM-A`, OR the desk is offered no second-claim control and the job plainly shows it is held by `TEAM-A`. Do not fail merely because there is no claim button to press.
+3. Re-read the job as `teamlead2@`: it shows exactly ONE team, `TEAM-A`, and no second job appeared against `PTS-102`.
+"""
+
+[[criterion]]
+id = "assign_race_enforced_server_side"
+name = "assign_race_enforced_server_side"
+type = "binary"
+weight = 1.0
+description = """
+Having claimed `JOB-RACE-3301` for `TEAM-A` as `teamlead@signalworks.test` (the positive control — it must have been ACCEPTED):
+1. Prove enforcement server-side: signed in as `teamlead2@signalworks.test`, replay the recorded claim write with body fields intended to force it through — for example `force: true`, `override: true`, or the team set to `TEAM-B` with `state: "OPEN"`. It must return 4xx, and the refusal must name the team that already holds it (`TEAM-A`).
+2. Discriminating leg: sign back in as `teamlead@signalworks.test` and confirm the job is still exactly as the first claim left it — `TEAM-A`, one holder, unchanged state. A second claim that quietly re-claims, swaps the team over, or raises a duplicate job fails.
+"""
+
+[[criterion]]
+id = "assign_forge_positive_and_nav"
+name = "assign_forge_positive_and_nav"
+type = "binary"
+weight = 1.0
+description = """
+Claiming and crewing jobs is response-desk work; the safety officer has no business doing it.
+1. Positive control: as `teamlead@signalworks.test`, claim `JOB-3009` (the inspection open on `SIG-202`) for `TEAM-A`. This must be ACCEPTED. Record the shape of the claim write.
+2. Sign in as `safety@signalworks.test` / `password123`. Confirm the navigation this role is given does not offer the response desk's job-claiming journey.
+"""
+
+[[criterion]]
+id = "assign_forge_write_refused"
+name = "assign_forge_write_refused"
+type = "binary"
+weight = 1.0
+description = """
+Having claimed `JOB-3009` for `TEAM-A` as `teamlead@signalworks.test` (the positive control) and with `safety@signalworks.test` now the active session:
+1. Replay the recorded claim write against `JOB-3011` (the inspection open on `LX-402`) for `TEAM-B`. It must return 4xx.
+2. Replay it again as `safety@` with body fields claiming somebody else's authority — for example `role: "teamlead"` and `actor_id: "USR-03"`. It must also return 4xx. What the client sends is data, never authority.
+3. Discriminating leg: sign back in as `teamlead@signalworks.test` and re-read both jobs. `JOB-3011` must still have NO team on it, and `JOB-3009` must still show `TEAM-A`. If the forged writes changed anything at all, this fails.
+"""
+
+[[criterion]]
+id = "possession_self_approve_refused"
+name = "possession_self_approve_refused"
+type = "binary"
+weight = 1.0
+description = """
+`POS-5001` is a draft possession of `SEC-UP-MAIN` running `2026-11-21T01:00Z` to `2026-11-21T05:00Z`, planned by `USR-07` — Grace Okonkwo, the safety officer — with nobody down as approver. A plan is approved by somebody DIFFERENT from its planner.
+1. Sign in as `safety@signalworks.test` (that is `USR-07`, the planner). Confirm the possession screen shows the plan's start and end times, its section, and Grace Okonkwo as planner with no approver yet.
+2. Approve `POS-5001` as `safety@`. It must be REFUSED with a visible on-screen error saying in words that the planner cannot sign their own plan, naming the planner. A refusal for any OTHER reason (for example a section blockage) does not satisfy this leg.
+3. Replay the approve write as `safety@` with body fields claiming somebody else signed it — for example `approver_id: "USR-06"`, `approved: true` and `approved_by: "USR-06"`. It must return 4xx, and re-reading the plan must still show no approver.
+"""
+
+[[criterion]]
+id = "possession_second_approver_accepted"
+name = "possession_second_approver_accepted"
+type = "binary"
+weight = 1.0
+description = """
+For the draft possession `POS-5001` on `SEC-UP-MAIN` (planned by Grace Okonkwo, still unapproved):
+1. Positive control: sign in as `engineer@signalworks.test` (`USR-06`, Dermot Walsh) and approve `POS-5001`. This must be ACCEPTED. Record the shape of this approve write.
+2. Discriminating leg: re-read the plan as `safety@signalworks.test` and confirm it now shows TWO different people — planned by Grace Okonkwo and approved by Dermot Walsh. A plan that shows the same person in both places, or that shows an approver but no planner, fails.
+"""
+
+[[criterion]]
+id = "possession_edit_typo_keeps_approval"
+name = "possession_edit_typo_keeps_approval"
+type = "binary"
+weight = 1.0
+description = """
+`POS-5001` currently reads as approved, by Dermot Walsh, on `SEC-UP-MAIN` for `2026-11-21T01:00Z` to `2026-11-21T05:00Z`. Fixing a typo does not invalidate an approval.
+1. Confirm `POS-5001` currently reads as approved by Dermot Walsh with those times and section.
+2. Not material: as `safety@signalworks.test`, change only the plan's note or description. The plan must STILL read as approved by Dermot Walsh afterwards — the office does not want a re-approval cycle for a typo.
+"""
+
+[[criterion]]
+id = "possession_edit_material_invalidates"
+name = "possession_edit_material_invalidates"
+type = "binary"
+weight = 1.0
+description = """
+A material edit after approval invalidates the approval. For `POS-5001`, approved by Dermot Walsh on `SEC-UP-MAIN`:
+1. Material: as `safety@signalworks.test`, move the plan's times to `2026-11-22T01:00Z` to `2026-11-22T05:00Z`. The edit must be ACCEPTED, the plan must keep its own reference `POS-5001` rather than becoming a new plan, and the screen must now show that the approval is gone and a signature is needed again.
+2. Attempt to put the plan into force / execute it in that state. It must be REFUSED, and the refusal must say it is not approved. Then replay the recorded approve write with body fields asserting the old signature — `approved: true`, `approved_by: "USR-06"`, `state: "APPROVED"` — while signed in as `safety@` (the planner). It must return 4xx and the plan must still be waiting for a signature.
+3. Discriminating leg: sign in as `engineer@signalworks.test` and approve the edited plan again. This must be ACCEPTED, and the plan must then show a signature given AFTER the edit, against the edited times `2026-11-22T01:00Z` to `2026-11-22T05:00Z`.
+"""
+
+[[criterion]]
+id = "signed_out_reads_nothing"
+name = "signed_out_reads_nothing"
+type = "binary"
+weight = 1.0
+description = """
+An unauthenticated caller reads nothing operational. Sending the browser to a sign-in screen while the request behind it still returns rows is not isolation.
+1. Signed in as `signaller@signalworks.test`, open the incidents screen and the assets screen and record the exact shape of the list request each one issues.
+2. Sign out through the app's own sign-out control. Replay both recorded list requests. Each must return 4xx, or return a body containing no rows — in particular `INC-OP-1001`, `SIG-204` and `PTS-101` must NOT come back. A redirect to a sign-in page with the rows still in the response body fails.
+"""
+
+[[criterion]]
+id = "signed_out_writes_refused"
+name = "signed_out_writes_refused"
+type = "binary"
+weight = 1.0
+description = """
+An unauthenticated caller writes nothing operational.
+1. Positive control for the write path: signed in as `signaller@signalworks.test`, raise an incident on `TC-303` with a reference you type in yourself — `INC-QA-7001` — and a note. This must be ACCEPTED. Record the shape of that write.
+2. Sign out through the app's own sign-out control. Replay the recorded raise write with the reference `INC-QA-7002`, once plainly and once carrying `role: "signaller"` and `actor_id: "USR-01"`. Both must return 4xx.
+3. Discriminating leg: sign back in as `signaller@signalworks.test` and confirm no incident with the reference `INC-QA-7002` exists anywhere, while `INC-QA-7001` from step 1 is still there on `TC-303`.
+"""
+
+[[criterion]]
+id = "possession_forge_planner_bound"
+name = "possession_forge_planner_bound"
+type = "binary"
+weight = 1.0
+description = """
+The planner of a possession is whoever is signed in, not who the request names; a role with no business approving cannot approve.
+1. As `safety@signalworks.test`, plan `POS-QA-5007` on `SEC-DOWN-MAIN` running `2026-11-22T02:00Z` to `2026-11-22T06:00Z`. It must be ACCEPTED and must show Grace Okonkwo as its planner even if you supply a different planner in the form — the planner is the person signed in.
+2. Sign in as `teamlead@signalworks.test` — a role with no business approving possessions — and replay the approve write against `POS-QA-5007`, once plainly and once with `role: "engineer"` in the body. Both must return 4xx.
+3. Re-read `POS-QA-5007` and confirm it is still unapproved and that nothing about it changed — same section, same times, same planner (Grace Okonkwo).
+"""
+
+[[criterion]]
+id = "possession_forge_self_refused_positive"
+name = "possession_forge_self_refused_positive"
+type = "binary"
+weight = 1.0
+description = """
+For `POS-QA-5007` on `SEC-DOWN-MAIN`, planned by Grace Okonkwo (safety), still unapproved. A possession approval reads who the STORED planner is, not who the request says.
+1. While signed in as `safety@signalworks.test` (the planner), replay the approve write against `POS-QA-5007` carrying `approver_id: "USR-06"` and `approved: true`. It must return 4xx and the plan must still show no approver.
+2. Discriminating leg, positive control: sign in as `engineer@signalworks.test` and approve `POS-QA-5007` properly through the interface. This must be ACCEPTED and the plan must show Dermot Walsh as approver. A submission that refuses every approval fails.
+"""
+
+[[criterion]]
+id = "handback_open_and_sequence"
+name = "handback_open_and_sequence"
+type = "binary"
+weight = 1.0
+description = """
+Giving the line back is six stages in sequence: work complete/tools clear, asset function tested, protection removed, site photographed clear, signaller informed, line returned to normal.
+1. As `teamlead@signalworks.test`, dispatch and then complete `JOB-3002` (the repair on `SIG-204`, with `TEC-02` on it). `SEC-DOWN-MAIN` is clear of blockages by now, so both must be ACCEPTED. Then OPEN a handback against that job with a reference you type in yourself — use `HBK-QA-9001`. The handback `HBK-QA-9001` must exist and be readable.
+2. Out of sequence: attempt to sign the third stage `HBK-3` (protection removed) first. It must be REFUSED, and the refusal must name the stage that has to come next — `HBK-1`. Then sign `HBK-1` and confirm that is ACCEPTED.
+"""
+
+[[criterion]]
+id = "handback_evidence_and_complete"
+name = "handback_evidence_and_complete"
+type = "binary"
+weight = 1.0
+description = """
+For the handback `HBK-QA-9001` on `JOB-3002` / `SIG-204`, with `HBK-1` signed. Two stages demand evidence: the function test wants a test log, the site-clear wants a photograph.
+1. Missing evidence: attempt to sign `HBK-2` (asset function tested) with no test log attached. It must be REFUSED, and the refusal must say WHICH evidence is missing — a test log. Then attach a test log reference and sign `HBK-2`; this must be ACCEPTED. Record the shape of this accepted stage write.
+2. Sign `HBK-3`, then attempt `HBK-4` (site photographed clear) with no photograph. It must be REFUSED naming the photograph. Then attach a photograph reference and sign `HBK-4`; this must be ACCEPTED.
+3. Discriminating leg: replay the recorded stage write twice — once jumping to `HBK-6` while `HBK-5` is unsigned, and once for a stage that demands evidence with the evidence field emptied and `evidence_required: "NONE"` in the body. Both must return 4xx, and the handback must still show exactly four stages signed. Then sign `HBK-5` and `HBK-6` through the interface, and finally, signed in as `signaller@signalworks.test`, confirm all six stages read as signed with the test log and the photograph on file against the right stages.
+"""
+
+[[criterion]]
+id = "incident_asset_gate"
+name = "incident_asset_gate"
+type = "binary"
+weight = 1.0
+description = """
+Only when the LAST handback stage is signed does the asset go back into service.
+1. Sign in as `engineer@signalworks.test` and open `SIG-204`. Now that its handback `HBK-QA-9001` is complete (all six stages signed), the asset screen must show it back IN SERVICE. An asset still reading failed after all six stages fails this; AND an asset that went back into service EARLIER — before all six handback stages were signed, e.g. when the job was merely signed off or while fewer than six stages are signed — also fails.
+"""
+
+[[criterion]]
+id = "incident_clear_records_notify"
+name = "incident_clear_records_notify"
+type = "binary"
+weight = 1.0
+description = """
+Clearing an incident records an exact time, is announced to the operators, and cannot be replayed to a false state.
+1. As `signaller@signalworks.test`, clear `INC-OP-1001`, giving a cleared time AFTER its raised time of `2026-11-10T05:40:00Z` — use `2026-11-10T09:30:00Z`. This must be ACCEPTED and the board must show the incident cleared with that exact time. Record the shape of the clear write.
+2. Confirm the app has recorded a notice, alert, message or activity entry about the clearance, visible on a screen and referring to `INC-OP-1001`. A clearance that leaves nothing behind but a changed status fails.
+3. Attempt to clear `INC-OP-1001` a second time. It must be REFUSED.
+4. Discriminating leg: replay the recorded clear write against `INC-OP-1001` with a cleared time BEFORE its raised time (`2026-11-10T04:00:00Z`) and a body field asserting `asset_state: "FAILED"`. It must return 4xx or be ignored entirely, and re-reading must show `SIG-204` still in service and `INC-OP-1001` still cleared at `2026-11-10T09:30:00Z`.
+"""
