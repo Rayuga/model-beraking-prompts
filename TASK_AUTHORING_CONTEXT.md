@@ -71,6 +71,8 @@ matches the seed format.
 ## Naming and default stack
 
 - New app names use lowercase snake_case: `<app_name>`.
+- New task packages use the `turing/` organization prefix unless the platform
+  explicitly assigns a different organization.
 - Required baseline stack: vanilla HTML, CSS, and JavaScript with Node.js and
   SQLite.
 - Authentication: server-issued bearer tokens persisted in SQLite.
@@ -167,7 +169,7 @@ per-account game state. The game remains intentionally small; authentication
 and persistence are meaningful product boundaries rather than extra workspaces
 or administrative features.
 
-The package name is `codearena/dropline_connect_four_lite`. Product behavior is
+The package name is `turing/dropline_connect_four_lite`. Product behavior is
 split across five Markdown files in `environment/instructions/`; only structured
 accounts and initial state remain in `environment/assets/artifacts/dropline_seed.xlsx`.
 The agent sees these at `/instructions` and `/assets/artifacts/dropline_seed.xlsx`.

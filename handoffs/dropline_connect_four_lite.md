@@ -26,14 +26,16 @@ acceptance standard.
 ## Task location and naming
 
 - Working task: `projects/dropline-connect-four-lite/`
-- Package: `codearena/dropline_connect_four_lite`
+- Package: `turing/dropline_connect_four_lite`
 - Delivery wrapper ZIP folder: `dropline_connect_four_lite/`
 - Category: `Software`
 - Subcategory: `Classic & Board Games`
 - Tracker assignment: Tic-tac-toe / Connect-4
 
 The local project directory retains its historical hyphenated name. New package
-and delivery names use lowercase snake_case.
+and delivery names use lowercase snake_case. The upload platform requires the
+`turing/` package prefix; using BazaarBridge's `codearena/` prefix is rejected by
+`check-task-package-name`.
 
 ## Product contract
 
