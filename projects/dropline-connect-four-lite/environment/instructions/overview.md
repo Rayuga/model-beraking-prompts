@@ -1,9 +1,17 @@
-# Product and delivery
+# Product overview
 
-DropLine is a local two-player Connect Four game for one browser. It has no
-accounts, backend, persistence, saved history, Undo, or Redo.
+DropLine is a local Connect Four game for two people taking turns in one
+browser. It should feel like a finished board-game product rather than an
+engineering demo. The current turn or result, board, column controls, match
+totals, current account, and available actions should be easy to understand.
 
-Deliver one self-contained `/app/index.html` containing all HTML, CSS, and
-JavaScript. Do not use libraries, package dependencies, remote fonts, external
-images, or other network assets. The page must load and remain playable when
-network requests are blocked.
+Keep the product focused. It needs sign-in, sign-out, one active game for each
+account, and durable match totals. It does not need public registration,
+computer opponents, chat, tournaments, or administration screens.
+
+Run one non-watch server on `0.0.0.0:3000`. Put the application in `/app`, start
+it with `node /app/server.js`, serve the browser UI from
+`/app/public/index.html`, and keep durable data in `/app/dropline.db`. Use
+vanilla HTML, CSS, and JavaScript in the browser, Node.js with Express on the
+server, and SQLite as the source of truth. The installed Express and
+better-sqlite3 packages are available without a runtime install.

@@ -3,7 +3,7 @@ set -euo pipefail
 umask 077
 
 LOG_DIR="${VERIFIER_LOG_DIR:-/logs/verifier}"
-APP_COPY="/tmp/dropline-submission"
+APP_COPY="/tmp/bazaarbridge-submission"
 APP_PID=""
 
 mkdir -p "$LOG_DIR"
@@ -31,7 +31,7 @@ cleanup() {
 write_zero_reward
 trap cleanup EXIT
 
-if [[ ! -s /app/server.js || ! -s /app/public/index.html ]]; then
+if [[ ! -f /app/server.js || ! -f /app/public/index.html ]]; then
   exit 0
 fi
 if [[ -n "$(find /app -type l -print -quit 2>/dev/null)" ]]; then
@@ -41,7 +41,6 @@ fi
 rm -rf "$APP_COPY"
 mkdir -p "$APP_COPY"
 cp -a /app/. "$APP_COPY/"
-rm -f "$APP_COPY/dropline.db" "$APP_COPY/dropline.db-shm" "$APP_COPY/dropline.db-wal"
 chown -R 65534:65534 "$APP_COPY"
 
 setsid env -i \
@@ -49,7 +48,7 @@ setsid env -i \
   NODE_PATH="/usr/local/lib/node_modules" \
   HOME="$APP_COPY" \
   PORT="3000" \
-  DB_PATH="$APP_COPY/dropline.db" \
+  DB_PATH="$APP_COPY/bazaarbridge.db" \
   setpriv --reuid=65534 --regid=65534 --clear-groups \
   node "$APP_COPY/server.js" >"$LOG_DIR/app.log" 2>&1 &
 APP_PID="$!"

@@ -3,7 +3,7 @@ FROM node:22-bookworm-slim
 ENV NODE_PATH=/usr/local/lib/node_modules
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      ca-certificates git procps sqlite3 python3 python3-openpyxl \
+      ca-certificates git procps sqlite3 \
     && rm -rf /var/lib/apt/lists/*
 
 RUN npm install -g --no-audit --no-fund \
@@ -11,9 +11,8 @@ RUN npm install -g --no-audit --no-fund \
       better-sqlite3@12.4.1 \
     && npm cache clean --force
 
-COPY instructions/ /instructions/
-COPY assets/artifacts/dropline_seed.xlsx /assets/artifacts/dropline_seed.xlsx
-RUN chmod -R a+rX /instructions /assets && mkdir -p /app
+COPY assets/ /assets/
+RUN chmod -R a+rX /assets && mkdir -p /app
 
 WORKDIR /app
 CMD ["sleep", "infinity"]

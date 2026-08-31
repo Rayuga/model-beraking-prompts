@@ -1,0 +1,129 @@
+{
+  "schema_version": "1.0",
+  "task": "codearena/dropline_connect_four_lite",
+  "instruction_sources": [
+    "instruction.md",
+    "environment/instructions/overview.md",
+    "environment/instructions/authentication.md",
+    "environment/instructions/gameplay.md",
+    "environment/instructions/persistence.md",
+    "environment/instructions/interface.md",
+    "environment/assets/artifacts/dropline_seed.xlsx"
+  ],
+  "requirements": [
+    {
+      "id": "REQ-01",
+      "source": "instruction.md, overview.md, and persistence.md",
+      "summary": "Deliver a Node.js and Express app in /app, serve a vanilla browser UI on port 3000, use SQLite at /app/dropline.db, and require no public-network assets.",
+      "verified_by": [
+        {"category": "preflight", "criterion": "tests/test.sh launch gate"},
+        {"category": "constraints", "criterion": "server_backed_same_origin_persistence"},
+        {"category": "aesthetic", "criterion": "game_identity_and_production_readiness"}
+      ],
+      "evidence": "The runner requires server.js and public/index.html, launches Node with a writable SQLite path, waits for health, and browser judges require successful same-origin reads and mutations without external requests."
+    },
+    {
+      "id": "REQ-02",
+      "source": "instruction.md, authentication.md, and Accounts seed worksheet",
+      "summary": "Protect game data behind bearer-token authentication, reject invalid credentials, show authenticated identity, support sign-out, and provide both seeded accounts.",
+      "verified_by": [
+        {"category": "render", "criterion": "authenticated_game_render"},
+        {"category": "constraints", "criterion": "authentication_and_account_isolation"},
+        {"category": "constraints", "criterion": "server_backed_same_origin_persistence"}
+      ],
+      "evidence": "The judges use a fixed wrong password and both documented accounts, require identity only after login, capture bearer-authenticated traffic, reject replay with the old token after sign-out, and reauthenticate."
+    },
+    {
+      "id": "REQ-03",
+      "source": "authentication.md and persistence.md",
+      "summary": "Keep each account's board and totals separate and restore exact durable state after reload and later sign-in.",
+      "verified_by": [
+        {"category": "constraints", "criterion": "authentication_and_account_isolation"},
+        {"category": "constraints", "criterion": "server_backed_same_origin_persistence"},
+        {"category": "functional", "criterion": "new_game_reset_and_persistence"}
+      ],
+      "evidence": "Deterministic Avery and Jordan states are created and revisited independently; a separate exact board is checked across reload and reauthentication."
+    },
+    {
+      "id": "REQ-04",
+      "source": "gameplay.md: board, starting round, and accepted moves",
+      "summary": "Use a six-row, seven-column board where Red starts, pieces use gravity, and accepted moves alternate colors.",
+      "verified_by": [
+        {"category": "render", "criterion": "core_game_render"},
+        {"category": "functional", "criterion": "gravity_turns_and_full_column"}
+      ],
+      "evidence": "The judges count every cell and use exact repeated-column moves to check lowest-empty placement, alternating colors, and current turn."
+    },
+    {
+      "id": "REQ-05",
+      "source": "gameplay.md: full-column rejection",
+      "summary": "Reject a seventh move in a full column without changing board, turn, or totals and visibly report Column N is full.",
+      "verified_by": [
+        {"category": "functional", "criterion": "gravity_turns_and_full_column"},
+        {"category": "polish", "criterion": "responsive_layout_and_feedback"}
+      ],
+      "evidence": "Desktop and exact mobile checks fill column 1, capture state, attempt the rejected move, and verify exact feedback and immutability."
+    },
+    {
+      "id": "REQ-06",
+      "source": "gameplay.md: win detection and result",
+      "summary": "Detect horizontal, vertical, and both diagonal wins for Red or Yellow, mark exactly four cells, increment the correct total once, and lock the terminal board.",
+      "verified_by": [
+        {"category": "functional", "criterion": "horizontal_and_vertical_wins"},
+        {"category": "functional", "criterion": "both_diagonal_wins"},
+        {"category": "functional", "criterion": "yellow_win_and_terminal_lock"},
+        {"category": "polish", "criterion": "accessible_grid_and_winning_names"}
+      ],
+      "evidence": "Five exact move sequences check all four directions and both colors, exact coordinate sets, score deltas, post-win immutability, and accessible winning names."
+    },
+    {
+      "id": "REQ-07",
+      "source": "gameplay.md: draw",
+      "summary": "Detect a full-board draw, increment Draws once, show exactly Draw, mark no winning cells, and lock the board.",
+      "verified_by": [
+        {"category": "functional", "criterion": "exact_draw_and_terminal_lock"}
+      ],
+      "evidence": "A fixed 42-move sequence checks every occupied cell, exact result, zero winning markers, one-score delta, and immutable later input."
+    },
+    {
+      "id": "REQ-08",
+      "source": "gameplay.md: New game",
+      "summary": "New game clears round state and returns to Red while preserving existing match totals.",
+      "verified_by": [
+        {"category": "render", "criterion": "core_game_render"},
+        {"category": "functional", "criterion": "new_game_reset_and_persistence"}
+      ],
+      "evidence": "The judge resets a completed win, checks all 42 cells and markers, compares all totals, starts a new move, and reloads it."
+    },
+    {
+      "id": "REQ-09",
+      "source": "interface.md: board and cell semantics",
+      "summary": "Expose one accessible 42-cell grid whose cell names include one-based coordinates, state, and winning information.",
+      "verified_by": [
+        {"category": "polish", "criterion": "accessible_grid_and_winning_names"}
+      ],
+      "evidence": "The accessibility tree is inspected before play and after a fixed win, including required and forbidden winning labels."
+    },
+    {
+      "id": "REQ-10",
+      "source": "interface.md: pointer and keyboard controls",
+      "summary": "Provide seven named pointer controls and exact Left, Right, Home, End, Enter, and Space keyboard behavior with stable focus.",
+      "verified_by": [
+        {"category": "render", "criterion": "core_game_render"},
+        {"category": "polish", "criterion": "keyboard_navigation_and_drop"}
+      ],
+      "evidence": "The judges verify all seven names, exact focus transitions at both edges, two keyboard drops in one column, and retained usable focus."
+    },
+    {
+      "id": "REQ-11",
+      "source": "interface.md: status, scores, responsive layout, and motion",
+      "summary": "Keep identity, status, feedback, scores, controls, and sign-out readable and usable at 375 pixels, with reduced-motion support and a polished game identity.",
+      "verified_by": [
+        {"category": "polish", "criterion": "responsive_layout_and_feedback"},
+        {"category": "aesthetic", "criterion": "visual_hierarchy_and_craft"},
+        {"category": "aesthetic", "criterion": "game_identity_and_production_readiness"}
+      ],
+      "evidence": "The exact mobile viewport exercises sign-in, gameplay, invalid feedback, and all key controls while checking overflow, clipping, overlap, hierarchy, and visible finish."
+    }
+  ]
+}

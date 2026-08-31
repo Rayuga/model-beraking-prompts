@@ -4,6 +4,14 @@ This repo is for building Harbor + RewardKit single-step web development
 tasks that are solvable by the Oracle/golden solution but difficult for model
 runs.
 
+## Current Authoring Standard
+
+For tasks started on or after 2026-09-01, read `TASK_AUTHORING_CONTEXT.md`
+first. It records the BazaarBridge five-dimension verifier structure, Codex
+judge requirement, mandatory `coverage.json`, snake_case naming convention,
+instruction/Excel options, QC sequence, and delivery artifacts. It supersedes
+the legacy `harbor-task-qc` workflow for new tasks.
+
 GitHub repo:
 
 ```text
