@@ -1,6 +1,6 @@
 # Brickfall
 
-can you turn this into a proper brick-breaker arcade game that feels great in
+can you build a proper brick-breaker arcade game that feels great in
 the first few seconds but still holds up across a full run? i need predictable
 physics, meaningful levels and power-ups, not a canvas demo with random bounces.
 

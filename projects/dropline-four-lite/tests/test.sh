@@ -101,7 +101,9 @@ if [[ "$READY" != "1" ]]; then
   exit 0
 fi
 
-if ! timeout 3540 rewardkit /tests >"$LOG_DIR/rewardkit.log" 2>&1; then
+# The browser dimensions share one persisted app. Serialize their agents so a
+# Polish mutation cannot corrupt Functional baselines or concurrency checks.
+if ! timeout 5280 rewardkit --max-concurrent-agent 1 /tests >"$LOG_DIR/rewardkit.log" 2>&1; then
   write_zero_reward
   exit 0
 fi

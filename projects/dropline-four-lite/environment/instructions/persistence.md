@@ -12,4 +12,4 @@ or history actions must not produce a partial database change.
 Serve authentication, state reads, and state changes from the same origin as
 the browser application. Do not depend on external scripts, stylesheets, fonts,
 images, APIs, or other public-network assets. Provide a same-origin health
-response that succeeds when the server is ready.
+response at `GET /api/health` that succeeds when the server is ready.

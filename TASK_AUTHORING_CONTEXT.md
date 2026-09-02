@@ -325,7 +325,7 @@ OrbitalOps intentionally ships three byte-identical copies of its workbook;
 their reviewed SHA-256 is
 `3444B9EA947CD6C08647F5AE77E0D6CEF9A3A234DFB17CD8C47F1059C46AAA3E`.
 DropLine's current authoritative workbook has SHA-256
-`B3271452310F38676EC707EF388B7A47667A80CF3904B6B0649661C1D7641CE3`.
+`2EAE3582E4F71E3F6D66C031706EB0041D08C9465C08E1B878CF8AE907715626`.
 
 ## Verifier design learned from the references
 
@@ -440,21 +440,28 @@ instructions, golden solution, coverage map, and Functional verification.
 Working source reviewed:
 `projects/dropline-four-lite/`
 
-### Current implementation (version 5.1.1)
+### Current implementation (version 6.0.1)
 
 - The working folder, npm package, task name, and delivery slug use
   `dropline-four-lite`.
-- `task.toml` uses `turing/dropline-four-lite` and version `5.1.1`.
-- The natural main instruction is at most 20 lines and delegates detail to six
-  mounted instruction files, including `history.md`.
+- `task.toml` uses `turing/dropline-four-lite` and version `6.0.1`.
+- The natural main instruction is at most 20 lines. Every mounted instruction
+  file is also at most 20 lines; dedicated `concurrency.md` and `records.md`
+  keep the new contract explicit rather than hiding requirements in judges.
 - The solution uses vanilla HTML/CSS/JS, Node.js, Express, and SQLite.
 - It reads the authoritative Excel seed, hashes passwords with per-account
   scrypt salts, issues unpredictable bearer tokens, persists sessions, revokes
   tokens on sign-out, derives identity server-side, and isolates account state.
-- It implements server-owned gravity, turns, wins in four directions, draws,
-  terminal locking, score updates, move history, repeated undo/redo, branching
-  redo invalidation, terminal-score reversal/restoration, reset, and durable
-  reload/sign-in persistence.
+- It implements server-owned gravity, turns, four-direction wins, draws,
+  terminal locking, move history, repeated branching undo/redo, terminal-score
+  reversal/restoration, and durable reload/sign-in persistence.
+- Version 6 imports distinct workbook boards, totals, histories, redo stacks,
+  revisions, round ids, and all 11 completed matches. SQLite transactions reject
+  stale two-tab writes, persist successful and rejected mutation receipts, revoke
+  every account token on sign-out, and maintain a latest-ten idempotent archive.
+- The client shows revisions, reconciles stale state, suppresses duplicate
+  activation, retains keyboard focus, and renders a separate accessible replay
+  board with step, Previous, Next, and Close controls.
 - Exactly four verifier categories remain. Former Aesthetic criteria now live
   in Polish.
 - Render and Constraints each contain two short smoke/contract criteria. They
@@ -464,24 +471,26 @@ Working source reviewed:
   `prompt.md`, and Playwright MCP.
 - `reward.toml` declares only the 0.6 Functional/0.4 Polish weights, while
   `test.sh` validates all dimensions and implements the Render/Constraints
-  hard gate with complete zero-output fallback.
-- `tests/coverage.json` maps 13 requirements and reports 9 of 10 functional
-  requirements covered by Functional (`90%`).
+  hard gate with complete zero-output fallback. Agent judges run serially so
+  one mutating category cannot corrupt another category's SQLite baseline.
+- `tests/coverage.json` maps 18 requirements and reports all 15 functional
+  requirements covered by Functional (`100%`). There are 13 Functional
+  criteria with total criterion weight 19; the five new behavior groups carry
+  weight 10 without making them a global gate.
 - Baseline solution and seed hashes are recorded. The verifier seed copy is
   byte-identical and documented as required by separate-verifier isolation.
 - Docker images are tagged, pip/npm verifier tools are versioned, apt metadata
   is cleaned, runtime fetching is absent, and the agent image does not copy
   tests or solution.
-- The first corrected platform Oracle installed and started successfully. It
-  scored Functional `1.0` and Render `1.0`, but the old state-mutating
-  Constraints gate raced other dimensions and forced final reward `0`; the
-  same run identified mobile history overflow and post-Redo focus loss. Version
-  `5.1.0` simplified the gates and fixed focus; its next Oracle scored Render,
-  Constraints, and Functional `1.0`, Polish `0.6`, and final reward `0.84`
-  because later history entries still clipped above Undo/Redo. Version `5.1.1`
-  keeps the latest history visible across rendering and viewport resizing,
-  shows a seven-move win history in full at desktop and 375 pixels, and still
-  requires a fresh platform run.
+- Historical version 5.1.1 GPT-5.4-mini passed Functional `1.0` and Polish
+  `0.8`; after correcting an unsupported Render-helper check its implied reward
+  was `0.92`, above the target band. Haiku reached Functional `0.5556`, while
+  the latest Oracle/NOP attempt never started because Daytona reported depleted
+  organization credits. Version 6.0.1 adds written, deterministic full-stack
+  difficulty plus serialized browser judging and requires fresh platform runs.
+- Version 6 has passed local API, real-Chromium, exact-draw/undo/redo regression,
+  two-tab conflict, all-session revocation, 11-record/latest-ten archive lifecycle,
+  request-result replay, keyboard-focus, 375-pixel replay, and reduced-motion checks.
 
 ### Remaining platform and delivery work
 
@@ -499,19 +508,19 @@ Working source reviewed:
 | --- | --- | --- |
 | A2 real provenance | Platform confirmation needed | Metadata truthfully identifies the tracker assignment and task owner's live request; the platform must decide whether that provenance meets its real-traffic bar. |
 | A3 natural source voice | Addressed in source | The main prompt retains lowercase, terse human wording instead of formal checklist prose. |
-| B1 complete mapping | Addressed in source | All 13 requirements map to live criterion IDs; history/undo/redo is included. |
+| B1 complete mapping | Addressed in source | All 18 requirements map to live criterion IDs; concurrency and records requirements are instruction-backed. |
 | D2 hard gate | Addressed in source | The runner validates four dimensions and applies the exact gate/formula. |
-| E2 frozen/hash-recorded baseline | Addressed in source | Version 5.1.1 records seed and golden-file SHA-256 values. |
-| Functional `>80%` | Addressed in source | Defined denominator is 10 functional requirements; Functional covers 9 (`90%`). |
+| E2 frozen/hash-recorded baseline | Addressed in source | Version 6.0.1 records both seed copies and golden-file SHA-256 values. |
+| Functional `>80%` | Addressed in source | Defined denominator is 15 functional requirements; Functional covers all 15 (`100%`). |
 | Four categories only | Addressed in source | Only Render, Constraints, Functional, and Polish remain. |
 | Three-word dash naming | Addressed in source | Source/task/npm/delivery slugs use `dropline-four-lite`. |
 | Docker/platform checks | Unverified | Docker and platform validation are intentionally left for the platform run. |
-| Run evidence | Missing | No current four-dimension Oracle/mini/Haiku/Sonnet evidence is present. |
+| Run evidence | Missing | Existing runs cover older versions; no version 6.0.1 Oracle/mini/Haiku/Sonnet evidence is present. |
 | Delivery set | Partial | The validated task ZIP is assembled; Oracle/model run ZIPs and the two reports await platform results. |
 
-Most of the 26 upload checks appear structurally satisfiable in the current
-source, but that is not an upload-check result. Treat them as unverified until
-the current platform Rules stage passes.
+The local source preflight emulating the documented rules passes all 26 upload
+checks and all 19 source-decidable scorecard items. This is not a platform
+Rules result; treat the platform checks as unverified until an upload passes.
 
 ## Final pre-delivery checklist
 

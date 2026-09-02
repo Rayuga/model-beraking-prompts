@@ -1,0 +1,279 @@
+{
+  "constraints": {
+    "score": 1.0,
+    "criteria": [
+      {
+        "id": "required_server_backed_workspace",
+        "name": "required_server_backed_workspace",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "From a signed-out page, sign in as `avery@dropline.test` with `password123`.\nRequire successful same-origin application requests and a protected workspace\nthat visibly identifies Avery and contains a game board, status, totals,\nhistory, and game controls. A static imitation with no successful application\nrequest does not pass. Do not start, reset, or play a game.\n",
+        "reasoning": "A substantive signed-out same-origin page was shown. Signing in as Avery produced POST http://localhost:3000/api/login => 200 OK and a protected workspace visibly identifying Avery with a board, status, totals, history, and controls."
+      },
+      {
+        "id": "self_contained_refresh_runtime",
+        "name": "self_contained_refresh_runtime",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "While Avery's workspace is visible, fully reload the page and require the\nauthenticated workspace to render again and remain usable. Browser network\nevidence must show that the application works from the same origin without a\nrequired public-origin script, stylesheet, font, image, API, or runtime\npackage install. Do not require any particular saved board, history, or totals.\n",
+        "reasoning": "After a full reload, Avery\u2019s workspace rendered and remained usable. Network evidence showed only same-origin resources: /, /styles.css, /app.js, and /api/state; no public-origin dependency or install request was observed."
+      }
+    ],
+    "kind": "agent",
+    "judge": {
+      "agent": "codex",
+      "model": "openai/gpt-5.6-luna",
+      "timeout": 480,
+      "cwd": null,
+      "isolated": false,
+      "atif_trajectory": null,
+      "mode": "batched",
+      "mcp_servers": [
+        {
+          "name": "playwright",
+          "transport": "stdio",
+          "url": null,
+          "command": "playwright-mcp",
+          "args": [
+            "--headless",
+            "--isolated",
+            "--browser=chromium",
+            "--no-sandbox"
+          ],
+          "allowed_tools": []
+        }
+      ]
+    },
+    "judge_output": "{\"required_server_backed_workspace\":{\"score\":\"yes\",\"reasoning\":\"A substantive signed-out same-origin page was shown. Signing in as Avery produced POST http://localhost:3000/api/login => 200 OK and a protected workspace visibly identifying Avery with a board, status, totals, history, and controls.\"},\"self_contained_refresh_runtime\":{\"score\":\"yes\",\"reasoning\":\"After a full reload, Avery\u2019s workspace rendered and remained usable. Network evidence showed only same-origin resources: /, /styles.css, /app.js, and /api/state; no public-origin dependency or install request was observed.\"}}\n"
+  },
+  "functional": {
+    "score": 1.0,
+    "criteria": [
+      {
+        "id": "authenticated_account_workflow",
+        "name": "authenticated_account_workflow",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Confirm the signed-in workspace identifies Avery Morgan and\n`avery@dropline.test`. Start New game, drop once in column 3, sign out, and\nconfirm protected board and totals disappear. Attempt Avery's email with\n`wrong-pass-47` and require visible rejection without protected state. Then\nsign back in with `password123` and require the Red piece at row 6 column 3,\n`Yellow's turn`, and exactly one history entry naming Red, column 3, row 6.\n",
+        "reasoning": "Avery identity, sign-out protection, wrong-password rejection, and saved one-move restoration all verified."
+      },
+      {
+        "id": "gravity_turns_and_full_column",
+        "name": "gravity_turns_and_full_column",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Play columns 4,4,4. Require Red at row 6 column 4, Yellow at row 5 column 4,\nRed at row 4 column 4, every other cell empty, `Yellow's turn`, and three\nmatching history entries. Start New game and click column 1 six times. Require\nbottom-to-top Red, Yellow, Red, Yellow, Red, Yellow and `Red's turn`. Record all\ncells, history, and totals; one more click must show `Column 1 is full` without\nchanging board, turn, history, Undo/Redo availability, or totals.\n",
+        "reasoning": "Exact stacking and six-drop sequences verified; the seventh full-column attempt left all state unchanged."
+      },
+      {
+        "id": "horizontal_and_vertical_wins",
+        "name": "horizontal_and_vertical_wins",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Record Red's total, then play 1,7,2,7,3,6,4. Require `Red wins`, exactly row 6\ncolumns 1-4 marked winning, seven history entries, and Red's total increased by\none. Start New game, play 1,2,1,2,1,2,1, and require `Red wins`, exactly column\n1 rows 3-6 marked winning, seven history entries, and Red's total increased by\none again. No other cell is winning.\n",
+        "reasoning": "Both exact sequences produced the required Red wins, markers, histories, and score increments."
+      },
+      {
+        "id": "both_diagonal_wins",
+        "name": "both_diagonal_wins",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Play 1,2,2,3,4,3,3,4,5,4,4. Require `Red wins` with exactly row 6 column 1,\nrow 5 column 2, row 4 column 3, and row 3 column 4 marked winning. Start New\ngame and play 7,6,6,5,4,5,5,4,3,4,4. Require the mirrored win at row 3 column\n4, row 4 column 5, row 5 column 6, and row 6 column 7. Require eleven matching\nhistory entries and no other winning cell in either game.\n",
+        "reasoning": "Both exact 11-move diagonal sequences produced precisely the requested winning markers and histories."
+      },
+      {
+        "id": "yellow_win_and_terminal_lock",
+        "name": "yellow_win_and_terminal_lock",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Record Yellow's total, then play 7,1,7,2,6,3,6,4. Require `Yellow wins`, exactly\nthe four Yellow pieces at row 6 columns 1-4 marked winning, eight history\nentries, and Yellow's total increased by one. Record board, result, markers,\nhistory, and totals; attempt columns 5 and 1. Require every recorded value to\nremain exactly unchanged.\n",
+        "reasoning": "Yellow win, score increase, exact markers/history, and unchanged state after two terminal attempts verified."
+      },
+      {
+        "id": "exact_draw_and_terminal_lock",
+        "name": "exact_draw_and_terminal_lock",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Record Draws, then play exactly\n4,4,4,4,4,4,3,3,3,3,3,3,5,2,5,6,5,5,5,5,2,2,2,2,2,6,1,6,6,6,6,1,1,1,1,1,7,7,7,7,7,7.\nRequire all 42 cells occupied, visible result exactly `Draw`, zero winning\nmarkers, exactly 42 history entries, and Draws increased by one. Attempt one\nlater drop and require board, result, history, and totals unchanged.\n",
+        "reasoning": "Exact 42-move draw filled the board with no markers; the later drop changed nothing."
+      },
+      {
+        "id": "move_history_undo_redo_branching",
+        "name": "move_history_undo_redo_branching",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 2.0,
+        "description": "Start New game and play 4,5,4. Require the history to read, in order, Red at\ncolumn 4 row 6, Yellow at column 5 row 6, and Red at column 4 row 5. Undo twice.\nRequire only the first Red piece and first history entry to remain, status\n`Yellow's turn`, and Redo available. Reload and require that exact state. Redo\nonce and require the Yellow piece/history entry restored with `Red's turn` and\nanother Redo still available. Now play column 2. Require a new Red entry at\ncolumn 2 row 6 and Redo unavailable; a Redo attempt, if the UI permits one,\nmust change nothing.\n\nThen start New game, record Red's total, and play 1,7,2,7,3,6,4. Require the\nRed win and one score increment. Undo once: require an active round with\n`Red's turn`, the last Red piece and every winning marker removed, six history\nentries, and the Red total returned to its baseline. Reload and require the\nsame undo state. Redo once: require the identical Red win, four markers, seven\nhistory entries, and exactly one restored score increment. Redo is then\nunavailable and cannot increment the score again.\n",
+        "reasoning": "Undo/redo persistence, branching behavior, win undo/redo, and score restoration were all verified."
+      },
+      {
+        "id": "new_game_reset_and_persistence",
+        "name": "new_game_reset_and_persistence",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Create the Red win with 1,7,2,7,3,6,4, record all three match totals, then\nactivate New game. Require all 42 cells empty, no winning markers, no history,\nUndo and Redo unavailable, status exactly `Red's turn`, and recorded totals\nunchanged. Click column 7 and require Red at row 6 column 7, one matching\nhistory entry, and `Yellow's turn`. Fully reload the page and require that exact\none-piece board, history, turn, totals, and Undo availability to remain.\n",
+        "reasoning": "New game reset preserved totals, and the subsequent column-7 move persisted exactly after reload."
+      }
+    ],
+    "kind": "agent",
+    "judge": {
+      "agent": "codex",
+      "model": "openai/gpt-5.6-luna",
+      "timeout": 1800,
+      "cwd": null,
+      "isolated": false,
+      "atif_trajectory": null,
+      "mode": "batched",
+      "mcp_servers": [
+        {
+          "name": "playwright",
+          "transport": "stdio",
+          "url": null,
+          "command": "playwright-mcp",
+          "args": [
+            "--headless",
+            "--isolated",
+            "--browser=chromium",
+            "--no-sandbox"
+          ],
+          "allowed_tools": []
+        }
+      ]
+    },
+    "judge_output": "{\"authenticated_account_workflow\":{\"score\":\"yes\",\"reasoning\":\"Avery identity, sign-out protection, wrong-password rejection, and saved one-move restoration all verified.\"},\"gravity_turns_and_full_column\":{\"score\":\"yes\",\"reasoning\":\"Exact stacking and six-drop sequences verified; the seventh full-column attempt left all state unchanged.\"},\"horizontal_and_vertical_wins\":{\"score\":\"yes\",\"reasoning\":\"Both exact sequences produced the required Red wins, markers, histories, and score increments.\"},\"both_diagonal_wins\":{\"score\":\"yes\",\"reasoning\":\"Both exact 11-move diagonal sequences produced precisely the requested winning markers and histories.\"},\"yellow_win_and_terminal_lock\":{\"score\":\"yes\",\"reasoning\":\"Yellow win, score increase, exact markers/history, and unchanged state after two terminal attempts verified.\"},\"exact_draw_and_terminal_lock\":{\"score\":\"yes\",\"reasoning\":\"Exact 42-move draw filled the board with no markers; the later drop changed nothing.\"},\"move_history_undo_redo_branching\":{\"score\":\"yes\",\"reasoning\":\"Undo/redo persistence, branching behavior, win undo/redo, and score restoration were all verified.\"},\"new_game_reset_and_persistence\":{\"score\":\"yes\",\"reasoning\":\"New game reset preserved totals, and the subsequent column-7 move persisted exactly after reload.\"}}\n"
+  },
+  "polish": {
+    "score": 0.8,
+    "criteria": [
+      {
+        "id": "accessible_grid_and_winning_names",
+        "name": "accessible_grid_and_winning_names",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Confirm the board exposes one grid with exactly 42 grid cells and every initial\ncell name identifies its row, column, and empty state. Play 1,7,2,7,3,6,4.\nRequire exactly four winning Red cells; each accessible name must include its\nrow, column, Red, and `winning`, while no other cell name includes `winning`.\n",
+        "reasoning": "The page loaded without a fatal browser error. After New game, the rendered board had exactly 42 grid cells with row, column, and empty names. The required sequence produced exactly four winning Red names at row 6, columns 1\u20134, with no other winning names."
+      },
+      {
+        "id": "keyboard_navigation_and_drop",
+        "name": "keyboard_navigation_and_drop",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 1.0,
+        "description": "Focus `Drop in column 1`. Without pointer navigation, press ArrowRight and\nrequire column 2 focus, End for column 7, Home for column 1, ArrowLeft and\nrequire focus remains at column 1, then Right twice and Left once for column 2.\nPress Enter and require Red at row 6 column 2; press Space on the same focused\ncontrol and require Yellow at row 5 column 2 with focus still usable. Require\ntwo matching move-history entries. Navigate to Undo without a pointer and\nactivate it; require the Yellow move removed and Redo enabled. Navigate to Redo\nand activate it; require the same Yellow move restored with focus still usable.\n",
+        "reasoning": "Arrow navigation, Home/End, edge clamping, Undo, and Redo worked. However, after Enter placed Red at row 6 column 2, focus reset to column 1; Space therefore placed Yellow at row 6 column 1 instead of row 5 column 2 on the same focused control."
+      },
+      {
+        "id": "responsive_layout_and_feedback",
+        "name": "responsive_layout_and_feedback",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "At exactly 375 by 760 pixels, confirm the sign-in form fits without horizontal\npage overflow. Sign in and require identity, complete board, seven controls,\nstatus, totals, move history, Undo, Redo, New game, and Sign out to remain\nreachable and usable without clipping or overlapping text. Fill column 1 and\nclick it again; require noticeable `Column 1 is full` feedback without\nintroducing overflow.\n",
+        "reasoning": "At 375\u00d7760, sign-in and the stacked protected layout fit without horizontal overflow. Identity, board, controls, scores, history, actions, and sign-out remained reachable. Filling column 1 and clicking again visibly showed \u201cColumn 1 is full\u201d with no overflow or state change."
+      },
+      {
+        "id": "visual_hierarchy_and_craft",
+        "name": "visual_hierarchy_and_craft",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "At desktop size and 375 by 760, require an intentional hierarchy, consistent\nspacing, legible typography, purposeful color, polished sign-in and identity\ntreatment, distinct Red and Yellow pieces, readable scores and history, strong\nfocus states, and an obvious winning treatment. Fail for clipping, overlap,\nlow-contrast controls, or visually ambiguous game state.\n",
+        "reasoning": "Desktop and mobile renders show a polished dark visual system with clear panels, spacing, typography, focus rings, readable history and totals, distinct Red/Yellow pieces, and an obvious ring treatment for winning cells. No clipping or overlap was observed."
+      },
+      {
+        "id": "game_identity_and_production_readiness",
+        "name": "game_identity_and_production_readiness",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Confirm sign-in, saved account state, board, status, scores, move history,\nUndo/Redo, New game, feedback, and sign-out form one coherent finished\nboard-game product rather than disconnected demo surfaces. Exercise moves,\nUndo, Redo, and a win; require understandable feedback and controls that remain\nusable throughout.\n",
+        "reasoning": "Sign-in identity, saved state, board, status, scores, history, New game, Undo/Redo, full-column feedback, win state, reload persistence, and sign-out formed a coherent usable game product."
+      }
+    ],
+    "kind": "agent",
+    "judge": {
+      "agent": "codex",
+      "model": "openai/gpt-5.6-luna",
+      "timeout": 900,
+      "cwd": null,
+      "isolated": false,
+      "atif_trajectory": null,
+      "mode": "batched",
+      "mcp_servers": [
+        {
+          "name": "playwright",
+          "transport": "stdio",
+          "url": null,
+          "command": "playwright-mcp",
+          "args": [
+            "--headless",
+            "--isolated",
+            "--browser=chromium",
+            "--no-sandbox"
+          ],
+          "allowed_tools": []
+        }
+      ]
+    },
+    "judge_output": "{\"accessible_grid_and_winning_names\":{\"score\":\"yes\",\"reasoning\":\"The page loaded without a fatal browser error. After New game, the rendered board had exactly 42 grid cells with row, column, and empty names. The required sequence produced exactly four winning Red names at row 6, columns 1\u20134, with no other winning names.\"},\"keyboard_navigation_and_drop\":{\"score\":\"no\",\"reasoning\":\"Arrow navigation, Home/End, edge clamping, Undo, and Redo worked. However, after Enter placed Red at row 6 column 2, focus reset to column 1; Space therefore placed Yellow at row 6 column 1 instead of row 5 column 2 on the same focused control.\"},\"responsive_layout_and_feedback\":{\"score\":\"yes\",\"reasoning\":\"At 375\u00d7760, sign-in and the stacked protected layout fit without horizontal overflow. Identity, board, controls, scores, history, actions, and sign-out remained reachable. Filling column 1 and clicking again visibly showed \u201cColumn 1 is full\u201d with no overflow or state change.\"},\"visual_hierarchy_and_craft\":{\"score\":\"yes\",\"reasoning\":\"Desktop and mobile renders show a polished dark visual system with clear panels, spacing, typography, focus rings, readable history and totals, distinct Red/Yellow pieces, and an obvious ring treatment for winning cells. No clipping or overlap was observed.\"},\"game_identity_and_production_readiness\":{\"score\":\"yes\",\"reasoning\":\"Sign-in identity, saved state, board, status, scores, history, New game, Undo/Redo, full-column feedback, win state, reload persistence, and sign-out formed a coherent usable game product.\"}}\n"
+  },
+  "render": {
+    "score": 0.0,
+    "criteria": [
+      {
+        "id": "page_load_and_refresh",
+        "name": "page_load_and_refresh",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Open the same-origin page and require a substantive DropLine sign-in screen\nwith a visible heading, email and password fields, and a usable sign-in\ncontrol. Fully refresh once and require the same usable page to render again\nwithout a blank screen, fatal error, or broken layout that blocks the form.\n",
+        "reasoning": "The rendered DropLine sign-in screen showed headings, email and password fields, and a usable Sign in button both before and after a full refresh."
+      },
+      {
+        "id": "basic_control_and_game_surface",
+        "name": "basic_control_and_game_surface",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 1.0,
+        "description": "Click the visible `Use Avery` helper and require it to populate the email field.\nEnter `password123`, sign in, and require a substantive game workspace to\nrender with Avery's identity, a visible Connect Four board, game status, match\ntotals, move history, and visible game controls. Do not require a particular\nsaved board, history, score, or enabled state.\n",
+        "reasoning": "The rendered page did not show the required visible Use Avery helper, so the prescribed interaction could not be performed or verified."
+      }
+    ],
+    "kind": "agent",
+    "judge": {
+      "agent": "codex",
+      "model": "openai/gpt-5.6-luna",
+      "timeout": 480,
+      "cwd": null,
+      "isolated": false,
+      "atif_trajectory": null,
+      "mode": "batched",
+      "mcp_servers": [
+        {
+          "name": "playwright",
+          "transport": "stdio",
+          "url": null,
+          "command": "playwright-mcp",
+          "args": [
+            "--headless",
+            "--isolated",
+            "--browser=chromium",
+            "--no-sandbox"
+          ],
+          "allowed_tools": []
+        }
+      ]
+    },
+    "judge_output": "{\"page_load_and_refresh\":{\"score\":\"yes\",\"reasoning\":\"The rendered DropLine sign-in screen showed headings, email and password fields, and a usable Sign in button both before and after a full refresh.\"},\"basic_control_and_game_surface\":{\"score\":\"no\",\"reasoning\":\"The rendered page did not show the required visible Use Avery helper, so the prescribed interaction could not be performed or verified.\"}}\n"
+  }
+}

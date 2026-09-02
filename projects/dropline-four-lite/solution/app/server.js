@@ -38,10 +38,17 @@ const now = () => new Date().toISOString();
 
 function loadSeed() {
   const workbook = XLSX.readFile(SEED_PATH);
-  const rows = (sheetName) => {
+  const rows = (sheetName, required = true) => {
     const sheet = workbook.Sheets[sheetName];
-    if (!sheet) throw new Error(`Seed workbook is missing ${sheetName}`);
+    if (!sheet && required) throw new Error(`Seed workbook is missing ${sheetName}`);
+    if (!sheet) return [];
     return XLSX.utils.sheet_to_json(sheet, { defval: null, raw: true });
+  };
+  const jsonValue = (value, fallback = []) => {
+    if (value === null || value === undefined || String(value).trim().toLowerCase() === "none") {
+      return fallback;
+    }
+    return JSON.parse(String(value));
   };
   const states = new Map(rows("Initial Game State").map((state) => [
     String(state["Account email"] || "").trim().toLowerCase(),
@@ -56,9 +63,9 @@ function loadSeed() {
     const board = String(state.Board).toLowerCase() === "42 empty cells"
       ? [...EMPTY_BOARD]
       : JSON.parse(String(state.Board));
-    const winningCells = String(state["Winning cells"]).toLowerCase() === "none"
-      ? []
-      : JSON.parse(String(state["Winning cells"]));
+    const winningCells = jsonValue(state["Winning cells"]);
+    const history = jsonValue(state["Applied history"]);
+    const redo = jsonValue(state["Redo history"]);
     if (board.length !== 42) throw new Error(`Seeded board for ${email} must have 42 cells`);
     return {
       email,
@@ -71,13 +78,25 @@ function loadSeed() {
       redWins: Number(state["Red wins"] || 0),
       yellowWins: Number(state["Yellow wins"] || 0),
       draws: Number(state.Draws || 0),
+      history,
+      redo,
+      revision: Number(state.Revision || 0),
+      roundId: String(state["Round id"] || `seed-${email}`),
     };
   });
   if (accounts.length === 0) throw new Error("Seed workbook contains no accounts");
-  return accounts;
+  const matches = rows("Completed Matches", false).map((match) => ({
+    email: String(match["Account email"] || "").trim().toLowerCase(),
+    matchId: String(match["Match id"] || ""),
+    result: String(match.Result || ""),
+    finalBoard: jsonValue(match["Final board"]),
+    moves: jsonValue(match.Moves),
+    completedAt: String(match["Completed at"] || now()),
+  }));
+  return { accounts, matches };
 }
 
-const SEED_ACCOUNTS = loadSeed();
+const SEED_DATA = loadSeed();
 
 function createError(status, message) {
   const error = new Error(message);
@@ -110,7 +129,27 @@ function initialize() {
       red_wins INTEGER NOT NULL DEFAULT 0,
       yellow_wins INTEGER NOT NULL DEFAULT 0,
       draws INTEGER NOT NULL DEFAULT 0,
+      revision INTEGER NOT NULL DEFAULT 0,
+      round_id TEXT NOT NULL,
       updated_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS completed_matches (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      match_id TEXT NOT NULL,
+      result TEXT NOT NULL,
+      final_board_json TEXT NOT NULL,
+      moves_json TEXT NOT NULL,
+      completed_at TEXT NOT NULL,
+      UNIQUE(user_id, match_id)
+    );
+    CREATE TABLE IF NOT EXISTS mutation_receipts (
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      mutation_id TEXT NOT NULL,
+      status_code INTEGER NOT NULL DEFAULT 200,
+      response_json TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      PRIMARY KEY(user_id, mutation_id)
     );
   `);
 
@@ -130,6 +169,18 @@ function initialize() {
   if (!stateColumns.has("redo_json")) {
     db.exec("ALTER TABLE game_states ADD COLUMN redo_json TEXT NOT NULL DEFAULT '[]'");
   }
+  if (!stateColumns.has("revision")) {
+    db.exec("ALTER TABLE game_states ADD COLUMN revision INTEGER NOT NULL DEFAULT 0");
+  }
+  if (!stateColumns.has("round_id")) {
+    db.exec("ALTER TABLE game_states ADD COLUMN round_id TEXT NOT NULL DEFAULT ''");
+  }
+  const receiptColumns = new Set(
+    db.prepare("PRAGMA table_info(mutation_receipts)").all().map((column) => column.name),
+  );
+  if (!receiptColumns.has("status_code")) {
+    db.exec("ALTER TABLE mutation_receipts ADD COLUMN status_code INTEGER NOT NULL DEFAULT 200");
+  }
 
   const insertUser = db.prepare(
     "INSERT OR IGNORE INTO users(email,password_salt,password_hash,name) VALUES(?,?,?,?)",
@@ -137,11 +188,16 @@ function initialize() {
   const insertState = db.prepare(`
     INSERT OR IGNORE INTO game_states(
       user_id,board_json,current_player,status,winning_json,
-      red_wins,yellow_wins,draws,updated_at
-    ) VALUES(?,?,?,?,?,?,?,?,?)
+      history_json,redo_json,red_wins,yellow_wins,draws,revision,round_id,updated_at
+    ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
+  `);
+  const insertMatch = db.prepare(`
+    INSERT OR IGNORE INTO completed_matches(
+      user_id,match_id,result,final_board_json,moves_json,completed_at
+    ) VALUES(?,?,?,?,?,?)
   `);
   const seed = db.transaction(() => {
-    for (const account of SEED_ACCOUNTS) {
+    for (const account of SEED_DATA.accounts) {
       const credentials = passwordRecord(account.password);
       insertUser.run(account.email, credentials.salt, credentials.hash, account.name);
       let user = db.prepare("SELECT * FROM users WHERE email=?").get(account.email);
@@ -156,14 +212,33 @@ function initialize() {
         account.currentPlayer,
         account.status,
         JSON.stringify(account.winningCells),
+        JSON.stringify(account.history),
+        JSON.stringify(account.redo),
         account.redWins,
         account.yellowWins,
         account.draws,
+        account.revision,
+        account.roundId,
         now(),
+      );
+    }
+    for (const match of SEED_DATA.matches) {
+      const user = db.prepare("SELECT id FROM users WHERE lower(email)=?").get(match.email);
+      if (!user || !match.matchId || !["Red wins", "Yellow wins", "Draw"].includes(match.result)) {
+        throw new Error("Every seeded completed match needs an account, id, and valid result");
+      }
+      insertMatch.run(
+        user.id,
+        match.matchId,
+        match.result,
+        JSON.stringify(match.finalBoard),
+        JSON.stringify(match.moves),
+        match.completedAt,
       );
     }
   });
   seed();
+  db.prepare("UPDATE game_states SET round_id='legacy-' || user_id WHERE round_id='' ").run();
 }
 
 function serializeState(row) {
@@ -187,6 +262,8 @@ function serializeState(row) {
       Yellow: row.yellow_wins,
       Draws: row.draws,
     },
+    revision: row.revision,
+    roundId: row.round_id,
     updatedAt: row.updated_at,
   };
 }
@@ -197,6 +274,134 @@ function stateFor(userId) {
 
 function stackFrom(row, field) {
   return JSON.parse(row[field] || "[]");
+}
+
+function completedMatchesFor(userId) {
+  return db.prepare(`
+    SELECT id,match_id,result,final_board_json,moves_json,completed_at
+    FROM completed_matches
+    WHERE user_id=?
+    ORDER BY completed_at DESC,id DESC
+    LIMIT 10
+  `).all(userId).map((row) => {
+    const moves = JSON.parse(row.moves_json);
+    return {
+      id: row.id,
+      matchId: row.match_id,
+      result: row.result,
+      finalBoard: JSON.parse(row.final_board_json),
+      moves,
+      moveCount: moves.length,
+      completedAt: row.completed_at,
+    };
+  });
+}
+
+function completedMatchCountFor(userId) {
+  return db.prepare("SELECT count(*) AS count FROM completed_matches WHERE user_id=?")
+    .get(userId).count;
+}
+
+function gamePayload(userId, extra = {}) {
+  return {
+    game: serializeState(stateFor(userId)),
+    archive: completedMatchesFor(userId),
+    archiveTotal: completedMatchCountFor(userId),
+    ...extra,
+  };
+}
+
+function mutationIdentity(req) {
+  const mutationId = String(req.body?.mutationId || "");
+  if (!/^[a-zA-Z0-9_-]{16,100}$/.test(mutationId)) {
+    throw createError(400, "A valid mutation identifier is required");
+  }
+  return mutationId;
+}
+
+function requireCurrentRevision(req, row) {
+  const revision = Number(req.body?.revision);
+  if (!Number.isInteger(revision) || revision < 0) {
+    throw createError(400, "A valid game revision is required");
+  }
+  if (revision !== row.revision) {
+    const error = createError(409, "Game updated in another tab");
+    error.state = serializeState(row);
+    error.archive = completedMatchesFor(req.session.id);
+    error.archiveTotal = completedMatchCountFor(req.session.id);
+    throw error;
+  }
+}
+
+function runMutation(req, operation) {
+  const mutationId = mutationIdentity(req);
+  try {
+    return db.transaction(() => {
+      const receipt = db.prepare(`
+        SELECT status_code,response_json FROM mutation_receipts
+        WHERE user_id=? AND mutation_id=?
+      `).get(req.session.id, mutationId);
+      if (receipt) {
+        const payload = JSON.parse(receipt.response_json);
+        if (receipt.status_code >= 400) {
+          const error = createError(receipt.status_code, payload.error);
+          error.state = payload.game;
+          error.archive = payload.archive;
+          error.archiveTotal = payload.archiveTotal;
+          throw error;
+        }
+        return payload;
+      }
+      const response = operation();
+      db.prepare(`
+        INSERT INTO mutation_receipts(user_id,mutation_id,status_code,response_json,created_at)
+        VALUES(?,?,?,?,?)
+      `).run(req.session.id, mutationId, 200, JSON.stringify(response), now());
+      return response;
+    })();
+  } catch (error) {
+    const status = Number(error.status) || 500;
+    if (status >= 400 && status < 500) {
+      error.state ||= serializeState(stateFor(req.session.id));
+      error.archive ||= completedMatchesFor(req.session.id);
+      error.archiveTotal ??= completedMatchCountFor(req.session.id);
+      const payload = {
+        error: error.message,
+        game: error.state,
+        archive: error.archive,
+        archiveTotal: error.archiveTotal,
+      };
+      db.prepare(`
+        INSERT OR IGNORE INTO mutation_receipts(
+          user_id,mutation_id,status_code,response_json,created_at
+        ) VALUES(?,?,?,?,?)
+      `).run(req.session.id, mutationId, status, JSON.stringify(payload), now());
+    }
+    throw error;
+  }
+}
+
+function archiveResult(userId, row, board, history, status, restored = null) {
+  if (!["red_win", "yellow_win", "draw"].includes(status)) return;
+  const result = status === "red_win" ? "Red wins" : status === "yellow_win" ? "Yellow wins" : "Draw";
+  const archive = restored || {
+    result,
+    finalBoard: board,
+    moves: history,
+    completedAt: now(),
+  };
+  db.prepare(`
+    INSERT OR IGNORE INTO completed_matches(
+      user_id,match_id,result,final_board_json,moves_json,completed_at
+    ) VALUES(?,?,?,?,?,?)
+  `).run(
+    userId,
+    row.round_id,
+    archive.result,
+    JSON.stringify(archive.finalBoard),
+    JSON.stringify(archive.moves),
+    archive.completedAt,
+  );
 }
 
 function winningLine(board, index, color) {
@@ -285,25 +490,39 @@ app.post("/api/login", (req, res, next) => {
 });
 
 app.post("/api/logout", authenticate, (req, res) => {
-  db.prepare("DELETE FROM sessions WHERE token=?").run(req.session.token);
+  db.prepare("DELETE FROM sessions WHERE user_id=?").run(req.session.id);
   res.json({ ok: true });
 });
 
 app.get("/api/game", authenticate, (req, res) => {
   res.json({
     user: { email: req.session.email, name: req.session.name },
-    game: serializeState(stateFor(req.session.id)),
+    ...gamePayload(req.session.id),
   });
 });
 
-app.post("/api/game/new", authenticate, (req, res) => {
-  db.prepare(`
-    UPDATE game_states
-    SET board_json=?,current_player='Red',status='active',winning_json='[]',
-        history_json='[]',redo_json='[]',updated_at=?
-    WHERE user_id=?
-  `).run(JSON.stringify(EMPTY_BOARD), now(), req.session.id);
-  res.json({ game: serializeState(stateFor(req.session.id)) });
+app.post("/api/game/new", authenticate, (req, res, next) => {
+  try {
+    const result = runMutation(req, () => {
+      const row = stateFor(req.session.id);
+      requireCurrentRevision(req, row);
+      db.prepare(`
+        UPDATE game_states
+        SET board_json=?,current_player='Red',status='active',winning_json='[]',
+            history_json='[]',redo_json='[]',revision=revision+1,round_id=?,updated_at=?
+        WHERE user_id=?
+      `).run(JSON.stringify(EMPTY_BOARD), crypto.randomUUID(), now(), req.session.id);
+      return gamePayload(req.session.id);
+    });
+    res.json(result);
+  } catch (error) {
+    if (error.status === 409 && !error.state) {
+      error.state = serializeState(stateFor(req.session.id));
+      error.archive = completedMatchesFor(req.session.id);
+      error.archiveTotal = completedMatchCountFor(req.session.id);
+    }
+    next(error);
+  }
 });
 
 app.post("/api/game/move", authenticate, (req, res, next) => {
@@ -313,8 +532,9 @@ app.post("/api/game/move", authenticate, (req, res, next) => {
       throw createError(400, "Column must be an integer from 1 to 7");
     }
 
-    const result = db.transaction(() => {
+    const result = runMutation(req, () => {
       const row = stateFor(req.session.id);
+      requireCurrentRevision(req, row);
       if (row.status !== "active") throw createError(409, "The round is already complete");
       const board = JSON.parse(row.board_json);
       let target = -1;
@@ -355,19 +575,22 @@ app.post("/api/game/move", authenticate, (req, res, next) => {
       db.prepare(`
         UPDATE game_states SET
           board_json=?,current_player=?,status=?,winning_json=?,history_json=?,redo_json='[]',
-          red_wins=?,yellow_wins=?,draws=?,updated_at=?
+          red_wins=?,yellow_wins=?,draws=?,revision=revision+1,updated_at=?
         WHERE user_id=?
       `).run(
         JSON.stringify(board), nextPlayer, status, JSON.stringify(winningCells), JSON.stringify(history),
         redWins, yellowWins, draws, now(), req.session.id,
       );
-      return { game: serializeState(stateFor(req.session.id)), placed: target };
-    })();
+      archiveResult(req.session.id, row, board, history, status);
+      return gamePayload(req.session.id, { placed: target });
+    });
 
     res.json(result);
   } catch (error) {
     if (error.status === 409) {
-      error.state = serializeState(stateFor(req.session.id));
+      error.state ||= serializeState(stateFor(req.session.id));
+      error.archive ||= completedMatchesFor(req.session.id);
+      error.archiveTotal ??= completedMatchCountFor(req.session.id);
     }
     next(error);
   }
@@ -375,8 +598,9 @@ app.post("/api/game/move", authenticate, (req, res, next) => {
 
 app.post("/api/game/undo", authenticate, (req, res, next) => {
   try {
-    const game = db.transaction(() => {
+    const result = runMutation(req, () => {
       const row = stateFor(req.session.id);
+      requireCurrentRevision(req, row);
       const history = stackFrom(row, "history_json");
       const redo = stackFrom(row, "redo_json");
       if (history.length === 0) throw createError(409, "Nothing to undo");
@@ -387,7 +611,7 @@ app.post("/api/game/undo", authenticate, (req, res, next) => {
         throw createError(409, "Saved move history does not match the board");
       }
       board[entry.index] = "";
-      redo.push(entry);
+      let redoEntry = entry;
 
       let redWins = row.red_wins;
       let yellowWins = row.yellow_wins;
@@ -395,35 +619,62 @@ app.post("/api/game/undo", authenticate, (req, res, next) => {
       if (row.status === "red_win") redWins = Math.max(0, redWins - 1);
       if (row.status === "yellow_win") yellowWins = Math.max(0, yellowWins - 1);
       if (row.status === "draw") draws = Math.max(0, draws - 1);
+      if (["red_win", "yellow_win", "draw"].includes(row.status)) {
+        const archived = db.prepare(`
+          SELECT result,final_board_json,moves_json,completed_at
+          FROM completed_matches WHERE user_id=? AND match_id=?
+        `).get(req.session.id, row.round_id);
+        if (archived) {
+          redoEntry = {
+            ...entry,
+            terminalArchive: {
+              result: archived.result,
+              finalBoard: JSON.parse(archived.final_board_json),
+              moves: JSON.parse(archived.moves_json),
+              completedAt: archived.completed_at,
+            },
+          };
+        }
+        db.prepare("DELETE FROM completed_matches WHERE user_id=? AND match_id=?")
+          .run(req.session.id, row.round_id);
+      }
+      redo.push(redoEntry);
 
       db.prepare(`
         UPDATE game_states SET
           board_json=?,current_player=?,status='active',winning_json='[]',
-          history_json=?,redo_json=?,red_wins=?,yellow_wins=?,draws=?,updated_at=?
+          history_json=?,redo_json=?,red_wins=?,yellow_wins=?,draws=?,
+          revision=revision+1,updated_at=?
         WHERE user_id=?
       `).run(
         JSON.stringify(board), entry.color, JSON.stringify(history), JSON.stringify(redo),
         redWins, yellowWins, draws, now(), req.session.id,
       );
-      return serializeState(stateFor(req.session.id));
-    })();
-    res.json({ game });
+      return gamePayload(req.session.id);
+    });
+    res.json(result);
   } catch (error) {
-    if (error.status === 409) error.state = serializeState(stateFor(req.session.id));
+    if (error.status === 409) {
+      error.state ||= serializeState(stateFor(req.session.id));
+      error.archive ||= completedMatchesFor(req.session.id);
+      error.archiveTotal ??= completedMatchCountFor(req.session.id);
+    }
     next(error);
   }
 });
 
 app.post("/api/game/redo", authenticate, (req, res, next) => {
   try {
-    const result = db.transaction(() => {
+    const result = runMutation(req, () => {
       const row = stateFor(req.session.id);
+      requireCurrentRevision(req, row);
       if (row.status !== "active") throw createError(409, "The round is already complete");
       const history = stackFrom(row, "history_json");
       const redo = stackFrom(row, "redo_json");
       if (redo.length === 0) throw createError(409, "Nothing to redo");
 
-      const entry = redo.pop();
+      const storedEntry = redo.pop();
+      const { terminalArchive = null, ...entry } = storedEntry;
       if (row.current_player !== entry.color) {
         throw createError(409, "Saved redo turn does not match the game");
       }
@@ -459,18 +710,23 @@ app.post("/api/game/redo", authenticate, (req, res, next) => {
       db.prepare(`
         UPDATE game_states SET
           board_json=?,current_player=?,status=?,winning_json=?,history_json=?,redo_json=?,
-          red_wins=?,yellow_wins=?,draws=?,updated_at=?
+          red_wins=?,yellow_wins=?,draws=?,revision=revision+1,updated_at=?
         WHERE user_id=?
       `).run(
         JSON.stringify(board), nextPlayer, status, JSON.stringify(winningCells),
         JSON.stringify(history), JSON.stringify(redo), redWins, yellowWins, draws,
         now(), req.session.id,
       );
-      return { game: serializeState(stateFor(req.session.id)), placed: target };
-    })();
+      archiveResult(req.session.id, row, board, history, status, terminalArchive);
+      return gamePayload(req.session.id, { placed: target });
+    });
     res.json(result);
   } catch (error) {
-    if (error.status === 409) error.state = serializeState(stateFor(req.session.id));
+    if (error.status === 409) {
+      error.state ||= serializeState(stateFor(req.session.id));
+      error.archive ||= completedMatchesFor(req.session.id);
+      error.archiveTotal ??= completedMatchCountFor(req.session.id);
+    }
     next(error);
   }
 });
@@ -480,7 +736,12 @@ app.get("/", (_req, res) => res.sendFile(path.join(ROOT, "public", "index.html")
 
 app.use((error, _req, res, _next) => {
   const status = Number(error.status) || 500;
-  res.status(status).json({ error: status === 500 ? "Unexpected server error" : error.message, game: error.state });
+  res.status(status).json({
+    error: status === 500 ? "Unexpected server error" : error.message,
+    game: error.state,
+    archive: error.archive,
+    archiveTotal: error.archiveTotal,
+  });
 });
 
 app.listen(PORT, "0.0.0.0", () => {

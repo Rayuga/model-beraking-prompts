@@ -7,7 +7,9 @@ state. Reject an incorrect password with understandable visible feedback.
 After valid sign-in, visibly identify the account by name and email. The server
 must issue an unpredictable bearer token, persist the active token in SQLite,
 and require it for game reads and writes. Signing out revokes that token and
-returns the browser to sign-in. Reusing the signed-out token must be rejected.
+every other active token for the same account, then returns the browser to
+sign-in. On its next protected request, any other signed-in tab must also return
+to sign-in without changing game state.
 
 Account identity comes from the authenticated server session, never from a
 user ID supplied by the browser. Each account has its own current board and

@@ -1,7 +1,7 @@
 {
   "schema_version": "1.1",
   "task": "turing/dropline-four-lite",
-  "version": "5.1.1",
+  "version": "6.0.1",
   "instruction_sources": [
     "instruction.md",
     "environment/instructions/overview.md",
@@ -9,6 +9,8 @@
     "environment/instructions/gameplay.md",
     "environment/instructions/history.md",
     "environment/instructions/persistence.md",
+    "environment/instructions/concurrency.md",
+    "environment/instructions/records.md",
     "environment/instructions/interface.md",
     "environment/assets/artifacts/dropline_seed.xlsx"
   ],
@@ -25,11 +27,12 @@
     },
     {
       "id": "REQ-02",
-      "summary": "Authenticate both seeded accounts with server-issued SQLite-backed bearer tokens, show identity, reject bad credentials, sign out, and revoke the token.",
+      "summary": "Authenticate both seeded accounts with server-issued SQLite-backed bearer tokens, show identity, and reject bad credentials.",
       "functional": true,
       "verified_by": [
         {"category": "render", "criterion": "basic_control_and_game_surface"},
         {"category": "constraints", "criterion": "required_server_backed_workspace"},
+        {"category": "functional", "criterion": "seeded_state_import_and_isolation"},
         {"category": "functional", "criterion": "authenticated_account_workflow"}
       ]
     },
@@ -38,6 +41,7 @@
       "summary": "Keep each account's board, totals, applied history, and redo stack isolated and durable across reload and later sign-in.",
       "functional": true,
       "verified_by": [
+        {"category": "functional", "criterion": "seeded_state_import_and_isolation"},
         {"category": "functional", "criterion": "authenticated_account_workflow"},
         {"category": "functional", "criterion": "move_history_undo_redo_branching"}
       ]
@@ -101,9 +105,9 @@
       "summary": "Support repeated durable undo and redo, reverse and restore terminal scores exactly once, and clear redo after a new branch or New game.",
       "functional": true,
       "verified_by": [
-        {"category": "constraints", "criterion": "authentication_and_account_isolation"},
         {"category": "functional", "criterion": "move_history_undo_redo_branching"},
-        {"category": "functional", "criterion": "new_game_reset_and_persistence"}
+        {"category": "functional", "criterion": "new_game_reset_and_persistence"},
+        {"category": "functional", "criterion": "completed_match_archive_and_replay"}
       ]
     },
     {
@@ -119,41 +123,83 @@
       "summary": "Provide seven named pointer controls and exact Left, Right, Home, End, Enter, and Space keyboard behavior with stable focus.",
       "functional": true,
       "verified_by": [
-        {"category": "polish", "criterion": "keyboard_navigation_and_drop"}
+        {"category": "functional", "criterion": "keyboard_focus_and_activation"}
       ]
     },
     {
       "id": "REQ-13",
-      "summary": "Keep identity, status, feedback, scores, history, all actions, and sign-out coherent and usable at 375 pixels with reduced-motion support.",
+      "summary": "Keep identity, status, feedback, scores, history, archive, replay, all actions, and sign-out coherent and usable at 375 pixels with reduced-motion support.",
       "functional": false,
       "verified_by": [
         {"category": "polish", "criterion": "responsive_layout_and_feedback"},
         {"category": "polish", "criterion": "visual_hierarchy_and_craft"},
-        {"category": "polish", "criterion": "game_identity_and_production_readiness"}
+        {"category": "polish", "criterion": "game_identity_and_production_readiness"},
+        {"category": "polish", "criterion": "archive_replay_usability"}
+      ]
+    },
+    {
+      "id": "REQ-14",
+      "summary": "Import distinct workbook-defined boards, scores, histories, redo stacks, revisions, and completed matches for both accounts.",
+      "functional": true,
+      "verified_by": [
+        {"category": "functional", "criterion": "seeded_state_import_and_isolation"}
+      ]
+    },
+    {
+      "id": "REQ-15",
+      "summary": "Use visible monotonic revisions to reject stale two-tab mutations without partial state changes and return the authoritative state for retry.",
+      "functional": true,
+      "verified_by": [
+        {"category": "functional", "criterion": "multi_tab_revision_and_duplicate_guard"}
+      ]
+    },
+    {
+      "id": "REQ-16",
+      "summary": "Persist unpredictable mutation identifiers, return the original result for duplicates, and ignore repeated control activation while a request is pending.",
+      "functional": true,
+      "verified_by": [
+        {"category": "functional", "criterion": "multi_tab_revision_and_duplicate_guard"}
+      ]
+    },
+    {
+      "id": "REQ-17",
+      "summary": "Maintain an account-scoped latest-ten terminal archive and accessible read-only replay whose entry is removed and restored idempotently by terminal undo and redo.",
+      "functional": true,
+      "verified_by": [
+        {"category": "functional", "criterion": "completed_match_archive_and_replay"},
+        {"category": "polish", "criterion": "archive_replay_usability"}
+      ]
+    },
+    {
+      "id": "REQ-18",
+      "summary": "Signing out revokes every active token for that account so another tab is rejected before it can mutate game state.",
+      "functional": true,
+      "verified_by": [
+        {"category": "functional", "criterion": "cross_tab_sign_out_revocation"}
       ]
     }
   ],
   "functional_coverage": {
     "definition": "Requirements marked functional=true are user-visible product behaviors. Infrastructure-only and purely presentation/accessibility requirements are outside this denominator.",
-    "total_functional_requirements": 10,
-    "covered_by_functional_verifier": 9,
-    "coverage_percent": 90.0,
-    "covered_requirement_ids": ["REQ-02", "REQ-03", "REQ-04", "REQ-05", "REQ-06", "REQ-07", "REQ-08", "REQ-09", "REQ-10"],
-    "covered_elsewhere": {"REQ-12": ["polish/keyboard_navigation_and_drop"]}
+    "total_functional_requirements": 15,
+    "covered_by_functional_verifier": 15,
+    "coverage_percent": 100.0,
+    "covered_requirement_ids": ["REQ-02", "REQ-03", "REQ-04", "REQ-05", "REQ-06", "REQ-07", "REQ-08", "REQ-09", "REQ-10", "REQ-12", "REQ-14", "REQ-15", "REQ-16", "REQ-17", "REQ-18"],
+    "covered_elsewhere": {}
   },
   "criteria_coverage": {
     "render": ["page_load_and_refresh", "basic_control_and_game_surface"],
     "constraints": ["required_server_backed_workspace", "self_contained_refresh_runtime"],
-    "functional": ["authenticated_account_workflow", "gravity_turns_and_full_column", "horizontal_and_vertical_wins", "both_diagonal_wins", "yellow_win_and_terminal_lock", "exact_draw_and_terminal_lock", "move_history_undo_redo_branching", "new_game_reset_and_persistence"],
-    "polish": ["accessible_grid_and_winning_names", "keyboard_navigation_and_drop", "responsive_layout_and_feedback", "visual_hierarchy_and_craft", "game_identity_and_production_readiness"]
+    "functional": ["seeded_state_import_and_isolation", "completed_match_archive_and_replay", "authenticated_account_workflow", "gravity_turns_and_full_column", "horizontal_and_vertical_wins", "both_diagonal_wins", "yellow_win_and_terminal_lock", "exact_draw_and_terminal_lock", "move_history_undo_redo_branching", "new_game_reset_and_persistence", "keyboard_focus_and_activation", "multi_tab_revision_and_duplicate_guard", "cross_tab_sign_out_revocation"],
+    "polish": ["accessible_grid_and_winning_names", "archive_replay_usability", "responsive_layout_and_feedback", "visual_hierarchy_and_craft", "game_identity_and_production_readiness"]
   },
   "seed_asset_policy": "The environment workbook is authoritative. tests/assets/artifacts/dropline_seed.xlsx is a byte-identical verifier fixture because the separate verifier cannot read environment/assets directly.",
   "baseline_hashes": {
-    "environment/assets/artifacts/dropline_seed.xlsx": "B3271452310F38676EC707EF388B7A47667A80CF3904B6B0649661C1D7641CE3",
-    "tests/assets/artifacts/dropline_seed.xlsx": "B3271452310F38676EC707EF388B7A47667A80CF3904B6B0649661C1D7641CE3",
-    "solution/app/server.js": "4A2B3C19742FDCA4FB29F40A62E4EA7FC3D6DB3E9BFAA8ED09DCCA3C17C36806",
-    "solution/app/public/index.html": "5E837DA1E610447BD93A7AE0BC254190CBDF2AD0F1A3F19827764CFBE3BE2AF7",
-    "solution/app/package.json": "8EB6F8FC426BA36E9FB378AA107F19E101533C98397D4C19AA14434E8F789746",
+    "environment/assets/artifacts/dropline_seed.xlsx": "2EAE3582E4F71E3F6D66C031706EB0041D08C9465C08E1B878CF8AE907715626",
+    "tests/assets/artifacts/dropline_seed.xlsx": "2EAE3582E4F71E3F6D66C031706EB0041D08C9465C08E1B878CF8AE907715626",
+    "solution/app/server.js": "51D85DACB6B23D30435145BF31AE9D536031E92B90839AE3756F1C0A4F92CE0F",
+    "solution/app/public/index.html": "5478D173D8259A50D5BD02F950A49A9ABA032941E0BE6F487BE2AB494375308F",
+    "solution/app/package.json": "A29984C7B216B50627820CE21008254ADFD7C7F7B3023157AF643D6A27F9D455",
     "solution/solve.sh": "ADC9D98F41825A7C8EF32C750B1F6A0D27A1682B76375011E0427250597F1B77"
   }
 }

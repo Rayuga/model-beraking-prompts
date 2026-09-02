@@ -157,9 +157,9 @@
     @keyframes settle { from { transform: translateY(-55%) scale(.82); opacity: .25; } to { transform: none; opacity: 1; } }
 
     .side-panel { display: grid; min-width: 0; gap: 18px; }
-    .scoreboard, .actions, .history-panel { padding: 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
-    .history-panel { min-width: 0; overflow: hidden; }
-    .scoreboard h2, .actions h2, .history-panel h2 { margin: 0 0 14px; font-size: 1rem; }
+    .scoreboard, .actions, .history-panel, .archive-panel { padding: 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+    .history-panel, .archive-panel { min-width: 0; overflow: hidden; }
+    .scoreboard h2, .actions h2, .history-panel h2, .archive-panel h2 { margin: 0 0 14px; font-size: 1rem; }
     .score-row { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-top: 1px solid var(--line); }
     .score-row:first-of-type { border-top: 0; }
     .score-label { display: flex; align-items: center; gap: 8px; }
@@ -174,6 +174,17 @@
     .history-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
     .history-actions button { width: 100%; }
     .history-actions button:disabled { cursor: not-allowed; opacity: .45; }
+    .archive-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+    .archive-list button { width: 100%; padding: 9px; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); text-align: left; }
+    .archive-empty, .archive-summary, .replay-copy { color: var(--muted); font-size: .84rem; }
+    .replay-panel { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+    .replay-board { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; padding: 7px; border-radius: 7px; background: var(--board); }
+    .replay-cell { aspect-ratio: 1; border-radius: 50%; background: var(--empty); box-shadow: inset 0 3px 6px #000a; }
+    .replay-cell.red { background: var(--red); }
+    .replay-cell.yellow { background: var(--yellow); }
+    .replay-step { width: 100%; margin: 12px 0; }
+    .replay-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .replay-actions button { min-width: 0; padding-inline: 6px; }
     .key-help { margin: 12px 0 0; color: var(--muted); font-size: .78rem; line-height: 1.5; }
     kbd { padding: 1px 5px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 3px; background: var(--surface-2); color: var(--ink); }
 
@@ -242,7 +253,7 @@
       <section class="game-area" aria-label="Connect Four game">
         <div class="status-row">
           <div><h2 id="status">Red's turn</h2><p id="feedback" aria-live="polite">Choose a column</p></div>
-          <span class="turn-chip">Connect four to win</span>
+          <div><span class="turn-chip">Connect four to win</span> <span id="revision" class="turn-chip">Revision 0</span></div>
         </div>
         <div class="column-controls" aria-label="Column controls"></div>
         <div id="board" role="grid" aria-label="Connect Four board"></div>
@@ -262,6 +273,24 @@
           <div class="history-actions">
             <button id="undo" class="quiet-button" type="button" disabled>Undo</button>
             <button id="redo" class="quiet-button" type="button" disabled>Redo</button>
+          </div>
+        </section>
+        <section class="archive-panel" aria-labelledby="archive-title">
+          <h2 id="archive-title">Completed matches</h2>
+          <p id="archive-empty" class="archive-empty">No completed matches yet</p>
+          <p id="archive-summary" class="archive-summary" hidden></p>
+          <ol id="match-archive" class="archive-list"></ol>
+          <div id="replay-panel" class="replay-panel" hidden>
+            <h2>Match replay</h2>
+            <p id="replay-status" class="replay-copy" role="status"></p>
+            <div id="replay-board" class="replay-board" role="grid" aria-label="Completed match replay board"></div>
+            <label for="replay-step">Replay step</label>
+            <input id="replay-step" class="replay-step" type="range" min="0" max="0" value="0">
+            <div class="replay-actions">
+              <button id="replay-previous" class="quiet-button" type="button">Previous</button>
+              <button id="replay-next" class="quiet-button" type="button">Next</button>
+              <button id="replay-close" class="quiet-button" type="button">Close</button>
+            </div>
           </div>
         </section>
         <section class="actions" aria-labelledby="action-title">
@@ -290,12 +319,26 @@
       const historyEmptyElement = document.querySelector("#history-empty");
       const undoButton = document.querySelector("#undo");
       const redoButton = document.querySelector("#redo");
+      const archiveElement = document.querySelector("#match-archive");
+      const archiveEmptyElement = document.querySelector("#archive-empty");
+      const archiveSummaryElement = document.querySelector("#archive-summary");
+      const replayPanel = document.querySelector("#replay-panel");
+      const replayBoard = document.querySelector("#replay-board");
+      const replayStatus = document.querySelector("#replay-status");
+      const replayStep = document.querySelector("#replay-step");
+      const replayPrevious = document.querySelector("#replay-previous");
+      const replayNext = document.querySelector("#replay-next");
       const cells = [];
       const controls = [];
+      const replayCells = [];
       let token = sessionStorage.getItem(TOKEN_KEY) || "";
       let game = null;
+      let archive = [];
+      let archiveTotal = 0;
+      let selectedReplay = null;
       let lastPlaced = -1;
       let moveQueue = Promise.resolve();
+      let actionPending = false;
 
       async function request(url, options = {}) {
         const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
@@ -307,6 +350,8 @@
           const error = new Error(data.error || "Request failed");
           error.status = response.status;
           error.game = data.game;
+          error.archive = data.archive;
+          error.archiveTotal = data.archiveTotal;
           throw error;
         }
         return data;
@@ -339,6 +384,81 @@
         });
       }
 
+      function mutationBody(extra = {}) {
+        return JSON.stringify({
+          revision: game.revision,
+          mutationId: crypto.randomUUID(),
+          ...extra,
+        });
+      }
+
+      function renderReplay() {
+        if (!selectedReplay) return;
+        const step = Number(replayStep.value);
+        const board = Array(42).fill("");
+        for (const entry of selectedReplay.moves.slice(0, step)) {
+          const index = Number.isInteger(entry.index)
+            ? entry.index
+            : (entry.row - 1) * 7 + entry.column - 1;
+          board[index] = entry.color;
+        }
+        replayCells.forEach((cell, index) => {
+          const value = board[index];
+          cell.className = `replay-cell${value ? ` ${value.toLowerCase()}` : ""}`;
+          cell.setAttribute("aria-label", `Replay row ${Math.floor(index / 7) + 1}, column ${index % 7 + 1}, ${value || "empty"}`);
+        });
+        replayStatus.textContent = `${selectedReplay.result} · step ${step} of ${selectedReplay.moveCount}`;
+        replayPrevious.disabled = step === 0;
+        replayNext.disabled = step === selectedReplay.moveCount;
+      }
+
+      function selectReplay(matchId) {
+        selectedReplay = archive.find((match) => match.matchId === matchId) || null;
+        replayPanel.hidden = !selectedReplay;
+        if (!selectedReplay) return;
+        replayStep.max = String(selectedReplay.moveCount);
+        replayStep.value = String(selectedReplay.moveCount);
+        renderReplay();
+      }
+
+      function renderArchive(rows, total) {
+        archive = Array.isArray(rows) ? rows : [];
+        archiveTotal = Number.isInteger(total) ? total : archive.length;
+        archiveElement.innerHTML = "";
+        archiveEmptyElement.hidden = archive.length > 0;
+        archiveSummaryElement.hidden = archiveTotal === 0;
+        archiveSummaryElement.textContent = archiveTotal > archive.length
+          ? `Showing ${archive.length} of ${archiveTotal} completed matches`
+          : `${archiveTotal} completed ${archiveTotal === 1 ? "match" : "matches"}`;
+        for (const match of archive) {
+          const item = document.createElement("li");
+          const button = document.createElement("button");
+          button.type = "button";
+          button.textContent = `${match.result} · ${match.moveCount} moves`;
+          button.setAttribute("aria-label", `Replay ${match.result}, ${match.moveCount} moves`);
+          button.addEventListener("click", () => selectReplay(match.matchId));
+          item.append(button);
+          archiveElement.append(item);
+        }
+        if (selectedReplay) {
+          const current = archive.find((match) => match.matchId === selectedReplay.matchId);
+          if (current) {
+            selectedReplay = current;
+            replayStep.max = String(current.moveCount);
+            replayStep.value = String(Math.min(Number(replayStep.value), current.moveCount));
+            renderReplay();
+          } else {
+            selectedReplay = null;
+            replayPanel.hidden = true;
+          }
+        }
+      }
+
+      function renderPayload(data, feedback) {
+        renderArchive(data.archive, data.archiveTotal);
+        render(data.game, feedback);
+      }
+
       function render(state, feedback = "Choose a column") {
         game = state;
         statusElement.textContent = statusText(state);
@@ -346,6 +466,7 @@
         document.querySelector("#red-score").textContent = state.scores.Red;
         document.querySelector("#yellow-score").textContent = state.scores.Yellow;
         document.querySelector("#draw-score").textContent = state.scores.Draws;
+        document.querySelector("#revision").textContent = `Revision ${state.revision}`;
         historyElement.innerHTML = "";
         for (const entry of state.moveHistory || []) {
           const item = document.createElement("li");
@@ -375,7 +496,7 @@
         document.querySelector("#signed-in-email").textContent = data.user.email;
         loginView.hidden = true;
         appView.hidden = false;
-        render(data.game, "Saved game restored");
+        renderPayload(data, "Saved game restored");
       }
 
       async function performMove(column) {
@@ -383,18 +504,26 @@
         try {
           const data = await request("/api/game/move", {
             method: "POST",
-            body: JSON.stringify({ column }),
+            body: mutationBody({ column }),
           });
           lastPlaced = data.placed;
-          render(data.game, data.game.status === "active" ? "Move saved" : "Round saved");
+          renderPayload(data, data.game.status === "active" ? "Move saved" : "Round saved");
         } catch (error) {
-          if (error.game) render(error.game, error.message);
+          if (error.game) renderPayload({ game: error.game, archive: error.archive || archive, archiveTotal: error.archiveTotal ?? archiveTotal }, error.message);
           else feedbackElement.textContent = error.message;
         }
       }
 
       function move(column) {
-        moveQueue = moveQueue.then(() => performMove(column));
+        if (actionPending) return;
+        actionPending = true;
+        const focusTarget = controls[column - 1];
+        moveQueue = moveQueue
+          .then(() => performMove(column))
+          .finally(() => {
+            actionPending = false;
+            if (focusTarget && !focusTarget.disabled) focusTarget.focus();
+          });
       }
 
       async function performHistoryAction(action) {
@@ -402,15 +531,38 @@
           ? [undoButton, redoButton, ...controls]
           : [redoButton, undoButton, ...controls];
         try {
-          const data = await request(`/api/game/${action}`, { method: "POST", body: "{}" });
+          const data = await request(`/api/game/${action}`, { method: "POST", body: mutationBody() });
           if (action === "redo") lastPlaced = data.placed;
-          render(data.game, action === "undo" ? "Move undone" : "Move redone");
+          renderPayload(data, action === "undo" ? "Move undone" : "Move redone");
         } catch (error) {
-          if (error.game) render(error.game, error.message);
+          if (error.game) renderPayload({ game: error.game, archive: error.archive || archive, archiveTotal: error.archiveTotal ?? archiveTotal }, error.message);
           else feedbackElement.textContent = error.message;
         }
         const focusTarget = preferred.find((control) => !control.disabled);
         if (focusTarget) focusTarget.focus();
+      }
+
+      function historyAction(action) {
+        if (actionPending) return;
+        actionPending = true;
+        moveQueue = moveQueue
+          .then(() => performHistoryAction(action))
+          .finally(() => { actionPending = false; });
+      }
+
+      async function startNewGame() {
+        if (actionPending || !game) return;
+        actionPending = true;
+        try {
+          const data = await request("/api/game/new", { method: "POST", body: mutationBody() });
+          renderPayload(data, "New round ready");
+          controls[0].focus();
+        } catch (error) {
+          if (error.game) renderPayload({ game: error.game, archive: error.archive || archive, archiveTotal: error.archiveTotal ?? archiveTotal }, error.message);
+          else feedbackElement.textContent = error.message;
+        } finally {
+          actionPending = false;
+        }
       }
 
       function buildBoard() {
@@ -443,6 +595,14 @@
           cells.push(cell);
           boardElement.append(cell);
         }
+        for (let index = 0; index < 42; index += 1) {
+          const cell = document.createElement("div");
+          cell.className = "replay-cell";
+          cell.setAttribute("role", "gridcell");
+          cell.setAttribute("aria-label", `Replay row ${Math.floor(index / 7) + 1}, column ${index % 7 + 1}, empty`);
+          replayCells.push(cell);
+          replayBoard.append(cell);
+        }
       }
 
       loginForm.addEventListener("submit", async (event) => {
@@ -468,18 +628,28 @@
         });
       });
 
-      document.querySelector("#new-game").addEventListener("click", async () => {
-        const data = await request("/api/game/new", { method: "POST", body: "{}" });
-        render(data.game, "New round ready");
-        controls[0].focus();
-      });
+      document.querySelector("#new-game").addEventListener("click", startNewGame);
 
       undoButton.addEventListener("click", () => {
-        moveQueue = moveQueue.then(() => performHistoryAction("undo"));
+        historyAction("undo");
       });
 
       redoButton.addEventListener("click", () => {
-        moveQueue = moveQueue.then(() => performHistoryAction("redo"));
+        historyAction("redo");
+      });
+
+      replayStep.addEventListener("input", renderReplay);
+      replayPrevious.addEventListener("click", () => {
+        replayStep.value = String(Math.max(0, Number(replayStep.value) - 1));
+        renderReplay();
+      });
+      replayNext.addEventListener("click", () => {
+        replayStep.value = String(Math.min(Number(replayStep.max), Number(replayStep.value) + 1));
+        renderReplay();
+      });
+      document.querySelector("#replay-close").addEventListener("click", () => {
+        selectedReplay = null;
+        replayPanel.hidden = true;
       });
 
       window.addEventListener("resize", revealLatestHistory);
