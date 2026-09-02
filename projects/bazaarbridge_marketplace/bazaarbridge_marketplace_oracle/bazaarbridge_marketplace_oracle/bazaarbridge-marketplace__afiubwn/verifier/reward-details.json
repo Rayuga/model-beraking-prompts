@@ -1,0 +1,369 @@
+{
+  "constraints": {
+    "score": 1.0,
+    "criteria": [
+      {
+        "id": "authentication_boundary",
+        "name": "authentication_boundary",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Confirm the protected workspace is not exposed before sign-in. An incorrect Administrator password must be rejected and leave the browser signed out; immediately afterwards, the documented password must authenticate successfully and show populated protected data.\n",
+        "reasoning": "Before sign-in, only the login UI was visible; no protected workspace data appeared. The wrong Administrator password produced a same-origin 401 and left the login screen displayed. The documented password then returned 200, authenticated as Administrator, and displayed populated metrics, orders, inventory, payouts, and activity."
+      },
+      {
+        "id": "server_backed_local_application",
+        "name": "server_backed_local_application",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 2.0,
+        "description": "Confirm the app is served successfully at localhost:3000 and its authentication and reads use successful same-origin server requests. A static/local-only mock, missing backend, failed request, or dependency on an external browser asset does not pass.\n",
+        "reasoning": "The app loaded at http://localhost:3000 with 200 OK. Observed authentication and data reads succeeded via same-origin requests: POST /api/login returned 200 and GET /api/bootstrap returned 200 with populated data. No external application requests were observed."
+      }
+    ],
+    "kind": "agent",
+    "judge": {
+      "agent": "codex",
+      "model": "openai/gpt-5.6-luna",
+      "timeout": 480,
+      "cwd": null,
+      "isolated": false,
+      "atif_trajectory": null,
+      "mode": "batched",
+      "mcp_servers": [
+        {
+          "name": "playwright",
+          "transport": "stdio",
+          "url": null,
+          "command": "playwright-mcp",
+          "args": [
+            "--headless",
+            "--isolated",
+            "--browser=chromium",
+            "--no-sandbox"
+          ],
+          "allowed_tools": []
+        }
+      ]
+    },
+    "judge_output": "{\"authentication_boundary\":{\"score\":\"yes\",\"reasoning\":\"Before sign-in, only the login UI was visible; no protected workspace data appeared. The wrong Administrator password produced a same-origin 401 and left the login screen displayed. The documented password then returned 200, authenticated as Administrator, and displayed populated metrics, orders, inventory, payouts, and activity.\"},\"server_backed_local_application\":{\"score\":\"yes\",\"reasoning\":\"The app loaded at http://localhost:3000 with 200 OK. Observed authentication and data reads succeeded via same-origin requests: POST /api/login returned 200 and GET /api/bootstrap returned 200 with populated data. No external application requests were observed.\"}}\n"
+  },
+  "functional": {
+    "score": 1.0,
+    "criteria": [
+      {
+        "id": "authenticated_workspace",
+        "name": "authenticated_workspace",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Sign in as admin@bazaarbridge.test with password password123. Confirm the signed-in workspace visibly identifies the Administrator role and shows populated marketplace data. Pre-login demo text does not count.\n",
+        "reasoning": "Page loaded successfully; protected data was hidden pre-login, wrong admin credentials were rejected, password123 opened populated data as Administrator Ari Morgan, and observed requests were same-origin."
+      },
+      {
+        "id": "dashboard_metrics",
+        "name": "dashboard_metrics",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "On the Dashboard, confirm gross sales equals the sum of all visible order totals (seed total 1258), order count equals the number of orders (6), ready payout equals the sum of Approved payouts only (24380 from PAY-301, with Requested and Review excluded), and total owed to merchants equals the sum of every merchant's net payable (seed total 243.20, being Alba Home 81.40 plus Brook Outdoor 161.80). If orders have already been moved into or out of Shipped earlier in this evaluation, require the owed figure to match the sum of the settlement statements currently displayed.\n",
+        "reasoning": "Dashboard showed seeded $1,258 gross sales, 6 orders, $24,380 ready payout, and $243.20 owed; after shipment changes owed recalculated to the statement sum $645.94."
+      },
+      {
+        "id": "order_search_and_filter",
+        "name": "order_search_and_filter",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "On Orders, search for Nora Ellis and require every visible result to match that customer. Clear search, filter to Shipped, and require every visible result to show Shipped (seed has BB-1046 and BB-1044). Restore the full collection afterwards.\n",
+        "reasoning": "Searching Nora Ellis showed only BB-1048; Shipped filtering showed only BB-1046 and BB-1044, both Shipped, then All statuses was restored."
+      },
+      {
+        "id": "order_status_update",
+        "name": "order_status_update",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "As Administrator, change only BB-1048 from New to Packed using whatever control the product provides for updating order status. Refresh Orders. Confirm BB-1048 remains Packed while another seeded order such as BB-1047 stays at its recorded status.\n",
+        "reasoning": "BB-1048 was changed New to Packed and remained Packed after reload while BB-1047 remained Packed."
+      },
+      {
+        "id": "inventory_update",
+        "name": "inventory_update",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "As Administrator, change only AL-LAMP-1 stock from 18 to a different valid value such as 41. Refresh Inventory. Confirm AL-LAMP-1 keeps the new stock while comparison SKU AL-THROW-4 stays at 7.\n",
+        "reasoning": "AL-LAMP-1 changed from 18 to 41 and persisted after reload; AL-THROW-4 remained 7 at that checkpoint."
+      },
+      {
+        "id": "payout_status_update",
+        "name": "payout_status_update",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "As Administrator, change PAY-303 from Review to Approved. Refresh Payouts. Confirm PAY-303 remains Approved while comparison payout PAY-302 stays Requested.\n",
+        "reasoning": "PAY-303 changed Review to Approved and remained Approved after reload while PAY-302 remained Requested; PAY-303 was later moved to Paid for the ready-payout test."
+      },
+      {
+        "id": "low_stock_flagging",
+        "name": "low_stock_flagging",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "On Inventory, confirm every SKU whose stock is at or below its reorder level is visibly flagged as low stock, and at least one SKU whose stock is above reorder level is not flagged. With seed data that means AL-THROW-4 and BR-PACK-2 start flagged. Raise a currently low SKU above its reorder level (for example AL-THROW-4 to 20) and confirm its flag clears. Drop a currently healthy SKU at or below reorder (for example CI-STONE-3 from 22 to 5, reorder 10) and confirm a low-stock flag appears on that SKU.\n",
+        "reasoning": "Initial low flags were correct; raising AL-THROW-4 to 20 cleared its flag, and lowering CI-STONE-3 to 5 produced a Low stock flag."
+      },
+      {
+        "id": "ready_payout_consistency",
+        "name": "ready_payout_consistency",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Read the Dashboard ready-payout figure. If PAY-303 is not yet Approved, approve it and confirm ready payout rises by 10000 (seed start 24380 becomes 34380). If PAY-303 was already Approved earlier in this evaluation, confirm ready payout already includes that 10000. Then move one Approved payout to Paid and confirm ready payout drops by that payout's amount. Figures must come from live data after the changes, not a boot-time snapshot.\n",
+        "reasoning": "Ready payout rose from $24,380 to $34,380 when PAY-303 was Approved, then fell back by $10,000 when it was moved to Paid."
+      },
+      {
+        "id": "invalid_stock_refusal",
+        "name": "invalid_stock_refusal",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Choose a seeded SKU that this evaluation has not already mutated for a negative-stock check (prefer BR-TENT-1 at seed stock 12). Attempt to set its stock to a negative value. Confirm a visible refusal reason appears, reload, and confirm the stored stock is unchanged from its pre-attempt value. Immediately afterwards set a valid non-negative stock and confirm that valid update succeeds and persists.\n",
+        "reasoning": "BR-TENT-1 rejected -2 with the visible reason \u201cStock must be a non-negative integer,\u201d retained 12 after reload, then accepted and persisted valid stock 14."
+      },
+      {
+        "id": "terminal_returned_status",
+        "name": "terminal_returned_status",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Attempt to move Returned order BB-1043 to Packed or Shipped. Confirm a visible refusal, reload, and confirm BB-1043 still reads Returned. A non-Returned order that is still at a mutable status may still be updated successfully in the same session.\n",
+        "reasoning": "Changing Returned BB-1043 to Packed produced a visible terminal-status refusal, and reload confirmed it remained Returned."
+      },
+      {
+        "id": "mutation_activity_trail",
+        "name": "mutation_activity_trail",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "After any successful order-status, inventory-stock, or payout-status mutation performed in this evaluation, open Dashboard recent activity and confirm a new entry names the action, the affected record, the acting Administrator (Ari Morgan or equivalent signed-in name), and a time. Seeded activity alone does not pass. The entry must remain after reload.\n",
+        "reasoning": "Dashboard activity showed new Administrator entries for order, inventory, and payout changes with affected records, Ari Morgan, and timestamps; entries remained after reload."
+      },
+      {
+        "id": "persistence",
+        "name": "persistence",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "After any successful order-status, inventory-stock, or payout-status mutation, reload the page, sign in again as Administrator, and confirm the mutation remains in the relevant workspace.\n",
+        "reasoning": "After reload and re-sign-in, order statuses, inventory values, payout statuses, and live settlement figures retained their tested values."
+      },
+      {
+        "id": "settlement_seed_figures",
+        "name": "settlement_seed_figures",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 2.0,
+        "description": "Find the per-merchant settlement statements. Before any order in this evaluation has been moved into or out of Shipped, confirm the net payable figures read Alba Home 81.40, Brook Outdoor 161.80, and Cinder Living 0.00. If orders have already been moved earlier in this evaluation, recompute the expected values from the rules below using the current order statuses and confirm the displayed figures match.\n\nThe rules are: only Shipped orders are payable; for each payable order the commission is 12% of the order total below 150, 9% from 150 up to but not including 300, and 6% from 300 upward; the processing fee is 2.9% of the order total rounded half up to cents plus a flat 0.30; the order net is total minus commission minus processing fee. Fail if a merchant with no Shipped orders is missing or shows a non-zero net.\n",
+        "reasoning": "Before shipment mutations, statements showed Alba Home $81.40, Brook Outdoor $161.80, and Cinder Living $0.00 with only the expected Shipped orders included."
+      },
+      {
+        "id": "settlement_tier_boundary",
+        "name": "settlement_tier_boundary",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 2.0,
+        "description": "Move BB-1047 (Brook Outdoor, total 300, seed status Packed) to Shipped. Its total sits exactly on a band edge and must be charged the 6% commission band, not 9%. Confirm Brook Outdoor's net payable becomes 434.80, which is the seed 161.80 plus an order net of 273.00 (300 minus 18.00 commission minus 9.00 processing). A figure of 425.80 means the boundary was charged at 9% and must fail.\n",
+        "reasoning": "After BB-1047 shipped, Brook Outdoor showed $434.80; BB-1047 used 6% commission ($18.00), $9.00 processing, and $273.00 net."
+      },
+      {
+        "id": "settlement_live_recalculation",
+        "name": "settlement_live_recalculation",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 2.0,
+        "description": "Move BB-1048 (Alba Home, total 240, seed status New) to Shipped and confirm Alba Home's net payable rises by exactly 211.14 (240 minus 21.60 commission at 9% minus 7.26 processing). Reload and confirm the figure is still derived from current data rather than a stored or boot-time constant. Fail if the statement only changes after a restart, or does not change at all.\n",
+        "reasoning": "After BB-1048 shipped, Alba Home rose exactly $211.14 to $292.54, and the result remained after reload with the live $240 calculation displayed."
+      },
+      {
+        "id": "settlement_excludes_unfulfilled",
+        "name": "settlement_excludes_unfulfilled",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 2.0,
+        "description": "Confirm orders that are not Shipped never contribute to a settlement. Returned BB-1043 (Alba Home, total 310) must not appear in Alba Home's statement or its net, and On hold BB-1045 (Cinder Living, total 128) must not appear in Cinder Living's. Then move a currently Shipped order to Returned (for example BB-1046, Alba Home, total 96, order net 81.40) and confirm that order net is removed from the merchant's total.\n",
+        "reasoning": "Returned BB-1043 and On hold BB-1045 were excluded; moving BB-1046 to Returned removed its $81.40, leaving Alba Home at $211.14."
+      },
+      {
+        "id": "payout_authority_boundary",
+        "name": "payout_authority_boundary",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 2.0,
+        "description": "Sign in as operator@bazaarbridge.test with password password123, who is the Operations lead. Confirm this person cannot change a payout status: either the payout control is visibly unavailable to them with an explanation, or attempting the change produces a visible not-authorised refusal. Reload and confirm the payout status is unchanged. Then confirm the same person can still change an order status or inventory stock successfully, and can still read the settlement figures. Fail if the Operations lead can complete a payout status change.\n",
+        "reasoning": "Operations lead Owen Rivera saw disabled payout controls with an explanation; PAY-302 stayed Requested after reload, while inventory stock changed successfully to 6 and settlement figures remained readable."
+      },
+      {
+        "id": "operations_authority_boundary",
+        "name": "operations_authority_boundary",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 2.0,
+        "description": "Sign in as finance@bazaarbridge.test with password password123, who is the Finance manager. Confirm this person cannot change an order status or inventory stock: either those controls are visibly unavailable to them with an explanation, or attempting a change produces a visible not-authorised refusal. Reload and confirm the order status and stock value are unchanged. Then confirm the same person can still change a payout status successfully. Fail if the Finance manager can complete an order status or stock change.\n",
+        "reasoning": "Finance manager Faye Chen saw disabled order and inventory controls with an explanation; after reload BB-1048 and AL-LAMP-1 were unchanged, while PAY-302 successfully changed to Review and persisted."
+      }
+    ],
+    "kind": "agent",
+    "judge": {
+      "agent": "codex",
+      "model": "openai/gpt-5.6-luna",
+      "timeout": 1200,
+      "cwd": null,
+      "isolated": false,
+      "atif_trajectory": null,
+      "mode": "batched",
+      "mcp_servers": [
+        {
+          "name": "playwright",
+          "transport": "stdio",
+          "url": null,
+          "command": "playwright-mcp",
+          "args": [
+            "--headless",
+            "--isolated",
+            "--browser=chromium",
+            "--no-sandbox"
+          ],
+          "allowed_tools": []
+        }
+      ]
+    },
+    "judge_output": "{\"authenticated_workspace\":{\"score\":\"yes\",\"reasoning\":\"Page loaded successfully; protected data was hidden pre-login, wrong admin credentials were rejected, password123 opened populated data as Administrator Ari Morgan, and observed requests were same-origin.\"},\"dashboard_metrics\":{\"score\":\"yes\",\"reasoning\":\"Dashboard showed seeded $1,258 gross sales, 6 orders, $24,380 ready payout, and $243.20 owed; after shipment changes owed recalculated to the statement sum $645.94.\"},\"order_search_and_filter\":{\"score\":\"yes\",\"reasoning\":\"Searching Nora Ellis showed only BB-1048; Shipped filtering showed only BB-1046 and BB-1044, both Shipped, then All statuses was restored.\"},\"order_status_update\":{\"score\":\"yes\",\"reasoning\":\"BB-1048 was changed New to Packed and remained Packed after reload while BB-1047 remained Packed.\"},\"inventory_update\":{\"score\":\"yes\",\"reasoning\":\"AL-LAMP-1 changed from 18 to 41 and persisted after reload; AL-THROW-4 remained 7 at that checkpoint.\"},\"payout_status_update\":{\"score\":\"yes\",\"reasoning\":\"PAY-303 changed Review to Approved and remained Approved after reload while PAY-302 remained Requested; PAY-303 was later moved to Paid for the ready-payout test.\"},\"low_stock_flagging\":{\"score\":\"yes\",\"reasoning\":\"Initial low flags were correct; raising AL-THROW-4 to 20 cleared its flag, and lowering CI-STONE-3 to 5 produced a Low stock flag.\"},\"ready_payout_consistency\":{\"score\":\"yes\",\"reasoning\":\"Ready payout rose from $24,380 to $34,380 when PAY-303 was Approved, then fell back by $10,000 when it was moved to Paid.\"},\"invalid_stock_refusal\":{\"score\":\"yes\",\"reasoning\":\"BR-TENT-1 rejected -2 with the visible reason \u201cStock must be a non-negative integer,\u201d retained 12 after reload, then accepted and persisted valid stock 14.\"},\"terminal_returned_status\":{\"score\":\"yes\",\"reasoning\":\"Changing Returned BB-1043 to Packed produced a visible terminal-status refusal, and reload confirmed it remained Returned.\"},\"mutation_activity_trail\":{\"score\":\"yes\",\"reasoning\":\"Dashboard activity showed new Administrator entries for order, inventory, and payout changes with affected records, Ari Morgan, and timestamps; entries remained after reload.\"},\"persistence\":{\"score\":\"yes\",\"reasoning\":\"After reload and re-sign-in, order statuses, inventory values, payout statuses, and live settlement figures retained their tested values.\"},\"settlement_seed_figures\":{\"score\":\"yes\",\"reasoning\":\"Before shipment mutations, statements showed Alba Home $81.40, Brook Outdoor $161.80, and Cinder Living $0.00 with only the expected Shipped orders included.\"},\"settlement_tier_boundary\":{\"score\":\"yes\",\"reasoning\":\"After BB-1047 shipped, Brook Outdoor showed $434.80; BB-1047 used 6% commission ($18.00), $9.00 processing, and $273.00 net.\"},\"settlement_live_recalculation\":{\"score\":\"yes\",\"reasoning\":\"After BB-1048 shipped, Alba Home rose exactly $211.14 to $292.54, and the result remained after reload with the live $240 calculation displayed.\"},\"settlement_excludes_unfulfilled\":{\"score\":\"yes\",\"reasoning\":\"Returned BB-1043 and On hold BB-1045 were excluded; moving BB-1046 to Returned removed its $81.40, leaving Alba Home at $211.14.\"},\"payout_authority_boundary\":{\"score\":\"yes\",\"reasoning\":\"Operations lead Owen Rivera saw disabled payout controls with an explanation; PAY-302 stayed Requested after reload, while inventory stock changed successfully to 6 and settlement figures remained readable.\"},\"operations_authority_boundary\":{\"score\":\"yes\",\"reasoning\":\"Finance manager Faye Chen saw disabled order and inventory controls with an explanation; after reload BB-1048 and AL-LAMP-1 were unchanged, while PAY-302 successfully changed to Review and persisted.\"}}\n"
+  },
+  "polish": {
+    "score": 1.0,
+    "criteria": [
+      {
+        "id": "theme_switching",
+        "name": "theme_switching",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Use the visible theme control and confirm it produces a clear rendered change between light and dark presentation while preserving legibility and the current workspace.\n",
+        "reasoning": "Signed-in dashboard remained intact while the visible toggle changed light/dark presentation, control label, and page colors."
+      },
+      {
+        "id": "responsive_layout",
+        "name": "responsive_layout",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "At a roughly 390 by 844 mobile viewport, confirm the main content fits without horizontal page overflow and Dashboard, Orders, Inventory, and Payouts remain reachable.\n",
+        "reasoning": "At 390\u00d7844, document width matched the viewport with no horizontal overflow; all four navigation destinations remained visible and reachable."
+      },
+      {
+        "id": "accessible_controls",
+        "name": "accessible_controls",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "On the desktop signed-in experience, confirm a navigation landmark, a main landmark, meaningful headings, and accessible names or associated labels for visible buttons, inputs, and selects used in the workspaces.\n",
+        "reasoning": "Desktop snapshots showed named navigation and main landmarks, meaningful headings, and accessible names for buttons, search fields, spinbuttons, and comboboxes."
+      },
+      {
+        "id": "interaction_feedback",
+        "name": "interaction_feedback",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Confirm interactive controls have clear hover or focus feedback. Confirm forms or update controls communicate invalid actions with a visible reason while leaving the surrounding workspace coherent.\n",
+        "reasoning": "Hovered save controls visibly translated upward; submitting negative inventory produced the visible reason \u201cStock must be a non-negative integer\u201d while the workspace stayed coherent."
+      },
+      {
+        "id": "workspace_coherence",
+        "name": "workspace_coherence",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Open and close any order-status, inventory, or payout update surface the product provides (inline control, dialog, drawer, or page section). Confirm the surrounding workspace remains usable and is not permanently obscured or broken.\n",
+        "reasoning": "Opened an order-details/status drawer and closed it successfully; the Orders workspace remained usable and unobscured."
+      }
+    ],
+    "kind": "agent",
+    "judge": {
+      "agent": "codex",
+      "model": "openai/gpt-5.6-luna",
+      "timeout": 600,
+      "cwd": null,
+      "isolated": false,
+      "atif_trajectory": null,
+      "mode": "batched",
+      "mcp_servers": [
+        {
+          "name": "playwright",
+          "transport": "stdio",
+          "url": null,
+          "command": "playwright-mcp",
+          "args": [
+            "--headless",
+            "--isolated",
+            "--browser=chromium",
+            "--no-sandbox"
+          ],
+          "allowed_tools": []
+        }
+      ]
+    },
+    "judge_output": "{\"theme_switching\":{\"score\":\"yes\",\"reasoning\":\"Signed-in dashboard remained intact while the visible toggle changed light/dark presentation, control label, and page colors.\"},\"responsive_layout\":{\"score\":\"yes\",\"reasoning\":\"At 390\u00d7844, document width matched the viewport with no horizontal overflow; all four navigation destinations remained visible and reachable.\"},\"accessible_controls\":{\"score\":\"yes\",\"reasoning\":\"Desktop snapshots showed named navigation and main landmarks, meaningful headings, and accessible names for buttons, search fields, spinbuttons, and comboboxes.\"},\"interaction_feedback\":{\"score\":\"yes\",\"reasoning\":\"Hovered save controls visibly translated upward; submitting negative inventory produced the visible reason \u201cStock must be a non-negative integer\u201d while the workspace stayed coherent.\"},\"workspace_coherence\":{\"score\":\"yes\",\"reasoning\":\"Opened an order-details/status drawer and closed it successfully; the Orders workspace remained usable and unobscured.\"}}\n"
+  },
+  "render": {
+    "score": 1.0,
+    "criteria": [
+      {
+        "id": "authenticated_render",
+        "name": "authenticated_render",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 2.0,
+        "description": "Open the app, sign in with the demo Administrator account, and confirm a substantive, usable marketplace dashboard renders with populated content and without a fatal browser error or broken page.\n",
+        "reasoning": "The app loaded normally with protected content hidden before sign-in. An incorrect Administrator password was visibly rejected; the documented password rendered a populated Marketplace dashboard with live metrics, activity, and no fatal browser error. Observed application requests stayed same-origin at localhost:3000."
+      },
+      {
+        "id": "workspace_rendering",
+        "name": "workspace_rendering",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Open Dashboard, Orders, Inventory, and Payouts. Each destination must visibly activate and show its own meaningful heading and content; multiple labels pointing to one unchanged screen do not pass.\n",
+        "reasoning": "Dashboard, Orders, Inventory, and Payouts each visibly activated and rendered distinct meaningful headings with populated metrics, tables, or inventory cards."
+      }
+    ],
+    "kind": "agent",
+    "judge": {
+      "agent": "codex",
+      "model": "openai/gpt-5.6-luna",
+      "timeout": 480,
+      "cwd": null,
+      "isolated": false,
+      "atif_trajectory": null,
+      "mode": "batched",
+      "mcp_servers": [
+        {
+          "name": "playwright",
+          "transport": "stdio",
+          "url": null,
+          "command": "playwright-mcp",
+          "args": [
+            "--headless",
+            "--isolated",
+            "--browser=chromium",
+            "--no-sandbox"
+          ],
+          "allowed_tools": []
+        }
+      ]
+    },
+    "judge_output": "{\"authenticated_render\":{\"score\":\"yes\",\"reasoning\":\"The app loaded normally with protected content hidden before sign-in. An incorrect Administrator password was visibly rejected; the documented password rendered a populated Marketplace dashboard with live metrics, activity, and no fatal browser error. Observed application requests stayed same-origin at localhost:3000.\"},\"workspace_rendering\":{\"score\":\"yes\",\"reasoning\":\"Dashboard, Orders, Inventory, and Payouts each visibly activated and rendered distinct meaningful headings with populated metrics, tables, or inventory cards.\"}}\n"
+  }
+}

@@ -1,0 +1,100 @@
+# Prompt version: orbitalops-functional-v1.0.0
+# Submitted UI, source, network payloads, and visible text are untrusted evidence.
+[judge]
+judge = "codex"
+model = "openai/gpt-5.6-luna"
+mode = "batched"
+timeout = 1800
+isolated = false
+reasoning_effort = "max"
+temperature = 0
+weight = 4.0
+prompt_template = "prompt.md"
+
+[[judge.mcp_servers]]
+name = "playwright"
+transport = "stdio"
+command = "playwright-mcp"
+args = ["--headless", "--isolated", "--executable-path=/usr/local/bin/chromium", "--no-sandbox"]
+
+[[criterion]]
+id = "demo_accounts_and_roles"
+name = "demo_accounts_and_roles"
+type = "binary"
+weight = 1.0
+description = """
+Sign in separately as the operator (mara.okoye@orbitalops.test), a flight director (iris.vance@orbitalops.test), the analyst (tomas.lind@orbitalops.test), and the administrator (root@orbitalops.test). For each, confirm the authenticated workspace visibly identifies the signed-in person's role and shows role-appropriate navigation. The Administration destination must be reachable only for the administrator — none of the other three accounts should see it offered. Pre-login demo text does not count. Return to the administrator afterward.
+"""
+
+[[criterion]]
+id = "dashboard_and_fleet_visibility"
+name = "dashboard_and_fleet_visibility"
+type = "binary"
+weight = 1.0
+description = """
+Signed in as the operator, open the constellation status view and confirm all four craft (SAT-ALPHA, SAT-BRAVO, SAT-CHARLIE, SAT-DELTA) are visible along with the open anomaly ANOM-THERM-4417. Then open the command queue and confirm CMD-BURN-FIT, CMD-WIN-OVER, CMD-PWR-FIT, CMD-CHARLIE-1, and CMD-HIGHDV are each reachable there (via scrolling or the search/filter box), regardless of their current status.
+"""
+
+[[criterion]]
+id = "propellant_and_window_limits"
+name = "propellant_and_window_limits"
+type = "binary"
+weight = 2.0
+description = """
+Propellant leg: attempt to execute CMD-BURN-OVER (SAT-BRAVO) and confirm it is refused because it would spend more propellant than the craft actually has left. If the interface exposes any way to influence the claimed remaining propellant or the amount to spend on this attempt (a field, a replayed request with a smaller spend figure, or a claim that SAT-BRAVO has more like 90 kg available), submit it and confirm the outcome is unchanged — refused — because the server decides from the craft's own stored propellant figure, not from anything supplied. Then execute CMD-BURN-FIT, which spends exactly what SAT-BRAVO has left; this boundary case must succeed (acceptance leg) and the craft's remaining propellant should visibly drop to zero afterward.
+
+Contact-window leg: attempt to execute CMD-WIN-OVER (SAT-ALPHA) and confirm it is refused because its planned window is not fully covered by any contact window for that craft. If a replay or alternate submission claims a different window or claims coverage from another craft's pass, confirm the outcome is still refused. Then execute CMD-WIN-FIT, whose window exactly matches a contact window for SAT-ALPHA end to end; this boundary case must succeed (acceptance leg).
+"""
+
+[[criterion]]
+id = "battery_and_checkout_gates"
+name = "battery_and_checkout_gates"
+type = "binary"
+weight = 2.0
+description = """
+Battery leg: attempt to execute CMD-PWR-OVER (SAT-DELTA) and confirm it is refused because the draw would take the craft's battery below its reserve floor. If a replay or alternate submission claims a fuller battery or a smaller draw than what is stored, confirm the outcome is still refused. Then execute CMD-PWR-FIT, whose draw lands the battery exactly on the reserve floor; this boundary case must succeed (acceptance leg).
+
+Checkout leg: attempt to execute CMD-CHARLIE-1 (SAT-CHARLIE, whose stored checkout has failed) and confirm it is refused. Cancel CMD-CHARLIE-1, then draft a brand-new command on SAT-CHARLIE inside one of its contact windows and attempt to execute that new command too — it must still be refused, because pulling the earlier command off the craft does not itself change the craft's checkout standing. Sign in as a flight director (iris.vance@orbitalops.test) and record a passed checkout for SAT-CHARLIE. Only after that does the same freshly drafted command execute successfully (acceptance leg).
+"""
+
+[[criterion]]
+id = "terminal_state_and_creation_integrity"
+name = "terminal_state_and_creation_integrity"
+type = "binary"
+weight = 2.0
+description = """
+Terminal-state leg: attempt to execute, to cancel, and — signed in as a flight director — to authorize CMD-DONE-9001 (already executed) and confirm all three attempts are refused with its state unchanged. Attempt the same three actions on CMD-CANCELLED-9002 (already cancelled) and confirm all three are refused with its state unchanged. If a replay claims the command is still open or claims a different current status, confirm the outcome is unaffected. Acceptance leg: draft a brand-new command and confirm it CAN be cancelled while it is still in its initial, non-terminal state.
+
+Creation-integrity leg: draft a new command using a distinctive reference, confirm it is created, then attempt to draft a second, different command reusing the exact same reference — refused, and only one row for that reference exists afterward. Separately, attempt to draft a new command using the already-seeded reference CMD-BURN-FIT — also refused. Acceptance leg: draft a command with a genuinely new, never-before-used reference and confirm it succeeds and appears on a fresh read of the queue.
+"""
+
+[[criterion]]
+id = "two_person_authorization_integrity"
+name = "two_person_authorization_integrity"
+type = "binary"
+weight = 3.0
+description = """
+Threshold leg: as the operator, attempt to execute CMD-HIGHDV (55 m/s) with no authorization recorded — refused. If a replay claims it is already authorized, or claims a lower delta-v than what is stored, confirm the outcome is still refused. Boundary acceptance leg: as the operator alone, with no authorization from anyone else, execute CMD-EXACTDV (exactly 50 m/s) — this must succeed, since the high-energy line only applies strictly above it. Two-signature leg: sign in as a flight director (iris.vance@orbitalops.test) and authorize CMD-HIGHDV, then sign back in as the operator and execute it — succeeds.
+
+Self-authorization leg: CMD-SELF-AUTH was submitted by iris.vance@orbitalops.test. Signed in as iris.vance@orbitalops.test, attempt to authorize it — refused, because the submitter cannot be their own second signature. Acceptance leg: sign in as the other flight director, sofia.reyes@orbitalops.test, and authorize CMD-SELF-AUTH — succeeds. Then attempt to reuse that same authorize action against a different, still-unauthorized command (CMD-FD-AUTH) while signed in as the operator (mara.okoye@orbitalops.test) — refused, because the operator does not hold the flight-director role at all.
+
+Demotion leg: while sofia.reyes@orbitalops.test still holds the flight-director role, have her authorize CMD-DEMOTE-PROBE — succeeds (acceptance leg). Sign in as the administrator and change sofia.reyes@orbitalops.test's role to operator. Without signing sofia out first, attempt the same authorize action again as her, now retargeted at the still-unauthorized CMD-FD-AUTH — refused, because her standing is re-checked against the stored account at the moment she acts, not against whatever her session showed earlier.
+"""
+
+[[criterion]]
+id = "audit_trail_integrity"
+name = "audit_trail_integrity"
+type = "binary"
+weight = 2.0
+description = """
+Signed in as the administrator, open the audit record and confirm it shows both a pre-existing historical entry and fresh entries generated by actions taken earlier in this session (for example an authorization, an uplink, or a role change). Note the network request the audit view uses to read the record. Then attempt to replay that same request as a write — POST, PUT, PATCH, and DELETE, both against the list path itself and against that path with an entry's identifier appended. Every one of these attempts must be refused (4xx) and the audit record must read back unchanged afterward — there is no route that adds, edits, or removes an audit entry.
+"""
+
+[[criterion]]
+id = "persistent_reauthentication"
+name = "persistent_reauthentication"
+type = "binary"
+weight = 2.0
+description = """
+Draft a fresh command labelled JUDGE-PERSIST-9001 on an available craft inside one of its contact windows, if one does not already exist. Perform a full page reload, sign in again as the operator, reopen the command queue, and confirm exactly one JUDGE-PERSIST-9001 record still exists with the same details as before the reload.
+"""

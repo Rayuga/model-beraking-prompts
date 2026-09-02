@@ -1,0 +1,974 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Brickfall Arcade</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #f6f8ff;
+      --muted: #a9b4c9;
+      --bg: #070a12;
+      --surface: #111725;
+      --surface-2: #182235;
+      --line: #2d3b55;
+      --cyan: #55dcff;
+      --yellow: #ffd166;
+      --pink: #ff6685;
+      --green: #7ee787;
+      --focus: #ffffff;
+      --danger: #ff8298;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    html, body { min-height: 100%; }
+    body { margin: 0; overflow-x: hidden; background: radial-gradient(circle at 50% -20%, #1c2c51 0, var(--bg) 46%); color: var(--ink); }
+    button, input, select { font: inherit; }
+    button, select, input { border-radius: 8px; }
+    button { min-height: 42px; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); cursor: pointer; font-weight: 800; }
+    button:hover:not(:disabled) { border-color: var(--cyan); transform: translateY(-1px); }
+    button:disabled { cursor: not-allowed; opacity: .45; }
+    button:focus-visible, input:focus-visible, select:focus-visible, canvas:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+    .primary { border-color: transparent; background: linear-gradient(135deg, var(--cyan), #8d8bff); color: #07101b; }
+    .eyebrow { margin: 0 0 8px; color: var(--cyan); font-size: .74rem; font-weight: 900; letter-spacing: .16em; text-transform: uppercase; }
+    .muted { color: var(--muted); }
+
+    .login-view { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(340px, .9fr); }
+    .brand { position: relative; display: grid; align-content: center; min-height: 420px; padding: clamp(34px, 8vw, 110px); overflow: hidden; border-right: 1px solid var(--line); }
+    .brand::before { content: ""; position: absolute; inset: 8% 9%; opacity: .3; background: repeating-linear-gradient(0deg, transparent 0 39px, #55dcff28 40px 41px), repeating-linear-gradient(90deg, transparent 0 79px, #ff66851d 80px 81px); transform: perspective(700px) rotateX(58deg) translateY(24%); }
+    .brand-copy { position: relative; z-index: 1; max-width: 650px; }
+    .brand h1 { margin: 0; font-size: clamp(4.5rem, 11vw, 9.5rem); line-height: .76; letter-spacing: -.09em; text-transform: uppercase; text-shadow: 5px 6px 0 #101527, 9px 10px 0 var(--pink); }
+    .brand h1 span { color: var(--yellow); }
+    .brand p:last-child { max-width: 570px; margin: 34px 0 0; color: var(--muted); font-size: 1.08rem; line-height: 1.65; }
+    .login-panel { display: grid; place-items: center; padding: 34px; background: #090d16d9; }
+    .login-form { width: min(420px, 100%); }
+    .login-form h2 { margin: 0 0 8px; font-size: 2rem; }
+    .login-form .intro { margin: 0 0 26px; color: var(--muted); line-height: 1.55; }
+    label { display: block; margin: 16px 0 7px; color: var(--muted); font-size: .84rem; font-weight: 800; }
+    input, select { width: 100%; min-height: 46px; padding: 0 12px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+    .login-form .primary { width: 100%; margin-top: 18px; }
+    .login-error { min-height: 1.4em; margin: 12px 0 0; color: var(--danger); font-weight: 800; }
+    .demo-note { margin: 24px 0 9px; color: var(--muted); font-size: .8rem; }
+    .demo-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .demo-row button { flex: 1 1 100px; min-height: 38px; padding: 0 10px; font-size: .8rem; }
+
+    .app { width: min(1280px, 100%); margin: 0 auto; padding: 20px; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 8px 0 18px; border-bottom: 1px solid var(--line); }
+    .topbar h1 { margin: 0; font-size: 1.9rem; letter-spacing: -.05em; }
+    .identity { display: flex; align-items: center; gap: 12px; text-align: right; }
+    .identity strong, .identity span { display: block; }
+    .identity span { color: var(--muted); font-size: .78rem; }
+    .identity button { padding: 0 13px; }
+
+    .hud { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin: 16px 0; }
+    .hud-card { min-width: 0; padding: 11px 13px; border: 1px solid var(--line); border-radius: 9px; background: #111725d9; }
+    .hud-card span { display: block; overflow: hidden; color: var(--muted); font-size: .68rem; font-weight: 900; letter-spacing: .1em; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
+    .hud-card strong { display: block; margin-top: 3px; overflow: hidden; font-size: 1.15rem; text-overflow: ellipsis; white-space: nowrap; }
+
+    .game-layout { display: grid; grid-template-columns: minmax(0, 1fr) 290px; gap: 18px; align-items: start; }
+    .arena-card, .panel { min-width: 0; border: 1px solid var(--line); border-radius: 12px; background: #0d1320e8; box-shadow: 0 24px 70px #0007; }
+    .arena-card { padding: 12px; }
+    .canvas-stage { position: relative; width: 100%; aspect-ratio: 3 / 2; overflow: hidden; border: 1px solid #40577a; border-radius: 8px; background: #070b14; }
+    canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+    .overlay { position: absolute; inset: 0; display: grid; place-items: center; padding: 20px; background: #050812b8; backdrop-filter: blur(3px); }
+    .overlay-card { width: min(410px, 92%); padding: 24px; border: 1px solid #ffffff2b; border-radius: 12px; background: #111827f2; text-align: center; box-shadow: 0 24px 60px #000a; }
+    .overlay-card h2 { margin: 0 0 8px; font-size: clamp(1.7rem, 5vw, 2.7rem); }
+    .overlay-card p { margin: 0 0 18px; color: var(--muted); line-height: 1.5; }
+    .overlay-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; }
+    .overlay-actions button { min-width: 130px; padding: 0 14px; }
+    .control-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+    .event-line { min-height: 1.45em; margin: 11px 4px 0; color: var(--cyan); font-weight: 750; }
+
+    .side { display: grid; gap: 14px; }
+    .panel { padding: 16px; }
+    .panel h2 { margin: 0 0 13px; font-size: 1rem; }
+    .panel .primary { width: 100%; margin-top: 10px; }
+    .power-state { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: end; }
+    .power-name { font-size: 1.15rem; font-weight: 900; text-transform: capitalize; }
+    .power-time { color: var(--yellow); font-size: 1.35rem; font-variant-numeric: tabular-nums; font-weight: 900; }
+    .power-bar { grid-column: 1 / -1; height: 7px; overflow: hidden; border-radius: 10px; background: #28354c; }
+    .power-bar span { display: block; width: 0; height: 100%; background: linear-gradient(90deg, var(--pink), var(--yellow)); transition: width .15s linear; }
+    .status-copy { margin: 11px 0 0; color: var(--muted); font-size: .82rem; line-height: 1.45; }
+    .leaderboard { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+    .leaderboard th, .leaderboard td { padding: 7px 3px; border-top: 1px solid var(--line); text-align: left; font-size: .78rem; }
+    .leaderboard th { color: var(--muted); font-size: .65rem; letter-spacing: .08em; text-transform: uppercase; }
+    .leaderboard td:nth-child(3), .leaderboard th:nth-child(3) { text-align: right; }
+    .help { margin: 12px 0 0; color: var(--muted); font-size: .74rem; line-height: 1.55; }
+    kbd { padding: 1px 5px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; background: var(--surface-2); color: var(--ink); }
+
+    @media (max-width: 900px) {
+      .game-layout { grid-template-columns: 1fr; }
+      .side { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .side .panel:last-child { grid-column: 1 / -1; }
+    }
+    @media (max-width: 620px) {
+      .login-view { grid-template-columns: 1fr; }
+      .brand { min-height: 310px; padding: 38px 22px; border-right: 0; border-bottom: 1px solid var(--line); }
+      .brand h1 { font-size: 5rem; }
+      .brand p:last-child { margin-top: 24px; }
+      .login-panel { padding: 28px 18px; place-items: start center; }
+      .app { padding: 12px; }
+      .topbar { align-items: flex-start; }
+      .identity { align-items: flex-end; flex-direction: column; gap: 7px; }
+      .hud { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .hud-card:last-child { grid-column: 1 / -1; }
+      .arena-card { padding: 7px; }
+      .control-row { grid-template-columns: 1fr; }
+      .side { grid-template-columns: 1fr; }
+      .side .panel:last-child { grid-column: auto; }
+      .overlay-card { padding: 18px 14px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .001ms !important; animation-duration: .001ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <section id="login-view" class="login-view" aria-labelledby="login-title">
+    <div class="brand">
+      <div class="brand-copy">
+        <p class="eyebrow">Deterministic arcade club</p>
+        <h1>Brick<span>fall</span></h1>
+        <p>Heavy ball physics, hand-built walls and runs that wait for you. Break the pattern. Keep the combo. Own the board.</p>
+      </div>
+    </div>
+    <div class="login-panel">
+      <form id="login-form" class="login-form">
+        <p class="eyebrow">Player profiles</p>
+        <h2 id="login-title">Sign in to launch</h2>
+        <p class="intro">Your unlocked levels, active run and scores are kept with your demo profile.</p>
+        <label for="email">Email</label>
+        <input id="email" type="email" autocomplete="username" value="dev@brickfall.test" required>
+        <label for="password">Password</label>
+        <input id="password" type="password" autocomplete="current-password" required>
+        <button class="primary" type="submit">Enter arcade</button>
+        <p id="login-error" class="login-error" role="alert"></p>
+        <p class="demo-note">Demo password: <strong>password123</strong></p>
+        <div class="demo-row">
+          <button type="button" data-email="dev@brickfall.test">Use Dev</button>
+          <button type="button" data-email="mira@brickfall.test">Use Mira</button>
+          <button type="button" data-email="polly@brickfall.test">Use Polly</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <div id="app-view" class="app" hidden>
+    <header class="topbar">
+      <div><p class="eyebrow">Arcade run</p><h1>Brickfall</h1></div>
+      <div class="identity">
+        <div><strong id="player-name"></strong><span id="player-detail"></span></div>
+        <button id="sign-out" type="button">Sign out</button>
+      </div>
+    </header>
+
+    <section class="hud" aria-label="Current run statistics">
+      <div class="hud-card"><span>Score</span><strong id="score">0</strong></div>
+      <div class="hud-card"><span>Lives</span><strong id="lives">3</strong></div>
+      <div class="hud-card"><span>Level</span><strong id="level">—</strong></div>
+      <div class="hud-card"><span>Combo</span><strong id="combo">×1</strong></div>
+      <div class="hud-card"><span>Best</span><strong id="best">0</strong></div>
+    </section>
+
+    <main class="game-layout">
+      <section class="arena-card" aria-label="Brickfall game">
+        <div class="canvas-stage">
+          <canvas id="game-canvas" width="900" height="600" tabindex="0" role="img" aria-label="Brickfall arcade board, no run started"></canvas>
+          <div id="overlay" class="overlay">
+            <div class="overlay-card">
+              <p class="eyebrow" id="overlay-kicker">Ready room</p>
+              <h2 id="overlay-title">Choose a level</h2>
+              <p id="overlay-copy">Start a fresh run or resume the exact state saved to this profile.</p>
+              <div class="overlay-actions">
+                <button id="overlay-action" class="primary" type="button">Start run</button>
+                <button id="resume-action" type="button" hidden>Resume saved run</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="control-row" aria-label="Game controls">
+          <button id="launch" type="button" disabled>Launch ball</button>
+          <button id="pause" type="button" disabled>Pause</button>
+          <button id="assist" type="button" aria-pressed="false">Assist paddle: Off</button>
+          <button id="new-run" type="button">New run</button>
+        </div>
+        <p id="event-line" class="event-line" role="status" aria-live="polite">Sign in complete. Choose an unlocked level.</p>
+      </section>
+
+      <aside class="side" aria-label="Run information">
+        <section class="panel">
+          <h2>Run setup</h2>
+          <label for="level-select">Unlocked level</label>
+          <select id="level-select"></select>
+          <button id="start-selected" class="primary" type="button">Start selected level</button>
+          <p id="level-note" class="status-copy"></p>
+        </section>
+
+        <section class="panel">
+          <h2>Active effect</h2>
+          <div class="power-state">
+            <span id="power-name" class="power-name">None</span>
+            <span id="power-time" class="power-time">—</span>
+            <div class="power-bar" aria-hidden="true"><span id="power-fill"></span></div>
+          </div>
+          <p id="phase-copy" class="status-copy">No run in progress.</p>
+          <p class="help">Move: drag, touch or <kbd>Left</kbd>/<kbd>Right</kbd> · Launch: <kbd>Space</kbd> · Pause: <kbd>P</kbd>/<kbd>Esc</kbd> · Restart after game over: <kbd>R</kbd></p>
+        </section>
+
+        <section class="panel">
+          <h2>Global top ten</h2>
+          <table class="leaderboard">
+            <thead><tr><th>Player</th><th>Level</th><th>Score</th></tr></thead>
+            <tbody id="leaderboard"></tbody>
+          </table>
+        </section>
+      </aside>
+    </main>
+  </div>
+
+  <script>
+    (() => {
+      "use strict";
+      const W = 900;
+      const H = 600;
+      const STEP = 1 / 120;
+      const TOKEN_KEY = "brickfall_token";
+      const BASE_PADDLE_WIDTH = 118;
+      const PADDLE_HEIGHT = 18;
+      const BALL_RADIUS = 9;
+      const POWER_DURATION = 20;
+      const loginView = document.querySelector("#login-view");
+      const appView = document.querySelector("#app-view");
+      const loginForm = document.querySelector("#login-form");
+      const emailInput = document.querySelector("#email");
+      const passwordInput = document.querySelector("#password");
+      const loginError = document.querySelector("#login-error");
+      const canvas = document.querySelector("#game-canvas");
+      const ctx = canvas.getContext("2d");
+      const overlay = document.querySelector("#overlay");
+      const overlayKicker = document.querySelector("#overlay-kicker");
+      const overlayTitle = document.querySelector("#overlay-title");
+      const overlayCopy = document.querySelector("#overlay-copy");
+      const overlayAction = document.querySelector("#overlay-action");
+      const resumeAction = document.querySelector("#resume-action");
+      const launchButton = document.querySelector("#launch");
+      const pauseButton = document.querySelector("#pause");
+      const assistButton = document.querySelector("#assist");
+      const levelSelect = document.querySelector("#level-select");
+      const eventLine = document.querySelector("#event-line");
+      const phaseCopy = document.querySelector("#phase-copy");
+      const powerName = document.querySelector("#power-name");
+      const powerTime = document.querySelector("#power-time");
+      const powerFill = document.querySelector("#power-fill");
+
+      let token = sessionStorage.getItem(TOKEN_KEY) || "";
+      let user = null;
+      let levels = [];
+      let savedRun = null;
+      let game = null;
+      let keys = { left: false, right: false };
+      let pointerX = null;
+      let pointerAt = 0;
+      let lastFrame = 0;
+      let accumulator = 0;
+      let saveDirty = false;
+      let saveBusy = false;
+      let finishing = false;
+      let ballSequence = 1;
+      let assistEnabled = false;
+      let assistVolley = 0;
+
+      async function request(url, options = {}) {
+        const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
+        if (token) headers.Authorization = `Bearer ${token}`;
+        const response = await fetch(url, { ...options, headers });
+        const body = await response.json().catch(() => ({}));
+        if (response.status === 401 && url !== "/api/login") showLogin();
+        if (!response.ok) throw new Error(body.error || "Request failed");
+        return body;
+      }
+
+      function showLogin() {
+        setAssist(false, false);
+        token = "";
+        sessionStorage.removeItem(TOKEN_KEY);
+        game = null;
+        user = null;
+        loginView.hidden = false;
+        appView.hidden = true;
+        passwordInput.value = "";
+      }
+
+      function event(message) {
+        eventLine.textContent = message;
+      }
+
+      function setAssist(enabled, announce = true) {
+        if (enabled && !assistEnabled) assistVolley = 0;
+        assistEnabled = Boolean(enabled);
+        assistButton.setAttribute("aria-pressed", String(assistEnabled));
+        assistButton.textContent = `Assist paddle: ${assistEnabled ? "On" : "Off"}`;
+        if (announce && !appView.hidden) event(`Assist paddle ${assistEnabled ? "enabled" : "disabled"}. Physics and scoring are unchanged.`);
+      }
+
+      function renderLeaderboard(rows) {
+        const body = document.querySelector("#leaderboard");
+        body.innerHTML = "";
+        rows.forEach((entry, index) => {
+          const row = document.createElement("tr");
+          row.innerHTML = `<td>${index + 1}. ${escapeHtml(entry.initials)}</td><td>${entry.level}</td><td>${Number(entry.score).toLocaleString()}</td>`;
+          body.append(row);
+        });
+      }
+
+      function escapeHtml(value) {
+        return String(value).replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character]));
+      }
+
+      function populateLevels() {
+        levelSelect.innerHTML = "";
+        levels.forEach((level) => {
+          const option = document.createElement("option");
+          option.value = level.level;
+          option.textContent = `Level ${level.level} · ${level.name}`;
+          levelSelect.append(option);
+        });
+        document.querySelector("#level-note").textContent = `Unlocked through level ${user.highestLevel}. Best ${user.bestScore.toLocaleString()}.`;
+      }
+
+      async function bootstrap() {
+        const data = await request("/api/bootstrap");
+        user = data.user;
+        levels = data.levels;
+        savedRun = data.savedRun;
+        document.querySelector("#player-name").textContent = user.name;
+        document.querySelector("#player-detail").textContent = `${user.initials} · ${user.email}`;
+        document.querySelector("#best").textContent = user.bestScore.toLocaleString();
+        populateLevels();
+        renderLeaderboard(data.leaderboard);
+        loginView.hidden = true;
+        appView.hidden = false;
+        showMenu();
+        draw();
+      }
+
+      function showOverlay(kicker, title, copy, actionLabel, resume = false) {
+        overlayKicker.textContent = kicker;
+        overlayTitle.textContent = title;
+        overlayCopy.textContent = copy;
+        overlayAction.textContent = actionLabel;
+        resumeAction.hidden = !resume;
+        overlay.hidden = false;
+      }
+
+      function showMenu() {
+        showOverlay("Ready room", "Choose a level", "Start a fresh run or resume the exact state saved to this profile.", "Start run", Boolean(savedRun));
+        launchButton.disabled = true;
+        pauseButton.disabled = true;
+        phaseCopy.textContent = savedRun ? "A server-backed run is ready to resume." : "No run in progress.";
+        updateHud();
+      }
+
+      function brickGeometry(row, column) {
+        const marginX = 42;
+        const gap = 7;
+        const width = (W - marginX * 2 - gap * 9) / 10;
+        const height = 27;
+        return { x: marginX + (column - 1) * (width + gap), y: 62 + (row - 1) * (height + 7), width, height };
+      }
+
+      function makeBall(primary = false) {
+        return { id: ballSequence++, x: game.paddle.x, y: game.paddle.y - BALL_RADIUS - 2, vx: 0, vy: 0, r: BALL_RADIUS, stuck: true, offset: 0, primary };
+      }
+
+      async function startRun(levelNumber) {
+        const data = await request(`/api/levels/${levelNumber}`);
+        await request("/api/save", { method: "DELETE" });
+        savedRun = null;
+        finishing = false;
+        game = {
+          runId: crypto.randomUUID(), level: levelNumber, levelName: data.level.name,
+          baseSpeed: data.level.baseSpeed, speedCap: data.level.speedCap, accent: data.level.accent,
+          score: 0, lives: 3, combo: 1, nextExtraLife: 20000, phase: "ready",
+          paddle: { x: W / 2, y: H - 38, width: BASE_PADDLE_WIDTH, height: PADDLE_HEIGHT, vx: 0 },
+          balls: [], drops: [], power: null,
+          bricks: data.bricks.map((brick, index) => ({
+            id: `${levelNumber}-${index}`, row: brick.row, column: brick.column,
+            type: brick.type, dropType: brick.dropType,
+            hp: brick.type === "solid" ? 99 : brick.type === "strong" ? 2 : 1,
+            ...brickGeometry(brick.row, brick.column),
+          })),
+        };
+        game.balls.push(makeBall(true));
+        event(`Level ${levelNumber}: ${game.levelName}. Launch when ready.`);
+        showOverlay("Level ready", `${levelNumber} · ${game.levelName}`, "Move the paddle, then launch the waiting ball.", "Launch ball");
+        markDirty();
+        updateHud();
+        draw();
+      }
+
+      function restoreRun() {
+        if (!savedRun?.state) return;
+        game = structuredClone(savedRun.state);
+        ballSequence = Math.max(1, ...game.balls.map((ball) => Number(ball.id) || 0)) + 1;
+        if (game.phase === "playing") game.phase = "paused";
+        savedRun = null;
+        event("Saved run restored exactly where you left it — paused.");
+        showOverlay("Run restored", `Level ${game.level}`, "Physics and effect time are frozen until you resume.", game.phase === "paused" ? "Resume run" : "Continue");
+        markDirty();
+        updateHud();
+        draw();
+      }
+
+      function launchWaiting() {
+        if (!game) return;
+        if (game.phase === "paused") {
+          game.phase = "playing";
+          overlay.hidden = true;
+          event("Simulation resumed.");
+        } else if (["ready", "life-lost"].includes(game.phase)) {
+          game.phase = "playing";
+          for (const ball of game.balls) releaseBall(ball);
+          overlay.hidden = true;
+          event("Ball launched.");
+        } else if (game.phase === "playing") {
+          const held = game.balls.filter((ball) => ball.stuck);
+          held.forEach(releaseBall);
+          if (held.length) event("Sticky ball released.");
+        }
+        markDirty();
+        updateHud();
+      }
+
+      function releaseBall(ball) {
+        if (!ball.stuck) return;
+        const speed = game.baseSpeed;
+        const direction = ball.id % 2 ? -1 : 1;
+        ball.stuck = false;
+        ball.vx = speed * .38 * direction;
+        ball.vy = -Math.sqrt(Math.max(1, speed * speed - ball.vx * ball.vx));
+      }
+
+      function togglePause() {
+        if (!game || !["playing", "paused"].includes(game.phase)) return;
+        if (game.phase === "playing") {
+          game.phase = "paused";
+          showOverlay("Simulation frozen", "Paused", "Balls, falling items and effect time are stopped.", "Resume run");
+          event("Paused — simulation time is frozen.");
+        } else {
+          game.phase = "playing";
+          overlay.hidden = true;
+          event("Simulation resumed.");
+        }
+        markDirty();
+        saveNow();
+        updateHud();
+      }
+
+      function markDirty() { saveDirty = true; }
+
+      function snapshot() {
+        return structuredClone(game);
+      }
+
+      async function saveNow() {
+        if (!game || saveBusy || !saveDirty || game.phase === "game-over") return;
+        saveBusy = true;
+        saveDirty = false;
+        try {
+          await request("/api/save", { method: "PUT", body: JSON.stringify({ state: snapshot() }) });
+        } catch (error) {
+          saveDirty = true;
+          event(error.message);
+        } finally {
+          saveBusy = false;
+        }
+      }
+
+      function updateHud() {
+        document.querySelector("#score").textContent = (game?.score || 0).toLocaleString();
+        document.querySelector("#lives").textContent = game?.lives ?? 3;
+        document.querySelector("#level").textContent = game ? `${game.level} · ${game.levelName}` : "—";
+        document.querySelector("#combo").textContent = `×${game?.combo || 1}`;
+        document.querySelector("#best").textContent = (user?.bestScore || 0).toLocaleString();
+        const power = game?.power;
+        powerName.textContent = power ? power.type : "None";
+        powerTime.textContent = power ? `${Math.ceil(power.remaining)}s` : "—";
+        powerFill.style.width = power ? `${Math.max(0, Math.min(100, power.remaining / POWER_DURATION * 100))}%` : "0";
+        const phase = game?.phase || "menu";
+        phaseCopy.textContent = game ? `${phaseLabel(phase)} · ${game.balls.length} ball${game.balls.length === 1 ? "" : "s"} · ${remainingBreakable()} bricks left.` : "No run in progress.";
+        launchButton.disabled = !game || !(["ready", "life-lost"].includes(phase) || phase === "playing" && game.balls.some((ball) => ball.stuck));
+        launchButton.textContent = game?.balls.some((ball) => ball.stuck) ? "Launch ball" : "Launch";
+        pauseButton.disabled = !game || !["playing", "paused"].includes(phase);
+        pauseButton.textContent = phase === "paused" ? "Resume" : "Pause";
+        const visibleBricks = game ? game.bricks.filter((brick) => brick.hp > 0) : [];
+        const normalBricks = visibleBricks.filter((brick) => brick.type === "normal").length;
+        const strongBricks = visibleBricks.filter((brick) => brick.type === "strong").length;
+        const solidBricks = visibleBricks.filter((brick) => brick.type === "solid").length;
+        canvas.setAttribute("aria-label", game ? `Brickfall level ${game.level}, ${phaseLabel(phase)}, score ${game.score}, ${game.lives} lives, ${game.balls.length} ball${game.balls.length === 1 ? "" : "s"}, ${remainingBreakable()} breakable bricks remaining: ${normalBricks} normal, ${strongBricks} strong, ${solidBricks} solid` : "Brickfall arcade board, no run started");
+      }
+
+      function phaseLabel(phase) {
+        return ({ ready: "Ready to launch", playing: "Playing", paused: "Paused", "life-lost": "Life lost", "level-complete": "Level complete", "game-over": "Game over" })[phase] || "Ready room";
+      }
+
+      function remainingBreakable() {
+        return game ? game.bricks.filter((brick) => brick.type !== "solid" && brick.hp > 0).length : 0;
+      }
+
+      function normalizeBallSpeed(ball) {
+        let speed = Math.hypot(ball.vx, ball.vy) || game.baseSpeed;
+        const cap = game.speedCap * (game.power?.type === "slow" ? .7 : 1);
+        if (speed > cap) { ball.vx *= cap / speed; ball.vy *= cap / speed; speed = cap; }
+        const minX = Math.min(105, speed * .32);
+        const minY = Math.min(135, speed * .46);
+        if (Math.abs(ball.vx) < minX) ball.vx = (ball.vx < 0 ? -1 : 1) * minX;
+        if (Math.abs(ball.vy) < minY) ball.vy = (ball.vy < 0 ? -1 : 1) * minY;
+        speed = Math.hypot(ball.vx, ball.vy);
+        if (speed > cap) { ball.vx *= cap / speed; ball.vy *= cap / speed; }
+      }
+
+      function circleRect(ball, rectangle) {
+        const closestX = Math.max(rectangle.x, Math.min(ball.x, rectangle.x + rectangle.width));
+        const closestY = Math.max(rectangle.y, Math.min(ball.y, rectangle.y + rectangle.height));
+        const dx = ball.x - closestX;
+        const dy = ball.y - closestY;
+        const distance = Math.hypot(dx, dy);
+        if (distance >= ball.r) return null;
+        if (distance > .0001) return { nx: dx / distance, ny: dy / distance, depth: ball.r - distance };
+        const left = Math.abs(ball.x - rectangle.x);
+        const right = Math.abs(rectangle.x + rectangle.width - ball.x);
+        const top = Math.abs(ball.y - rectangle.y);
+        const bottom = Math.abs(rectangle.y + rectangle.height - ball.y);
+        const minimum = Math.min(left, right, top, bottom);
+        if (minimum === left) return { nx: -1, ny: 0, depth: ball.r };
+        if (minimum === right) return { nx: 1, ny: 0, depth: ball.r };
+        if (minimum === top) return { nx: 0, ny: -1, depth: ball.r };
+        return { nx: 0, ny: 1, depth: ball.r };
+      }
+
+      function reflect(ball, collision) {
+        const dot = ball.vx * collision.nx + ball.vy * collision.ny;
+        if (dot < 0) {
+          ball.vx -= 2 * dot * collision.nx;
+          ball.vy -= 2 * dot * collision.ny;
+        }
+        ball.x += collision.nx * (collision.depth + .3);
+        ball.y += collision.ny * (collision.depth + .3);
+      }
+
+      function awardBrick(brick) {
+        const base = brick.type === "strong" && brick.hp === 0 ? 250 : brick.type === "strong" ? 75 : 100;
+        const gained = base * game.combo;
+        game.score += gained;
+        const usedCombo = game.combo;
+        game.combo = Math.min(5, game.combo + 1);
+        while (game.score >= game.nextExtraLife) {
+          game.lives += 1;
+          game.nextExtraLife += 20000;
+          event(`Extra life earned at ${game.score.toLocaleString()} points.`);
+        }
+        if (brick.hp === 0) {
+          if (brick.dropType) game.drops.push({ id: crypto.randomUUID(), type: brick.dropType, x: brick.x + brick.width / 2, y: brick.y + brick.height / 2, vy: 126 });
+          event(`${brick.type === "strong" ? "Strong" : "Normal"} brick broken · +${gained} at combo ×${usedCombo}.`);
+        } else {
+          event(`Strong brick damaged · +${gained} at combo ×${usedCombo}.`);
+        }
+        markDirty();
+      }
+
+      function hitBrick(ball, brick, collision, hitThisStep) {
+        reflect(ball, collision);
+        if (brick.type !== "solid" && !hitThisStep.has(brick.id)) {
+          hitThisStep.add(brick.id);
+          brick.hp = Math.max(0, brick.hp - 1);
+          awardBrick(brick);
+        } else if (brick.type === "solid") {
+          event("Solid brick deflected the ball.");
+        }
+      }
+
+      function updatePaddle(dt) {
+        const paddle = game.paddle;
+        const previous = paddle.x;
+        const keyboard = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
+        if (assistEnabled) {
+          const reflectX = (value) => {
+            const span = W * 2;
+            const folded = ((value % span) + span) % span;
+            return folded <= W ? folded : span - folded;
+          };
+          const incomingBalls = game.balls
+            .filter((ball) => !ball.stuck && ball.vy > 0 && ball.y < paddle.y)
+            .map((ball) => ({ time: (paddle.y - ball.y) / ball.vy, x: reflectX(ball.x + ball.vx * ((paddle.y - ball.y) / ball.vy)) }))
+            .filter((item) => item.time >= 0)
+            .sort((a, b) => a.time - b.time);
+          const incomingDrops = game.drops
+            .filter((drop) => drop.y < paddle.y)
+            .map((drop) => ({ time: (paddle.y - drop.y) / drop.vy, x: drop.x }))
+            .sort((a, b) => a.time - b.time);
+          const ballTarget = incomingBalls[0];
+          const dropTarget = incomingDrops[0];
+          const assistOffsets = [-.24, .17, .3, -.12];
+          const steeredBallX = ballTarget ? ballTarget.x + paddle.width * assistOffsets[assistVolley % assistOffsets.length] : null;
+          const target = dropTarget && (!ballTarget || dropTarget.time + .28 < ballTarget.time) ? dropTarget.x : steeredBallX ?? game.balls[0]?.x ?? paddle.x;
+          paddle.x += Math.max(-700 * dt, Math.min(700 * dt, target - paddle.x));
+        } else if (keyboard) {
+          pointerX = null;
+          paddle.x += keyboard * 610 * dt;
+        } else if (pointerX !== null && performance.now() - pointerAt < 1800) {
+          paddle.x += (pointerX - paddle.x) * Math.min(1, dt * 18);
+        }
+        paddle.x = Math.max(paddle.width / 2 + 8, Math.min(W - paddle.width / 2 - 8, paddle.x));
+        paddle.vx = (paddle.x - previous) / dt;
+        for (const ball of game.balls) if (ball.stuck) {
+          ball.x = paddle.x + (ball.offset || 0);
+          ball.y = paddle.y - ball.r - 2;
+        }
+      }
+
+      function updateBall(ball, dt, hitThisStep) {
+        if (ball.stuck) return;
+        const speed = Math.hypot(ball.vx, ball.vy);
+        const steps = Math.max(1, Math.ceil(speed * dt / (ball.r * .55)));
+        const slice = dt / steps;
+        for (let step = 0; step < steps; step += 1) {
+          ball.x += ball.vx * slice;
+          ball.y += ball.vy * slice;
+          if (ball.x - ball.r < 0) { ball.x = ball.r; ball.vx = Math.abs(ball.vx); }
+          if (ball.x + ball.r > W) { ball.x = W - ball.r; ball.vx = -Math.abs(ball.vx); }
+          if (ball.y - ball.r < 0) { ball.y = ball.r; ball.vy = Math.abs(ball.vy); }
+
+          const paddleRect = { x: game.paddle.x - game.paddle.width / 2, y: game.paddle.y, width: game.paddle.width, height: game.paddle.height };
+          const paddleHit = ball.vy > 0 ? circleRect(ball, paddleRect) : null;
+          if (paddleHit) {
+            if (assistEnabled) assistVolley += 1;
+            ball.y = paddleRect.y - ball.r - .3;
+            const offset = Math.max(-1, Math.min(1, (ball.x - game.paddle.x) / (game.paddle.width / 2)));
+            const target = Math.min(game.speedCap, Math.max(game.baseSpeed, Math.hypot(ball.vx, ball.vy)));
+            ball.vx = offset * target * .76 + game.paddle.vx * .18;
+            ball.vy = -Math.sqrt(Math.max(1, target * target - Math.min(target * .88, Math.abs(ball.vx)) ** 2));
+            game.combo = 1;
+            if (game.power?.type === "sticky") {
+              ball.stuck = true;
+              ball.offset = Math.max(-game.paddle.width * .38, Math.min(game.paddle.width * .38, ball.x - game.paddle.x));
+              event("Sticky paddle captured a ball. Press Launch to release it.");
+            } else event("Paddle return · combo reset to ×1.");
+            normalizeBallSpeed(ball);
+          }
+
+          for (const brick of game.bricks) {
+            if (brick.hp <= 0) continue;
+            const collision = circleRect(ball, brick);
+            if (collision) { hitBrick(ball, brick, collision, hitThisStep); break; }
+          }
+        }
+        normalizeBallSpeed(ball);
+      }
+
+      function deactivatePower(reason = "expired") {
+        if (!game?.power) return;
+        const old = game.power.type;
+        if (old === "wide") game.paddle.width = BASE_PADDLE_WIDTH;
+        if (old === "slow") for (const ball of game.balls) {
+          ball.vx /= .7; ball.vy /= .7; normalizeBallSpeed(ball);
+        }
+        if (old === "multiball" && game.balls.length > 1) {
+          const primary = game.balls.find((ball) => ball.primary) || game.balls[0];
+          primary.primary = true;
+          game.balls = [primary];
+        }
+        if (old === "sticky") for (const ball of game.balls) if (ball.stuck && game.phase === "playing") releaseBall(ball);
+        game.power = null;
+        event(`${old} effect ${reason}.`);
+        markDirty();
+      }
+
+      function activatePower(type) {
+        if (game.power?.type === type) {
+          game.power.remaining = POWER_DURATION;
+          event(`${type} timer reset to 20 seconds — effect did not stack.`);
+          markDirty();
+          return;
+        }
+        if (game.power) deactivatePower("replaced");
+        game.power = { type, remaining: POWER_DURATION };
+        if (type === "wide") game.paddle.width = BASE_PADDLE_WIDTH * 1.5;
+        if (type === "slow") for (const ball of game.balls) { ball.vx *= .7; ball.vy *= .7; }
+        if (type === "multiball" && game.balls.length === 1) {
+          const source = game.balls[0];
+          source.primary = true;
+          const clone = { ...source, id: ballSequence++, vx: -source.vx || game.baseSpeed * .35, vy: source.vy || -game.baseSpeed * .9, stuck: false, primary: false };
+          if (source.stuck) releaseBall(source);
+          game.balls.push(clone);
+        }
+        event(`${type} collected · 20 seconds.`);
+        markDirty();
+      }
+
+      function updateDrops(dt) {
+        for (const drop of game.drops) drop.y += drop.vy * dt;
+        const paddle = { x: game.paddle.x - game.paddle.width / 2, y: game.paddle.y, width: game.paddle.width, height: game.paddle.height };
+        const caught = game.drops.find((drop) => drop.x >= paddle.x && drop.x <= paddle.x + paddle.width && drop.y + 12 >= paddle.y && drop.y - 12 <= paddle.y + paddle.height);
+        if (caught) {
+          game.drops = game.drops.filter((drop) => drop.id !== caught.id);
+          activatePower(caught.type);
+        }
+        game.drops = game.drops.filter((drop) => drop.y < H + 30);
+      }
+
+      async function levelComplete() {
+        if (!game || game.phase === "level-complete") return;
+        game.score += 1000 * game.level;
+        game.phase = "level-complete";
+        game.balls = [];
+        game.drops = [];
+        deactivatePower("cleared");
+        const data = await request("/api/progress", { method: "POST", body: JSON.stringify({ completedLevel: game.level, score: game.score }) });
+        user = data.user;
+        document.querySelector("#best").textContent = user.bestScore.toLocaleString();
+        if (!levels.some((level) => level.level === data.unlockedLevel)) {
+          const bootstrapData = await request("/api/bootstrap");
+          levels = bootstrapData.levels;
+          populateLevels();
+        }
+        if (game.level === 10) {
+          await finishRun("completed");
+          showOverlay("All walls cleared", "Brickfall complete", `Final score ${game.score.toLocaleString()}. Your result is on the board.`, "Start another run");
+        } else {
+          event(`Level ${game.level} cleared · +${(1000 * game.level).toLocaleString()} bonus. Level ${data.unlockedLevel} unlocked.`);
+          showOverlay("Wall cleared", "Level complete", `Score ${game.score.toLocaleString()}. The next wall launches faster.`, "Continue");
+          markDirty();
+          saveNow();
+        }
+        updateHud();
+      }
+
+      async function continueLevel() {
+        if (!game || game.phase !== "level-complete") return;
+        const next = game.level + 1;
+        const preserved = { runId: game.runId, score: game.score, lives: game.lives, combo: game.combo, nextExtraLife: game.nextExtraLife };
+        const data = await request(`/api/levels/${next}`);
+        game = {
+          ...preserved, level: next, levelName: data.level.name, baseSpeed: data.level.baseSpeed, speedCap: data.level.speedCap, accent: data.level.accent,
+          phase: "ready", power: null, drops: [], paddle: { x: W / 2, y: H - 38, width: BASE_PADDLE_WIDTH, height: PADDLE_HEIGHT, vx: 0 }, balls: [],
+          bricks: data.bricks.map((brick, index) => ({ id: `${next}-${index}`, row: brick.row, column: brick.column, type: brick.type, dropType: brick.dropType, hp: brick.type === "solid" ? 99 : brick.type === "strong" ? 2 : 1, ...brickGeometry(brick.row, brick.column) })),
+        };
+        game.balls.push(makeBall(true));
+        event(`Level ${next}: ${game.levelName}.`);
+        showOverlay("Next wall", `${next} · ${game.levelName}`, "The starting ball is faster. Launch when ready.", "Launch ball");
+        markDirty();
+        updateHud();
+      }
+
+      async function finishRun(outcome) {
+        if (!game || finishing) return;
+        finishing = true;
+        game.phase = "game-over";
+        try {
+          const data = await request("/api/finish", { method: "POST", body: JSON.stringify({ runId: game.runId, score: game.score, level: game.level, outcome }) });
+          user = data.user;
+          renderLeaderboard(data.leaderboard);
+          document.querySelector("#best").textContent = user.bestScore.toLocaleString();
+          savedRun = null;
+        } finally {
+          finishing = false;
+        }
+      }
+
+      async function loseLastBall() {
+        if (game.power) deactivatePower("cleared after the last ball was lost");
+        game.drops = [];
+        game.lives -= 1;
+        if (game.lives <= 0) {
+          await finishRun("game-over");
+          event(`Game over · ${game.score.toLocaleString()} points recorded for ${user.initials}.`);
+          showOverlay("Run ended", "Game over", `Final score ${game.score.toLocaleString()}. Press R or start another run.`, "Start again");
+        } else {
+          game.phase = "life-lost";
+          game.paddle.width = BASE_PADDLE_WIDTH;
+          game.balls = [makeBall(true)];
+          event(`Last ball lost · ${game.lives} lives remain. Effects cleared.`);
+          showOverlay("Serve ready", "Life lost", `${game.lives} lives remain. Reposition and launch.`, "Launch ball");
+          markDirty();
+          saveNow();
+        }
+        updateHud();
+      }
+
+      function update(dt) {
+        if (!game || game.phase !== "playing") return;
+        updatePaddle(dt);
+        if (game.power) {
+          game.power.remaining -= dt;
+          if (game.power.remaining <= 0) deactivatePower();
+        }
+        updateDrops(dt);
+        const hitThisStep = new Set();
+        for (const ball of [...game.balls]) updateBall(ball, dt, hitThisStep);
+        game.balls = game.balls.filter((ball) => ball.y - ball.r <= H + 8);
+        if (!game.balls.length) { loseLastBall(); return; }
+        if (remainingBreakable() === 0) levelComplete();
+        markDirty();
+      }
+
+      function roundRect(x, y, width, height, radius) {
+        ctx.beginPath();
+        ctx.roundRect(x, y, width, height, radius);
+      }
+
+      function drawBackground() {
+        const gradient = ctx.createLinearGradient(0, 0, 0, H);
+        gradient.addColorStop(0, "#09152a");
+        gradient.addColorStop(1, "#060910");
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, W, H);
+        ctx.strokeStyle = "#55dcff12";
+        ctx.lineWidth = 1;
+        for (let x = 0; x <= W; x += 60) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+        for (let y = 0; y <= H; y += 60) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+      }
+
+      function draw() {
+        drawBackground();
+        if (!game) {
+          ctx.fillStyle = "#55dcff";
+          ctx.font = "900 42px system-ui";
+          ctx.textAlign = "center";
+          ctx.fillText("BRICKFALL", W / 2, H / 2 - 10);
+          ctx.fillStyle = "#a9b4c9";
+          ctx.font = "700 18px system-ui";
+          ctx.fillText("Choose an unlocked level to begin", W / 2, H / 2 + 30);
+          return;
+        }
+        for (const brick of game.bricks) {
+          if (brick.hp <= 0) continue;
+          const solid = brick.type === "solid";
+          const damaged = brick.type === "strong" && brick.hp === 1;
+          const color = solid ? "#526076" : damaged ? "#ff8fab" : brick.type === "strong" ? "#9b8cff" : game.accent;
+          roundRect(brick.x, brick.y, brick.width, brick.height, 5);
+          ctx.fillStyle = color;
+          ctx.fill();
+          ctx.strokeStyle = solid ? "#b9c3d4" : "#ffffff8a";
+          ctx.lineWidth = solid ? 2.5 : 1.2;
+          ctx.stroke();
+          ctx.fillStyle = "#07101b66";
+          ctx.fillRect(brick.x + 5, brick.y + brick.height - 6, brick.width - 10, 3);
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.font = "900 12px system-ui";
+          ctx.fillStyle = "#07101b";
+          ctx.fillText(solid ? "◆" : damaged ? "1" : brick.type === "strong" ? "2" : "", brick.x + brick.width / 2, brick.y + brick.height / 2);
+        }
+        for (const drop of game.drops) {
+          ctx.beginPath(); ctx.arc(drop.x, drop.y, 12, 0, Math.PI * 2);
+          ctx.fillStyle = ({ wide: "#55dcff", slow: "#7ee787", multiball: "#ffd166", sticky: "#ff6685" })[drop.type]; ctx.fill();
+          ctx.fillStyle = "#07101b"; ctx.font = "900 11px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(({ wide: "W", slow: "S", multiball: "M", sticky: "T" })[drop.type], drop.x, drop.y + .5);
+        }
+        const paddle = game.paddle;
+        const paddleGradient = ctx.createLinearGradient(paddle.x - paddle.width / 2, 0, paddle.x + paddle.width / 2, 0);
+        paddleGradient.addColorStop(0, "#55dcff"); paddleGradient.addColorStop(.5, "#f7fbff"); paddleGradient.addColorStop(1, "#8d8bff");
+        roundRect(paddle.x - paddle.width / 2, paddle.y, paddle.width, paddle.height, 8); ctx.fillStyle = paddleGradient; ctx.fill();
+        ctx.shadowColor = "#55dcff"; ctx.shadowBlur = 14; ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1; ctx.stroke(); ctx.shadowBlur = 0;
+        for (const ball of game.balls) {
+          ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+          const ballGradient = ctx.createRadialGradient(ball.x - 3, ball.y - 4, 1, ball.x, ball.y, ball.r);
+          ballGradient.addColorStop(0, "#ffffff"); ballGradient.addColorStop(.35, "#ffd166"); ballGradient.addColorStop(1, "#ff6685");
+          ctx.fillStyle = ballGradient; ctx.fill(); ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1.5; ctx.stroke();
+        }
+      }
+
+      function frame(time) {
+        if (!lastFrame) lastFrame = time;
+        const elapsed = Math.min(.1, (time - lastFrame) / 1000);
+        lastFrame = time;
+        if (game?.phase === "playing") {
+          accumulator = Math.min(.2, accumulator + elapsed);
+          while (accumulator >= STEP) { update(STEP); accumulator -= STEP; }
+        } else {
+          accumulator = 0;
+          if (game && ["ready", "life-lost"].includes(game.phase)) updatePaddle(Math.max(STEP, Math.min(.033, elapsed || STEP)));
+        }
+        updateHud();
+        draw();
+        requestAnimationFrame(frame);
+      }
+
+      function pointerCoordinate(event) {
+        const rectangle = canvas.getBoundingClientRect();
+        return (event.clientX - rectangle.left) / rectangle.width * W;
+      }
+
+      canvas.addEventListener("pointerdown", (event) => {
+        if (assistEnabled) setAssist(false);
+        canvas.setPointerCapture?.(event.pointerId);
+        pointerX = pointerCoordinate(event);
+        pointerAt = performance.now();
+      });
+      canvas.addEventListener("pointermove", (event) => {
+        if (event.pointerType === "mouse" || event.buttons || event.pointerType === "touch") {
+          if (assistEnabled) setAssist(false);
+          pointerX = pointerCoordinate(event);
+          pointerAt = performance.now();
+        }
+      });
+
+      document.addEventListener("keydown", (eventObject) => {
+        if (eventObject.key === "ArrowLeft" || eventObject.key === "ArrowRight") {
+          eventObject.preventDefault();
+          if (assistEnabled) setAssist(false);
+          keys[eventObject.key === "ArrowLeft" ? "left" : "right"] = true;
+        } else if (eventObject.code === "Space") {
+          if (!appView.hidden) { eventObject.preventDefault(); launchWaiting(); }
+        } else if (["p", "P", "Escape"].includes(eventObject.key)) {
+          if (!appView.hidden) { eventObject.preventDefault(); togglePause(); }
+        } else if (["r", "R"].includes(eventObject.key) && game?.phase === "game-over") {
+          startRun(Number(levelSelect.value));
+        }
+      });
+      document.addEventListener("keyup", (eventObject) => {
+        if (eventObject.key === "ArrowLeft" || eventObject.key === "ArrowRight") keys[eventObject.key === "ArrowLeft" ? "left" : "right"] = false;
+      });
+
+      loginForm.addEventListener("submit", async (eventObject) => {
+        eventObject.preventDefault();
+        loginError.textContent = "";
+        try {
+          const data = await request("/api/login", { method: "POST", body: JSON.stringify({ email: emailInput.value, password: passwordInput.value }) });
+          token = data.token;
+          sessionStorage.setItem(TOKEN_KEY, token);
+          await bootstrap();
+        } catch (error) { loginError.textContent = error.message; }
+      });
+      document.querySelectorAll("[data-email]").forEach((button) => button.addEventListener("click", () => { emailInput.value = button.dataset.email; passwordInput.focus(); }));
+      document.querySelector("#sign-out").addEventListener("click", async () => { try { await saveNow(); await request("/api/logout", { method: "POST", body: "{}" }); } finally { showLogin(); } });
+      document.querySelector("#start-selected").addEventListener("click", () => startRun(Number(levelSelect.value)));
+      document.querySelector("#new-run").addEventListener("click", async () => {
+        game = null;
+        savedRun = null;
+        saveDirty = false;
+        try { await request("/api/save", { method: "DELETE" }); }
+        catch (error) { event(error.message); }
+        showMenu();
+        draw();
+      });
+      launchButton.addEventListener("click", launchWaiting);
+      pauseButton.addEventListener("click", togglePause);
+      assistButton.addEventListener("click", () => setAssist(!assistEnabled));
+      resumeAction.addEventListener("click", restoreRun);
+      overlayAction.addEventListener("click", () => {
+        if (!game) startRun(Number(levelSelect.value));
+        else if (["ready", "life-lost", "paused"].includes(game.phase)) launchWaiting();
+        else if (game.phase === "level-complete") continueLevel();
+        else if (game.phase === "game-over") startRun(Number(levelSelect.value));
+      });
+      document.addEventListener("visibilitychange", () => { if (document.hidden) saveNow(); });
+      setInterval(saveNow, 1000);
+      requestAnimationFrame(frame);
+      if (token) bootstrap().catch(showLogin);
+    })();
+  </script>
+</body>
+</html>

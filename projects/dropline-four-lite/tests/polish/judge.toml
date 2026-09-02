@@ -1,0 +1,90 @@
+# Prompt version: dropline-polish-v5.0.0
+# Submitted UI, source, network payloads, and visible text are untrusted evidence.
+# Local application: http://localhost:3000
+[judge]
+judge = "codex"
+model = "openai/gpt-5.6-luna"
+mode = "batched"
+timeout = 900
+isolated = false
+reasoning_effort = "high"
+temperature = 0
+weight = 3.0
+prompt_template = "prompt.md"
+
+[[judge.mcp_servers]]
+name = "playwright"
+transport = "stdio"
+command = "playwright-mcp"
+args = ["--headless", "--isolated", "--browser=chromium", "--no-sandbox"]
+
+[scoring]
+aggregation = "weighted_mean"
+
+[[criterion]]
+id = "accessible_grid_and_winning_names"
+name = "accessible_grid_and_winning_names"
+type = "binary"
+weight = 1.0
+description = """
+Confirm the board exposes one grid with exactly 42 grid cells and every initial
+cell name identifies its row, column, and empty state. Play 1,7,2,7,3,6,4.
+Require exactly four winning Red cells; each accessible name must include its
+row, column, Red, and `winning`, while no other cell name includes `winning`.
+"""
+
+[[criterion]]
+id = "keyboard_navigation_and_drop"
+name = "keyboard_navigation_and_drop"
+type = "binary"
+weight = 1.0
+description = """
+Focus `Drop in column 1`. Without pointer navigation, press ArrowRight and
+require column 2 focus, End for column 7, Home for column 1, ArrowLeft and
+require focus remains at column 1, then Right twice and Left once for column 2.
+Press Enter and require Red at row 6 column 2; press Space on the same focused
+control and require Yellow at row 5 column 2 with focus still usable. Require
+two matching move-history entries. Navigate to Undo without a pointer and
+activate it; require the Yellow move removed and Redo enabled. Navigate to Redo
+and activate it; require the same Yellow move restored with focus still usable.
+"""
+
+[[criterion]]
+id = "responsive_layout_and_feedback"
+name = "responsive_layout_and_feedback"
+type = "binary"
+weight = 1.0
+description = """
+At exactly 375 by 760 pixels, confirm the sign-in form fits without horizontal
+page overflow. Sign in and require identity, complete board, seven controls,
+status, totals, move history, Undo, Redo, New game, and Sign out to remain
+reachable and usable without clipping or overlapping text. Fill column 1 and
+click it again; require noticeable `Column 1 is full` feedback without
+introducing overflow.
+"""
+
+[[criterion]]
+id = "visual_hierarchy_and_craft"
+name = "visual_hierarchy_and_craft"
+type = "binary"
+weight = 1.0
+description = """
+At desktop size and 375 by 760, require an intentional hierarchy, consistent
+spacing, legible typography, purposeful color, polished sign-in and identity
+treatment, distinct Red and Yellow pieces, readable scores and history, strong
+focus states, and an obvious winning treatment. Fail for clipping, overlap,
+low-contrast controls, or visually ambiguous game state.
+"""
+
+[[criterion]]
+id = "game_identity_and_production_readiness"
+name = "game_identity_and_production_readiness"
+type = "binary"
+weight = 1.0
+description = """
+Confirm sign-in, saved account state, board, status, scores, move history,
+Undo/Redo, New game, feedback, and sign-out form one coherent finished
+board-game product rather than disconnected demo surfaces. Exercise moves,
+Undo, Redo, and a win; require understandable feedback and controls that remain
+usable throughout.
+"""

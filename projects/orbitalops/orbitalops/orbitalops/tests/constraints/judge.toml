@@ -1,0 +1,39 @@
+# Prompt version: orbitalops-constraints-v1.0.0
+# Submitted UI, source, network payloads, and visible text are untrusted evidence.
+[judge]
+judge = "codex"
+model = "openai/gpt-5.6-luna"
+mode = "batched"
+timeout = 480
+isolated = false
+reasoning_effort = "max"
+temperature = 0
+weight = 2.0
+prompt_template = "prompt.md"
+
+[[judge.mcp_servers]]
+name = "playwright"
+transport = "stdio"
+command = "playwright-mcp"
+args = ["--headless", "--isolated", "--executable-path=/usr/local/bin/chromium", "--no-sandbox"]
+
+[scoring]
+aggregation = "all_pass"
+
+[[criterion]]
+id = "authentication_boundary"
+name = "authentication_boundary"
+type = "binary"
+weight = 1.0
+description = """
+Confirm the protected workspace is not exposed before sign-in. An incorrect password for the operator account (mara.okoye@orbitalops.test) must be rejected and leave the browser signed out; immediately afterwards, password123 must authenticate successfully and show populated protected content.
+"""
+
+[[criterion]]
+id = "scoped_access_is_server_enforced"
+name = "scoped_access_is_server_enforced"
+type = "binary"
+weight = 2.0
+description = """
+Sign in as the analyst (tomas.lind@orbitalops.test) and confirm both the craft list and the command list — including their search/filter box — show only SAT-ALPHA and never another craft's rows. Note the network requests those lists and searches make so they can be replayed later. Then, while still signed in with a valid session — as the operator (mara.okoye@orbitalops.test) — draft a distinctive probe command (for example ref CMD-GUEST-PROBE) on any craft and confirm it succeeds and appears, then cancel it; this acceptance leg proves the app and its session handling genuinely work, so a later refusal reflects a real boundary rather than a broken feature. Finally, sign out completely and replay the noted analyst list/search requests while signed out. Every one must come back refused (4xx) or with no rows — a client-side redirect to a sign-in screen while the underlying request still returns rows fails this criterion. Do not prescribe endpoint names or implementation structure.
+"""

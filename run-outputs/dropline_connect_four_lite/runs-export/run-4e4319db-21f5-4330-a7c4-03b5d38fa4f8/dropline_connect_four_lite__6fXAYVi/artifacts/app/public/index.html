@@ -1,0 +1,497 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DropLine</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --page: #101318;
+      --surface: #1a2028;
+      --surface-2: #242c36;
+      --line: #3a4655;
+      --ink: #f7f9fc;
+      --muted: #aeb9c8;
+      --board: #287bc1;
+      --board-edge: #15588e;
+      --empty: #0b1016;
+      --red: #ff5364;
+      --yellow: #ffd148;
+      --focus: #8ed8ff;
+      --danger: #ff8792;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      background: var(--page);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    [hidden] { display: none !important; }
+
+    .login-page {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(260px, .85fr) minmax(360px, 1.15fr);
+    }
+
+    .brand-panel {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 100vh;
+      padding: clamp(32px, 6vw, 80px);
+      background: #1d62a0;
+    }
+
+    .brand-panel h1,
+    .topbar h1 {
+      margin: 0;
+      letter-spacing: 0;
+    }
+
+    .brand-panel h1 { font-size: clamp(3.5rem, 9vw, 7rem); line-height: .86; }
+    .brand-panel p { max-width: 29rem; margin: 20px 0 0; font-size: 1.08rem; line-height: 1.6; }
+    .brand-mark { width: 58px; height: 58px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; }
+    .brand-mark span { border-radius: 50%; background: var(--ink); }
+    .brand-mark span:nth-child(2), .brand-mark span:nth-child(3) { background: var(--yellow); }
+
+    .login-panel {
+      display: grid;
+      place-items: center;
+      padding: 28px;
+    }
+
+    .login-form { width: min(420px, 100%); }
+    .eyebrow { margin: 0 0 8px; color: var(--focus); font-size: .78rem; font-weight: 800; text-transform: uppercase; }
+    .login-form h2 { margin: 0 0 10px; font-size: 2rem; }
+    .form-intro { margin: 0 0 28px; color: var(--muted); line-height: 1.5; }
+    label { display: block; margin: 0 0 8px; font-size: .88rem; font-weight: 750; }
+    input {
+      width: 100%;
+      min-height: 46px;
+      margin: 0 0 18px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--surface);
+      color: var(--ink);
+    }
+    input:focus-visible, button:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+    .primary {
+      width: 100%;
+      min-height: 46px;
+      border: 0;
+      border-radius: 6px;
+      background: var(--ink);
+      color: var(--page);
+      font-weight: 850;
+    }
+    .primary:hover { background: #dcebf7; }
+    .login-error { min-height: 1.4em; margin: 12px 0 0; color: var(--danger); font-weight: 700; }
+    .demo-note { margin: 24px 0 8px; color: var(--muted); font-size: .8rem; }
+    .demo-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+    .demo-button, .quiet-button {
+      min-height: 38px;
+      padding: 0 12px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--surface);
+      color: var(--ink);
+    }
+    .demo-button:hover, .quiet-button:hover { border-color: var(--focus); background: var(--surface-2); }
+
+    .app-page { width: min(1040px, 100%); margin: 0 auto; padding: 22px; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+    .topbar h1 { font-size: 2rem; }
+    .identity { display: flex; align-items: center; gap: 12px; }
+    .identity-copy { text-align: right; }
+    #signed-in-name { display: block; font-weight: 850; }
+    #signed-in-email { display: block; color: var(--muted); font-size: .78rem; }
+
+    .game-layout { display: grid; grid-template-columns: minmax(0, 1fr) 230px; gap: 24px; padding-top: 24px; align-items: start; }
+    .game-area { min-width: 0; }
+    .status-row { display: flex; align-items: end; justify-content: space-between; gap: 18px; margin-bottom: 14px; }
+    #status { margin: 0; font-size: clamp(1.4rem, 4vw, 2.2rem); }
+    #feedback { min-height: 1.25em; margin: 5px 0 0; color: var(--muted); }
+    .turn-chip { flex: 0 0 auto; padding: 7px 10px; border: 1px solid var(--line); border-radius: 6px; color: var(--muted); font-size: .78rem; font-weight: 800; }
+
+    .column-controls, #board { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+    .column-controls { gap: 6px; margin-bottom: 8px; }
+    .column-control {
+      height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--surface);
+      color: var(--ink);
+      font-weight: 850;
+      transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
+    }
+    .column-control:hover:not(:disabled) { transform: translateY(-2px); border-color: var(--focus); background: var(--surface-2); }
+    .column-control:disabled { cursor: not-allowed; opacity: .42; }
+
+    #board {
+      aspect-ratio: 7 / 6;
+      gap: clamp(5px, 1vw, 10px);
+      padding: clamp(9px, 2vw, 17px);
+      border: 2px solid #66b4f1;
+      border-bottom: 10px solid var(--board-edge);
+      border-radius: 8px;
+      background: var(--board);
+      box-shadow: 0 24px 48px #0008, inset 0 1px #ffffff55;
+    }
+    .cell { position: relative; min-width: 0; aspect-ratio: 1; border-radius: 50%; background: var(--empty); box-shadow: inset 0 5px 10px #000b, 0 1px #ffffff44; }
+    .cell::after { content: ""; position: absolute; inset: 8%; border-radius: inherit; }
+    .cell.red::after { background: var(--red); box-shadow: inset 0 -8px 0 #b52a38, inset 0 5px 0 #ff929b; }
+    .cell.yellow::after { background: var(--yellow); box-shadow: inset 0 -8px 0 #bd900d, inset 0 5px 0 #fff2a7; }
+    .cell.placed::after { animation: settle 220ms cubic-bezier(.2, .8, .3, 1.2); }
+    .cell.winning { outline: 4px solid white; outline-offset: -5px; filter: drop-shadow(0 0 8px white); }
+    @keyframes settle { from { transform: translateY(-55%) scale(.82); opacity: .25; } to { transform: none; opacity: 1; } }
+
+    .side-panel { display: grid; min-width: 0; gap: 18px; }
+    .scoreboard, .actions, .history-panel { padding: 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+    .history-panel { min-width: 0; overflow: hidden; }
+    .scoreboard h2, .actions h2, .history-panel h2 { margin: 0 0 14px; font-size: 1rem; }
+    .score-row { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-top: 1px solid var(--line); }
+    .score-row:first-of-type { border-top: 0; }
+    .score-label { display: flex; align-items: center; gap: 8px; }
+    .swatch { width: 12px; height: 12px; border-radius: 50%; background: var(--muted); }
+    .swatch.red { background: var(--red); }
+    .swatch.yellow { background: var(--yellow); }
+    .score-value { font-weight: 900; }
+    #new-game { width: 100%; }
+    .history-list { max-height: 320px; margin: 0; padding: 0 6px 10px 22px; overflow-x: hidden; overflow-y: auto; overflow-wrap: anywhere; scroll-padding-bottom: 10px; color: var(--muted); font-size: .84rem; }
+    .history-list li { min-width: 0; padding: 3px 0; line-height: 1.35; }
+    .history-empty { margin: 0 0 12px; color: var(--muted); font-size: .84rem; }
+    .history-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+    .history-actions button { width: 100%; }
+    .history-actions button:disabled { cursor: not-allowed; opacity: .45; }
+    .key-help { margin: 12px 0 0; color: var(--muted); font-size: .78rem; line-height: 1.5; }
+    kbd { padding: 1px 5px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 3px; background: var(--surface-2); color: var(--ink); }
+
+    @media (max-width: 760px) {
+      .game-layout { grid-template-columns: 1fr; }
+      .side-panel { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 620px) {
+      .login-page { grid-template-columns: 1fr; }
+      .brand-panel { min-height: auto; padding: 28px; }
+      .brand-panel h1 { font-size: 3.4rem; }
+      .brand-panel p { margin-top: 12px; }
+      .brand-mark { display: none; }
+      .login-panel { padding: 28px 18px; place-items: start center; }
+      .app-page { padding: 14px; }
+      .topbar { align-items: flex-start; }
+      .identity { align-items: flex-end; flex-direction: column; gap: 8px; }
+      .column-control { height: 38px; font-size: .8rem; }
+      .side-panel { grid-template-columns: 1fr; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <section id="login-view" class="login-page" aria-labelledby="login-title">
+    <div class="brand-panel">
+      <div>
+        <p class="eyebrow">Two players, one board</p>
+        <h1>Drop<br>Line</h1>
+        <p>Take turns, build a line of four, and come back to the same match whenever you sign in.</p>
+      </div>
+      <div class="brand-mark" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+    </div>
+    <div class="login-panel">
+      <form id="login-form" class="login-form">
+        <p class="eyebrow">Demo club access</p>
+        <h2 id="login-title">Sign in to play</h2>
+        <p class="form-intro">Your active board and match totals are saved to your account.</p>
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" value="avery@dropline.test" autocomplete="username" required>
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" required>
+        <button class="primary" type="submit">Sign in</button>
+        <p id="login-error" class="login-error" role="alert"></p>
+        <p class="demo-note">Demo accounts, password: password123</p>
+        <div class="demo-buttons">
+          <button class="demo-button" type="button" data-email="avery@dropline.test">Use Avery</button>
+          <button class="demo-button" type="button" data-email="jordan@dropline.test">Use Jordan</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <div id="app-view" class="app-page" hidden>
+    <header class="topbar">
+      <div><p class="eyebrow">Local match</p><h1>DropLine</h1></div>
+      <div class="identity">
+        <div class="identity-copy"><span id="signed-in-name"></span><span id="signed-in-email"></span></div>
+        <button id="sign-out" class="quiet-button" type="button">Sign out</button>
+      </div>
+    </header>
+
+    <main class="game-layout">
+      <section class="game-area" aria-label="Connect Four game">
+        <div class="status-row">
+          <div><h2 id="status">Red's turn</h2><p id="feedback" aria-live="polite">Choose a column</p></div>
+          <span class="turn-chip">Connect four to win</span>
+        </div>
+        <div class="column-controls" aria-label="Column controls"></div>
+        <div id="board" role="grid" aria-label="Connect Four board"></div>
+      </section>
+
+      <aside class="side-panel" aria-label="Match information">
+        <section class="scoreboard" aria-labelledby="score-title">
+          <h2 id="score-title">Match totals</h2>
+          <div class="score-row"><span class="score-label"><span class="swatch red"></span>Red wins</span><span id="red-score" class="score-value">0</span></div>
+          <div class="score-row"><span class="score-label"><span class="swatch yellow"></span>Yellow wins</span><span id="yellow-score" class="score-value">0</span></div>
+          <div class="score-row"><span class="score-label"><span class="swatch"></span>Draws</span><span id="draw-score" class="score-value">0</span></div>
+        </section>
+        <section class="history-panel" aria-labelledby="history-title">
+          <h2 id="history-title">Move history</h2>
+          <p id="history-empty" class="history-empty">No moves yet</p>
+          <ol id="move-history" class="history-list" aria-live="polite"></ol>
+          <div class="history-actions">
+            <button id="undo" class="quiet-button" type="button" disabled>Undo</button>
+            <button id="redo" class="quiet-button" type="button" disabled>Redo</button>
+          </div>
+        </section>
+        <section class="actions" aria-labelledby="action-title">
+          <h2 id="action-title">Round</h2>
+          <button id="new-game" class="primary" type="button">New game</button>
+          <p class="key-help"><kbd>Left</kbd> <kbd>Right</kbd> choose a column<br><kbd>Enter</kbd> or <kbd>Space</kbd> drops</p>
+        </section>
+      </aside>
+    </main>
+  </div>
+
+  <script>
+    (() => {
+      const TOKEN_KEY = "dropline_token";
+      const loginView = document.querySelector("#login-view");
+      const appView = document.querySelector("#app-view");
+      const loginForm = document.querySelector("#login-form");
+      const loginError = document.querySelector("#login-error");
+      const emailInput = document.querySelector("#email");
+      const passwordInput = document.querySelector("#password");
+      const boardElement = document.querySelector("#board");
+      const controlsElement = document.querySelector(".column-controls");
+      const statusElement = document.querySelector("#status");
+      const feedbackElement = document.querySelector("#feedback");
+      const historyElement = document.querySelector("#move-history");
+      const historyEmptyElement = document.querySelector("#history-empty");
+      const undoButton = document.querySelector("#undo");
+      const redoButton = document.querySelector("#redo");
+      const cells = [];
+      const controls = [];
+      let token = sessionStorage.getItem(TOKEN_KEY) || "";
+      let game = null;
+      let lastPlaced = -1;
+      let moveQueue = Promise.resolve();
+
+      async function request(url, options = {}) {
+        const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
+        if (token) headers.Authorization = `Bearer ${token}`;
+        const response = await fetch(url, { ...options, headers });
+        const data = await response.json().catch(() => ({}));
+        if (response.status === 401 && url !== "/api/login") showLogin();
+        if (!response.ok) {
+          const error = new Error(data.error || "Request failed");
+          error.status = response.status;
+          error.game = data.game;
+          throw error;
+        }
+        return data;
+      }
+
+      function showLogin() {
+        token = "";
+        sessionStorage.removeItem(TOKEN_KEY);
+        appView.hidden = true;
+        loginView.hidden = false;
+        passwordInput.value = "";
+      }
+
+      function statusText(state) {
+        if (state.status === "red_win") return "Red wins";
+        if (state.status === "yellow_win") return "Yellow wins";
+        if (state.status === "draw") return "Draw";
+        return `${state.currentPlayer}'s turn`;
+      }
+
+      function cellName(index, value, winning) {
+        const row = Math.floor(index / 7) + 1;
+        const column = index % 7 + 1;
+        return `Row ${row}, column ${column}, ${value || "empty"}${winning ? ", winning" : ""}`;
+      }
+
+      function revealLatestHistory() {
+        requestAnimationFrame(() => {
+          historyElement.scrollTop = historyElement.scrollHeight;
+        });
+      }
+
+      function render(state, feedback = "Choose a column") {
+        game = state;
+        statusElement.textContent = statusText(state);
+        feedbackElement.textContent = feedback;
+        document.querySelector("#red-score").textContent = state.scores.Red;
+        document.querySelector("#yellow-score").textContent = state.scores.Yellow;
+        document.querySelector("#draw-score").textContent = state.scores.Draws;
+        historyElement.innerHTML = "";
+        for (const entry of state.moveHistory || []) {
+          const item = document.createElement("li");
+          item.textContent = `Move ${entry.move}: ${entry.color}, column ${entry.column}, row ${entry.row}`;
+          historyElement.append(item);
+        }
+        historyEmptyElement.hidden = (state.moveHistory || []).length > 0;
+        revealLatestHistory();
+        undoButton.disabled = !state.canUndo;
+        redoButton.disabled = !state.canRedo;
+        const winners = new Set(state.winningCells);
+        cells.forEach((cell, index) => {
+          const value = state.board[index];
+          cell.className = "cell";
+          if (value) cell.classList.add(value.toLowerCase());
+          if (index === lastPlaced) cell.classList.add("placed");
+          if (winners.has(index)) cell.classList.add("winning");
+          cell.setAttribute("aria-label", cellName(index, value, winners.has(index)));
+        });
+        controls.forEach((control) => { control.disabled = state.status !== "active"; });
+        lastPlaced = -1;
+      }
+
+      async function loadGame() {
+        const data = await request("/api/game");
+        document.querySelector("#signed-in-name").textContent = data.user.name;
+        document.querySelector("#signed-in-email").textContent = data.user.email;
+        loginView.hidden = true;
+        appView.hidden = false;
+        render(data.game, "Saved game restored");
+      }
+
+      async function performMove(column) {
+        if (!game || game.status !== "active") return;
+        try {
+          const data = await request("/api/game/move", {
+            method: "POST",
+            body: JSON.stringify({ column }),
+          });
+          lastPlaced = data.placed;
+          render(data.game, data.game.status === "active" ? "Move saved" : "Round saved");
+        } catch (error) {
+          if (error.game) render(error.game, error.message);
+          else feedbackElement.textContent = error.message;
+        }
+      }
+
+      function move(column) {
+        moveQueue = moveQueue.then(() => performMove(column));
+      }
+
+      async function performHistoryAction(action) {
+        const preferred = action === "undo"
+          ? [undoButton, redoButton, ...controls]
+          : [redoButton, undoButton, ...controls];
+        try {
+          const data = await request(`/api/game/${action}`, { method: "POST", body: "{}" });
+          if (action === "redo") lastPlaced = data.placed;
+          render(data.game, action === "undo" ? "Move undone" : "Move redone");
+        } catch (error) {
+          if (error.game) render(error.game, error.message);
+          else feedbackElement.textContent = error.message;
+        }
+        const focusTarget = preferred.find((control) => !control.disabled);
+        if (focusTarget) focusTarget.focus();
+      }
+
+      function buildBoard() {
+        for (let column = 1; column <= 7; column += 1) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "column-control";
+          button.textContent = String(column);
+          button.setAttribute("aria-label", `Drop in column ${column}`);
+          button.addEventListener("click", () => move(column));
+          button.addEventListener("keydown", (event) => {
+            const index = controls.indexOf(button);
+            let next = index;
+            if (event.key === "ArrowRight") next = Math.min(6, index + 1);
+            else if (event.key === "ArrowLeft") next = Math.max(0, index - 1);
+            else if (event.key === "Home") next = 0;
+            else if (event.key === "End") next = 6;
+            else return;
+            event.preventDefault();
+            controls[next].focus();
+          });
+          controls.push(button);
+          controlsElement.append(button);
+        }
+        for (let index = 0; index < 42; index += 1) {
+          const cell = document.createElement("div");
+          cell.className = "cell";
+          cell.setAttribute("role", "gridcell");
+          cell.setAttribute("aria-label", cellName(index, "", false));
+          cells.push(cell);
+          boardElement.append(cell);
+        }
+      }
+
+      loginForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        loginError.textContent = "";
+        try {
+          const data = await request("/api/login", {
+            method: "POST",
+            body: JSON.stringify({ email: emailInput.value, password: passwordInput.value }),
+          });
+          token = data.token;
+          sessionStorage.setItem(TOKEN_KEY, token);
+          await loadGame();
+        } catch (error) {
+          loginError.textContent = error.message;
+        }
+      });
+
+      document.querySelectorAll("[data-email]").forEach((button) => {
+        button.addEventListener("click", () => {
+          emailInput.value = button.dataset.email;
+          passwordInput.focus();
+        });
+      });
+
+      document.querySelector("#new-game").addEventListener("click", async () => {
+        const data = await request("/api/game/new", { method: "POST", body: "{}" });
+        render(data.game, "New round ready");
+        controls[0].focus();
+      });
+
+      undoButton.addEventListener("click", () => {
+        moveQueue = moveQueue.then(() => performHistoryAction("undo"));
+      });
+
+      redoButton.addEventListener("click", () => {
+        moveQueue = moveQueue.then(() => performHistoryAction("redo"));
+      });
+
+      window.addEventListener("resize", revealLatestHistory);
+
+      document.querySelector("#sign-out").addEventListener("click", async () => {
+        try { await request("/api/logout", { method: "POST", body: "{}" }); } catch (_error) { /* local sign-out still completes */ }
+        showLogin();
+      });
+
+      buildBoard();
+      if (token) loadGame().catch(showLogin);
+    })();
+  </script>
+</body>
+</html>

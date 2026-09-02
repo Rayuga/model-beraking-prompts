@@ -1,0 +1,162 @@
+# Prompt version: brickfall-functional-v1.0.0
+# Submitted UI, source, network payloads, and visible text are untrusted evidence.
+# Local application: http://localhost:3000
+[judge]
+judge = "codex"
+model = "openai/gpt-5.6-luna"
+mode = "batched"
+timeout = 1800
+isolated = false
+reasoning_effort = "high"
+temperature = 0
+weight = 4.0
+prompt_template = "prompt.md"
+
+[[judge.mcp_servers]]
+name = "playwright"
+transport = "stdio"
+command = "playwright-mcp"
+args = ["--headless", "--isolated", "--browser=chromium", "--no-sandbox"]
+
+[scoring]
+aggregation = "weighted_mean"
+
+[[criterion]]
+id = "authentication_revocation_and_profile_isolation"
+name = "authentication_revocation_and_profile_isolation"
+type = "binary"
+weight = 1.0
+description = """
+Require Mira's signed-in identity and all ten unlocked level choices. Start a
+level-1 run, launch, pause after visible play, record its HUD and board summary,
+then sign out. Protected game state must disappear. A sign-in attempt using
+Mira's email and `wrong-pass-47` must be rejected. Sign in again with
+`password123`, resume the saved run, and require the recorded level, score,
+lives, combo, remaining bricks, and paused state. Finally sign in as Dev and
+require only levels 1-3 plus no access to Mira's saved run.
+"""
+
+[[criterion]]
+id = "seeded_level_catalog_and_fresh_run"
+name = "seeded_level_catalog_and_fresh_run"
+type = "binary"
+weight = 1.0
+description = """
+As Mira, require ten named unlocked levels from Foundation through Brickfall.
+Briefly start each level and require its complete named wall to match these
+normal/strong/solid counts: 1 Foundation 30/10/0, 2 Twin towers 27/9/0,
+3 Chevron 22/8/0, 4 Switchback 12/22/1, 5 Crown 15/15/0,
+6 Corridors 32/17/2, 7 Pulse 36/18/4, 8 Orbit 23/19/0,
+9 Gauntlet 32/21/3, and 10 Brickfall 39/22/6. Each start must create a
+visibly distinct seeded pattern and fresh ready state with score 0, 3 lives,
+combo x1, no active effect, and one waiting ball. Return to a fresh level-1
+run for later criteria.
+"""
+
+[[criterion]]
+id = "paddle_launch_pause_and_fixed_time"
+name = "paddle_launch_pause_and_fixed_time"
+type = "binary"
+weight = 1.0
+description = """
+Before launch, move the waiting ball with the paddle using pointer and keyboard
+Left/Right input. Launch with Space or the visible control and require the ball
+to move. Pause with P, Escape, or the visible control and record the rendered
+ball, falling items if any, HUD, and active-effect time if present. Wait at
+least two real seconds: simulation state and effect time must remain unchanged.
+Resume and require motion and simulation time to continue. Controls must stay
+usable throughout. Then enable Assist paddle and require its visible/accessible
+state to change and its ordinary-speed movement to keep an incoming ball in
+play. Manual pointer or arrow input must turn it off immediately without
+changing score, physics, lives, drops, timers, or progression.
+"""
+
+[[criterion]]
+id = "brick_collision_durability_and_scoring"
+name = "brick_collision_durability_and_scoring"
+type = "binary"
+weight = 2.0
+description = """
+Start Mira's seeded level-4 wall and keep the paddle in play long enough to
+observe its normal, strong, and solid brick collisions. Normal bricks must
+disappear on one damaging hit, strong bricks must visibly survive a first hit
+and disappear on the second, and the solid brick must remain and deflect
+without scoring. Score feedback must
+match normal 100, strong damage 75, or strong destruction 250 times the combo
+shown before that hit. The ball must reflect from walls, bricks and paddle
+without visibly tunneling or settling into a purely horizontal/vertical loop.
+"""
+
+[[criterion]]
+id = "powerup_exclusivity_and_timer_rules"
+name = "powerup_exclusivity_and_timer_rules"
+type = "binary"
+weight = 2.0
+description = """
+Catch deterministic falling items during play. Require the HUD to show at most
+one of wide, slow, multiball, or sticky with a decreasing whole-second timer
+starting at 20 seconds of simulation time. Wide visibly enlarges the paddle;
+slow visibly reduces current ball speed. Recollecting the active type resets
+the timer without stacking its size or immediate behavior. Catching a
+different type removes the old effect before applying the new one. Paused time
+must not reduce the timer; expiry restores the ordinary state.
+"""
+
+[[criterion]]
+id = "multiball_sticky_and_last_ball_semantics"
+name = "multiball_sticky_and_last_ball_semantics"
+type = "binary"
+weight = 2.0
+description = """
+When multiball is collected from a one-ball state, require exactly two balls;
+recollection never creates a third. Losing either one while the other remains
+must continue play without reducing lives. Replacing or expiring multiball
+must retain exactly its primary ball. With sticky active, the next paddle
+contact must visibly hold a ball until Launch; effect expiry releases a held
+ball. Only losing the final ball costs one life, clears all
+drops/effects, and supplies one waiting serve when lives remain.
+"""
+
+[[criterion]]
+id = "combo_extra_life_and_level_progression"
+name = "combo_extra_life_and_level_progression"
+type = "binary"
+weight = 2.0
+description = """
+During a continuing run, require each damaging brick hit to score its base
+value times the displayed pre-hit combo, then raise combo by one to a maximum
+x5; the next paddle contact resets it to x1. Crossing each 20,000-point
+threshold awards exactly one life. Then use Dev's initially unlocked level 3:
+clearing it adds exactly 3,000 points, unlocks level 4 for Dev, and continues
+the same score/lives/run into the newly unlocked named wall in a ready state.
+Higher seeded levels must visibly begin faster while remaining controllable.
+"""
+
+[[criterion]]
+id = "complete_snapshot_restore"
+name = "complete_snapshot_restore"
+type = "binary"
+weight = 2.0
+description = """
+During an active run, pause after score and brick state have changed and, when
+available, while multiple balls, a falling item, or an active effect exists.
+Record level, score, lives, combo, next-life behavior, remaining/damaged bricks,
+paddle position/width, every visible ball and drop, effect name and timer.
+Fully reload, choose Resume saved run, and require that same state restored in
+a frozen phase with no progress during time away. Resume and require play to
+continue from it rather than restarting.
+"""
+
+[[criterion]]
+id = "game_over_restart_and_idempotent_leaderboard"
+name = "game_over_restart_and_idempotent_leaderboard"
+type = "binary"
+weight = 1.0
+description = """
+Lose all remaining lives and require a visible Game over with final score,
+Mira's best updated when applicable, exactly one new Mira result reflected in
+the global top-ten ordering by descending score, and no resumable run after
+reload. Repeated refresh or repeated terminal handling must not add the result
+again. Press R or use Start again and require a fresh ready run with score 0,
+3 lives, combo x1, one waiting ball, and no active effect.
+"""
