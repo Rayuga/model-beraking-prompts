@@ -1,6 +1,6 @@
 # Current WebDev Task Authoring Context
 
-Updated: 2026-09-02
+Updated: 2026-09-03
 
 This is the current shared standard for WebDev/RL task authoring in this
 repository. It combines the latest admin instructions, the root validation
@@ -19,7 +19,10 @@ Use sources in this order:
 6. The extracted reference task folders:
    - `projects/bazaarbridge_marketplace/bazaarbridge-marketplace/bazaarbridge-marketplace/`
    - `projects/orbitalops/orbitalops/orbitalops/`
-7. Historical material under `old-qc-and-formats/`.
+
+Archived tasks, exported runs, and `old-qc-and-formats/` are reference-only.
+Do not include them in routine task QC unless the user specifically asks for
+an archival comparison or investigation.
 
 Validation-file hashes for the snapshot reviewed on 2026-09-02:
 
@@ -217,7 +220,7 @@ nested task wrappers.
 | C4 | Every expected type and literal agrees with the seed and write path. |
 | C5 | Assertions and paths are live, valid, and capable of passing. |
 | C6 | Runtime placeholders are resolved by the configured runner. |
-| C7 | “Nothing else changed” uses whole-state or explicit comparison guards. |
+| C7 | "Nothing else changed" uses whole-state or explicit comparison guards. |
 | C8 | Legitimate app side effects are excluded from unchanged baselines. |
 | C9 | LLM-graded facts and weighting arithmetic match the actual seed. |
 | D2 | Render or Constraints failure hard-zeros all shaping terms. |
@@ -331,16 +334,19 @@ DropLine's current authoritative workbook has SHA-256
 
 ### Render
 
-Make Render a cheap hard gate. Require startup, a substantive same-origin
-page, protected pre-login state, a rejected bad password, a successful seeded
-login, and meaningful populated content. A blank or always-deny app must fail.
+Make Render a cheap hard gate with only two or three smoke checks: the page
+loads into a usable visible UI, it still loads after refresh, and, when useful,
+one obvious link, sign-in action, or control works without breaking the page.
+Do not test bad-password handling, detailed persistence, exact game state, or
+visual polish here. A blank, crashed, or unusable page must still fail.
 
 ### Constraints
 
-Test trust boundaries with positive controls: same-origin server mutations,
-server-side identity, account/role isolation, durable SQLite state, token
-revocation, stored-value authority, and absence of required external assets.
-After every rejected/replayed action, re-read state and prove nothing changed.
+Keep Constraints to two or three essential contract checks, such as the
+same-origin full-stack workspace, authenticated access boundary, offline
+operation, or durable reload behavior. Put detailed account isolation,
+revocation, state-transition, and mutation-safety behavior in Functional unless
+it is genuinely a task-wide hard constraint.
 
 ### Functional
 
@@ -366,6 +372,144 @@ directory.
 - Validate every dimension as a finite number in `[0,1]` before calculating
   reward.
 - If post-processing fails, restore zero rather than leaving an ungated mean.
+
+## Operational learnings from DropLine and Brickfall
+
+### Category isolation, ordering, and verifier budgets
+
+- RewardKit 0.1.7 may evaluate AgentJudge categories concurrently by default.
+  Categories that mutate the same SQLite database can therefore race and
+  invalidate one another's baseline. Either isolate/reset state per category
+  or run the categories serially with
+  `rewardkit --max-concurrent-agent 1 /tests`.
+- Render and Constraints should avoid persistent product mutations. Functional
+  and Polish may mutate state only when their own setup and cleanup make the
+  behavior deterministic.
+- Criterion order matters within a mutating category. Run seed-import and
+  baseline assertions before gameplay changes. Test archive cap/order behavior
+  before later criteria generate additional completed records.
+- Sum the configured category timeouts and keep the runner timeout above that
+  total but below the platform verifier timeout. DropLine currently budgets
+  `480 + 2400 + 900 + 480 = 4260` seconds, uses a 5280-second runner bound,
+  and keeps the verifier limit at 5400 seconds.
+
+### Idempotency, stale writes, and session safety
+
+- Give every new-game, move, undo, and redo request its own opaque,
+  high-entropy operation ID. Reusing a human-readable constant across an
+  unrelated operation is not a valid test or implementation.
+- Persist and replay the original HTTP status and response body for both
+  successful mutations and known 4xx mutation failures.
+- Test a successful duplicate after other state has advanced. Also replay a
+  previously rejected stale request after later state changes and prove it
+  still returns its original rejection without changing the fresh state.
+- For optimistic concurrency, verify the stale revision response, re-read the
+  authoritative state, and explicitly retry with a new operation ID and the
+  current revision.
+- A deliberately pending double activation may commit at most one move and one
+  revision increment.
+- Test all-session logout with two separately issued tokens for the same
+  account. After a rejected or replayed action, re-read state and prove the
+  rejection caused no mutation.
+
+### Undo, redo, and terminal archive identity
+
+- A completed archive record is not only its winner. Its identity includes the
+  result, board, move list, completion time/order, and round identity.
+- Undoing a terminal move removes that exact record and reverses the score.
+  Redo restores the same record exactly once; it must not create a new
+  completion timestamp or a duplicate archive entry.
+- Starting a new game or making a new branch after undo clears the redo stack.
+- Test exact terminal undo/redo early enough that unrelated generated archive
+  entries do not make cap and order assertions ambiguous.
+
+### Seed collections and latest-ten views
+
+- To prove a ten-item cap, seed or create more than ten records. DropLine uses
+  11 completed matches so the verifier can check newest-first order and the
+  omission of the oldest entry.
+- Expose the total completed-record count separately from the ten records
+  displayed in the current view.
+- Check exact order and exact omission rather than only counting ten cards.
+- Keep environment, verifier, and golden seed copies byte-identical and record
+  their SHA-256 hashes.
+- Validate workbook-provided redo stacks by redoing the exact seeded move and
+  revision, then undoing it so later checks recover their baseline.
+
+### Browser-verifier observability
+
+- Never grade a behavior that the instructions do not require. Every verifier
+  criterion must point to an instruction clause or an explicitly mapped
+  requirement.
+- A generic browser verifier cannot directly prove a physical SQLite schema.
+  Verify the observable contract instead: bearer-token issuance and use,
+  reload persistence, distinct sessions, account isolation, and global token
+  revocation. Do not force a golden-only endpoint or schema solely to make an
+  internal implementation detail inspectable.
+- Prefer visible UI controls. Network capture and controlled replay are a
+  narrow exception for request idempotency and stale-write behavior.
+- Put explicit seeded credentials in verifier prompts. When a scenario needs a
+  boundary value, perform the exact steps that create it; do not assume the
+  app's default range, revision, board, or focus state.
+- If a test expects an empty board, start a new game first. Check keyboard
+  focus after a nonterminal move because terminal-state controls may correctly
+  be disabled.
+- Test reduced motion by emulating the media query and verifying that animation
+  and transition duration is materially reduced.
+- Polish criteria should grade concrete instruction-backed qualities: readable
+  type, focus visibility, contrast, spacing, distinguishable pieces, responsive
+  layout, status feedback, and a clear winner state.
+
+### Version, baseline, and ZIP integrity
+
+- Any instruction, judge, golden solution, or frozen-baseline change requires
+  a semantic version bump across `task.toml`, package metadata,
+  `tests/coverage.json`, Docker labels, and judge-prompt version comments.
+- Recompute seed and golden-file hashes only after the final content edit, then
+  rebuild the task ZIP. Brickfall demonstrated why this order matters: an HTML
+  change left stale coverage hashes until version 1.0.1 refreshed the entire
+  baseline.
+- The ZIP must contain exactly one top-level directory whose name matches the
+  ZIP stem. Compare the ZIP file inventory and bytes against the source, test
+  every entry's CRC, and reject absolute paths, traversal, duplicate wrappers,
+  and unexpected files.
+- Build packages from tracked or explicitly allowlisted source files. Do not
+  package a dirty runtime directory containing ignored `node_modules`, SQLite
+  databases, WAL/SHM files, logs, caches, or screenshots.
+
+### Run evidence and local naming
+
+- Friendly outer run-directory names may include the model/outcome and a short
+  run-ID prefix. Preserve the complete run UUID inside Harbor JSON.
+- Never rename nested Harbor trial directories or standard files such as
+  `result.json`, `config.json`, and `lock.json`; exported viewers and trial
+  mappings use those exact names and the stored `trial_name`.
+- Treat exported transcripts as immutable evidence. Do not normalize their
+  whitespace or rewrite them merely to reduce a Git diff.
+- Keep secrets, raw databases, and generated logs out of commits. Run an exact
+  external-secret scan before committing evidence; use `.gitignore` for raw DB
+  and log artifacts.
+- An infrastructure failure is not a task/model score. The current DropLine
+  GPT-5.4-mini attempt identified as `run-c866d723` stopped because the Daytona
+  organization had depleted credits; do not report it as a valid model or NOP
+  result.
+- Existing successful DropLine exports belong to older task versions. They are
+  useful for diagnosis but do not replace fresh Oracle and required-model runs
+  for version 6.0.1.
+
+### Git and Windows repository handling
+
+- On this workspace, repository-wide `git add -A` can fail because an archived
+  nested repository contains an overlong Windows object path. Stage only the
+  active task, context, ZIP, or run-evidence paths being delivered; do not edit
+  archived exports to work around the issue.
+- A directory rename appears as deletions plus untracked files until staged.
+  Inspect the staged result and final tree rather than relying only on Git's
+  rename percentage. Identical empty files can also produce surprising rename
+  pairings without changing the final content.
+- Before pushing, fetch the remote, check branch divergence, scan the staged
+  material for secrets, commit only the intended paths, push, then verify a
+  clean worktree and `HEAD == origin/main`.
 
 ## What changed from the older five-dimension pattern
 
@@ -484,10 +628,11 @@ Working source reviewed:
   tests or solution.
 - Historical version 5.1.1 GPT-5.4-mini passed Functional `1.0` and Polish
   `0.8`; after correcting an unsupported Render-helper check its implied reward
-  was `0.92`, above the target band. Haiku reached Functional `0.5556`, while
-  the latest Oracle/NOP attempt never started because Daytona reported depleted
-  organization credits. Version 6.0.1 adds written, deterministic full-stack
-  difficulty plus serialized browser judging and requires fresh platform runs.
+  was `0.92`, above the target band. Haiku reached Functional `0.5556`. A later
+  Oracle/NOP attempt and the current version 6.0.1 GPT-5.4-mini attempt never
+  started because Daytona reported depleted organization credits. Version
+  6.0.1 adds written, deterministic full-stack difficulty plus serialized
+  browser judging and requires fresh successful platform runs.
 - Version 6 has passed local API, real-Chromium, exact-draw/undo/redo regression,
   two-tab conflict, all-session revocation, 11-record/latest-ten archive lifecycle,
   request-result replay, keyboard-focus, 375-pixel replay, and reduced-motion checks.
@@ -515,12 +660,44 @@ Working source reviewed:
 | Four categories only | Addressed in source | Only Render, Constraints, Functional, and Polish remain. |
 | Three-word dash naming | Addressed in source | Source/task/npm/delivery slugs use `dropline-four-lite`. |
 | Docker/platform checks | Unverified | Docker and platform validation are intentionally left for the platform run. |
-| Run evidence | Missing | Existing runs cover older versions; no version 6.0.1 Oracle/mini/Haiku/Sonnet evidence is present. |
+| Run evidence | Insufficient | Existing scored runs cover older versions, and the version 6.0.1 attempt is only a Daytona depleted-credit failure; no successful current Oracle/mini/Haiku/Sonnet evidence is present. |
 | Delivery set | Partial | The validated task ZIP is assembled; Oracle/model run ZIPs and the two reports await platform results. |
 
 The local source preflight emulating the documented rules passes all 26 upload
 checks and all 19 source-decidable scorecard items. This is not a platform
 Rules result; treat the platform checks as unverified until an upload passes.
+
+## Current Brickfall audit snapshot
+
+Working source reviewed:
+`projects/brickfall-breaker-arcade/`
+
+- The canonical three-word slug is `brickfall-breaker-arcade` and the current
+  task version is `1.0.1`.
+- The task follows the same Harbor structure and four verifier-category model
+  as DropLine. Its long contract is split into mounted instruction files.
+- The golden browser game includes the instruction-backed status message,
+  score/lives/level/combo display, active power-up, controls, level selection,
+  and global leaderboard behaviors.
+- A late instruction, Render-helper, and golden title/dedication change required
+  a version bump. Package metadata, prompt comments, coverage metadata, and
+  golden hashes were refreshed together before rebuilding the ZIP.
+- The task ZIP contains 27 source files. Ignored runtime `node_modules`, SQLite
+  database/WAL/SHM files, and other generated material are not packaged.
+- This snapshot records structural and baseline consistency, not final task
+  acceptance. Brickfall still needs its complete platform upload checks,
+  current Oracle/model runs, score-band analysis, and final delivery reports.
+
+## Current package snapshots
+
+These hashes identify the packages assembled after the latest reviewed source
+changes. Any later task edit invalidates the corresponding row and requires a
+new semantic version, hash, and ZIP build.
+
+| Task | Version | Source files in ZIP | ZIP SHA-256 |
+| --- | --- | ---: | --- |
+| `dropline-four-lite` | `6.0.1` | 29 | `41D832B381379DB4F328DAF6F0A415E50A11C7E06209CD85BBDE4BF8EDD875B4` |
+| `brickfall-breaker-arcade` | `1.0.1` | 27 | `54D1BF16CC6AEC98B03932FE2ADCA429ED881EC97EDAC9A1D70A828CD8510CAE` |
 
 ## Final pre-delivery checklist
 
