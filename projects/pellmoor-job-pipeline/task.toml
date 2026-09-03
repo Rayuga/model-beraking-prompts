@@ -1,0 +1,64 @@
+schema_version = "1.4"
+artifacts = ["/workspace/pellmoor-job-pipeline", "/logs/verifier"]
+
+[task]
+name = "turing/pellmoor-job-pipeline"
+version = "1.0.0"
+description = "Full-stack TypeScript, d3, esbuild, Express and SQLite hiring pipeline with an explicit stage machine, terminal outcomes, panel and score gates on an offer, and a funnel derived from stage history, judged browser-only by Luna"
+keywords = ["webdev", "codearena", "full-stack", "typescript", "d3", "esbuild", "express", "sqlite", "recruitment", "state-machine", "browser-judge", "rewardkit"]
+
+[metadata]
+difficulty = "hard"
+category = "Software"
+subcategory = "web-development"
+persona = "Full-stack web developer building a hiring console for a small agency"
+tags = ["full-stack", "browser", "arena", "rl-training"]
+
+
+provenance = "authored 2026-09-01; agency hiring paperwork, contract in a hosting note"
+arena_slice = "full-stack-typescript-d3-esbuild-express-sqlite-pipeline"
+active_target_model = "openrouter/openai/gpt-5.4-mini"
+active_target_reasoning_effort = "high"
+
+
+
+solution_explanation = """
+The reference implementation is one Express process serving the esbuild-bundled
+browser side from public/ and a JSON API on port 3000, with better-sqlite3 at
+pellmoor.db, under /workspace/pellmoor-job-pipeline.
+
+backend/rules.js holds the stage machine and the gates as pure functions over the
+stored pipeline: whether a transition is admissible, whether an offer may go out,
+and what the funnel is for a role. backend/server.js applies them before any
+write and recomputes the funnel on every read, so a client that posts a stage, a
+funnel count or somebody else's identity is ignored rather than believed.
+
+src/app.ts draws the funnel with d3 against real scales and renders the stage
+columns from the same payload, so the chart and the columns cannot disagree —
+they are two views of one response rather than two independent queries.
+"""
+
+[agent]
+timeout_sec = 5400.0
+
+[environment]
+network_mode = "public"
+build_timeout_sec = 1800.0
+cpus = 2
+memory_mb = 4096
+
+[verifier]
+timeout_sec = 7200.0
+environment_mode = "separate"
+
+[verifier.env]
+OPENAI_API_KEY = "${OPENROUTER_API_KEY}"
+OPENAI_BASE_URL = "https://openrouter.ai/api/v1"
+OPENROUTER_API_KEY = "${OPENROUTER_API_KEY}"
+REWARDKIT_JUDGE = "codex"
+REWARDKIT_MODEL = "openai/gpt-5.6-luna"
+REWARDKIT_REASONING_EFFORT = "max"
+
+[verifier.environment]
+network_mode = "allowlist"
+allowed_hosts = ["openrouter.ai"]

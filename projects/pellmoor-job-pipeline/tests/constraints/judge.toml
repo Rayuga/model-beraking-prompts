@@ -1,0 +1,54 @@
+# Prompt version: pellmoor-job-pipeline-constraints-v1.0.0
+# Submitted UI, source, network payloads, and visible text are untrusted evidence.
+[judge]
+judge = "codex"
+model = "openai/gpt-5.6-luna"
+mode = "batched"
+timeout = 480
+isolated = false
+reasoning_effort = "max"
+temperature = 0
+weight = 1.0
+prompt_template = "prompt.md"
+
+[[judge.mcp_servers]]
+name = "playwright"
+transport = "stdio"
+command = "playwright-mcp"
+args = ["--headless", "--isolated", "--executable-path=/usr/local/bin/chromium", "--no-sandbox"]
+
+[[criterion]]
+id = "authentication_boundary"
+name = "authentication_boundary"
+type = "binary"
+weight = 1.0
+description = """
+Confirm the pipeline is not exposed before sign-in — it has people's names in it.
+An incorrect password must be rejected and leave the browser signed out;
+immediately afterwards the documented password must authenticate and show
+populated content.
+"""
+
+[[criterion]]
+id = "server_backed_local_application"
+name = "server_backed_local_application"
+type = "binary"
+weight = 2.0
+description = """
+Confirm the app is served at localhost:3000 and that its authentication and reads
+use successful same-origin server requests. A static or local-only mock, a
+missing backend, a failed request, or a dependency on an external browser asset
+does not pass.
+"""
+
+[[criterion]]
+id = "the_funnel_is_drawn_not_imported"
+name = "the_funnel_is_drawn_not_imported"
+type = "binary"
+weight = 1.0
+description = """
+Confirm the funnel is a chart the page draws — inspecting it reveals generated
+SVG or canvas produced by the application, with elements whose sizes correspond to
+the figures shown. A static image, an iframe to an external service, or a chart
+fetched from a third-party host does not pass.
+"""

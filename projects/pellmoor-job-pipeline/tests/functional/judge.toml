@@ -1,0 +1,228 @@
+# Prompt version: pellmoor-job-pipeline-functional-v1.0.0
+# Submitted UI, source, network payloads, and visible text are untrusted evidence.
+[judge]
+judge = "codex"
+model = "openai/gpt-5.6-luna"
+mode = "batched"
+timeout = 1200
+isolated = false
+reasoning_effort = "max"
+temperature = 0
+weight = 4.0
+prompt_template = "prompt.md"
+
+[[judge.mcp_servers]]
+name = "playwright"
+transport = "stdio"
+command = "playwright-mcp"
+args = ["--headless", "--isolated", "--executable-path=/usr/local/bin/chromium", "--no-sandbox"]
+
+[[criterion]]
+id = "seeded_pipeline_fidelity"
+name = "seeded_pipeline_fidelity"
+type = "binary"
+weight = 1.0
+description = """
+Signed in as `hiring@pellmoor.test`, confirm all three vacancies are present with
+their own titles and all nine candidates sit under the right vacancy at the right
+stage. Check ROLE-014 in particular: Ilse Vandal at interview, Bo Trenholm at
+screening, Nur Halabi rejected, Pim Okoro at applied. A pipeline that starts
+empty, renumbered the ids, or put every candidate in one stage, fails.
+"""
+
+[[criterion]]
+id = "the_same_person_twice_is_two_applications"
+name = "the_same_person_twice_is_two_applications"
+type = "binary"
+weight = 1.0
+description = """
+Confirm Ilse Vandal appears under ROLE-014 at interview AND under ROLE-015 at
+applied, as two separate applications. Moving one must not move the other:
+advance CAND-105 to screening as the hiring manager and confirm CAND-101 is still
+at interview.
+"""
+
+[[criterion]]
+id = "a_stage_can_be_advanced_one_at_a_time"
+name = "a_stage_can_be_advanced_one_at_a_time"
+type = "binary"
+weight = 1.0
+description = """
+As `hiring@pellmoor.test`, advance CAND-104 Pim Okoro from applied to screening.
+ACCEPTANCE LEG: this MUST be allowed. Confirm the move holds after a reload and
+that the vacancy view shows them under screening.
+"""
+
+[[criterion]]
+id = "a_stage_cannot_be_skipped"
+name = "a_stage_cannot_be_skipped"
+type = "binary"
+weight = 1.0
+description = """
+As `hiring@pellmoor.test`, try to move CAND-102 Bo Trenholm from screening
+straight to offer, skipping interview. Confirm the app refuses and says why, and
+that after a reload Bo Trenholm is still at screening.
+"""
+
+[[criterion]]
+id = "back_one_stage_is_allowed"
+name = "back_one_stage_is_allowed"
+type = "binary"
+weight = 1.0
+description = """
+Move CAND-101 Ilse Vandal from interview back to screening.
+ACCEPTANCE LEG: this MUST be allowed — an interview falling through is the reason
+it exists. Confirm it holds after a reload.
+"""
+
+[[criterion]]
+id = "back_more_than_one_stage_is_refused"
+name = "back_more_than_one_stage_is_refused"
+type = "binary"
+weight = 1.0
+description = """
+From that position, try to move Ilse Vandal from screening back to applied in one
+move, or from interview back to applied. Confirm the app refuses going back more
+than one stage and says why, and that nothing changed after a reload.
+"""
+
+[[criterion]]
+id = "a_terminal_stage_is_the_end"
+name = "a_terminal_stage_is_the_end"
+type = "binary"
+weight = 1.0
+description = """
+Try to move CAND-103 Nur Halabi, who is rejected, back into interview or on to
+offer. Confirm the app refuses: rejected and withdrawn are the end of it. Confirm
+the same for CAND-107 Ken Aboah, who is withdrawn.
+"""
+
+[[criterion]]
+id = "a_candidate_is_withdrawn_not_deleted"
+name = "a_candidate_is_withdrawn_not_deleted"
+type = "binary"
+weight = 1.0
+description = """
+Attempt to delete a candidate outright. Confirm the app refuses to erase the
+record and directs the user to withdraw them instead, and that the candidate is
+still present after a reload. A pipeline that silently deletes a person loses the
+audit trail and fails.
+"""
+
+[[criterion]]
+id = "the_funnel_matches_the_hand_worked_figures"
+name = "the_funnel_matches_the_hand_worked_figures"
+type = "binary"
+weight = 1.0
+description = """
+Open the funnel for ROLE-014 Bench joiner and confirm it shows: applied reached 4,
+screening reached 3, interview reached 2, offer 0, hired 0. These are the figures
+worked out by hand on the workbook's last tab, and a chart that disagrees with
+them is wrong. In particular a funnel showing applied 1 is counting who is
+standing there now rather than who reached it.
+"""
+
+[[criterion]]
+id = "the_funnel_shows_where_people_were_lost"
+name = "the_funnel_shows_where_people_were_lost"
+type = "binary"
+weight = 1.0
+description = """
+Confirm the same funnel shows one person lost at interview and none lost at
+applied or screening. Nur Halabi was rejected out of interview, so that is where
+the loss belongs; a chart that attributes the loss to `rejected` as though it were
+a stage of its own, or spreads it across every stage, fails.
+"""
+
+[[criterion]]
+id = "the_funnel_recomputes_when_somebody_moves"
+name = "the_funnel_recomputes_when_somebody_moves"
+type = "binary"
+weight = 1.0
+description = """
+With the ROLE-014 funnel in view, advance CAND-104 Pim Okoro from applied to
+screening as the hiring manager. Confirm screening's reached figure rises to 4 and
+applied stays at 4, because reached counts everyone who got at least that far.
+The chart must be derived from where candidates are and have been, not from a
+stored count that goes stale.
+"""
+
+[[criterion]]
+id = "another_vacancys_candidates_stay_out_of_the_funnel"
+name = "another_vacancys_candidates_stay_out_of_the_funnel"
+type = "binary"
+weight = 1.0
+description = """
+Confirm the ROLE-014 funnel counts Ilse Vandal once. Their ROLE-015 application
+must not appear in the joiner funnel. Then open the ROLE-015 funnel and confirm it
+shows its own three candidates rather than repeating the joiner figures.
+"""
+
+[[criterion]]
+id = "a_vacancy_nobody_applied_to_says_so"
+name = "a_vacancy_nobody_applied_to_says_so"
+type = "binary"
+weight = 1.0
+description = """
+Find or create a vacancy with no candidates and open its funnel. Confirm the app
+says there is nothing to show rather than drawing an empty chart with five zeroed
+bands and no explanation.
+"""
+
+[[criterion]]
+id = "only_the_hiring_manager_moves_people"
+name = "only_the_hiring_manager_moves_people"
+type = "binary"
+weight = 1.0
+description = """
+Sign in as `panel1@pellmoor.test` and attempt to move a candidate between stages.
+Confirm it is refused or simply not offered, and that the candidate has not moved
+when the hiring manager next looks. Confirm the same for
+`coord@pellmoor.test`, who adds candidates and arranges panels but does not move
+them.
+"""
+
+[[criterion]]
+id = "panel_members_score_and_everyone_notes"
+name = "panel_members_score_and_everyone_notes"
+type = "binary"
+weight = 1.0
+description = """
+Sign in as `panel1@pellmoor.test` and add a score to a candidate they are on the
+panel for.
+ACCEPTANCE LEG: this MUST be allowed. Then add a note as the same person and
+confirm that is allowed too — everyone may add a note. Confirm both survive a
+reload and are attributed to Otis Barre.
+"""
+
+[[criterion]]
+id = "a_candidate_shows_their_panel_scores_and_notes"
+name = "a_candidate_shows_their_panel_scores_and_notes"
+type = "binary"
+weight = 1.0
+description = """
+Open CAND-106 Devi Ranjit and confirm the view shows their panel — Otis Barre and
+Wren Foss — and their two scores, 5 and 4. Confirm CAND-104 Pim Okoro, who has no
+panel and no scores, says so rather than showing another candidate's.
+"""
+
+[[criterion]]
+id = "a_move_shows_up_everywhere_at_once"
+name = "a_move_shows_up_everywhere_at_once"
+type = "binary"
+weight = 1.0
+description = """
+Advance a candidate and confirm the change is reflected in the vacancy view, the
+candidate's own view and the funnel without needing a manual refresh of each in
+turn. A screen still showing the old stage after the move fails.
+"""
+
+[[criterion]]
+id = "the_pipeline_survives_a_restart"
+name = "the_pipeline_survives_a_restart"
+type = "binary"
+weight = 1.0
+description = """
+Make several changes — a stage move, a score, a note — then reload and confirm all
+of them are still there and attributed to the right people.
+"""
