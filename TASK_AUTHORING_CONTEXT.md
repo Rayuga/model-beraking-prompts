@@ -746,12 +746,15 @@ Working source reviewed:
 - Early Haiku attempts failed during setup or entered a zero-context condenser
   loop. The corrected run supplied explicit 200,000-input/8,192-output metadata,
   made 8,076,748 input-token and 118,863 output-token calls, and completed without
-  an exception. Harbor returned `graded=0`, `no_op=1`, reward `0.0`; because the
-  project guidance permits any Haiku score including zero, retain this as the
-  completed zero run while not describing it as a graded capability verdict.
+  an exception. Its first verifier handoff returned an ungraded no-op, but a
+  regrade of the exact artifact produced a valid zero: Render `1.0`, Constraints
+  `0.0`, Functional `0.0`, Polish `0.2727`, `graded=1`, and `no_op=0`. Haiku
+  omitted the referenced `/game.js`, leaving `handleSignIn` undefined. The local
+  Docker regrade used public verifier networking because Harbor regrade cannot
+  enforce allowlists in Docker; all criterion files matched the canonical task.
   Sonnet 4.5 remains absent if the strict multi-model checklist is enforced.
-- Post-run deliverables include `evaluation-report.md`, `case-study.md`,
-  `Brickfall_Post_Run_QC.xlsx`, and `brickfall-qc-findings.json`. The strict
+- Post-run deliverables include `eval-report.md`, `case-study.md`,
+  `qc-report.xlsx`, and `qc-findings.json`. The strict
   30-row scorecard records 23 passes, one partial, and six open measurement rows;
   those gaps require more robustness artifacts and are not source/golden defects.
 - The drive-ready grouped copy is under
@@ -759,7 +762,7 @@ Working source reviewed:
   GPT, and Oracle ZIPs plus the evaluation, case-study, and QC reports. Each ZIP
   stem matches its single internal wrapper (`brickfall-breaker-arcade/`,
   `gpt-run/`, `oracle-run/`, and `haiku-run/`), and every grouped copy matches its
-  reviewed source SHA-256. The Haiku archive is sanitized completed-zero evidence.
+  reviewed source SHA-256. The Haiku archive is sanitized, valid graded-zero evidence.
 - Run-evidence validation confirms GPT and Oracle used the same frozen task
   checksum, every category returned its expected unique criteria, category
   scores recompute from criterion weights, and final rewards recompute from the
@@ -789,15 +792,16 @@ with delivery archives `gpt-run.zip`, `oracle-run.zip`, and `haiku-run.zip`. The
 SHA-256 values are
 `DFDA397DE6C02EEE076CF224C7070AD99BBA68852FF2A1D32364C8CB10915BC6`,
 `BEE530B16488BA1E6729C358B2DD65553C2B010832FF9DC85DF5F24A7CADAA4B`, and
-`95D8AFAAB18D1168D02D373F78D344988EC267288190B10B4091D422B0F09C9F`.
+`1D39C21188234921E507EF1D48C701F8B40B14093C2F5BA5AE8534E0070270BA`.
 
 The canonical task archive is
 `deliverables/brickfall-breaker-arcade/brickfall-breaker-arcade.zip`; it contains
 one matching wrapper and exactly 31 files. GPT-5.4-mini is inside the target band
 at `0.2182`, and Oracle is `1.0` with 16/16 Functional passes. A rerun is required
 only after changing the task contract, verifier, seed assets, or golden solution.
-Haiku is complete for the stated project rule and is recorded at `0.0`; its
-corrected run has genuine non-zero model usage but an ungraded Harbor no-op result.
+Haiku is complete for the stated project rule and is recorded at a valid graded
+`0.0`; its exact captured artifact passed Render but failed Constraints because
+the generated application omitted the referenced `/game.js`.
 Sonnet 4.5 remains absent if the strict root delivery checklist applies.
 
 ## Final pre-delivery checklist

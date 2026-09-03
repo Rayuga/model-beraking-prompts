@@ -55,10 +55,12 @@ routes, labels, or source-code keywords.
 The Haiku attempts also exposed evaluation-infrastructure edge cases. Explicit
 model token metadata fixed the initial zero-context loop, and the corrected run
 made 8,076,748 input-token and 118,863 output-token calls without a trial
-exception. Harbor still returned an ungraded no-op zero even though the captured
-server booted during replay. The project therefore retains that artifact as the
-required completed Haiku run with score `0.0`, while clearly distinguishing it
-from a graded capability verdict.
+exception. Its first verifier handoff returned an ungraded no-op even though the
+captured server booted during replay. Regrading that exact artifact produced a
+valid zero (`graded=1`, `no_op=0`): the sign-in shell rendered, but Haiku omitted
+the referenced `/game.js`, so `handleSignIn` was undefined and all authenticated
+functionality remained unreachable. This separates the transient Harbor handoff
+failure from the genuine model failure.
 
 ## Lessons
 

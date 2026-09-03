@@ -1,6 +1,6 @@
 {
   "title": "Brickfall Breaker Arcade - Post-run QC",
-  "generated_at": "2026-09-04T02:58:10+05:30",
+  "generated_at": "2026-09-04T04:27:19+05:30",
   "task": "turing/brickfall-breaker-arcade",
   "version": "2.2.1",
   "verdict": "Core delivery ready; strict batch-robustness evidence incomplete",
@@ -55,29 +55,30 @@
       "note": "OpenHands reported context_window=0, generated 250 empty condensation pairs, reached max iteration 500, and recorded zero input/output tokens. This is not a Haiku task score."
     },
     {
-      "label": "Claude Haiku 4.5 completed zero run",
+      "label": "Claude Haiku 4.5 graded zero run",
       "agent": "openhands 0.62.0 / openrouter/anthropic/claude-haiku-4.5 / high",
-      "status": "COMPLETED_ZERO_NO_OP",
+      "status": "VALID",
       "reward": 0.0,
-      "render": 0.0,
+      "render": 1.0,
       "constraints": 0.0,
       "functional": 0.0,
-      "polish": 0.0,
-      "graded": 0,
-      "no_op": 1,
+      "polish": 0.2727,
+      "graded": 1,
+      "no_op": 0,
       "n_input_tokens": 8076748,
       "n_output_tokens": 118863,
       "exception": null,
-      "task_checksum": "0bb37d28b820d980b862d6feff4dc204c876e9b4149222b3f24873f20e4bcb49",
+      "task_checksum": "3170349e03e5f12bdaa9ba6451d8f78f92369caa27ff511b8c82cd972241b413",
+      "source_task_checksum": "0bb37d28b820d980b862d6feff4dc204c876e9b4149222b3f24873f20e4bcb49",
       "evidence": "run-outputs/brickfall-breaker-arcade/haiku-run/result.json",
-      "note": "The model genuinely ran and produced an application artifact, but Harbor returned an ungraded no-op zero. Retained as the required Haiku run with score 0.0, not as a graded capability verdict."
+      "note": "The exact completed rollout was regraded after a transient Harbor verifier no-op. Render passed, but the artifact omitted public/game.js, so same-origin delivery and every authenticated workflow genuinely failed. The local Docker regrade changed only verifier networking from allowlist to public; criterion files matched canonical v2.2.1."
     }
   ],
   "haiku_diagnosis": {
-    "root_cause": "The first usable OpenHands attempt lacked OpenRouter Haiku token metadata and entered a zero-context condenser loop. Explicit max-input/max-output metadata fixed model execution; the later verifier no-op did not reproduce when the captured server was booted independently.",
+    "root_cause": "The first usable OpenHands attempt lacked OpenRouter Haiku token metadata and entered a zero-context condenser loop. Explicit max-input/max-output metadata fixed model execution. The corrected rollout's initial verifier handoff was an ungraded no-op; regrading the exact artifact showed the genuine task failure was a missing public/game.js, which left handleSignIn undefined.",
     "prepared_fix": "The completed run used model_info max_input_tokens=200000 and max_output_tokens=8192 and drop_params=true.",
-    "retry_status": "ZERO_ACCEPTED",
-    "reason": "The corrected run has non-zero model token usage and no trial exception. Per project guidance, Haiku may score zero and does not need another retry."
+    "retry_status": "GRADED_VALID",
+    "reason": "The corrected run has non-zero model usage, no trial exception, full criterion evidence, graded=1 and no_op=0. Its reward 0.0 is a valid Haiku task score."
   },
   "upload_checks": [
     {"id":"check-task-timeout","category":"Environment & image","status":"PASS","evidence":"Agent 3600s and verifier 7200s are positive and within the documented caps."},
@@ -117,7 +118,7 @@
     {"id":"B4","status":"PASS","score":2,"criterion":"Aggregate all/every requirements","evidence":"Seed manifests, all ten walls, full constants, histories, and session isolation use aggregate criteria rather than examples only."},
     {"id":"B5","status":"PASS","score":2,"criterion":"No-op score at most 0.05","evidence":"No-op runner path produces exact reward 0.0."},
     {"id":"C1","status":"PASS","score":2,"criterion":"Oracle at least 0.95","evidence":"Oracle reward is 1.0 with all four dimensions at 1.0."},
-    {"id":"C2","status":"OPEN","score":0,"criterion":"At least two adversarial solutions at most 0.2","evidence":"GPT-5.4-mini is 0.2182 and the Haiku zero is ungraded; two qualifying graded adversarial artifacts have not been measured."},
+    {"id":"C2","status":"OPEN","score":0,"criterion":"At least two adversarial solutions at most 0.2","evidence":"Haiku is one qualifying graded artifact at 0.0, while GPT-5.4-mini is 0.2182; a second graded adversarial artifact at or below 0.2 has not been measured."},
     {"id":"C3","status":"PASS","score":2,"criterion":"Monotone good/bad ordering","evidence":"Oracle 1.0 > GPT-5.4-mini 0.2182 > no-op 0.0."},
     {"id":"C4","status":"PASS","score":2,"criterion":"Seed literals and types match","evidence":"Verifier and environment seed files are byte-identical and Oracle passes all exact seed checks."},
     {"id":"C5","status":"PASS","score":2,"criterion":"No dead or malformed criteria","evidence":"All 27 named criteria parse and all receive passing Oracle evidence."},
@@ -140,8 +141,8 @@
     {"id":"F4","status":"OPEN","score":0,"criterion":"Refusal or clarification-only response at most 0.05","evidence":"The no-op path is proven at zero, but no dedicated refusal/clarification artifact has been run."}
   ],
   "findings": [
-    {"id":"BF-QC-01","severity":"INFO","status":"PASS","area":"Haiku run","issue":"The corrected Haiku rollout made genuine model calls and completed without a trial exception; Harbor returned an ungraded no-op zero.","action":"Record score 0.0 as allowed and retain the sanitized run artifact. Do not describe it as a graded capability verdict."},
-    {"id":"BF-QC-02","severity":"P2","status":"OPEN","area":"Adversarial evidence","issue":"The strict scorecard requires two graded adversarial solutions at or below 0.2; current GPT is 0.2182 and the accepted Haiku zero is ungraded.","action":"Only if the strict robustness scorecard is mandatory, obtain two qualifying graded adversarial artifacts."},
+    {"id":"BF-QC-01","severity":"INFO","status":"PASS","area":"Haiku run","issue":"The corrected Haiku rollout was regraded successfully after a transient verifier no-op and now has complete criterion evidence with graded=1 and no_op=0.","action":"Retain the sanitized valid run artifact and record its genuine score of 0.0."},
+    {"id":"BF-QC-02","severity":"P2","status":"OPEN","area":"Adversarial evidence","issue":"The strict scorecard requires two graded adversarial solutions at or below 0.2; Haiku qualifies at 0.0, but GPT-5.4-mini is 0.2182.","action":"Only if the strict robustness scorecard is mandatory, obtain one additional graded adversarial artifact at or below 0.2."},
     {"id":"BF-QC-03","severity":"P2","status":"OPEN","area":"Reward distribution","issue":"There are three distinct measured reward values and fewer than eight valid rollouts, so D1 and D4 are unproven.","action":"Only required if the full 30-row scorecard is a delivery gate: run enough frozen-version artifacts to measure four rewards and standard deviation over at least eight."},
     {"id":"BF-QC-04","severity":"P2","status":"OPEN","area":"Repeatability","issue":"The same frozen rollout has not been rescored three times under the identical v2.2.1 verifier.","action":"Regrade one unchanged artifact three times and compare complete dimension/criterion outputs."},
     {"id":"BF-QC-05","severity":"P2","status":"OPEN","area":"Gaming probes","issue":"Dedicated keyword-stuffing, injected-content, and refusal-only artifacts were not run.","action":"Add these probes only if the strict anti-gaming rows are mandatory for upload."},
