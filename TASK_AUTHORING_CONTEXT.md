@@ -1,6 +1,6 @@
 # Current WebDev Task Authoring Context
 
-Updated: 2026-09-03
+Updated: 2026-09-04
 
 This is the current shared standard for WebDev/RL task authoring in this
 repository. It combines the latest admin instructions, the root validation
@@ -688,26 +688,59 @@ Working source reviewed:
 `projects/brickfall-breaker-arcade/`
 
 - The canonical three-word slug is `brickfall-breaker-arcade` and the current
-  task version is `2.0.0`.
+  task version is `2.2.1`.
 - It has exactly four verifier categories: 2 Render, 2 Constraints,
-  11 Functional, and 5 Polish criteria. Render or Constraints failure gates the
+  16 Functional, and 7 Polish criteria. Render or Constraints failure gates the
   reward to zero; otherwise the reward is `0.6 * Functional + 0.4 * Polish`.
 - The long contract is split into eight mounted instruction files of no more
   than 20 lines. Exact level manifests, constants, seeded checkpoints, drill
   outcomes, concurrency rules, receipt replay, latest-ten history, and terminal
   run tombstones are instruction-backed and verifier-visible.
-- The golden Node/SQLite service and canvas client passed the complete local
-  fresh-database browser and API contract suites, including all seven mechanics
-  drills, seeded progression/finish paths, operation replay and stale-write
-  handling, two-session logout, account isolation, mobile layout, and reduced
-  motion. Every current Functional assertion has a golden path.
+- The v2.2.1 Oracle scored `1.0` in Render, Constraints, Functional and Polish.
+  All 27 criteria passed, including every one of the 16 Functional criteria.
+- The v2.2.1 GPT-5.4-mini regrade scored `0.2182`: Render `1.0`, Constraints
+  `1.0`, Functional `0.0`, and Polish `0.5455`. The model's initial signed-out
+  bootstrap rendered its form without binding the submit handler, so sign-in
+  became a GET navigation and every authenticated Functional scenario remained
+  inaccessible. This is a model-artifact failure, not a golden/verifier failure.
+- Formal post-run local QC passed 29/29 executable assertions, all 19 active
+  upload rules, and four optional rules; three disabled rules are not applicable.
+  The checks cover TOML/JSON/Node/shell syntax, both Docker images and their baked
+  tooling, no-op scoring at `0.0`, reward post-processing, package/ZIP structure,
+  run-result parsing, and the model/Oracle thresholds. Functional coverage
+  remains 14/14 (`100%`).
 - The task ZIP contains exactly 31 allowlisted source files beneath one matching
-  wrapper directory. Runtime dependencies, databases, logs, caches, screenshots,
-  and temporary test material are excluded.
-- Static/upload-equivalent checks are locally clean. Docker could not be built
-  because the local Docker daemon is unavailable; platform upload checks,
-  current Oracle/model runs, score-band analysis, and final reports remain
-  platform work rather than claimed local results.
+  wrapper directory, and its extracted contents match the reviewed source.
+  Runtime dependencies, databases, logs, caches, screenshots, and temporary test
+  material are excluded. Both canonical Dockerfiles build successfully.
+- The canonical verifier remains restricted to `openrouter.ai`. Disposable local
+  run mirrors used public verifier networking only because this Windows Docker
+  kernel cannot enforce Harbor's nft allowlist; that local workaround was not
+  copied into the canonical task.
+- Early Haiku attempts failed during setup or entered a zero-context condenser
+  loop. The corrected run supplied explicit 200,000-input/8,192-output metadata,
+  made 8,076,748 input-token and 118,863 output-token calls, and completed without
+  an exception. Harbor returned `graded=0`, `no_op=1`, reward `0.0`; because the
+  project guidance permits any Haiku score including zero, retain this as the
+  completed zero run while not describing it as a graded capability verdict.
+  Sonnet 4.5 remains absent if the strict multi-model checklist is enforced.
+- Post-run deliverables include `evaluation-report.md`, `case-study.md`,
+  `Brickfall_Post_Run_QC.xlsx`, and `brickfall-qc-findings.json`. The strict
+  30-row scorecard records 23 passes, one partial, and six open measurement rows;
+  those gaps require more robustness artifacts and are not source/golden defects.
+- The drive-ready grouped copy is under
+  `deliverables/brickfall-breaker-arcade/final-submission/`. It contains the task,
+  GPT, and Oracle ZIPs plus the evaluation, case-study, and QC reports. Each ZIP
+  stem matches its single internal wrapper (`brickfall-breaker-arcade/`,
+  `gpt-run/`, `oracle-run/`, and `haiku-run/`), and every grouped copy matches its
+  reviewed source SHA-256. The Haiku archive is sanitized completed-zero evidence.
+- Run-evidence validation confirms GPT and Oracle used the same frozen task
+  checksum, every category returned its expected unique criteria, category
+  scores recompute from criterion weights, and final rewards recompute from the
+  hard-gate formula. GPT's 16 Functional failures are valid user-visible misses,
+  but 15 are downstream authentication-blocked checks caused by its initial
+  bootstrap returning before binding the sign-in handler; they are not 16
+  independent root defects. Its five Polish failures also match the artifact.
 
 ## Current package snapshots
 
@@ -718,24 +751,28 @@ new semantic version, hash, and ZIP build.
 | Task | Version | Source files in ZIP | ZIP SHA-256 |
 | --- | --- | ---: | --- |
 | `dropline-four-lite` | `6.0.2` | 29 | `20EF86A3ED425C9A0D7965A695FEAB1AC403A724D41B8C2589EE4DA51A411F74` |
-| `brickfall-breaker-arcade` | `2.0.0` | 31 | `5CBD85F1A93D0E7B7D4841BE03BAAC7714F3E4268F972D8351EC668DDFAE372D` |
+| `brickfall-breaker-arcade` | `2.2.1` | 31 | `9BEF39A6F1A02D1EC902CB09AAB1E8E15D822A9F44C7B5E93808376AF529F10F` |
 
 ## Brickfall cross-device handoff
 
-As of 2026-09-03, `brickfall-breaker-arcade` version 2.0.0 is source-complete
-and packaged. Its fresh-database golden browser/API suite, final 87-check static
-QC, syntax checks, frozen hashes, and independent alignment audit pass locally.
-The upload ZIP above is the canonical package; all 31 entries are byte-identical
-to the reviewed source and local `node_modules`/`brickfall.db*` runtime files are
-excluded.
+As of 2026-09-04, `brickfall-breaker-arcade` version 2.2.1 is source-complete,
+post-run checked and packaged. Do not rerun GPT-5.4-mini or Oracle merely for
+packaging or documentation changes: their final evidence is exported under
+`run-outputs/brickfall-breaker-arcade/gpt-run/`, `oracle-run/`, and `haiku-run/`,
+with delivery archives `gpt-run.zip`, `oracle-run.zip`, and `haiku-run.zip`. Their
+SHA-256 values are
+`DFDA397DE6C02EEE076CF224C7070AD99BBA68852FF2A1D32364C8CB10915BC6`,
+`BEE530B16488BA1E6729C358B2DD65553C2B010832FF9DC85DF5F24A7CADAA4B`, and
+`95D8AFAAB18D1168D02D373F78D344988EC267288190B10B4091D422B0F09C9F`.
 
-The next device should begin with the platform upload/Rules check, then run the
-current Oracle and required models. Do not report the older Brickfall or
-DropLine exports as v2 evidence. Acceptance still requires every Functional
-criterion to pass, Oracle above 0.95, the target model below 0.7, and completion
-of the evaluation and case-study reports. Any contract, verifier, seed, or
-golden edit after this handoff requires a version bump, refreshed baseline
-hashes, another clean runtime/static audit, and a rebuilt ZIP.
+The canonical task archive is
+`deliverables/brickfall-breaker-arcade/brickfall-breaker-arcade.zip`; it contains
+one matching wrapper and exactly 31 files. GPT-5.4-mini is inside the target band
+at `0.2182`, and Oracle is `1.0` with 16/16 Functional passes. A rerun is required
+only after changing the task contract, verifier, seed assets, or golden solution.
+Haiku is complete for the stated project rule and is recorded at `0.0`; its
+corrected run has genuine non-zero model usage but an ungraded Harbor no-op result.
+Sonnet 4.5 remains absent if the strict root delivery checklist applies.
 
 ## Final pre-delivery checklist
 

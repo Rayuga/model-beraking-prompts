@@ -37,7 +37,7 @@ RUN mkdir -p /root/.codex /logs/verifier \
       '' \
       '[mcp_servers.playwright]' \
       'command = "playwright-mcp"' \
-      'args = ["--headless", "--isolated", "--browser=chromium", "--no-sandbox"]' \
+      'args = ["--headless", "--isolated", "--executable-path=/usr/local/bin/chromium", "--no-sandbox"]' \
       'default_tools_approval_mode = "approve"' \
       > /root/.codex/config.toml
 
@@ -48,6 +48,9 @@ RUN mkdir -p /opt/playwright-browsers \
     && PW_CLI="$(npm root -g)/playwright/cli.js" \
     && if [ ! -f "$PW_CLI" ]; then PW_CLI="$(npm root -g)/@playwright/mcp/node_modules/playwright/cli.js"; fi \
     && node "$PW_CLI" install --with-deps chromium \
+    && CHROMIUM_BIN="$(find /opt/playwright-browsers/chromium-* -type f -path '*/chrome-linux*/chrome' | sort -V | tail -n 1)" \
+    && test -x "$CHROMIUM_BIN" \
+    && ln -sf "$CHROMIUM_BIN" /usr/local/bin/chromium \
     && chmod -R a+rX /opt/playwright-browsers \
     && rm -rf /var/lib/apt/lists/*
 
@@ -55,7 +58,7 @@ RUN mkdir -p /opt/playwright-browsers \
 RUN python3 -c "from pathlib import Path; p=Path('/usr/local/lib/python3.12/site-packages/rewardkit/agents.py'); s=p.read_text(); old='            \"--skip-git-repo-check\",\n'; new=old+'            \"--dangerously-bypass-approvals-and-sandbox\",\n'; assert old in s and new not in s; p.write_text(s.replace(old,new,1))"
 
 LABEL org.turing.task="brickfall-breaker-arcade" \
-      org.turing.verifier-version="2.0.0"
+      org.turing.verifier-version="2.2.1"
 
 COPY assets /assets
 RUN chmod -R a+rX /assets

@@ -24,7 +24,11 @@ ensure_reward() {
 cleanup() {
   if [[ -n "$APP_PID" ]]; then
     kill -- -"$APP_PID" 2>/dev/null || true
-    wait "$APP_PID" 2>/dev/null || true
+    for _ in $(seq 1 20); do
+      kill -0 "$APP_PID" 2>/dev/null || break
+      sleep 0.1
+    done
+    kill -KILL -- -"$APP_PID" 2>/dev/null || true
   fi
   ensure_reward
 }
@@ -35,7 +39,21 @@ trap cleanup EXIT
 if [[ ! -s /app/server.js || ! -s /app/public/index.html ]]; then
   exit 0
 fi
-if [[ -n "$(find /app -type l -print -quit 2>/dev/null)" ]]; then
+if ! python3 - <<'PY'
+from pathlib import Path
+
+root = Path("/app").resolve()
+for link in Path("/app").rglob("*"):
+    if not link.is_symlink():
+        continue
+    try:
+        target = link.resolve(strict=True)
+    except (OSError, RuntimeError):
+        raise SystemExit(1)
+    if target != root and root not in target.parents:
+        raise SystemExit(1)
+PY
+then
   exit 0
 fi
 
@@ -103,7 +121,8 @@ fi
 
 # The browser dimensions share one persisted app. Serialize their agents so a
 # Polish mutation cannot disturb Functional checkpoints or concurrency checks.
-if ! timeout 5280 rewardkit --max-concurrent-agent 1 /tests >"$LOG_DIR/rewardkit.log" 2>&1; then
+if ! timeout --signal=TERM --kill-after=30s 6300 \
+  rewardkit --max-concurrent-agent 1 /tests >"$LOG_DIR/rewardkit.log" 2>&1; then
   write_zero_reward
   exit 0
 fi
