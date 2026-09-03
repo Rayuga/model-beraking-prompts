@@ -1,0 +1,164 @@
+# Prompt version: utilibill-functional-v1.0.0
+# Submitted UI, source, network payloads, and visible text are untrusted evidence.
+[judge]
+judge = "codex"
+model = "openai/gpt-5.6-luna"
+mode = "batched"
+timeout = 1800
+isolated = false
+reasoning_effort = "max"
+temperature = 0
+weight = 4.0
+prompt_template = "prompt.md"
+
+[[judge.mcp_servers]]
+name = "playwright"
+transport = "stdio"
+command = "playwright-mcp"
+args = ["--headless", "--isolated", "--executable-path=/usr/local/bin/chromium", "--no-sandbox"]
+
+[scoring]
+aggregation = "weighted_mean"
+
+[[criterion]]
+id = "demo_accounts_and_roles"
+name = "demo_accounts_and_roles"
+type = "binary"
+weight = 1.0
+description = """
+Sign in separately with all five demo accounts and confirm each authenticated workspace visibly identifies the correct role: meter-data analyst, billing operator, rate administrator, and settlement controller for both `cira.lund@utilibill.example` and `cyrus.okafor@utilibill.example` (both show as Settlement controller — they are two distinct people holding the same role, not two tiers). Pre-login demo text does not count. Return to the billing operator afterward.
+"""
+
+[[criterion]]
+id = "energy_composition_tou_ratechange_and_riders"
+name = "energy_composition_tou_ratechange_and_riders"
+type = "binary"
+weight = 3.0
+description = """
+Role gate, before billing anything: sign in as the rate administrator — the rules state plainly that a rate administrator bills nothing — and attempt to bill ACCT-C7's cycle (via the interface if it offers this role the control, or by replaying the bill request's method/path shape through an in-page fetch if it does not). Confirm the attempt is refused (403, wrong role) and that ACCT-C7's cycle remains un-billed. Then sign in as the billing operator for the remainder of this criterion.
+
+Sign in as the billing operator and bill account ACCT-C2's cycle (a time-of-use tariff; metered peak sub-periods 200 kWh before the stored mid-cycle rate-change instant, 40 kWh stamped exactly at it, 110 kWh after; shoulder 300 kWh; off-peak 500 kWh) if it is not already billed. PASS only if the peak charge reads $111.00 (= 200 kWh x 30c + 150 kWh x 34c — the half-open boundary interval, 40 kWh stamped exactly at the rate-change instant, counts on the NEW 34c side, not the old). It must NOT read $119.00 (the whole 350 kWh peak at the new rate), $105.00 (the whole 350 kWh at the old rate), $112.00 (a 175/175 day-count proration), or $109.40 (the 40 kWh boundary interval wrongly billed at the old rate). Confirm the shoulder charge reads $48.00, the off-peak charge reads $45.00, and the total energy charge reads $204.00.
+
+On that same ACCT-C2 bill, confirm the RPS rider reads $8.16 (4.00% of the $204.00 energy charge only, not a subtotal that includes the fixed charge or the other riders), confirm the SBC rider reads $10.35 (0.90c/kWh x the 1,150 kWh delivered), confirm the GRT rider reads $5.86 (2.50% of the $234.51 base = energy + fixed $12.00 + RPS + SBC, struck LAST after the other riders — not 2.50% of energy alone, and not struck before RPS/SBC), and confirm the grand total reads $240.37, visibly the sum of the app's own displayed lines.
+
+Positive cross-check on a plain tiered (non-TOU) account: bill ACCT-C7's cycle (1,050 kWh delivered) if not already billed. Confirm its energy charge reads $127.00 (= 400 kWh x 8c + 500 kWh x 13c + 150 kWh x 20c on THIS cycle's own fresh inclining blocks) — not $210.00 (the whole usage at the top tier) or $84.00 (the whole usage at tier 1) — and confirm its RPS reads $5.08, SBC reads $9.45, GRT reads $3.84, and grand total reads $157.37.
+"""
+
+[[criterion]]
+id = "catchup_allocation_supersede_and_contra"
+name = "catchup_allocation_supersede_and_contra"
+type = "binary"
+weight = 3.0
+description = """
+Role gate, before raising anything: sign in as the billing operator and attempt to raise the true-up on ACCT-C1's cycle M1/M2 reading (via the interface if it offers this role the control, or by replaying the raise-true-up request's method/path shape through an in-page fetch if it does not). Confirm the attempt is refused (403, wrong role — only a meter-data analyst raises a true-up) and that no true-up has been raised on M1/M2 as a result.
+
+Account ACCT-C1's cycle M1 was billed on an ESTIMATED read (500 kWh, $45.00) and a later ACTUAL read reveals a two-period total of 1,600 kWh across cycles M1 (stored baseline weight 17) and M2 (weight 15). Sign in as the meter-data analyst and raise the true-up on this reading if it has not already been raised. The revealed usage must be attributed back by the stored baseline weights: M1 gets 850 kWh, M2 gets 750 kWh, each re-billed on its OWN fresh inclining blocks.
+
+PASS only if M1's re-billed energy reads $90.50 (= 400 kWh x 8c + 450 kWh x 13c on 850 kWh) — not $84.00 (an equal 800/800 split) or a day-count-derived figure. Confirm M1's original $45.00 estimate is retained on file, marked superseded (not edited or deleted), and that a contra of EXACTLY +$45.50 is posted — the difference between the $90.50 re-bill and the $45.00 prior bill. It must NOT read $90.50 itself as the contra (the raw re-bill with no prior-bill offset), nor any figure that bundles a fixed charge or rider onto the contra base — the contra rides the energy-only re-bill against the energy-only prior bill, nothing else.
+
+Confirm M2's re-billed energy reads $77.50 (= 400 kWh x 8c + 350 kWh x 13c on 750 kWh) and, since M2 carried no prior bill of its own before this true-up, confirm it mints NO contra at all (not even a $0.00 one). Confirm the two-period energy total reads $168.00 (= $90.50 + $77.50) — not $182.00 (the value produced by dumping the whole revealed-minus-500 lump into M2 instead of splitting by baseline weight, which would also fabricate top-tier usage M2 never drew) and not $137.00 for M2 alone. Confirm this true-up posted immediately, without needing a distinct controller's approval (its $45.50 maximum contra is under the $100.00 dual-control threshold) — this is the positive control for the under-threshold path graded precisely in the dual-control criteria below.
+"""
+
+[[criterion]]
+id = "catchup_second_correction_compounds_on_same_account"
+name = "catchup_second_correction_compounds_on_same_account"
+type = "binary"
+weight = 3.0
+description = """
+Account ACCT-C1 carries a SECOND, later correction on top of the first (raise the first true-up per the catch-up criterion above now, if it has not already happened earlier in this journey). A further actual read lands on a new cycle M3 (stored baseline weight 25), revealing that M2 (weight 15, which the first correction already re-billed to $77.50) and M3 together used 2,200 kWh. As the meter-data analyst, raise this second true-up.
+
+The revealed 2,200 kWh must split by weight across M2 and M3 (total weight 40): M2 gets 825 kWh, M3 gets 1,375 kWh. PASS only if M2's fresh re-bill reads $87.25 (= 400 kWh x 8c + 425 kWh x 13c on 825 kWh) and — this is the point of the criterion — the contra this second correction posts reads EXACTLY +$9.75, which is $87.25 minus the FIRST correction's $77.50 re-bill, the figure that correction actually left live. It must NOT read +$42.25 (contra-ing against the original $45.00 estimate from cycle M1, a different period entirely, or against nothing at all as if M2 had never been corrected before) and must NOT read $87.25 itself (the raw re-bill treated as if it had no prior bill to net against). Confirm M2 now shows BOTH generations still on file with their own figures intact: the ORIGINAL first-correction re-bill ($77.50), now itself marked superseded, and the CURRENT second-correction re-bill ($87.25) as the live one. Confirm M3's own re-bill reads $192.00 (= 400 x 8c + 500 x 13c + 475 x 20c on 1,375 kWh) with no prior bill to contra (M3 is being billed for the first time). Confirm this second true-up also posts immediately without needing approval (its $9.75 maximum contra stays under the $100.00 threshold).
+"""
+
+[[criterion]]
+id = "dual_control_role_gate_and_forged_identity"
+name = "dual_control_role_gate_and_forged_identity"
+type = "binary"
+weight = 2.0
+description = """
+Account ACCT-C8's cycle K1 was billed on a $24.00 estimate; a later actual read reveals a two-period total that re-bills K1 well over the $100.00 dual-control threshold. Sign in as the meter-data analyst and raise this true-up on ACCT-C8 if it has not already been raised — it is held for approval, not posted immediately. Confirm the meter-data analyst's own attempt to approve it is refused (403, wrong role — only a settlement controller approves). Confirm an unauthenticated approval attempt is refused (401). Confirm a settlement controller's approval succeeds and the held re-bill posts.
+
+Account ACCT-C9 carries its OWN independent over-threshold true-up fixture (same mechanics, a different account so nothing here depends on ACCT-C8's state). Raise ACCT-C9's true-up as the meter-data analyst if not already raised. Approve it as a settlement controller, but on that SAME approval call, if the interface exposes any field that would let the request claim a different approver's identity, a chosen amount (for example $9.99), or an admin role, fill those in from the start rather than approving plainly first and forging a second attempt afterward (a second attempt would only hit an already-approved refusal and prove nothing about identity). PASS only if that approval still succeeds and is attributed to the REAL signed-in settlement controller — re-read the applied re-bill afterward and confirm the recorded approver is the session's own account, never a body-claimed identity.
+"""
+
+[[criterion]]
+id = "dual_control_contra_computation"
+name = "dual_control_contra_computation"
+type = "binary"
+weight = 3.0
+description = """
+Building on the dual-control true-ups raised and approved above (raise and approve both now, per that criterion's own steps, if this journey has not already reached that point): re-read ACCT-C8's K1 cycle. PASS only if its re-billed energy reads EXACTLY $217.00 (= 400 kWh x 8c + 500 kWh x 13c + 600 kWh x 20c on the 1,500 kWh this correction allocates to K1) and the contra posted against its superseded $24.00 estimate reads EXACTLY +$193.00. A contra that bundles a fixed charge or rider surcharge on top of the $217.00 energy figure (any total noticeably above $193.00, such as one nudging toward $233) fails this criterion even if K1's estimate was correctly superseded — the contra rides the energy-only re-bill against the energy-only prior bill, and nothing else belongs in it. Confirm K1's $24.00 estimate is retained on file, marked superseded, not edited or deleted.
+
+Independently confirm the SAME arithmetic on ACCT-C9's K1 cycle: re-billed energy EXACTLY $217.00, contra EXACTLY +$193.00 against its own superseded $24.00 estimate — reproducing the same correct figure on a second, independent account is the point of this criterion; a build that gets one right and the other wrong (or bundles extra charges into either) fails.
+"""
+
+[[criterion]]
+id = "net_metering_credit_bank_and_gross_riders"
+name = "net_metering_credit_bank_and_gross_riders"
+type = "binary"
+weight = 3.0
+description = """
+Sign in as the billing operator and bill account ACCT-C5's cycle (net-metering, 300 kWh delivered, 500 kWh exported, $10.00 already on its bank) if it is not already billed. PASS only if the export credit reads $32.50 (= 500 kWh x the avoided-cost 6.50c/kWh rate) — NOT $40.00 (500 kWh at the retail 8c tier-1 rate, "net metering at retail"). Confirm the $24.00 energy charge is offset to EXACTLY $0.00 by the credit (the $10.00 prior bank plus the $32.50 credit, $42.50 available, fully covers the $24.00 energy — the zero-bill boundary) and that the customer still owes the $12.00 fixed charge plus riders, so the grand total reads $16.05, NOT a total run down toward $0.00 by applying the credit against the whole bill instead of the energy line alone. Confirm the net-metering bank moves from $10.00 to $18.50 (the $42.50 available minus the $24.00 actually offset), carrying the surplus forward rather than cashing it out. Confirm the RPS rider reads $0.96 (4.00% of the $24.00 GROSS pre-credit energy, not the $0.00 post-credit energy) and the SBC rider reads $2.70 (0.90c/kWh of the 300 kWh GROSS delivered, not net of the 500 kWh exported) and the GRT rider reads $0.39 (2.50% of the $15.66 net-of-credit base = $0.00 net energy + $12.00 fixed + $0.96 RPS + $2.70 SBC — not 2.50% of a gross receipts figure that ignores the credit).
+
+Bill account ACCT-C6's cycle (net-metering, 600 kWh delivered, 200 kWh exported, no prior bank) if not already billed. Confirm its export credit reads $13.00 (NOT $16.00 retail). Confirm its energy-after-credit reads $45.00 (the $13.00 available only partially offsets the $58.00 energy) and its bank stays at $0.00 — a spurious bank movement on an account whose credit never exceeded its energy fails this leg. Confirm RPS reads $2.32 (4.00% of $58.00 gross, not $1.80 on the $45.00 net), SBC reads $5.40 (0.90c/kWh of 600 kWh gross, not $3.60 net-of-export), GRT reads $1.62 (2.50% of the $64.72 net base), and the grand total reads $66.34.
+
+Same-session compounding on ACCT-C5 (bill the cycle above first, if this journey has not already reached that point, so the bank stands at $18.50): bill ACCT-C5's SECOND cycle (250 kWh delivered, 150 kWh exported), still in this same session. This is the compounding case the desk learned the hard way — this second cycle's available credit is its OWN $9.75 export credit (150 kWh x 6.50c) PLUS whatever the bank currently sums to, which is the $18.50 the first ACCT-C5 cycle just left, never the account's original $10.00 seed balance. PASS only if this second cycle's energy-after-credit reads EXACTLY $0.00 (the $20.00 energy fully offset by the $28.25 available — $18.50 carried plus $9.75 new credit) and the bank afterward reads EXACTLY $8.25 (the $28.25 available minus the $20.00 offset). A bank that instead reads $0.00 with an energy-after-credit of $0.25 is the tell that the build re-read the account's ORIGINAL $10.00 balance instead of the bank as it stood after the first bill in this same session — that fails this leg. Confirm RPS reads $0.80 (4.00% of the $20.00 gross energy), SBC reads $2.25 (0.90c/kWh of 250 kWh), GRT reads $0.38 (2.50% of the $15.05 net base), and the grand total reads $15.43.
+"""
+
+[[criterion]]
+id = "budget_levelized_read_trueup_and_anniversary_boundary"
+name = "budget_levelized_read_trueup_and_anniversary_boundary"
+type = "binary"
+weight = 3.0
+description = """
+Before touching anything else on it, read account ACCT-C3's budget/levelized plan (levelized $150.00 per cycle). Confirm its 12th stored cycle's deferred movement reads +$15.00 (the SIGNED gap $165.00 actual minus $150.00 levelized — not the $165.00 actual itself, and not an unsigned absolute value that would lose the direction of an overpaid cycle). Confirm the account's deferred balance reads +$105.00, visibly the SUM of the twelve per-cycle movement rows (the twelve stored actuals total $1,905.00 against 12 x $150.00 levelized) — not a value that drifts from some other stored figure.
+
+Role gate: sign in as the meter-data analyst and attempt to run ACCT-C3's annual true-up (via the interface if it offers this role the control, or by replaying the true-up request's method/path shape through an in-page fetch if it does not). Confirm the attempt is refused (403, wrong role — only a billing operator runs a budget true-up) and that ACCT-C3's deferred balance and levelized amount are unchanged by it.
+
+Sign in as the billing operator and run ACCT-C3's annual true-up. PASS only if it settles EXACTLY $105.00 and re-levels the plan to $158.75 (= the trailing-12 actual total $1,905.00 spread over 12 cycles, rounded half-up) — NOT left unchanged at $150.00, and NOT set to $165.00 (a last-cycle-times-twelve-divided-by-twelve reading).
+
+Account ACCT-C4 is a second budget account whose enrollment anniversary (2026-11-01) has not yet arrived at the system's one reference moment (2026-08-15T09:00:00Z) — the half-open comparison means its true-up must NOT fire. If the interface offers no true-up control for ACCT-C4 in this state, that is expected (the rules say the screen should not offer an action that would just be refused); replay the exact true-up request shape that just worked for ACCT-C3, with ACCT-C4's id substituted, via an in-page fetch. Confirm it is refused, naming the anniversary and the reference moment, and that ACCT-C4's deferred balance stays at -$60.00 and its levelized amount stays at $150.00 afterward — nothing settled, nothing re-levelled.
+"""
+
+[[criterion]]
+id = "remittance_sum_of_accruals"
+name = "remittance_sum_of_accruals"
+type = "binary"
+weight = 3.0
+description = """
+Sign in as the billing operator. If ACCT-C2's and ACCT-C7's cycles are not already billed, bill them now (as in the energy-composition criterion above) so this check is never short a cycle through no fault of the app.
+
+Role gate: before finalizing, sign in as the meter-data analyst and attempt to finalize ACCT-C2's and ACCT-C7's now-billed cycles into a settlement period (via the interface if it offers this role the control, or by replaying the finalize request's method/path shape through an in-page fetch if it does not). Confirm the attempt is refused (403, wrong role — only a billing operator finalizes) and that neither cycle is finalized as a result. Then, as the billing operator, finalize both billed cycles into a settlement period for real.
+
+Sign in as a settlement controller and run that period's remittance. PASS only if the persisted remittance reads EXACTLY $42.74 — the SUM of the app's own persisted RPS + SBC + GRT accrual rows across exactly those two finalized cycles: ACCT-C2 contributes $8.16 + $10.35 + $5.86 = $24.37 and ACCT-C7 contributes $5.08 + $9.45 + $3.84 = $18.37. It must NOT read a stored/echoed figure that disagrees with the app's own accrual rows, a figure that sums the two cycles' full GRAND TOTALS instead of only their rider accruals, or a figure that double-counts a rider kind.
+
+Attempt to remit the SAME period a second time. Confirm it is refused, naming the period as already remitted, and that the persisted remittance figure is unchanged by the attempt.
+"""
+
+[[criterion]]
+id = "cycle_billing_idempotency_and_remitted_lock"
+name = "cycle_billing_idempotency_and_remitted_lock"
+type = "binary"
+weight = 2.0
+description = """
+This criterion uses ACCT-C10 (Fennimore Yard), a dedicated fixture no other criterion in this journey touches. Sign in as the billing operator and bill ACCT-C10's cycle. Replay the identical bill request a second time. PASS only if the second attempt is refused (4xx), names the bill already on file, and mints NOTHING further — re-read the cycle afterward and confirm it still carries exactly ONE cycle bill with its original total and exactly ONE set of three rider-accrual rows (RPS, SBC, GRT), not two.
+
+Finalize ACCT-C10's cycle into its own dedicated settlement period (a period distinct from the one used in the remittance criterion above — ACCT-C10 must never be folded into that period's $42.74 figure).
+
+Role gate: before remitting, sign in as the billing operator (who just finalized it) and attempt to run that period's remittance (via the interface if it offers this role the control, or by replaying the remit request's method/path shape through an in-page fetch if it does not). Confirm the attempt is refused (403, wrong role — only a settlement controller remits) and that no remittance is persisted as a result. Then, as a settlement controller, remit that period for real.
+
+Once ACCT-C10's cycle is remitted, attempt to raise a true-up/re-bill against it as the meter-data analyst. Confirm this is refused, naming the cycle's REMITTED/locked status, and that no re-bill or contra row is minted. Re-read the earlier remittance criterion's period afterward (if already run in this journey) and confirm its figure is still exactly $42.74, undisturbed by anything done here.
+
+Separately: as the billing operator, read the audit trail and note the network request your app's UI used to load it. Replay a PUT, PATCH, or DELETE against that same endpoint (or its single-entry equivalent) with a plausible edited or deleted payload, via an in-page fetch. Confirm the attempt is refused (4xx) and that re-reading the audit trail afterward shows every entry unchanged and none missing — the trail is append-only for every role.
+"""
+
+[[criterion]]
+id = "persistent_recompute_after_reauthentication"
+name = "persistent_recompute_after_reauthentication"
+type = "binary"
+weight = 2.0
+description = """
+Immediately after the second catch-up correction above, perform a full page reload and sign in again as the billing operator. Reopen ACCT-C1's M2 cycle and confirm it still reads EXACTLY as before the reload: both generations of its re-bill on file (the original $77.50, now superseded, and the current live $87.25), and the second correction's own +$9.75 contra — freshly recomputed from the persisted rows, not merely whatever was cached in the page before the reload. Reopen ACCT-C8's K1 cycle and confirm its approved re-bill still reads $217.00 with its +$193.00 contra intact.
+
+Reopen ACCT-C5 and confirm its net-metering bank still reads $8.25 (the figure left by its second, same-session compounding cycle in the net-metering criterion above, not the $18.50 the first cycle alone left). Reopen the settlement period used for the remittance criterion above and confirm its persisted remittance still reads exactly $42.74. A figure that differs from what was confirmed earlier in this same journey, without any intervening action that would explain the change, fails this criterion.
+"""

@@ -1,0 +1,103 @@
+{
+  "task": "utilibill-metrics-dashboard",
+  "version": "1.3.0",
+  "requirements": [
+    {
+      "id": "REQ-AUTH",
+      "description": "Authenticated access with 5 demo accounts, role-based capabilities, and server-side authentication boundaries",
+      "dimensions": ["render", "constraints", "functional"],
+      "criteria": ["authenticated_render", "authentication_boundary", "demo_accounts_and_roles"]
+    },
+    {
+      "id": "REQ-WORKSPACE",
+      "description": "Navigation across Dashboard, Accounts, Settlement, and Audit workspaces",
+      "dimensions": ["render"],
+      "criteria": ["workspace_rendering"]
+    },
+    {
+      "id": "REQ-ENERGY-COMPOSITION",
+      "description": "Tiered fresh-per-cycle inclining blocks, TOU peak/shoulder/off-peak buckets with the mid-cycle rate change split by metered sub-period (half-open boundary on the new rate), and the RPS/SBC/GRT rider bases and strike order (RPS on gross energy, SBC on gross kWh, GRT last on the net-of-credit everything-else base)",
+      "dimensions": ["functional"],
+      "criteria": ["energy_composition_tou_ratechange_and_riders"]
+    },
+    {
+      "id": "REQ-CATCHUP-ALLOCATION",
+      "description": "A late/estimated read trued up and attributed back across accrual periods by stored baseline weight, each period re-billed on its own fresh blocks, the prior bill superseded (retained, not edited) and a contra of the energy-only delta posted",
+      "dimensions": ["functional"],
+      "criteria": ["catchup_allocation_supersede_and_contra"]
+    },
+    {
+      "id": "REQ-CATCHUP-COMPOUND",
+      "description": "A SECOND, later correction on an already-corrected accrual period nets its contra against the CURRENT live re-bill (not the original estimate and not zero), and both generations of the superseded chain stay on file with their own figures intact",
+      "dimensions": ["functional"],
+      "criteria": ["catchup_second_correction_compounds_on_same_account"]
+    },
+    {
+      "id": "REQ-DUAL-CONTROL-GATE",
+      "description": "An over-threshold re-bill is held for a settlement controller's approval; the raising analyst's own approval attempt and an unauthenticated attempt are refused; a body-claimed approver identity, amount, or role on an otherwise-valid controller approval is ignored in favor of the signed-in session",
+      "dimensions": ["functional"],
+      "criteria": ["dual_control_role_gate_and_forged_identity"]
+    },
+    {
+      "id": "REQ-DUAL-CONTROL-COMPUTATION",
+      "description": "The approved over-threshold re-bill's contra is the energy-only re-bill minus the energy-only prior bill, reproduced correctly and independently on two separate accounts, never bundled with the fixed charge or a rider surcharge",
+      "dimensions": ["functional"],
+      "criteria": ["dual_control_contra_computation"]
+    },
+    {
+      "id": "REQ-NET-METERING",
+      "description": "Export credit at the avoided-cost rate (not retail), an energy-only offset including the zero-bill boundary case, bank carryforward/drawdown summed from movement rows (never a stored scalar, never a spurious movement when no surplus exists), and RPS/SBC on the gross pre-credit basis with GRT on the net-of-credit basis",
+      "dimensions": ["functional"],
+      "criteria": ["net_metering_credit_bank_and_gross_riders"]
+    },
+    {
+      "id": "REQ-BUDGET-LEVELIZED",
+      "description": "Per-cycle signed deferred movement, the deferred balance summed from movement rows, the annual true-up settling the balance and re-levelling to the trailing-12 actual, and the half-open enrollment-anniversary boundary refusing a not-yet-due account",
+      "dimensions": ["functional"],
+      "criteria": ["budget_levelized_read_trueup_and_anniversary_boundary"]
+    },
+    {
+      "id": "REQ-REMITTANCE",
+      "description": "The period remittance is the sum of the app's own persisted rider-accrual rows across exactly that period's finalized cycles (never a stored/echoed figure, never another period's rows), with duplicate-remit refusal",
+      "dimensions": ["functional"],
+      "criteria": ["remittance_sum_of_accruals"]
+    },
+    {
+      "id": "REQ-IDEMPOTENCY-LOCK",
+      "description": "A duplicate bill request on an already-billed cycle is refused and mints nothing further, and a re-bill/true-up attempted against a finalized/remitted cycle is refused naming its locked status",
+      "dimensions": ["functional"],
+      "criteria": ["cycle_billing_idempotency_and_remitted_lock"]
+    },
+    {
+      "id": "REQ-PERSISTENCE",
+      "description": "SQLite durable persistence and re-derivation of the compounded catch-up chain, the dual-control contra, the net-metering bank, and the remittance figure across page reload and re-authentication; server-backed mutations",
+      "dimensions": ["constraints", "functional"],
+      "criteria": ["server_backed_persistent_application", "persistent_recompute_after_reauthentication"]
+    },
+    {
+      "id": "REQ-UI-POLISH",
+      "description": "Theme switching, mobile-responsive layout, accessible semantic markup, and interactive feedback",
+      "dimensions": ["polish"],
+      "criteria": ["theme_switching", "responsive_accessible_layout", "interaction_feedback"]
+    }
+  ],
+  "criteria_coverage": {
+    "render": ["authenticated_render", "workspace_rendering"],
+    "constraints": ["authentication_boundary", "server_backed_persistent_application"],
+    "functional": [
+      "demo_accounts_and_roles",
+      "energy_composition_tou_ratechange_and_riders",
+      "catchup_allocation_supersede_and_contra",
+      "catchup_second_correction_compounds_on_same_account",
+      "dual_control_role_gate_and_forged_identity",
+      "dual_control_contra_computation",
+      "net_metering_credit_bank_and_gross_riders",
+      "budget_levelized_read_trueup_and_anniversary_boundary",
+      "remittance_sum_of_accruals",
+      "cycle_billing_idempotency_and_remitted_lock",
+      "persistent_recompute_after_reauthentication"
+    ],
+    "polish": ["theme_switching", "responsive_accessible_layout", "interaction_feedback"]
+  },
+  "functional_coverage_note": "11 functional criteria cover all 10 substantive business-logic requirement groups (REQ-ENERGY-COMPOSITION through REQ-IDEMPOTENCY-LOCK) beyond auth/workspace/persistence/polish scaffolding — 10 of 10 domain requirement groups (>80%) have at least one dedicated, self-contained functional criterion; REQ-AUTH, REQ-WORKSPACE and REQ-PERSISTENCE are additionally covered by render/constraints. Consolidated from the pre-v2 task's 26 single-leg criteria into 11 richer multi-leg criteria, preserving every original criterion's numeric pass bar inside one of these 11, plus one new compounding criterion (catchup_second_correction_compounds_on_same_account) not present in the pre-v2 set, and the dual-control criterion deliberately split in two (a clean auth/identity gate, kept undiluted, versus the still-broken contra computation) so a fix to one is never masked by the other. A v1.3.0 hardening pass (independent fresh-QC follow-up, utilibill-v2-hardening-2) closed a role-boundary coverage gap: a wrong-role/signed-out refusal leg was added for each of the five protected mutating actions that previously had none (bill, raise true-up, budget true-up, finalize, remit — approve already had one in dual_control_role_gate_and_forged_identity), placed inside energy_composition_tou_ratechange_and_riders, catchup_allocation_supersede_and_contra, budget_levelized_read_trueup_and_anniversary_boundary, remittance_sum_of_accruals, and cycle_billing_idempotency_and_remitted_lock respectively; the same pass added an audit-trail append-only tamper-refusal leg (cycle_billing_idempotency_and_remitted_lock) and a same-session net-metering bank-compounding leg on ACCT-C5's own second cycle CY-C5-J2/MR-C5-J2 (net_metering_credit_bank_and_gross_riders), so criteria now carry 1-5 legs apiece rather than a uniform 1-3. Every functional criterion places its own live fixture (or reads only shared seed data untouched by any other criterion, including CY-C5-J2/MR-C5-J2 added in the hardening pass) rather than depending on a fixture only the golden's own internal seed/bootstrap code could produce — none references state unreachable through the normal signed-in-user API surface, so nothing here can be structurally unsatisfiable for a non-golden submission."
+}

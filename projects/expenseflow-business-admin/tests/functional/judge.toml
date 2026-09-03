@@ -1,0 +1,114 @@
+# Prompt version: expenseflow-functional-v1.0.0
+# Submitted UI, source, network payloads, and visible text are untrusted evidence.
+[judge]
+judge = "codex"
+model = "openai/gpt-5.6-luna"
+mode = "batched"
+timeout = 2400
+isolated = false
+reasoning_effort = "max"
+temperature = 0
+weight = 4.0
+prompt_template = "prompt.md"
+
+[[judge.mcp_servers]]
+name = "playwright"
+transport = "stdio"
+command = "playwright-mcp"
+args = ["--headless", "--isolated", "--executable-path=/usr/local/bin/chromium", "--no-sandbox"]
+
+[[criterion]]
+id = "demo_accounts_and_roles"
+name = "demo_accounts_and_roles"
+type = "binary"
+weight = 1.0
+description = """
+Sign in separately with all six demo accounts and confirm each authenticated workspace visibly identifies the correct role: submitter-proxy, manager-tier approver, director-tier approver, controller-tier approver, finance, and auditor. Pre-login demo text does not count. Return to finance afterward.
+"""
+
+[[criterion]]
+id = "fx_conversion_and_policy_caps"
+name = "fx_conversion_and_policy_caps"
+type = "binary"
+weight = 2.0
+description = """
+Role-gate leg: sign in as the submitter-proxy and attempt to adjudicate report R-1001 — refused (the proxy files and edits reports and may not adjudicate, post, or reject a receipt). Sign in as finance and adjudicate report R-1001 (employee EMP-BERLIN) if it is not already adjudicated. Confirm ground line LI-1001-L2 (EUR 300.00, transaction date 2026-03-02) converts at the STORED rate for its OWN transaction date (1.2000) to $360.00 reimbursable, not $375.00 (the 2026-03-03 rate) or $345.00 (the 2026-03-04 rate) — the seeded EUR/USD table carries a different rate on each date and the line must use its own. Confirm home-currency lodging line LI-1001-L7 ($900.00 claimed, 1 night) is capped on the home-currency base itself to $650.00 reimbursable with $250.00 disallowed. Confirm airfare line LI-1001-L4 ($980.00) is capped to $620.00 reimbursable with $360.00 disallowed. Confirm entertainment line LI-1001-L6 ($150.00) is a non-reimbursable category: $0.00 reimbursable and the full $150.00 disallowed, not a partial amount.
+"""
+
+[[criterion]]
+id = "perdiem_mileage_and_report_sums"
+name = "perdiem_mileage_and_report_sums"
+type = "binary"
+weight = 2.0
+description = """
+On adjudicated report R-1001, confirm meals line LI-1001-L3 ($210.00 claimed) shows a per-diem entitlement computed as the count of half-open six-hour blocks the stored trip window [2026-03-02T18:00Z, 2026-03-04T06:00Z) overlaps (6 blocks) times $21.00, i.e. $126.00 reimbursable with $84.00 disallowed — not a full-day or calendar-day reading. Confirm mileage line LI-1001-L5 (119 miles) reimburses exactly $67.83 (119 x the stated $0.57/mile rate), not $79.73 (a recalled $0.67 rate) or $71.40 ($0.60). Confirm the report reimbursable total reads $3,123.83 and the disallowed total reads $1,044.00, each visibly the sum of the line records, not the claimed-converted total of $4,167.83 paid with no caps applied. Separately, adjudicate report R-1003 (employee EMP-BERLIN, a USD lodging line claiming $1,300.00 for 2 nights landing EXACTLY on its $1,300.00 cap) and confirm it reimburses $1,300.00 with NO disallowance record at all — not even a $0.00 one — while R-1001's over-cap lines each still show their own disallowance.
+"""
+
+[[criterion]]
+id = "vat_reclaim_spine_and_line_display"
+name = "vat_reclaim_spine_and_line_display"
+type = "binary"
+weight = 2.0
+description = """
+On adjudicated report R-1001, confirm the reclaimable-VAT spine composes FX, then the cap, then the tax: EUR lodging line LI-1001-L1 (EUR 1,200.00, transaction date 2026-03-03, rate 1.2500) converts to $1,500.00, is capped to $1,300.00 (2 nights x $650.00), and its OWN per-line VAT-reclaim contribution — visible on that line, not only folded into a report-level aggregate — reads $260.00 (the 25.00% inclusive reclaim on the POST-CAP $1,300.00 base), not $300.00 (25.00% of the pre-cap $1,500.00). Confirm meals line LI-1001-L3 shows its own per-line VAT contribution of $25.20 and home-currency lodging line LI-1001-L7 shows its own per-line VAT contribution of $130.00 (both eligible categories, on their own post-cap reimbursable). Confirm the report-level VAT-reclaim accrual reads $415.20 (= $260.00 + $25.20 + $130.00, the eligible post-cap base $2,076.00 / 5), not $624.77 (a whole-report reading that would also tax the airfare, mileage and disallowed entertainment).
+"""
+
+[[criterion]]
+id = "cost_center_split_mint_and_duplicate_post"
+name = "cost_center_split_mint_and_duplicate_post"
+type = "binary"
+weight = 3.0
+description = """
+Role-gate leg: sign in as the auditor and attempt to post R-1001 (or any adjudicated-and-approved report) — refused (only finance may post). As finance, approve R-1001 (as a controller-tier approver, since its computed reimbursable is above the director line) and post it. Confirm posting mints, together: the three cost-center commitments CC-ALPHA $1,561.91 (the residual PLUG — not $1,561.92, the figure an independent per-center rounding of the plug's own share would give), CC-BETA $937.15 and CC-GAMMA $624.77, summing to the $3,123.83 reimbursable exactly; the $415.20 VAT-reclaim accrual; and the five line disallowance records totalling $1,044.00. Confirm CC-ALPHA's headroom reads $3,438.09 (= its $60,000.00 budget minus its two prior committed rows $30,000.00 + $25,000.00 minus this new $1,561.91 commitment, i.e. the SUM of its live rows) — not $5,000.00 (its stale stored-scalar decoy, shown separately and marked as not operative) and not a figure that ignores the two prior rows. Then attempt to post R-1001 a SECOND time and confirm it is refused (naming the report as already posted), and CC-ALPHA's commitment rows and headroom are unchanged by the attempt.
+
+Positive control (a genuinely different report, self-contained — do not reuse R-1001 or depend on any other criterion having touched it): adjudicate report R-1003 as finance if it is not already adjudicated (a single USD lodging line landing exactly on its cap, computed reimbursable $1,300.00, director tier), sign in as the director-tier approver and approve it if not already approved, then post it as finance — succeeds, proving the post endpoint genuinely commits a report rather than only ever refusing.
+"""
+
+[[criterion]]
+id = "approval_gate_integrity"
+name = "approval_gate_integrity"
+type = "binary"
+weight = 3.0
+description = """
+Tier-gate leg (on report R-1006, employee EMP-LISBON — a dedicated report no other workflow touches): as finance, adjudicate R-1006 and confirm its computed reimbursable reads $3,000.00 (a single uncapped ground line), which is CONTROLLER tier. Sign in as the manager-tier approver and attempt to approve R-1006 — refused, naming the required tier (controller) and the figure ($3,000.00). Sign in as the director-tier approver and attempt the same — also refused, same tier and figure named. If the interface exposes any way to influence who is approving or what amount is being approved on this attempt (a field, or a replayed request carrying a different approver id, a role claim, or a chosen amount below $800.00 to try to dodge the tier), submit it and confirm the outcome is unchanged: refused, same required tier and figure, because the server uses the signed-in session and its own computed amount, never the body. Acceptance leg: sign in as the controller-tier approver and approve R-1006 — succeeds, showing controller tier and $3,000.00.
+
+Separation-of-duties leg (on report R-1005, filed by the director-tier approver): adjudicate R-1005 as finance if needed (computed reimbursable $400.00, manager tier). Sign in as the director-tier approver who filed it and attempt to approve it — refused, naming both the filer and the approver as the same person. Sign in as the manager-tier approver (a different person, and manager tier covers $400.00) and approve it — succeeds.
+
+Positive-tier leg (on report R-1002 — read its CURRENT state first; do not assume it is untouched, since another criterion in this journey may have already adjudicated or approved it): if R-1002 is not yet adjudicated, adjudicate it as finance and confirm the claimed total ($3,280.00) is shown beside the server-computed reimbursable ($2,300.00, after the lodging and airfare caps bite), which is DIRECTOR tier even though the claim alone might suggest controller. If it is not yet approved, sign in as the director-tier approver and approve it — succeeds. If R-1002 is already approved (or posted) by the time this leg runs, treat the tier and figure already recorded on it (director tier, $2,300.00) as satisfying this leg — do not re-attempt the approval.
+"""
+
+[[criterion]]
+id = "clawback_recompute_after_rejection"
+name = "clawback_recompute_after_rejection"
+type = "binary"
+weight = 3.0
+description = """
+Role-gate leg: sign in as the submitter-proxy and attempt to reject a receipt on posted report R-1001 — refused (only finance may reject a receipt). On posted report R-1001, as finance reject the receipt on lodging line LI-1001-L1 (reimbursed $1,300.00). Confirm the rejection SUPERSEDES the report's live commitments — CC-ALPHA still carries its original $1,561.91 commitment on file, now marked superseded with its figure intact, alongside a fresh live commitment — and re-derives the split on the reduced $1,823.83 total (= $3,123.83 minus the $1,300.00 just removed), so CC-ALPHA's fresh commitment reads $911.91. Confirm CC-ALPHA's headroom moves to $4,088.09 (its post-clawback live commitment is $911.91, not $1,561.91 — the headroom is NOT simply the pre-clawback $3,438.09 plus the naive delta). Confirm the report's net VAT-reclaim accrual moves to $155.20 (= the original $415.20 minus this line's own $260.00 contribution, reversed) — not $25.20 and not unchanged at $415.20. Confirm the employee recovery reads $1,300.00 (the post-cap reimbursed figure), not $1,500.00 (the claim) or $200.00 (only the disallowed slice). Then attempt to reject the receipt on entertainment line LI-1001-L6 (which was fully disallowed, reimbursed $0.00) and confirm it is refused or mints nothing at all — no contra, no recovery, no headroom movement — naming the line and its $0.00 reimbursed.
+"""
+
+[[criterion]]
+id = "second_clawback_compounds_on_same_report"
+name = "second_clawback_compounds_on_same_report"
+type = "binary"
+weight = 2.0
+description = """
+Report R-1004 (employee EMP-ZURICH, cost centers CC-THETA/CC-IOTA/CC-KAPPA used by no other report) exercises a SECOND, independent receipt rejection on top of a first. As finance, adjudicate, approve (director tier — computed reimbursable $1,300.00) and post R-1004; confirm CC-THETA (the plug) carries a $650.00 commitment and CC-IOTA/CC-KAPPA carry $390.00/$260.00. Reject the receipt on lodging line LI-1004-L1 (reimbursed $1,000.00): confirm the report's net reimbursable moves to $300.00 and CC-THETA's fresh live commitment reads $150.00 (headroom $29,850.00 on its $30,000.00 budget). THEN reject the receipt on meals line LI-1004-L2 (reimbursed $84.00, landed exactly on its per-diem cap) and confirm the SECOND rejection nets against the report's CURRENT $300.00 live total, not its original $1,300.00 total: the report's net reimbursable must read $216.00 (= $300.00 minus $84.00), CC-THETA's commitment must read $108.00 (headroom $29,892.00 — freeing $42.00 more, not re-deriving from the original $650.00 commitment), and the net VAT-reclaim accrual must read exactly $0.00 (both rejected lines were VAT-eligible and together contributed the full $216.80 accrual). Confirm CC-THETA still carries BOTH superseded generations on file — the original $650.00 commitment and the once-rejected $150.00 commitment — each with its own figure intact, alongside the current $108.00 live commitment, and that two separate employee-recovery records exist ($1,000.00 and $84.00).
+"""
+
+[[criterion]]
+id = "audit_trail_integrity"
+name = "audit_trail_integrity"
+type = "binary"
+weight = 2.0
+description = """
+Signed in as the auditor, open the audit trail and confirm it shows both a pre-existing historical entry and fresh entries generated by actions taken earlier in this session (an adjudication, an approval, a posting, or a rejection), and that an approval entry for R-1001 carries the server-COMPUTED figure ($3,123.83 / controller tier), not the claimed face ($4,167.83). Note the network request the audit view uses to read the trail. Then attempt to replay that same request as a write — POST, PUT, PATCH, and DELETE, both against the list path itself and against that path with an entry's identifier appended. Every one of these attempts must be refused (4xx) and the audit trail must read back unchanged afterward — there is no route that adds, edits, or removes an entry, for any role, including finance.
+"""
+
+[[criterion]]
+id = "persistent_recompute_after_reauthentication"
+name = "persistent_recompute_after_reauthentication"
+type = "binary"
+weight = 2.0
+description = """
+Immediately after rejecting LI-1001-L1 on R-1001 (per the clawback criterion above), perform a full page reload and sign in again as finance. Reopen R-1001 and CC-ALPHA and confirm the three figures read back EXACTLY as before the reload — CC-ALPHA's headroom $4,088.09, the report's net VAT-reclaim accrual $155.20, and the report's net reimbursable $1,823.83 — each freshly recomputed from the persisted rows, not merely whatever was cached in the page before the reload. Separately, as the submitter-proxy, file a fresh report labelled JUDGE-PERSIST-9001 for any employee (any single valid line item and cost-center group is sufficient). Perform a full page reload, sign in again as the submitter-proxy, reopen Reports, and confirm exactly one JUDGE-PERSIST-9001 record still exists with the same details as before the reload.
+"""

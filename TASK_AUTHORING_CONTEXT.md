@@ -510,7 +510,7 @@ directory.
   result.
 - Existing successful DropLine exports belong to older task versions. They are
   useful for diagnosis but do not replace fresh Oracle and required-model runs
-  for version 6.0.1.
+  for version 6.0.2.
 
 ### Git and Windows repository handling
 
@@ -599,11 +599,11 @@ instructions, golden solution, coverage map, and Functional verification.
 Working source reviewed:
 `projects/dropline-four-lite/`
 
-### Current implementation (version 6.0.1)
+### Current implementation (version 6.0.2)
 
 - The working folder, npm package, task name, and delivery slug use
   `dropline-four-lite`.
-- `task.toml` uses `turing/dropline-four-lite` and version `6.0.1`.
+- `task.toml` uses `turing/dropline-four-lite` and version `6.0.2`.
 - The natural main instruction is at most 20 lines. Every mounted instruction
   file is also at most 20 lines; dedicated `concurrency.md` and `records.md`
   keep the new contract explicit rather than hiding requirements in judges.
@@ -644,10 +644,10 @@ Working source reviewed:
 - Historical version 5.1.1 GPT-5.4-mini passed Functional `1.0` and Polish
   `0.8`; after correcting an unsupported Render-helper check its implied reward
   was `0.92`, above the target band. Haiku reached Functional `0.5556`. A later
-  Oracle/NOP attempt and the current version 6.0.1 GPT-5.4-mini attempt never
-  started because Daytona reported depleted organization credits. Version
-  6.0.1 adds written, deterministic full-stack difficulty plus serialized
-  browser judging and requires fresh successful platform runs.
+  Oracle/NOP attempt and the version 6.0.1 GPT-5.4-mini attempt never started
+  because Daytona reported depleted organization credits. Version 6.0.2 keeps
+  the written, deterministic full-stack difficulty and serialized browser
+  judging, and requires fresh successful platform runs.
 - Version 6 has passed local API, real-Chromium, exact-draw/undo/redo regression,
   two-tab conflict, all-session revocation, 11-record/latest-ten archive lifecycle,
   request-result replay, keyboard-focus, 375-pixel replay, and reduced-motion checks.
@@ -670,12 +670,12 @@ Working source reviewed:
 | A3 natural source voice | Addressed in source | The main prompt retains lowercase, terse human wording instead of formal checklist prose. |
 | B1 complete mapping | Addressed in source | All 18 requirements map to live criterion IDs; concurrency and records requirements are instruction-backed. |
 | D2 hard gate | Addressed in source | The runner validates four dimensions and applies the exact gate/formula. |
-| E2 frozen/hash-recorded baseline | Addressed in source | Version 6.0.1 records both seed copies and golden-file SHA-256 values. |
+| E2 frozen/hash-recorded baseline | Addressed in source | Version 6.0.2 records both seed copies and golden-file SHA-256 values. |
 | Functional `>80%` | Addressed in source | Defined denominator is 15 functional requirements; Functional covers all 15 (`100%`). |
 | Four categories only | Addressed in source | Only Render, Constraints, Functional, and Polish remain. |
 | Three-word dash naming | Addressed in source | Source/task/npm/delivery slugs use `dropline-four-lite`. |
 | Docker/platform checks | Unverified | Docker and platform validation are intentionally left for the platform run. |
-| Run evidence | Insufficient | Existing scored runs cover older versions, and the version 6.0.1 attempt is only a Daytona depleted-credit failure; no successful current Oracle/mini/Haiku/Sonnet evidence is present. |
+| Run evidence | Insufficient | Existing scored runs cover older versions, and the version 6.0.1 attempt is only a Daytona depleted-credit failure; no successful version 6.0.2 Oracle/mini/Haiku/Sonnet evidence is present. |
 | Delivery set | Partial | The validated task ZIP is assembled; Oracle/model run ZIPs and the two reports await platform results. |
 
 The local source preflight emulating the documented rules passes all 26 upload
@@ -717,7 +717,7 @@ new semantic version, hash, and ZIP build.
 
 | Task | Version | Source files in ZIP | ZIP SHA-256 |
 | --- | --- | ---: | --- |
-| `dropline-four-lite` | `6.0.1` | 29 | `41D832B381379DB4F328DAF6F0A415E50A11C7E06209CD85BBDE4BF8EDD875B4` |
+| `dropline-four-lite` | `6.0.2` | 29 | `20EF86A3ED425C9A0D7965A695FEAB1AC403A724D41B8C2589EE4DA51A411F74` |
 | `brickfall-breaker-arcade` | `2.0.0` | 31 | `5CBD85F1A93D0E7B7D4841BE03BAAC7714F3E4268F972D8351EC668DDFAE372D` |
 
 ## Brickfall cross-device handoff

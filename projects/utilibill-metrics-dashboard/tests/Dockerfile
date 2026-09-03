@@ -18,10 +18,9 @@ RUN npm install -g --no-audit --no-fund \
       @playwright/mcp@0.0.79 \
       express@5.1.0 \
       better-sqlite3@12.4.1 \
-      xlsx@0.18.5 \
     && npm cache clean --force
 
-RUN mkdir -p /root/.codex /logs/verifier \
+RUN mkdir -p /root/.codex \
     && printf '%s\n' \
       'model_provider = "openrouter"' \
       'model_reasoning_effort = "max"' \
@@ -37,7 +36,7 @@ RUN mkdir -p /root/.codex /logs/verifier \
       '' \
       '[mcp_servers.playwright]' \
       'command = "playwright-mcp"' \
-      'args = ["--headless", "--isolated", "--browser=chromium", "--no-sandbox"]' \
+      'args = ["--headless", "--isolated", "--executable-path=/usr/local/bin/chromium", "--no-sandbox"]' \
       'default_tools_approval_mode = "approve"' \
       > /root/.codex/config.toml
 
@@ -49,13 +48,9 @@ RUN mkdir -p /opt/playwright-browsers \
     && if [ ! -f "$PW_CLI" ]; then PW_CLI="$(npm root -g)/@playwright/mcp/node_modules/playwright/cli.js"; fi \
     && node "$PW_CLI" install --with-deps chromium \
     && chmod -R a+rX /opt/playwright-browsers \
+    && CHROMIUM_BIN="$(find /opt/playwright-browsers -type f -name 'chrome' | head -n 1)" \
+    && ln -sf "$CHROMIUM_BIN" /usr/local/bin/chromium \
     && rm -rf /var/lib/apt/lists/*
-
-# RewardKit 0.1.7 must grant the isolated Codex judge noninteractive MCP access.
-RUN python3 -c "from pathlib import Path; p=Path('/usr/local/lib/python3.12/site-packages/rewardkit/agents.py'); s=p.read_text(); old='            \"--skip-git-repo-check\",\n'; new=old+'            \"--dangerously-bypass-approvals-and-sandbox\",\n'; assert old in s and new not in s; p.write_text(s.replace(old,new,1))"
-
-LABEL org.turing.task="dropline-four-lite" \
-      org.turing.verifier-version="6.0.2"
 
 COPY assets /assets
 RUN chmod -R a+rX /assets
