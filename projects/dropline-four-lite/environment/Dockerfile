@@ -2,8 +2,8 @@ FROM node:22-bookworm-slim
 
 ENV NODE_PATH=/usr/local/lib/node_modules
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-      ca-certificates git procps sqlite3 python3 python3-openpyxl \
+RUN apt-get -o Acquire::Retries=5 update && apt-get -o Acquire::Retries=5 install -y --no-install-recommends \
+      ca-certificates curl git build-essential tmux procps sqlite3 python3 python3-openpyxl \
     && rm -rf /var/lib/apt/lists/*
 
 RUN npm install -g --no-audit --no-fund \
