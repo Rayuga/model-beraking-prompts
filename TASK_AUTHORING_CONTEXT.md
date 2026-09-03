@@ -7,6 +7,30 @@ repository. It combines the latest admin instructions, the root validation
 files, and the strongest patterns from the extracted BazaarBridge Marketplace
 and OrbitalOps packages. Newer written admin guidance overrides this document.
 
+## Start here
+
+Use `MODEL_BREAKING_PLAYBOOK.md` as the concise cross-device workflow. It
+contains the reusable lifecycle roles, Ripple Effect verifier method, fair
+hardening rules, run-validity checks, delivery boundary, and restart checklist.
+Use this longer file for the exact current platform contract, historical
+lessons, and active task status.
+
+Three external methodology notes were reviewed and distilled into that
+playbook on 2026-09-04. They remain secondary to current admin guidance:
+
+| File | SHA-256 |
+| --- | --- |
+| `delivery-v3.md` | `22D2E61C13DFF589F7738B633007872584F2ADF323941DA44678B2E37BECB021` |
+| `restructure-v2.md` | `0C20D1B7BBB2101C60FEADDE6EBBAC9BF4FA88FD80844E648C3550FEFE018169` |
+| `MODEL_BREAKING_PROMPT.md` | `F8997D2962158DA8DB8C638AF1DC0E5B87427FF929117C12AD7B8AE1E57882FB` |
+
+The colleague lessons incorporated there are: use an internal `<= 0.5` target
+to leave margin under the formal keeper ceiling; prefer coupled lifecycle,
+payroll, civil, and game behavior over easy standalone calculations; grade
+secondary and tertiary consequences through the Ripple Effect; revalidate hero
+verifiers when they unexpectedly fail; and use parallel local runs only after
+proving isolation and resource headroom.
+
 ## Authority and source snapshot
 
 Use sources in this order:
