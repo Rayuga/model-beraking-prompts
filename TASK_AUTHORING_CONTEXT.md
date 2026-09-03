@@ -44,9 +44,11 @@ Use sources in this order:
    - `projects/bazaarbridge_marketplace/bazaarbridge-marketplace/bazaarbridge-marketplace/`
    - `projects/orbitalops/orbitalops/orbitalops/`
 
-Archived tasks, exported runs, and `old-qc-and-formats/` are reference-only.
-Do not include them in routine task QC unless the user specifically asks for
-an archival comparison or investigation.
+Archived tasks and exported runs are reference-only. Removed legacy folders,
+including the former `old-qc-and-formats/` archive, are not required because
+the durable lessons have been consolidated into the two root context files.
+Do not include archived material in routine task QC unless the user explicitly
+asks for an archival comparison or investigation.
 
 Validation-file hashes for the snapshot reviewed on 2026-09-02:
 
