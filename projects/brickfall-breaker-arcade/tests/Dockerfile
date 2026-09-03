@@ -55,7 +55,7 @@ RUN mkdir -p /opt/playwright-browsers \
 RUN python3 -c "from pathlib import Path; p=Path('/usr/local/lib/python3.12/site-packages/rewardkit/agents.py'); s=p.read_text(); old='            \"--skip-git-repo-check\",\n'; new=old+'            \"--dangerously-bypass-approvals-and-sandbox\",\n'; assert old in s and new not in s; p.write_text(s.replace(old,new,1))"
 
 LABEL org.turing.task="brickfall-breaker-arcade" \
-      org.turing.verifier-version="1.0.1"
+      org.turing.verifier-version="2.0.0"
 
 COPY assets /assets
 RUN chmod -R a+rX /assets

@@ -15,4 +15,5 @@ reasonable throttled interval during play. Restore level, score, lives, combo,
 next-life threshold, bricks, paddle, every ball and drop, active power-up and
 remaining simulation time. On game over or level-10 completion, update best
 score, insert one leaderboard result, clear the resumable run, and return the
-global top ten ordered by score descending then earlier achievement.
+global top ten ordered by score descending then earlier achievement. Finishing
+is idempotent by run id and operation id, including after refresh or retry.

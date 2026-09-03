@@ -17,4 +17,4 @@ last ball clears the effect and all falling items.
 - `sticky` captures the next paddle contact until Launch; expiry releases a
   held ball automatically.
 
-Show the active name and a visibly decreasing whole-second timer.
+Show the active name and a visibly decreasing timer rounded up to whole seconds.

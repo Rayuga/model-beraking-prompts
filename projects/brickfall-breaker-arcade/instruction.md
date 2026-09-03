@@ -1,19 +1,20 @@
 # Brickfall
 
-can you build a proper brick-breaker arcade game that feels great in
-the first few seconds but still holds up across a full run? i need predictable
-physics, meaningful levels and power-ups, not a canvas demo with random bounces.
+can you build a proper brick-breaker arcade game that feels great in the first
+few seconds but still holds up across a full run? i need predictable physics,
+meaningful levels and power-ups, not a canvas demo with random bounces.
 
 please give the demo players real sign-in too. Their unlocked levels, active
-run, best score and leaderboard results should live on the server and come back
-after a reload or later sign-in.
+run, best score and leaderboard results should return after reload or sign-in.
+Two tabs must not silently overwrite each other, and retrying an action must not
+duplicate it. Add a signed-in mechanics lab so collision, power-up and life
+rules can be checked in the real engine without affecting scores or saves.
 
-The complete game contract is in six files under `/instructions`. Seeded player
-profiles, ten level layouts and starting leaderboard records are in
-`/assets/artifacts/brickfall_seed.xlsx`.
+The full contract is in eight files under `/instructions`. Seeded profiles,
+levels and records are in `/assets/artifacts/brickfall_seed.xlsx` and
+`/assets/artifacts/brickfall_scenarios.json`.
 
-Put the application in `/app`. Use vanilla HTML, CSS and JavaScript with canvas,
-Node.js with Express, and SQLite. Issue bearer tokens and store active tokens in
-SQLite. Start with `node /app/server.js`, listen on port `3000`, and serve
-`/app/public/index.html`. Keep durable data in `/app/brickfall.db`, and require
-no runtime installs or public-internet assets.
+Put the app in `/app` using vanilla HTML/CSS/JavaScript with canvas, Node.js,
+Express and SQLite. Store server-issued bearer tokens in SQLite. Start it with
+`node /app/server.js` on port `3000`, serve `/app/public/index.html`, persist to
+`/app/brickfall.db`, and require no runtime installs or public-internet assets.

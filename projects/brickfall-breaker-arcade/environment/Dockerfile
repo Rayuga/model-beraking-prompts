@@ -14,6 +14,7 @@ RUN npm install -g --no-audit --no-fund \
 
 COPY instructions/ /instructions/
 COPY assets/artifacts/brickfall_seed.xlsx /assets/artifacts/brickfall_seed.xlsx
+COPY assets/artifacts/brickfall_scenarios.json /assets/artifacts/brickfall_scenarios.json
 RUN chmod -R a+rX /instructions /assets && mkdir -p /app
 
 WORKDIR /app

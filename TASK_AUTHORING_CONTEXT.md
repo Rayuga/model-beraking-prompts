@@ -459,6 +459,21 @@ directory.
 - Polish criteria should grade concrete instruction-backed qualities: readable
   type, focus visibility, contrast, spacing, distinguishable pieces, responsive
   layout, status feedback, and a clear winner state.
+- Put exact deterministic verifier values in the mounted instructions or a
+  verifier-visible scenario asset. Never make the judge infer hidden timing,
+  scoring, seed, or checkpoint state from the golden implementation.
+- Expose semantic gameplay telemetry for browser verification: stable entity
+  identifiers, held/moving state, positions, velocities, active effects, and a
+  bounded event stream. Canvas pixels alone are too ambiguous for exact rules.
+- Exercise every mutating route's operation receipt, including successful and
+  known-4xx replays, revision conflicts, and operation-ID payload mismatches.
+- A latest-ten history needs both ten retained snapshots and tombstones for
+  older terminal run IDs; otherwise a pruned run can be submitted again.
+- Prevent autosave from racing level-complete, finish, or progress mutations.
+  Freeze conflicting controls while a mutation is pending and reconcile stale
+  responses from authoritative server state.
+- Check pointer behavior through overlays as well as visual appearance; an
+  invisible full-screen layer can leave a polished game entirely unplayable.
 
 ### Version, baseline, and ZIP integrity
 
@@ -673,20 +688,26 @@ Working source reviewed:
 `projects/brickfall-breaker-arcade/`
 
 - The canonical three-word slug is `brickfall-breaker-arcade` and the current
-  task version is `1.0.1`.
-- The task follows the same Harbor structure and four verifier-category model
-  as DropLine. Its long contract is split into mounted instruction files.
-- The golden browser game includes the instruction-backed status message,
-  score/lives/level/combo display, active power-up, controls, level selection,
-  and global leaderboard behaviors.
-- A late instruction, Render-helper, and golden title/dedication change required
-  a version bump. Package metadata, prompt comments, coverage metadata, and
-  golden hashes were refreshed together before rebuilding the ZIP.
-- The task ZIP contains 27 source files. Ignored runtime `node_modules`, SQLite
-  database/WAL/SHM files, and other generated material are not packaged.
-- This snapshot records structural and baseline consistency, not final task
-  acceptance. Brickfall still needs its complete platform upload checks,
-  current Oracle/model runs, score-band analysis, and final delivery reports.
+  task version is `2.0.0`.
+- It has exactly four verifier categories: 2 Render, 2 Constraints,
+  11 Functional, and 5 Polish criteria. Render or Constraints failure gates the
+  reward to zero; otherwise the reward is `0.6 * Functional + 0.4 * Polish`.
+- The long contract is split into eight mounted instruction files of no more
+  than 20 lines. Exact level manifests, constants, seeded checkpoints, drill
+  outcomes, concurrency rules, receipt replay, latest-ten history, and terminal
+  run tombstones are instruction-backed and verifier-visible.
+- The golden Node/SQLite service and canvas client passed the complete local
+  fresh-database browser and API contract suites, including all seven mechanics
+  drills, seeded progression/finish paths, operation replay and stale-write
+  handling, two-session logout, account isolation, mobile layout, and reduced
+  motion. Every current Functional assertion has a golden path.
+- The task ZIP contains exactly 31 allowlisted source files beneath one matching
+  wrapper directory. Runtime dependencies, databases, logs, caches, screenshots,
+  and temporary test material are excluded.
+- Static/upload-equivalent checks are locally clean. Docker could not be built
+  because the local Docker daemon is unavailable; platform upload checks,
+  current Oracle/model runs, score-band analysis, and final reports remain
+  platform work rather than claimed local results.
 
 ## Current package snapshots
 
@@ -697,7 +718,24 @@ new semantic version, hash, and ZIP build.
 | Task | Version | Source files in ZIP | ZIP SHA-256 |
 | --- | --- | ---: | --- |
 | `dropline-four-lite` | `6.0.1` | 29 | `41D832B381379DB4F328DAF6F0A415E50A11C7E06209CD85BBDE4BF8EDD875B4` |
-| `brickfall-breaker-arcade` | `1.0.1` | 27 | `54D1BF16CC6AEC98B03932FE2ADCA429ED881EC97EDAC9A1D70A828CD8510CAE` |
+| `brickfall-breaker-arcade` | `2.0.0` | 31 | `5CBD85F1A93D0E7B7D4841BE03BAAC7714F3E4268F972D8351EC668DDFAE372D` |
+
+## Brickfall cross-device handoff
+
+As of 2026-09-03, `brickfall-breaker-arcade` version 2.0.0 is source-complete
+and packaged. Its fresh-database golden browser/API suite, final 87-check static
+QC, syntax checks, frozen hashes, and independent alignment audit pass locally.
+The upload ZIP above is the canonical package; all 31 entries are byte-identical
+to the reviewed source and local `node_modules`/`brickfall.db*` runtime files are
+excluded.
+
+The next device should begin with the platform upload/Rules check, then run the
+current Oracle and required models. Do not report the older Brickfall or
+DropLine exports as v2 evidence. Acceptance still requires every Functional
+criterion to pass, Oracle above 0.95, the target model below 0.7, and completion
+of the evaluation and case-study reports. Any contract, verifier, seed, or
+golden edit after this handoff requires a version bump, refreshed baseline
+hashes, another clean runtime/static audit, and a rebuilt ZIP.
 
 ## Final pre-delivery checklist
 

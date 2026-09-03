@@ -7,10 +7,10 @@ visual hierarchy, game readability, and product coherence rather than code
 style or a preferred visual taste.
 
 First confirm the local page loads without a fatal browser error. Score every
-criterion independently from browser-visible evidence. Start fresh runs as
-needed and use Polly so this dimension does not interfere with functional
-gameplay. A failed documented sign-in receives no protected-game credit but
-does not erase genuine public-screen evidence for layout, labels, focus, or
-invalid-login feedback. Continue after any failed criterion.
+criterion independently from browser-visible evidence. Start fresh runs or
+non-scoring drills as needed and use Polly so this dimension does not disturb
+Mira or Dev's functional checkpoints. A failed documented sign-in receives no
+protected-game credit but does not erase genuine public-screen evidence for
+layout, labels, focus, or invalid-login feedback. Continue after any failure.
 
 {criteria}

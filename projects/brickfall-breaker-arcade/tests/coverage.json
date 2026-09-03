@@ -1,7 +1,7 @@
 {
   "schema_version": "1.1",
   "task": "turing/brickfall-breaker-arcade",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "instruction_sources": [
     "instruction.md",
     "environment/instructions/overview.md",
@@ -10,12 +10,15 @@
     "environment/instructions/powerups.md",
     "environment/instructions/progression.md",
     "environment/instructions/interface.md",
-    "environment/assets/artifacts/brickfall_seed.xlsx"
+    "environment/instructions/coordination.md",
+    "environment/instructions/checkpoints.md",
+    "environment/assets/artifacts/brickfall_seed.xlsx",
+    "environment/assets/artifacts/brickfall_scenarios.json"
   ],
   "requirements": [
     {
       "id": "REQ-01",
-      "summary": "Install a vanilla browser client plus Node.js, Express, and SQLite server at /app, listen on port 3000, and require no public-origin assets or runtime installs.",
+      "summary": "Install a vanilla canvas client plus Node.js, Express, and SQLite server at /app, listen on port 3000, and require no public-origin runtime assets or installs.",
       "functional": false,
       "verified_by": [
         {"category": "preflight", "criterion": "tests/test.sh startup gate"},
@@ -25,113 +28,137 @@
     },
     {
       "id": "REQ-02",
-      "summary": "Authenticate all seeded accounts using salted passwords and server-issued SQLite bearer sessions, reject bad credentials, revoke sign-out tokens, and isolate account saves/unlocks.",
+      "summary": "Authenticate seeded profiles with salted passwords and unpredictable SQLite bearer sessions, reject bad credentials, revoke every account session on sign-out, and isolate account state.",
       "functional": true,
       "verified_by": [
-        {"category": "render", "criterion": "basic_sign_in_and_game_surface"},
-        {"category": "constraints", "criterion": "server_backed_authenticated_workspace"},
-        {"category": "functional", "criterion": "authentication_revocation_and_profile_isolation"}
+        {"category": "functional", "criterion": "account_wide_logout_bad_login_and_isolation"},
+        {"category": "functional", "criterion": "seed_manifest_and_mira_checkpoint"}
       ]
     },
     {
       "id": "REQ-03",
-      "summary": "Import the workbook's three profiles, ten named levels, explicit brick records, constants, deterministic drop records, and ordered initial leaderboard.",
+      "summary": "Import every workbook and scenario record, expose all Constants plus the exact ten-level manifest/checkpoints, and preserve the ordered top ten across workbook, guest, and terminal fixtures.",
       "functional": true,
       "verified_by": [
-        {"category": "functional", "criterion": "seeded_level_catalog_and_fresh_run"},
-        {"category": "functional", "criterion": "game_over_restart_and_idempotent_leaderboard"}
+        {"category": "functional", "criterion": "seed_manifest_and_mira_checkpoint"},
+        {"category": "functional", "criterion": "all_seeded_walls_and_fresh_runs"}
       ]
     },
     {
       "id": "REQ-04",
-      "summary": "Advance play with requestAnimationFrame and fixed 1/120-second simulation steps; pause freezes state and reload never advances elapsed simulation time.",
+      "summary": "Render with requestAnimationFrame, advance with bounded fixed 1/120-second simulation steps, and freeze all simulation state and effect time while paused or away.",
       "functional": true,
       "verified_by": [
-        {"category": "functional", "criterion": "paddle_launch_pause_and_fixed_time"},
-        {"category": "functional", "criterion": "complete_snapshot_restore"}
+        {"category": "functional", "criterion": "ranked_controls_pause_assist_and_restore"},
+        {"category": "functional", "criterion": "brick_types_fixed_step_and_combo"},
+        {"category": "functional", "criterion": "power_relay_exclusivity_and_simulation_timer"}
       ]
     },
     {
       "id": "REQ-05",
-      "summary": "Use sub-stepped face/corner ball collision, at-most-once brick damage per physics step, steering from paddle impact/motion, minimum velocity components, and level speed caps.",
+      "summary": "Use sub-stepped face/corner collision, at-most-once brick damage per step, paddle steering, minimum useful velocity components, and workbook level speed caps.",
       "functional": true,
       "verified_by": [
-        {"category": "functional", "criterion": "brick_collision_durability_and_scoring"}
+        {"category": "functional", "criterion": "brick_types_fixed_step_and_combo"},
+        {"category": "functional", "criterion": "all_seeded_walls_and_fresh_runs"}
       ]
     },
     {
       "id": "REQ-06",
-      "summary": "Support pointer, touch, Left/Right paddle input, Space/Launch release, P/Escape pause, R restart, and a visible ordinary-speed Assist paddle that manual input disables without changing game rules.",
+      "summary": "Support pointer, touch, arrows, Space/Launch, P/Escape, R restart, and a visible ordinary-speed Assist paddle that manual input disables without changing game rules.",
       "functional": true,
       "verified_by": [
-        {"category": "functional", "criterion": "paddle_launch_pause_and_fixed_time"},
-        {"category": "functional", "criterion": "game_over_restart_and_idempotent_leaderboard"},
+        {"category": "functional", "criterion": "ranked_controls_pause_assist_and_restore"},
+        {"category": "functional", "criterion": "mira_terminal_history_and_finish_retry"},
         {"category": "polish", "criterion": "keyboard_pointer_and_touch_quality"}
       ]
     },
     {
       "id": "REQ-07",
-      "summary": "Implement normal, two-hit strong, and indestructible solid bricks with exact base scoring and workbook-selected falling items.",
+      "summary": "Implement normal, two-hit strong, and indestructible solid bricks with exact combo-scaled damage/destruction scoring and deterministic workbook drop records.",
       "functional": true,
       "verified_by": [
-        {"category": "functional", "criterion": "brick_collision_durability_and_scoring"},
-        {"category": "functional", "criterion": "powerup_exclusivity_and_timer_rules"}
+        {"category": "functional", "criterion": "brick_types_fixed_step_and_combo"},
+        {"category": "functional", "criterion": "all_seeded_walls_and_fresh_runs"}
       ]
     },
     {
       "id": "REQ-08",
-      "summary": "Implement one exclusive 20-second simulation-time power-up: wide 150%, slow 70%, exactly one extra multiball, or sticky capture; recollection resets without stacking and replacement/expiry restores state.",
+      "summary": "Implement one exclusive 20-second simulation-time power-up with exact wide, slow, multiball, and sticky behavior, non-stacking recollection, replacement, and restoration.",
       "functional": true,
       "verified_by": [
-        {"category": "functional", "criterion": "powerup_exclusivity_and_timer_rules"},
-        {"category": "functional", "criterion": "multiball_sticky_and_last_ball_semantics"}
+        {"category": "functional", "criterion": "power_relay_exclusivity_and_simulation_timer"},
+        {"category": "functional", "criterion": "multiball_sticky_and_last_ball_drills"}
       ]
     },
     {
       "id": "REQ-09",
-      "summary": "During multiball, losing one ball continues; only the final ball costs one life, clears effects/items, and creates a waiting serve when lives remain.",
+      "summary": "During multiball, losing one ball continues; sticky captures and releases correctly; only the final ball costs one life, clears effects/items, and creates one waiting serve.",
       "functional": true,
       "verified_by": [
-        {"category": "functional", "criterion": "multiball_sticky_and_last_ball_semantics"}
+        {"category": "functional", "criterion": "multiball_sticky_and_last_ball_drills"},
+        {"category": "functional", "criterion": "mira_terminal_history_and_finish_retry"}
       ]
     },
     {
       "id": "REQ-10",
-      "summary": "Score each damaging hit at base times pre-hit combo, raise combo through x5, reset on paddle contact, and grant exactly one life per crossed 20,000-point threshold.",
+      "summary": "Apply pre-hit combo scoring through x5, reset combo on paddle contact, award level bonuses, and grant exactly one life per crossed 20,000-point threshold.",
       "functional": true,
       "verified_by": [
-        {"category": "functional", "criterion": "combo_extra_life_and_level_progression"}
+        {"category": "functional", "criterion": "brick_types_fixed_step_and_combo"},
+        {"category": "functional", "criterion": "dev_checkpoint_threshold_and_progression"},
+        {"category": "functional", "criterion": "extra_life_and_final_wall_drills"}
       ]
     },
     {
       "id": "REQ-11",
-      "summary": "Award 1000 times completed level, persist per-account unlocks, continue the same run into the next faster wall, and finish after level 10.",
+      "summary": "Persist account unlocks, continue the same run into each faster wall after the exact bonus, and complete the run after level 10.",
       "functional": true,
       "verified_by": [
-        {"category": "functional", "criterion": "combo_extra_life_and_level_progression"},
-        {"category": "functional", "criterion": "game_over_restart_and_idempotent_leaderboard"}
+        {"category": "functional", "criterion": "dev_checkpoint_threshold_and_progression"},
+        {"category": "functional", "criterion": "extra_life_and_final_wall_drills"}
       ]
     },
     {
       "id": "REQ-12",
-      "summary": "Persist the complete per-account run snapshot and restore it frozen with level, score, thresholds, bricks, paddle, balls, drops, power type, and remaining effect time intact.",
+      "summary": "Persist and restore the complete frozen per-account snapshot including thresholds, damaged bricks, paddle, every ball/drop, active effect, timer, and simulation ticks.",
       "functional": true,
       "verified_by": [
-        {"category": "functional", "criterion": "authentication_revocation_and_profile_isolation"},
-        {"category": "functional", "criterion": "complete_snapshot_restore"}
+        {"category": "functional", "criterion": "seed_manifest_and_mira_checkpoint"},
+        {"category": "functional", "criterion": "ranked_controls_pause_assist_and_restore"}
       ]
     },
     {
       "id": "REQ-13",
-      "summary": "On game over or level-10 completion, update best, insert one idempotent global result, clear the save, return a stable top ten, and allow a fresh restart.",
+      "summary": "Use visible monotonic revisions, transactional receipts across every mutation for successes and known 4xx failures, exact retries, stale reconciliation, and pending double-activation suppression.",
       "functional": true,
       "verified_by": [
-        {"category": "functional", "criterion": "game_over_restart_and_idempotent_leaderboard"}
+        {"category": "functional", "criterion": "two_tab_revisions_receipts_and_duplicate_guard"}
       ]
     },
     {
       "id": "REQ-14",
-      "summary": "Expose identity, semantic HUD, live feedback, accessible canvas summary, visible focus, non-color game states, keyboard guidance, and reduced-motion support.",
+      "summary": "On either terminal outcome update best, clear the save, retain exact latest-ten personal snapshots plus run-id tombstones, maintain the global results/top ten, and deduplicate retried finishes.",
+      "functional": true,
+      "verified_by": [
+        {"category": "functional", "criterion": "mira_terminal_history_and_finish_retry"},
+        {"category": "functional", "criterion": "extra_life_and_final_wall_drills"}
+      ]
+    },
+    {
+      "id": "REQ-15",
+      "summary": "Provide seven signed-in real-engine mechanics drills with exact telemetry/events while keeping every ranked save, revision, unlock, best, history, and leaderboard value unchanged.",
+      "functional": true,
+      "verified_by": [
+        {"category": "functional", "criterion": "brick_types_fixed_step_and_combo"},
+        {"category": "functional", "criterion": "power_relay_exclusivity_and_simulation_timer"},
+        {"category": "functional", "criterion": "multiball_sticky_and_last_ball_drills"},
+        {"category": "functional", "criterion": "extra_life_and_final_wall_drills"}
+      ]
+    },
+    {
+      "id": "REQ-16",
+      "summary": "Expose semantic identity, HUD, sync, status, telemetry, recent events, accessible canvas state, focus, non-color cues, shortcuts, history, and Assist state.",
       "functional": false,
       "verified_by": [
         {"category": "polish", "criterion": "semantic_hud_focus_and_status"},
@@ -140,10 +167,11 @@
       ]
     },
     {
-      "id": "REQ-15",
-      "summary": "Keep sign-in, HUD, game, controls, status, level selection, effect timer, leaderboard, and sign-out coherent and usable at 375 pixels without horizontal overflow.",
+      "id": "REQ-17",
+      "summary": "Keep sign-in, game, controls, lab, telemetry, history, leaderboard, and sign-out coherent and usable at 375 pixels with touch targets and materially reduced motion.",
       "functional": false,
       "verified_by": [
+        {"category": "polish", "criterion": "keyboard_pointer_and_touch_quality"},
         {"category": "polish", "criterion": "responsive_layout_and_reduced_motion"},
         {"category": "polish", "criterion": "visual_hierarchy_and_game_readability"},
         {"category": "polish", "criterion": "feedback_and_product_coherence"}
@@ -151,26 +179,28 @@
     }
   ],
   "functional_coverage": {
-    "definition": "Requirements marked functional=true are user-visible product behaviors. Infrastructure-only and presentation/accessibility-only requirements are outside this denominator.",
-    "total_functional_requirements": 12,
-    "covered_by_functional_verifier": 12,
+    "definition": "Requirements marked functional=true are user-visible product behaviors. Infrastructure-only and purely presentation/accessibility requirements are outside this denominator.",
+    "total_functional_requirements": 14,
+    "covered_by_functional_verifier": 14,
     "coverage_percent": 100.0,
-    "covered_requirement_ids": ["REQ-02", "REQ-03", "REQ-04", "REQ-05", "REQ-06", "REQ-07", "REQ-08", "REQ-09", "REQ-10", "REQ-11", "REQ-12", "REQ-13"],
+    "covered_requirement_ids": ["REQ-02", "REQ-03", "REQ-04", "REQ-05", "REQ-06", "REQ-07", "REQ-08", "REQ-09", "REQ-10", "REQ-11", "REQ-12", "REQ-13", "REQ-14", "REQ-15"],
     "covered_elsewhere": {}
   },
   "criteria_coverage": {
     "render": ["page_load_and_refresh", "basic_sign_in_and_game_surface"],
     "constraints": ["server_backed_authenticated_workspace", "self_contained_refresh_runtime"],
-    "functional": ["authentication_revocation_and_profile_isolation", "seeded_level_catalog_and_fresh_run", "paddle_launch_pause_and_fixed_time", "brick_collision_durability_and_scoring", "powerup_exclusivity_and_timer_rules", "multiball_sticky_and_last_ball_semantics", "combo_extra_life_and_level_progression", "complete_snapshot_restore", "game_over_restart_and_idempotent_leaderboard"],
+    "functional": ["seed_manifest_and_mira_checkpoint", "mira_terminal_history_and_finish_retry", "dev_checkpoint_threshold_and_progression", "all_seeded_walls_and_fresh_runs", "ranked_controls_pause_assist_and_restore", "brick_types_fixed_step_and_combo", "power_relay_exclusivity_and_simulation_timer", "multiball_sticky_and_last_ball_drills", "extra_life_and_final_wall_drills", "two_tab_revisions_receipts_and_duplicate_guard", "account_wide_logout_bad_login_and_isolation"],
     "polish": ["semantic_hud_focus_and_status", "keyboard_pointer_and_touch_quality", "responsive_layout_and_reduced_motion", "visual_hierarchy_and_game_readability", "feedback_and_product_coherence"]
   },
-  "seed_asset_policy": "The environment workbook is authoritative. tests/assets/artifacts/brickfall_seed.xlsx is a byte-identical verifier fixture because the separate verifier cannot read environment/assets directly.",
+  "seed_asset_policy": "The environment workbook and scenario JSON are authoritative. Their copies under tests/assets/artifacts are byte-identical fixtures because the separate verifier cannot read environment/assets directly.",
   "baseline_hashes": {
     "environment/assets/artifacts/brickfall_seed.xlsx": "1DCE5A82D11E96A95D1D367845DA4CD0EA5553BC7F404820A1E21D8F4D6E79B5",
     "tests/assets/artifacts/brickfall_seed.xlsx": "1DCE5A82D11E96A95D1D367845DA4CD0EA5553BC7F404820A1E21D8F4D6E79B5",
-    "solution/app/server.js": "87E5A410231DA77DF41FBE08A849D512D02F730AEF3489D3656AE8083E781689",
-    "solution/app/public/index.html": "EF31D1586AE8229A160A55417FA8A5741DC49B251951218A2953ECD0D76BDB2A",
-    "solution/app/package.json": "D2EA42FD9D5A93D97BD336DBF92D0D10C28A265E48D6826B9B4AFA8A5280D8F6",
-    "solution/solve.sh": "634AAC8FEDCA1D80234FFF0DD7740B56201584D1417DA3698874DB2C743837EA"
+    "environment/assets/artifacts/brickfall_scenarios.json": "4EEB42B7C2E44BD28D1C731BCB969C4F68343448DAC0F7E6EEE7C278798ADEA7",
+    "tests/assets/artifacts/brickfall_scenarios.json": "4EEB42B7C2E44BD28D1C731BCB969C4F68343448DAC0F7E6EEE7C278798ADEA7",
+    "solution/app/server.js": "15146C031AF477158A8AF39EB90520B195811390C307A9D24FCA82C007FCAEFD",
+    "solution/app/public/index.html": "A01E615252972295242EEFD581B56FBFBEE29C3D10CAEEDD25B56B415CBDEEE9",
+    "solution/app/package.json": "66C341266AA7DD7EBCA39C2378AE857F4F8612ACEF531A9FAD2201FE2702E240",
+    "solution/solve.sh": "631B788F823F79728CBC7F7C218CBABE64C2A3775C8930B2E01C0C347099D3ED"
   }
 }

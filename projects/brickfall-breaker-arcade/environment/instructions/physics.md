@@ -12,8 +12,9 @@ angle; recent paddle motion adds a smaller horizontal push. Keep balls above a
 minimum useful horizontal and vertical component and below the level speed cap
 so they cannot settle into horizontal or vertical loops.
 
-Pointer, touch, Left and Right move the paddle. Space or a visible Launch
-control starts a waiting ball and releases a sticky ball. `P` or Escape and a
-visible control toggle pause. Losing one ball during multiball continues play;
+Pointer, touch, Left and Right move the paddle; every waiting or sticky-held ball
+follows it. Space or a visible Launch control starts or releases that ball. `P`
+or Escape and a
+visible control toggle pause; `R` restarts after game over. Losing one ball during multiball continues play;
 only losing the last ball costs one life. Provide a visible optional `Assist paddle` toggle that only intercepts incoming balls and reachable items at ordinary control speed.
 It must not change physics, scoring, drops, timers, lives or progression; manual pointer, touch or arrow input turns the assist off immediately.
