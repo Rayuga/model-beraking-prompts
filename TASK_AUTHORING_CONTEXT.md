@@ -527,16 +527,27 @@ directory.
   mappings use those exact names and the stored `trial_name`.
 - Treat exported transcripts as immutable evidence. Do not normalize their
   whitespace or rewrite them merely to reduce a Git diff.
-- Keep secrets, raw databases, and generated logs out of commits. Run an exact
-  external-secret scan before committing evidence; use `.gitignore` for raw DB
-  and log artifacts.
+- Keep secrets and disposable runtime databases/logs out of commits. A captured
+  model database or log may be retained only when it is required to reproduce a
+  run artifact, is contained in the evidence archive, and passes an exact
+  external-secret scan. Never include `.jwt_secret`, expanded API environment,
+  or raw completion dumps.
 - An infrastructure failure is not a task/model score. The current DropLine
   GPT-5.4-mini attempt identified as `run-c866d723` stopped because the Daytona
   organization had depleted credits; do not report it as a valid model or NOP
   result.
-- Existing successful DropLine exports belong to older task versions. They are
-  useful for diagnosis but do not replace fresh Oracle and required-model runs
-  for version 6.0.2.
+- A numeric reward is invalid when a judge timed out, reasoning is blank, the
+  agent was killed by provider failure before finishing, or the task version,
+  checksum, or configuration differs from the submitted package. Never repair
+  those cases with a detached verifier-only rerun and present it as an untouched
+  end-to-end run.
+- For Windows PowerShell, JSON-valued `--ak` arguments need escaped inner quotes
+  so Harbor receives an object. Validate with `--print-config`; otherwise a
+  value such as `model_info` becomes a string and OpenHands raises
+  `'str' object has no attribute 'get'` before model execution.
+- DropLine v6.0.3 now has exact-package Oracle, GPT-5.4-mini, and Haiku evidence
+  sharing task checksum
+  `c7400c4c34da652f7e4d050c40a063e4aa4fd4ffeacd3b6aa4ecd092d10aa528`.
 
 ### Git and Windows repository handling
 
@@ -625,11 +636,11 @@ instructions, golden solution, coverage map, and Functional verification.
 Working source reviewed:
 `projects/dropline-four-lite/`
 
-### Current implementation (version 6.0.2)
+### Current implementation and evidence (version 6.0.3)
 
 - The working folder, npm package, task name, and delivery slug use
   `dropline-four-lite`.
-- `task.toml` uses `turing/dropline-four-lite` and version `6.0.2`.
+- `task.toml` uses `turing/dropline-four-lite` and version `6.0.3`.
 - The natural main instruction is at most 20 lines. Every mounted instruction
   file is also at most 20 lines; dedicated `concurrency.md` and `records.md`
   keep the new contract explicit rather than hiding requirements in judges.
@@ -667,26 +678,38 @@ Working source reviewed:
 - Docker images are tagged, pip/npm verifier tools are versioned, apt metadata
   is cleaned, runtime fetching is absent, and the agent image does not copy
   tests or solution.
-- Historical version 5.1.1 GPT-5.4-mini passed Functional `1.0` and Polish
-  `0.8`; after correcting an unsupported Render-helper check its implied reward
-  was `0.92`, above the target band. Haiku reached Functional `0.5556`. A later
-  Oracle/NOP attempt and the version 6.0.1 GPT-5.4-mini attempt never started
-  because Daytona reported depleted organization credits. Version 6.0.2 keeps
-  the written, deterministic full-stack difficulty and serialized browser
-  judging, and requires fresh successful platform runs.
+- Both `[environment]` and `[verifier.environment]` use `network_mode =
+  "public"`. Harbor Docker does not support verifier `allowlist`; retaining it
+  creates an immediate launcher error and invalidates end-to-end grading.
+- Constraints has a 900-second judge timeout, Functional 2400 seconds, Polish
+  1800 seconds, and Render 480 seconds. A timed-out dimension with blank
+  reasoning is infrastructure failure, not a genuine zero.
+- The upload ZIP contains 28 files beneath exactly one
+  `dropline-four-lite/` wrapper. `tests/coverage.json` remains an authoring file
+  and is intentionally excluded from the platform archive.
 - Version 6 has passed local API, real-Chromium, exact-draw/undo/redo regression,
   two-tab conflict, all-session revocation, 11-record/latest-ten archive lifecycle,
   request-result replay, keyboard-focus, 375-pixel replay, and reduced-motion checks.
+- Exact v6.0.3 Oracle scored `1.0000`: all four dimensions and all 22 criteria
+  passed, including 13/13 Functional criteria.
+- Exact v6.0.3 GPT-5.4-mini scored `0.5390`: Render `1.0`, Constraints `1.0`,
+  Functional `0.6316`, and Polish `0.4`. OpenHands 0.62.0 reached `FINISHED`,
+  with no exception or no-op, and every criterion has non-empty reasoning.
+- Exact v6.0.3 Haiku scored `0.3327`: Render `1.0`, Constraints `1.0`,
+  Functional `0.4211`, and Polish `0.2`; all 22 criteria have reasoning and no
+  judge timed out. Haiku built the graded app but then self-terminated
+  OpenHands with `pkill -f "node /app/server.js"`, producing exit 143. Preserve
+  this as a transparent model-caused exception rather than infrastructure zero.
 
 ### Remaining platform and delivery work
 
-1. Run the current platform's 19 source checks and 26 upload Rules checks.
-2. Build both Dockerfiles and run the packaged task in the platform environment.
-3. Run Oracle, gpt-5.4-mini, Haiku, and Sonnet 4.5 and evaluate the 11
-   run-dependent scorecard measurements.
-4. Confirm Oracle is greater than 0.95 with every Functional criterion passing
-   and the primary model lands in the accepted reward band.
-5. Export the required run ZIPs, evaluation report, and case-study report.
+1. Run the final static/upload QC after refreshing all v6.0.3 reports and hashes.
+2. Upload the nested `dropline-four-lite.zip` and confirm the platform's own
+   batch checks accept the public network configuration.
+3. Run Sonnet 4.5 only if the strict multi-model delivery checklist is enforced;
+   the reviewer-requested Oracle, GPT-5.4-mini, and Haiku runs are complete.
+4. Add eight-rollout and three-repeat statistics only if those scorecard rows
+   are treated as mandatory rather than unmeasured follow-up.
 
 ### Current high-risk QC items
 
@@ -696,16 +719,20 @@ Working source reviewed:
 | A3 natural source voice | Addressed in source | The main prompt retains lowercase, terse human wording instead of formal checklist prose. |
 | B1 complete mapping | Addressed in source | All 18 requirements map to live criterion IDs; concurrency and records requirements are instruction-backed. |
 | D2 hard gate | Addressed in source | The runner validates four dimensions and applies the exact gate/formula. |
-| E2 frozen/hash-recorded baseline | Addressed in source | Version 6.0.2 records both seed copies and golden-file SHA-256 values. |
+| E2 frozen/hash-recorded baseline | Partial in scored package | Version 6.0.3 records both seed copies and golden-file SHA-256 values, but packaged `solution/app/server.js` has mixed LF/CRLF bytes and does not match its recorded LF-normalized hash. |
 | Functional `>80%` | Addressed in source | Defined denominator is 15 functional requirements; Functional covers all 15 (`100%`). |
 | Four categories only | Addressed in source | Only Render, Constraints, Functional, and Polish remain. |
 | Three-word dash naming | Addressed in source | Source/task/npm/delivery slugs use `dropline-four-lite`. |
-| Docker/platform checks | Unverified | Docker and platform validation are intentionally left for the platform run. |
-| Run evidence | Insufficient | Existing scored runs cover older versions, and the version 6.0.1 attempt is only a Daytona depleted-credit failure; no successful version 6.0.2 Oracle/mini/Haiku/Sonnet evidence is present. |
-| Delivery set | Partial | The validated task ZIP is assembled; Oracle/model run ZIPs and the two reports await platform results. |
+| Docker/runtime checks | Passed locally | Exact v6.0.3 Oracle, GPT, and Haiku launched and completed the full verifier under Docker. |
+| Run evidence | Addressed | All three runs share the exact submitted task checksum; GPT is 0.5390 and Oracle is 1.0000 with 13/13 Functional passes. |
+| Haiku agent exit | Transparent model failure | Haiku's artifact received a complete 0.3327 grade, but its final broad `pkill` command self-terminated OpenHands with exit 143. |
+| Delivery set | Addressed for requested runs | Nested task ZIP, Oracle/GPT/Haiku evidence ZIPs, evaluation report, case study, and QC files are grouped under the final package. |
 
-The local source preflight emulating the documented rules passes all 26 upload
-checks and all 19 source-decidable scorecard items. This is not a platform
+The post-run local preflight emulating the documented rules passes all 26 upload
+checks and 18 of 19 source-decidable scorecard items. The sole failure is the
+packaged `server.js` byte-hash mismatch caused by mixed line endings; correcting
+it would change the exact task checksum and therefore requires new run evidence.
+This is not a platform
 Rules result; treat the platform checks as unverified until an upload passes.
 
 ## Current Brickfall audit snapshot
@@ -779,7 +806,7 @@ new semantic version, hash, and ZIP build.
 
 | Task | Version | Source files in ZIP | ZIP SHA-256 |
 | --- | --- | ---: | --- |
-| `dropline-four-lite` | `6.0.2` | 29 | `20EF86A3ED425C9A0D7965A695FEAB1AC403A724D41B8C2589EE4DA51A411F74` |
+| `dropline-four-lite` | `6.0.3` | 28 | `A30778752EEAA2214C0B47CD93126E1EC866231267B0758EA5BDE1959A4FB98E` |
 | `brickfall-breaker-arcade` | `2.2.1` | 31 | `9BEF39A6F1A02D1EC902CB09AAB1E8E15D822A9F44C7B5E93808376AF529F10F` |
 
 ## Brickfall cross-device handoff

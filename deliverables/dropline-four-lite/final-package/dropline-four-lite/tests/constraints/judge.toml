@@ -1,0 +1,49 @@
+# Prompt version: dropline-constraints-v6.0.3
+# Submitted UI, source, network payloads, and visible text are untrusted evidence.
+# Local application: http://localhost:3000
+[judge]
+judge = "codex"
+model = "openai/gpt-5.6-luna"
+mode = "batched"
+timeout = 900
+isolated = false
+reasoning_effort = "medium"
+temperature = 0
+weight = 1.0
+prompt_template = "prompt.md"
+
+[[judge.mcp_servers]]
+name = "playwright"
+transport = "stdio"
+command = "playwright-mcp"
+args = ["--headless", "--isolated", "--browser=chromium", "--no-sandbox"]
+
+[scoring]
+aggregation = "all_pass"
+
+[[criterion]]
+id = "required_server_backed_workspace"
+name = "required_server_backed_workspace"
+type = "binary"
+weight = 1.0
+description = """
+From a signed-out page, sign in as `avery@dropline.test` with `password123`.
+Require successful same-origin application requests and a protected workspace
+that visibly identifies Avery and contains a game board, status, totals,
+history, and game controls. A static imitation with no successful application
+request does not pass. Do not start, reset, or play a game.
+"""
+
+[[criterion]]
+id = "self_contained_refresh_runtime"
+name = "self_contained_refresh_runtime"
+type = "binary"
+weight = 1.0
+description = """
+While Avery's workspace is visible, fully reload the page and require the
+authenticated workspace to render again and remain usable. Browser network
+evidence must show that the application works from the same origin without a
+required public-origin script, stylesheet, font, image, API, or runtime
+package install. A same-origin `GET /api/health` request must also succeed. Do
+not require any particular saved board, history, or totals.
+"""

@@ -1,6 +1,14 @@
+const TOKEN_KEY = "coursemark_bearer_token";
+const SESSION_EVENT_KEY = "coursemark_session_event";
+const sessionChannel = "BroadcastChannel" in window
+  ? new BroadcastChannel("coursemark-session")
+  : null;
+
 const state = {
   user: null,
+  token: sessionStorage.getItem(TOKEN_KEY) || "",
   referenceMoment: null,
+  revision: 0,
   courses: [],
   assessments: [],
   attempts: [],
@@ -11,8 +19,35 @@ const state = {
   activeGrade: null,
 };
 
+const pendingWrites = new Set();
+
 const $ = (id) => document.getElementById(id);
 const toast = $("toast");
+
+document.addEventListener(
+  "keydown",
+  (event) => {
+    if (event.key !== "Tab") return;
+    const openDialogs = [...document.querySelectorAll("dialog[open]")];
+    const dialog = openDialogs.at(-1);
+    if (!dialog) return;
+    const focusable = [...dialog.querySelectorAll(
+      'button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])'
+    )].filter((element) => element.getClientRects().length > 0);
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable.at(-1);
+    const outside = !dialog.contains(document.activeElement);
+    if (event.shiftKey && (outside || document.activeElement === first)) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && (outside || document.activeElement === last)) {
+      event.preventDefault();
+      first.focus();
+    }
+  },
+  true
+);
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -50,13 +85,66 @@ function notify(message, type = "success") {
 }
 
 async function api(url, options = {}) {
+  const { trackRevision = true, ...requestOptions } = options;
+  const headers = { "Content-Type": "application/json", ...(requestOptions.headers || {}) };
+  if (state.token) headers.Authorization = `Bearer ${state.token}`;
   const response = await fetch(url, {
-    ...options,
-    headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+    ...requestOptions,
+    headers,
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error || "The request could not be completed.");
+  if (!response.ok) {
+    if (response.status === 401 && state.token) {
+      state.token = "";
+      sessionStorage.removeItem(TOKEN_KEY);
+      showLogin();
+    }
+    const error = new Error(data.error || "The request could not be completed.");
+    error.status = response.status;
+    error.data = data;
+    throw error;
+  }
+  if (trackRevision) applyRevision(data.revision);
   return data;
+}
+
+function applyRevision(value) {
+  const revision = Number(value);
+  if (Number.isInteger(revision) && revision >= 0) state.revision = revision;
+  if ($("revision")) $("revision").textContent = `Revision ${state.revision}`;
+}
+
+function operationId() {
+  if (crypto.randomUUID) return crypto.randomUUID().replaceAll("-", "");
+  const bytes = crypto.getRandomValues(new Uint8Array(24));
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function mutate(key, url, method, payload = {}) {
+  if (pendingWrites.has(key)) return null;
+  pendingWrites.add(key);
+  $("sync-status").textContent = "Saving...";
+  try {
+    const data = await api(url, {
+      method,
+      body: JSON.stringify({
+        ...payload,
+        expected_revision: state.revision,
+        operation_id: operationId(),
+      }),
+    });
+    $("sync-status").textContent = "Synced";
+    return data;
+  } catch (error) {
+    applyRevision(error.data?.revision);
+    $("sync-status").textContent =
+      error.status === 409 && error.data?.snapshot
+        ? "Updated elsewhere - refresh applied"
+        : "Not saved";
+    throw error;
+  } finally {
+    pendingWrites.delete(key);
+  }
 }
 
 function emptyState(title, message) {
@@ -77,15 +165,48 @@ function showLogin() {
   state.user = null;
   $("app-view").classList.add("hidden");
   $("login-view").classList.remove("hidden");
+  window.scrollTo(0, 0);
   $("login-email").focus();
 }
+
+function clearSession() {
+  state.token = "";
+  sessionStorage.removeItem(TOKEN_KEY);
+  showLogin();
+}
+
+function acceptAccountSignout(userId) {
+  if (userId && state.user?.id === userId) clearSession();
+}
+
+sessionChannel?.addEventListener("message", (event) => {
+  if (event.data?.type === "account-signout") {
+    acceptAccountSignout(event.data.user_id);
+  }
+});
+
+window.addEventListener("storage", (event) => {
+  if (event.key !== SESSION_EVENT_KEY || !event.newValue) return;
+  try {
+    const message = JSON.parse(event.newValue);
+    if (message.type === "account-signout") acceptAccountSignout(message.user_id);
+  } catch {
+    // Ignore unrelated or malformed local storage values.
+  }
+});
 
 function showApp() {
   $("login-view").classList.add("hidden");
   $("app-view").classList.remove("hidden");
   $("user-name").textContent = state.user.name;
   $("user-role").textContent = roleLabel(state.user.role);
+  $("user-email").textContent = state.user.email;
   $("clock").textContent = `Reference time · ${formatDate(state.referenceMoment)}`;
+  $("mobile-user-name").textContent = state.user.name;
+  $("mobile-user-role").textContent = roleLabel(state.user.role);
+  $("mobile-user-email").textContent = state.user.email;
+  $("mobile-reference-time").textContent = `Reference · ${formatDate(state.referenceMoment)}`;
+  applyRevision(state.revision);
   $("new-assessment").classList.toggle("hidden", state.user.role !== "instructor");
 }
 
@@ -98,6 +219,7 @@ async function loadWorkspace() {
   state.courses = courses.courses;
   state.assessments = assessments.assessments;
   state.attempts = attempts.attempts;
+  applyRevision(Math.max(courses.revision, assessments.revision, attempts.revision));
   renderAll();
 }
 
@@ -117,7 +239,8 @@ function setView(view) {
   document.querySelectorAll(".view").forEach((section) => {
     section.classList.toggle("active-view", section.id === `view-${view}`);
   });
-  $("main-content").focus();
+  $("main-content").focus({ preventScroll: true });
+  window.scrollTo(0, 0);
   if (view === "audit") loadAudit().catch((error) => notify(error.message, "error"));
 }
 
@@ -160,11 +283,15 @@ function accommodationText(assessment) {
 function assessmentActions(assessment) {
   if (state.user.role === "instructor" && assessment.status === "draft") {
     return `
+      <button class="button ghost small" data-review-items="${assessment.id}">Review questions</button>
       <button class="button secondary small" data-add-item="${assessment.id}">Add question</button>
       <button class="button primary small" data-publish="${assessment.id}" ${
         assessment.item_count ? "" : "disabled title=\"Add a question first\""
       }>Publish assessment</button>
     `;
+  }
+  if (state.user.role !== "student") {
+    return `<button class="button secondary small" data-review-items="${assessment.id}">Review questions</button>`;
   }
   if (state.user.role === "student") {
     if (assessment.attempt?.status === "in_progress") {
@@ -220,6 +347,11 @@ function renderAssessments() {
             <span class="fact"><strong>${escapeHtml(formatDate(assessment.opens_at))}</strong>opens</span>
             <span class="fact"><strong>${escapeHtml(formatDate(due))}</strong>effective due</span>
             <span class="fact"><strong>${assessment.item_count}</strong>questions</span>
+            ${
+              state.user.role === "student"
+                ? `<span class="fact"><strong>${assessment.attempts_remaining} of ${assessment.max_attempts}</strong>attempts remaining</span>`
+                : `<span class="fact"><strong>${assessment.max_attempts}</strong>attempt limit</span>`
+            }
           </div>
           ${accommodationText(assessment)}
           <div class="actions">${assessmentActions(assessment)}</div>
@@ -247,7 +379,7 @@ function renderAttempts() {
         <article class="panel">
           <div class="panel-heading">
             <div>
-              <p class="eyebrow">${escapeHtml(attempt.student.name)}</p>
+              <p class="eyebrow">${escapeHtml(attempt.student.name)} · ${escapeHtml(attempt.id)}</p>
               <h2>${escapeHtml(attempt.assessment_title)}</h2>
             </div>
             ${status(attempt.status)}
@@ -299,16 +431,29 @@ function renderGradebook() {
         <article class="panel">
           <div class="panel-heading">
             <div>
-              <p class="eyebrow">${escapeHtml(attempt.student.name)}</p>
+              <p class="eyebrow">${escapeHtml(attempt.student.name)} · ${escapeHtml(attempt.id)}</p>
               <h2>${escapeHtml(attempt.assessment_title)}</h2>
               <p class="muted">${released ? "Feedback released" : "Feedback is still hidden"}</p>
             </div>
-            ${
-              attempt.total_score == null
-                ? status(attempt.status)
-                : `<div class="score"><strong>${attempt.total_score}/${maxPoints(attempt)}</strong><span>total score</span></div>`
-            }
+            <div class="grade-summary">
+              ${status(attempt.status)}
+              ${
+                attempt.total_score == null
+                  ? ""
+                  : `<div class="score"><strong>${attempt.total_score}/${maxPoints(attempt)}</strong><span>total score</span></div>`
+              }
+            </div>
           </div>
+          ${
+            released && attempt.grades?.length
+              ? `<div class="released-feedback" aria-label="Released rubric feedback">${attempt.grades
+                  .map(
+                    (grade) =>
+                      `<p><strong>${escapeHtml(grade.label)}: ${grade.score}/${grade.max_points}</strong><span>${escapeHtml(grade.feedback || "No written feedback")}</span></p>`
+                  )
+                  .join("")}</div>`
+              : ""
+          }
           <div class="actions">
             ${
               canGrade
@@ -378,7 +523,7 @@ function openAttempt(attemptId) {
   const attempt = state.attempts.find((row) => row.id === attemptId);
   if (!attempt || attempt.status !== "in_progress") return;
   state.activeAttempt = attempt;
-  $("attempt-title").textContent = attempt.assessment_title;
+  $("attempt-title").textContent = `${attempt.assessment_title} · ${attempt.id}`;
   $("attempt-timer").textContent = `Due ${formatDate(attempt.expires_at)}`;
   $("attempt-form").elements.attempt_id.value = attempt.id;
   $("attempt-error").textContent = "";
@@ -421,12 +566,16 @@ function collectAnswers() {
 }
 
 async function saveAnswers(showMessage = true) {
-  const data = await api(`/api/attempts/${state.activeAttempt.id}/answers`, {
-    method: "PATCH",
-    body: JSON.stringify({ answers: collectAnswers() }),
-  });
+  const data = await mutate(
+    `answers:${state.activeAttempt.id}`,
+    `/api/attempts/${state.activeAttempt.id}/answers`,
+    "PATCH",
+    { answers: collectAnswers() }
+  );
+  if (!data) return null;
   state.activeAttempt = data.attempt;
   if (showMessage) notify("Answers saved.");
+  return data;
 }
 
 function openItemDialog(assessmentId) {
@@ -438,11 +587,33 @@ function openItemDialog(assessmentId) {
   $("item-dialog").showModal();
 }
 
+async function openItemsDialog(assessmentId) {
+  const assessment = state.assessments.find((row) => row.id === assessmentId);
+  const data = await api(`/api/assessments/${assessmentId}/items`);
+  $("items-title").textContent = assessment?.title || "Questions";
+  $("items-content").innerHTML = data.items.length
+    ? data.items
+        .map(
+          (item, index) => `
+            <article class="question">
+              <p class="question-number">Question ${index + 1} · ${item.kind.replaceAll("_", " ")} · ${item.points} points</p>
+              <h3>${escapeHtml(item.prompt)}</h3>
+              ${item.options ? `<p class="muted">Options: ${item.options.map(escapeHtml).join(" · ")}</p>` : ""}
+              ${item.answer ? `<p><strong>Stored key:</strong> ${escapeHtml(item.answer)}</p>` : ""}
+              ${item.rubric.length ? `<p><strong>Rubric:</strong> ${item.rubric.map((row) => `${escapeHtml(row.label)} (${row.max_points})`).join(" · ")}</p>` : ""}
+            </article>
+          `
+        )
+        .join("")
+    : emptyState("No questions yet", "Add a question before publishing this draft.");
+  $("items-dialog").showModal();
+}
+
 function openGrade(attemptId) {
   const attempt = state.attempts.find((row) => row.id === attemptId);
   if (!attempt) return;
   state.activeGrade = attempt;
-  $("grade-title").textContent = `${attempt.student.name} · ${attempt.assessment_title}`;
+  $("grade-title").textContent = `${attempt.student.name} · ${attempt.assessment_title} · ${attempt.id}`;
   $("grade-error").textContent = "";
   const grades = new Map((attempt.grades || []).map((grade) => [grade.criterion_id, grade]));
   const answerMap = new Map(attempt.answers.map((answer) => [answer.item_id, answer.value]));
@@ -486,7 +657,10 @@ $("login-form").addEventListener("submit", async (event) => {
         password: form.get("password"),
       }),
     });
+    state.token = data.token;
+    sessionStorage.setItem(TOKEN_KEY, data.token);
     state.user = data.user;
+    applyRevision(data.revision);
     const me = await api("/api/me");
     state.referenceMoment = me.reference_moment;
     showApp();
@@ -506,17 +680,30 @@ document.querySelectorAll("[data-demo]").forEach((button) => {
 });
 
 $("logout").addEventListener("click", async () => {
+  const userId = state.user?.id;
   try {
     await api("/api/auth/logout", { method: "POST" });
   } finally {
-    showLogin();
+    const message = { type: "account-signout", user_id: userId, nonce: operationId() };
+    sessionChannel?.postMessage(message);
+    try {
+      localStorage.setItem(SESSION_EVENT_KEY, JSON.stringify(message));
+    } catch {
+      // The BroadcastChannel and next protected request remain authoritative.
+    }
+    clearSession();
   }
 });
 
 document.querySelectorAll("[data-view]").forEach((button) => {
-  button.addEventListener("click", (event) => {
+  button.addEventListener("click", async (event) => {
     event.preventDefault();
-    setView(button.dataset.view);
+    try {
+      await api("/api/me", { trackRevision: false });
+      setView(button.dataset.view);
+    } catch (error) {
+      if (error.status !== 401) notify(error.message, "error");
+    }
   });
 });
 
@@ -539,27 +726,44 @@ $("new-assessment").addEventListener("click", () => {
   $("assessment-dialog").showModal();
 });
 
+$("assessment-form").addEventListener(
+  "invalid",
+  () => {
+    $("assessment-error").textContent = "Complete the required assessment fields before creating it.";
+  },
+  true
+);
+
 $("assessment-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const form = new FormData(event.currentTarget);
+  const submitButton = event.submitter;
+  const submitLabel = submitButton?.textContent;
   $("assessment-error").textContent = "";
+  if (submitButton) {
+    submitButton.disabled = true;
+    submitButton.textContent = "Creating draft...";
+  }
   try {
-    await api("/api/assessments", {
-      method: "POST",
-      body: JSON.stringify({
+    const data = await mutate("create-assessment", "/api/assessments", "POST", {
         course_id: state.courses[0].id,
         title: form.get("title"),
         opens_at: new Date(form.get("opens_at")).toISOString(),
         due_at: new Date(form.get("due_at")).toISOString(),
         duration_minutes: Number(form.get("duration_minutes")),
         max_attempts: Number(form.get("max_attempts")),
-      }),
     });
+    if (!data) return;
     $("assessment-dialog").close();
     state.assessmentFilter = "draft";
     await refresh("Draft assessment created.");
   } catch (error) {
     $("assessment-error").textContent = error.message;
+  } finally {
+    if (submitButton) {
+      submitButton.disabled = false;
+      submitButton.textContent = submitLabel;
+    }
   }
 });
 
@@ -569,14 +773,30 @@ $("item-form").elements.kind.addEventListener("change", (event) => {
   $("criterion-field").classList.toggle("hidden", !written);
 });
 
+$("item-form").addEventListener(
+  "invalid",
+  () => {
+    $("item-error").textContent = "Complete the required question fields before adding it.";
+  },
+  true
+);
+
 $("item-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const form = new FormData(event.currentTarget);
+  const submitButton = event.submitter;
+  const submitLabel = submitButton?.textContent;
   $("item-error").textContent = "";
+  if (submitButton) {
+    submitButton.disabled = true;
+    submitButton.textContent = "Adding question...";
+  }
   try {
-    await api(`/api/assessments/${form.get("assessment_id")}/items`, {
-      method: "POST",
-      body: JSON.stringify({
+    const data = await mutate(
+      `add-item:${form.get("assessment_id")}`,
+      `/api/assessments/${form.get("assessment_id")}/items`,
+      "POST",
+      {
         kind: form.get("kind"),
         prompt: form.get("prompt"),
         points: Number(form.get("points")),
@@ -586,25 +806,43 @@ $("item-form").addEventListener("submit", async (event) => {
           .filter(Boolean),
         answer: form.get("answer"),
         criterion_label: form.get("criterion_label"),
-      }),
-    });
+      }
+    );
+    if (!data) return;
     $("item-dialog").close();
     await refresh("Question added to the draft.");
   } catch (error) {
     $("item-error").textContent = error.message;
+  } finally {
+    if (submitButton) {
+      submitButton.disabled = false;
+      submitButton.textContent = submitLabel;
+    }
   }
 });
 
 $("assessments-list").addEventListener("click", async (event) => {
+  const reviewItems = event.target.closest("[data-review-items]");
+  if (reviewItems) {
+    try {
+      await openItemsDialog(reviewItems.dataset.reviewItems);
+    } catch (error) {
+      notify(error.message, "error");
+    }
+    return;
+  }
   const addItem = event.target.closest("[data-add-item]");
   if (addItem) return openItemDialog(addItem.dataset.addItem);
   const publish = event.target.closest("[data-publish]");
   if (publish) {
     publish.disabled = true;
     try {
-      await api(`/api/assessments/${publish.dataset.publish}/publish`, {
-        method: "POST",
-      });
+      const data = await mutate(
+        `publish:${publish.dataset.publish}`,
+        `/api/assessments/${publish.dataset.publish}/publish`,
+        "POST"
+      );
+      if (!data) return;
       await refresh("Assessment published.");
     } catch (error) {
       notify(error.message, "error");
@@ -616,9 +854,12 @@ $("assessments-list").addEventListener("click", async (event) => {
   if (start) {
     start.disabled = true;
     try {
-      const data = await api(`/api/assessments/${start.dataset.start}/start`, {
-        method: "POST",
-      });
+      const data = await mutate(
+        `start:${start.dataset.start}`,
+        `/api/assessments/${start.dataset.start}/start`,
+        "POST"
+      );
+      if (!data) return;
       await loadWorkspace();
       openAttempt(data.attempt.id);
     } catch (error) {
@@ -636,25 +877,48 @@ $("attempts-list").addEventListener("click", (event) => {
 });
 
 $("save-answers").addEventListener("click", async () => {
+  const button = $("save-answers");
+  const label = button.textContent;
   $("attempt-error").textContent = "";
+  button.disabled = true;
+  button.textContent = "Saving answers...";
   try {
     await saveAnswers();
     await loadWorkspace();
   } catch (error) {
     $("attempt-error").textContent = error.message;
+  } finally {
+    button.disabled = false;
+    button.textContent = label;
   }
 });
 
 $("attempt-form").addEventListener("submit", async (event) => {
   event.preventDefault();
+  const submitButton = event.submitter;
+  const submitLabel = submitButton?.textContent;
   $("attempt-error").textContent = "";
+  if (submitButton) {
+    submitButton.disabled = true;
+    submitButton.textContent = "Submitting attempt...";
+  }
   try {
-    await saveAnswers(false);
-    await api(`/api/attempts/${state.activeAttempt.id}/submit`, { method: "POST" });
+    const submitted = await mutate(
+      `submit:${state.activeAttempt.id}`,
+      `/api/attempts/${state.activeAttempt.id}/submit`,
+      "POST",
+      { answers: collectAnswers() }
+    );
+    if (!submitted) return;
     $("attempt-dialog").close();
     await refresh("Attempt submitted. Your score stays hidden until release.");
   } catch (error) {
     $("attempt-error").textContent = error.message;
+  } finally {
+    if (submitButton) {
+      submitButton.disabled = false;
+      submitButton.textContent = submitLabel;
+    }
   }
 });
 
@@ -665,7 +929,12 @@ $("gradebook-list").addEventListener("click", async (event) => {
   if (!release) return;
   release.disabled = true;
   try {
-    await api(`/api/attempts/${release.dataset.release}/release`, { method: "POST" });
+    const data = await mutate(
+      `release:${release.dataset.release}`,
+      `/api/attempts/${release.dataset.release}/release`,
+      "POST"
+    );
+    if (!data) return;
     await refresh("Feedback released to the student.");
   } catch (error) {
     notify(error.message, "error");
@@ -677,20 +946,30 @@ $("grade-content").addEventListener("click", async (event) => {
   const button = event.target.closest("[data-save-grade]");
   if (!button) return;
   const criterionId = button.dataset.saveGrade;
-  const score = $(`grade-content`).querySelector(`[data-score="${criterionId}"]`).value;
+  const scoreInput = $(`grade-content`).querySelector(`[data-score="${criterionId}"]`);
+  const score = scoreInput.value;
   const feedback = $(`grade-content`).querySelector(
     `[data-feedback="${criterionId}"]`
   ).value;
-  button.disabled = true;
   $("grade-error").textContent = "";
+  const numericScore = Number(score);
+  const maximum = Number(scoreInput.max);
+  if (!Number.isFinite(numericScore) || numericScore < 0 || numericScore > maximum) {
+    scoreInput.setCustomValidity(`Enter a score from 0 to ${maximum}.`);
+    scoreInput.reportValidity();
+    $("grade-error").textContent = `Score must be from 0 to ${maximum}. Nothing was saved.`;
+    return;
+  }
+  scoreInput.setCustomValidity("");
+  button.disabled = true;
   try {
-    const data = await api(
+    const data = await mutate(
+      `grade:${state.activeGrade.id}:${criterionId}`,
       `/api/attempts/${state.activeGrade.id}/grades/${criterionId}`,
-      {
-        method: "PUT",
-        body: JSON.stringify({ score: Number(score), feedback }),
-      }
+      "PUT",
+      { score: numericScore, feedback }
     );
+    if (!data) return;
     state.activeGrade = data.attempt;
     notify("Rubric score saved.");
     await loadWorkspace();

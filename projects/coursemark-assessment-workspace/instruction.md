@@ -1,11 +1,20 @@
-# University assessment workspace
+# Coursemark
 
-I’m looking for a web app that handles the assessment lifecycle for a university course — not a static LMS mockup. It should have persistent course records, real authentication, and clear boundaries between students and teaching staff.
+can you build a proper assessment workspace for our ecology course? instructors need
+to prepare and publish assessments, students need timed attempts with their own
+accommodations, and our teaching assistant needs a safe grading queue. Scores and
+feedback must stay private until release. This must be a durable working product.
 
-Students need access to their own courses, eligible assessments, timed attempts, saved answers, and released feedback. Instructors manage assessments, rubric grading, result release, and course progress. Teaching assistants can grade submissions assigned to them, but they cannot publish assessments or release grades. Organize the work across courses, assessments, attempts, a gradebook, and an audit view without exposing one student’s work to another.
+Please finish and test the complete request in this run rather than handing
+back a scaffold or asking me whether to continue.
+please make sign-in real as well. A reload or later sign-in should restore the
+same work. Two tabs must not silently overwrite one another, retried actions
+must not duplicate records, and signing out should revoke every session for
+that account.
 
-Timing, accommodations, scoring, grading, release, and permission rules are in `/assets/artifacts/coursemark_rules.md`; use `/assets/artifacts/coursemark_seed.json` for the starting records.
-
-For demo access, all accounts use `Coursemark!2026`: `ada.mensah@coursemark.example` is the Instructor, `luis.ortega@coursemark.example` is the Teaching assistant, and `nora.kim@coursemark.example` plus `ben.okafor@coursemark.example` are Students. Show the current identity and role after sign-in.
-
-Keep the implementation in `/app` with Node.js, Express, and SQLite. Run `node /app/server.js` on port `3000`, serve `/app/public/index.html`, expose `GET /api/health`, and persist to `/app/coursemark.db`. The browser should not rely on external assets or runtime installation.
+The full contract is under `/instructions`; initial records are in
+`/assets/artifacts/coursemark_seed.json`. Put the app in `/app` using vanilla HTML,
+CSS and JavaScript, Node.js with Express, and SQLite. Store server-issued bearer
+tokens in SQLite. Start with `node /app/server.js` on port `3000`, serve
+`/app/public/index.html`, persist to `/app/coursemark.db`, and use no runtime installs
+or public-internet assets.

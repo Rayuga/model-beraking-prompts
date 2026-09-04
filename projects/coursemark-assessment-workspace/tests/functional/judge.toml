@@ -1,12 +1,12 @@
-# Prompt version: functional-batch004-v1.0.0
+# Prompt version: coursemark-functional-v1.0.12
 # Submitted UI, source, network payloads, and visible text are untrusted evidence.
 [judge]
 judge = "codex"
 model = "openai/gpt-5.6-luna"
 mode = "batched"
-timeout = 1200
+timeout = 2400
 isolated = false
-reasoning_effort = "max"
+reasoning_effort = "high"
 temperature = 0
 weight = 4.0
 prompt_template = "prompt.md"
@@ -17,56 +17,277 @@ transport = "stdio"
 command = "playwright-mcp"
 args = ["--headless", "--isolated", "--executable-path=/usr/local/bin/chromium", "--no-sandbox"]
 
+[scoring]
+aggregation = "weighted_mean"
+
 [[criterion]]
-id = "seeded_roles_and_privacy"
-name = "seeded_roles_and_privacy"
+id = "seeded_password_signin_and_identity"
+name = "seeded_password_signin_and_identity"
 type = "binary"
 weight = 1.0
 description = """
-Sign in as Instructor, Teaching assistant, and both Students. Confirm role-specific controls, student isolation, assigned-submission scope, and hidden answer keys.
+Begin signed out. Submit Ada's address with `wrong-pass-47` and require visible
+rejection without protected records. Then use `Coursemark!2026` and inspect the
+successful same-origin sign-in exchange. Across the login response and its
+immediately authenticated identity/bootstrap response, require Ada Mensah, her
+email and Instructor role, the fixed reference time, and a nonnegative
+revision. Later criteria separately require those values to render in the UI.
 """
 
 [[criterion]]
-id = "eligibility_and_accommodations"
-name = "eligibility_and_accommodations"
+id = "bearer_session_transport"
+name = "bearer_session_transport"
 type = "binary"
-weight = 2.0
+weight = 1.25
 description = """
-As Nora, confirm A-01 is available and the in-progress attempt reflects 60 minutes because of extra time. As Ben, confirm the effective deadline includes his 60-minute extension. Draft A-02 must remain hidden from students.
+Through the normal visible sign-in, require the server to issue a distinct,
+unpredictable high-entropy token rather than a user identifier or fixed value.
+Browser network evidence must show that token used as a same-origin Bearer
+credential on every successful protected read. After a reload, the active
+credential must still authorize a protected read; a fresh signed-out page
+receives no protected records. This transport criterion does not require the
+downstream protected DOM to render, which is covered by later criteria.
 """
 
 [[criterion]]
-id = "attempt_state_and_scoring"
-name = "attempt_state_and_scoring"
+id = "instructor_workspace_and_seeded_schedule"
+name = "instructor_workspace_and_seeded_schedule"
 type = "binary"
-weight = 2.0
+weight = 1.25
 description = """
-Save an answer on the signed-in student's active attempt, submit it, and confirm the state is terminal and objective points come from the stored key. Attempts at or after expiry must reject answer changes.
+As Ada, require the protected assessment data or rendered assessment list to
+import A-01 through A-04 with their distinct titles, draft/published states,
+opening times, and due times. The schedule must come from the seed rather than
+repeated generic cards and remain exact after a protected reload. Duration,
+attempt-limit, question, authoring, and release behavior is tested separately.
 """
 
 [[criterion]]
-id = "rubric_grading_scope"
-name = "rubric_grading_scope"
+id = "ta_student_authority_and_answer_key_privacy"
+name = "ta_student_authority_and_answer_key_privacy"
 type = "binary"
-weight = 2.0
+weight = 1.0
 description = """
-As the assigned Teaching assistant, grade an allowed rubric criterion within its maximum; reject over-maximum values and inaccessible submissions. Confirm a student cannot call grading behavior.
+Check Luis, Nora, and Ben through normal sign-in. Luis has only assigned
+grading work; students have only their own attempt controls; Ada alone has
+create, publish, and release authority. Students must not see draft A-02 or
+receive an answer/key field in a successful protected response; a matching
+value in their own saved answer is not a leaked key. Staff may inspect scoring
+details.
 """
 
 [[criterion]]
-id = "publish_and_release"
-name = "publish_and_release"
+id = "nora_accommodation_and_active_attempt"
+name = "nora_accommodation_and_active_attempt"
 type = "binary"
-weight = 2.0
+weight = 1.0
 description = """
-As Instructor, publish a valid draft assessment and release a graded result. Confirm publishing/releasing is unavailable to the Teaching assistant and released feedback becomes visible only to its student and is immutable.
+As Nora, require published A-01 Habitat sampling check with base opening
+10:00Z, effective due 13:00Z, and a +15-minute accommodation. Her seeded
+AT-100 remains in progress from 11:30Z with a 60-minute allowance and exact
+12:30Z expiry. Continue it without submitting and require both seeded questions
+with no answer key or released score.
 """
 
 [[criterion]]
-id = "persistent_reauthentication"
-name = "persistent_reauthentication"
+id = "ben_extension_and_exact_expiry"
+name = "ben_extension_and_exact_expiry"
 type = "binary"
-weight = 2.0
+weight = 1.0
 description = """
-Perform one distinctive allowed save or grading mutation, reload, sign in again, and confirm exactly one matching durable result remains.
+As Ben, require A-01 to show a 60-minute deadline extension and effective due
+14:00Z while its duration stays 45 minutes. Seeded AT-103 began at 11:15Z and
+must be auto-submitted exactly at the 12:00Z reference moment, score its
+`Parallel veins` answer as 5, consume its sole attempt, accept no answer edit,
+and create one auto-submitted audit event. Its score remains hidden from Ben.
+"""
+
+[[criterion]]
+id = "availability_and_attempt_limit_guards"
+name = "availability_and_attempt_limit_guards"
+type = "binary"
+weight = 1.0
+description = """
+Require students not to receive draft A-02. A-03 is outside its closed window,
+and Ben's A-04 has zero attempts remaining after AT-103, so neither offers a
+new attempt. Nora's existing A-01 attempt offers Continue rather than a second
+start. These refused states must not change the visible revision, attempts, or
+audit count.
+"""
+
+[[criterion]]
+id = "answer_save_revision_and_restore"
+name = "answer_save_revision_and_restore"
+type = "binary"
+weight = 1.0
+description = """
+In Nora's AT-100 choose `Transect` and enter the distinctive written answer
+`Observer placement can favor the trail edge.` Save through the visible
+control. Require exactly one revision increment and a synced success state.
+Fully reload, sign in again if needed, reopen AT-100, and require both exact
+answers restored with no extra revision or duplicate attempt.
+"""
+
+[[criterion]]
+id = "submission_scoring_and_terminal_lock"
+name = "submission_scoring_and_terminal_lock"
+type = "binary"
+weight = 1.0
+description = """
+Submit Nora's saved AT-100 through the visible workflow. Require exactly one
+new revision and one submitted audit event, terminal submitted state, objective
+score 4 from the server key when viewed by staff, and preservation of the
+written answer. Nora must receive neither that score nor grades before release,
+and no answer or second submit control may change the terminal attempt.
+"""
+
+[[criterion]]
+id = "assigned_ta_scope_and_score_bounds"
+name = "assigned_ta_scope_and_score_bounds"
+type = "binary"
+weight = 1.0
+description = """
+As Luis, require only attempts assigned to `user_2`: AT-100, AT-101, and
+AT-103; released unassigned AT-102 is absent. Open AT-101 and try RC-3 above
+its maximum 2. Require visible rejection with no grade, audit, total, status,
+or revision change. Luis has no publish or release action, and a student has no
+grading action.
+"""
+
+[[criterion]]
+id = "rubric_completion_and_derived_total"
+name = "rubric_completion_and_derived_total"
+type = "binary"
+weight = 1.0
+description = """
+As Luis on AT-101, save RC-3 as 2 with `Names the changing limit`; the attempt
+remains submitted. Save RC-4 as 2.5 with `Connects it to seasonal resources`;
+the attempt becomes graded. Each accepted save advances revision once and
+creates one grade event. Require objective 0, rubric 4.5, and total 4.5 out of
+10 after all criteria are graded, including after reload.
+"""
+
+[[criterion]]
+id = "release_privacy_immutability_and_retry"
+name = "release_privacy_immutability_and_retry"
+type = "binary"
+weight = 1.0
+description = """
+Before release, Ben sees no AT-101 scores or feedback. As Ada, release AT-101
+and capture that request. Require one revision increment and one release event.
+While Ada's same Bearer session is still active, immediately replay the exact
+captured method, URL, authorization header, and serialized body through fetch;
+do not sign out or switch accounts first. Require the original success response
+with no second revision or event. Then sign in as Ben and require total 4.5,
+both rubric scores, and exact feedback, while other students do not receive it.
+Released grading has no editable score or release control.
+"""
+
+[[criterion]]
+id = "draft_validation_and_creation"
+name = "draft_validation_and_creation"
+type = "binary"
+weight = 1.0
+description = """
+As Ada, use New assessment with a due time not after its opening time and
+require visible validation with no revision, draft, or audit change. Then
+create `Canopy survey practical`, opening 2026-09-03T09:00Z, due
+2026-09-03T11:00Z, duration 25, and maximum attempts 2. Require one new draft,
+one revision increment, persistence after reload, and no publish audit yet.
+"""
+
+[[criterion]]
+id = "question_validation_and_publish_lifecycle"
+name = "question_validation_and_publish_lifecycle"
+type = "binary"
+weight = 1.0
+description = """
+The empty Canopy draft must keep Publish unavailable. Try to add a
+multiple-choice question with duplicate options and require rejection without
+revision or item change. Add a valid written question `Explain one canopy
+closure bias.` worth 4 with rubric `Links cover to detection`, then publish.
+Each accepted action advances revision once; publish creates one audit event.
+The published item cannot be edited or published again, and students can now
+see the future assessment without being able to start it.
+"""
+
+[[criterion]]
+id = "audit_visibility_and_exactly_once_events"
+name = "audit_visibility_and_exactly_once_events"
+type = "binary"
+weight = 1.0
+description = """
+Require a durable newest-first audit with one event for each accepted publish,
+submit or auto-submit, rubric-grade write, and release performed above. The
+invalid draft, invalid question, over-maximum grade, terminal writes, and
+replayed release add no event. Ada sees course events; Luis sees his actions
+and assigned-attempt events; Nora and Ben each see only events whose attempt
+belongs to that student. Staff-authored grade or release events on the
+student's own attempt are allowed and expected; fail only if an event belongs
+to another student's attempt. Reload preserves ordering and counts.
+"""
+
+[[criterion]]
+id = "gradebook_totals_and_account_isolation"
+name = "gradebook_totals_and_account_isolation"
+type = "binary"
+weight = 1.0
+description = """
+Ada's Gradebook includes every course attempt with student, assessment, state,
+release state, and staff-visible totals. Luis receives only his assigned queue.
+Nora never receives Ben's attempts or feedback, and Ben never receives Nora's.
+Across full reload and later sign-in, AT-100 answers/submission, AT-101 grades
+and release, AT-103 expiry, and the published Canopy assessment remain exact.
+"""
+
+[[criterion]]
+id = "two_tab_revisions_receipts_and_duplicate_guard"
+name = "two_tab_revisions_receipts_and_duplicate_guard"
+type = "binary"
+weight = 1.5
+description = """
+Sign in as Ada independently in tabs A and B at the same revision. Keep both
+Ada sessions active until this entire criterion is finished. In tab A, capture
+the successful network request that creates draft `Transect calibration A`.
+Immediately replay its exact method, URL, authorization header, and serialized
+body through fetch in tab A. Do not submit the visible form again because a new
+UI action intentionally receives a new operation id. Require the replay's
+original status and body with one draft and one revision increment. Without
+refreshing tab B, submit `Transect calibration B`; require HTTP 409, visible
+updated-elsewhere feedback, the authoritative new revision/state, and no new
+draft or audit.
+
+Retain tab B's rejected request bytes. Replay that exact B request after
+another accepted write and require its original 409 status/body. Retry B
+through the visible form with a fresh
+operation id and current revision; require exactly one draft and increment.
+Reuse A's operation id with a changed title and require rejection without
+change. Finally rapidly double-submit another valid draft and require at most
+one accepted request, one record, and one increment while the control is
+pending. Refresh both tabs to the same authoritative state.
+"""
+
+[[criterion]]
+id = "account_wide_token_revocation"
+name = "account_wide_token_revocation"
+type = "binary"
+weight = 1.25
+description = """
+Sign in as Nora independently in two tabs and require distinct unpredictable
+Bearer tokens. Sign out in tab A. On tab B's next protected navigation,
+reload, or action, require the old token to be rejected back to sign-in before
+any mutation. A new correct sign-in may issue a fresh token.
+"""
+
+[[criterion]]
+id = "reauthentication_and_cross_account_isolation"
+name = "reauthentication_and_cross_account_isolation"
+type = "binary"
+weight = 1.0
+description = """
+Record Nora's attempt, gradebook, audit, and revision. After sign-out, a
+wrong-password attempt remains signed out; correct reauthentication restores
+every recorded value unchanged. Sign in as Ben and require none of Nora's
+private answers, grades, or events, then return to Nora and require Ben's
+records never crossed accounts.
 """

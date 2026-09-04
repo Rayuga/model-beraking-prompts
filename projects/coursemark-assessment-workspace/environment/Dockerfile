@@ -12,7 +12,8 @@ RUN npm install -g --no-audit --no-fund \
     && npm cache clean --force
 
 COPY assets/ /assets/
-RUN chmod -R a+rX /assets && mkdir -p /app
+COPY instructions/ /instructions/
+RUN chmod -R a+rX /assets /instructions && mkdir -p /app
 
 WORKDIR /app
 CMD ["sleep", "infinity"]

@@ -21,6 +21,16 @@ const REFERENCE_MOMENT = seedData.reference_moment;
 
 const app = express();
 app.disable("x-powered-by");
+app.use((_request, response, next) => {
+  response.set({
+    "Cache-Control": "no-store",
+    "Content-Security-Policy":
+      "default-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self'; img-src 'self' data:; font-src 'self'; base-uri 'self'; form-action 'self'",
+    "Referrer-Policy": "no-referrer",
+    "X-Content-Type-Options": "nosniff",
+  });
+  next();
+});
 app.use(express.json({ limit: "256kb" }));
 
 const db = new Database(DB_PATH);
@@ -38,6 +48,11 @@ db.exec(`
     role TEXT NOT NULL CHECK (role IN ('instructor', 'teaching_assistant', 'student')),
     password_hash TEXT NOT NULL,
     password_salt TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS sessions (
+    token TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TEXT NOT NULL
   );
   CREATE TABLE IF NOT EXISTS courses (
     id TEXT PRIMARY KEY,
@@ -120,10 +135,24 @@ db.exec(`
     details TEXT NOT NULL,
     created_at TEXT NOT NULL
   );
+  CREATE TABLE IF NOT EXISTS course_state (
+    course_id TEXT PRIMARY KEY REFERENCES courses(id) ON DELETE CASCADE,
+    revision INTEGER NOT NULL DEFAULT 0
+  );
+  CREATE TABLE IF NOT EXISTS mutation_receipts (
+    actor_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    operation_id TEXT NOT NULL,
+    fingerprint TEXT NOT NULL,
+    status_code INTEGER NOT NULL,
+    response_json TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (actor_id, operation_id)
+  );
   CREATE INDEX IF NOT EXISTS idx_assessments_course ON assessments(course_id);
   CREATE INDEX IF NOT EXISTS idx_attempts_assessment ON attempts(assessment_id);
   CREATE INDEX IF NOT EXISTS idx_attempts_student ON attempts(student_id);
   CREATE INDEX IF NOT EXISTS idx_audit_created ON audit(created_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
 `);
 
 function passwordRecord(password) {
@@ -161,6 +190,9 @@ function bootstrap() {
     );
     for (const course of seedData.courses) {
       insertCourse.run(course.id, course.title, course.instructor_id);
+      db.prepare("INSERT INTO course_state (course_id, revision) VALUES (?, 0)").run(
+        course.id
+      );
     }
     const insertEnrollment = db.prepare(
       "INSERT INTO enrollments (course_id, user_id, kind) VALUES (?, ?, ?)"
@@ -341,7 +373,7 @@ function audit(actorId, action, entityType, entityId, details) {
   `).run(action, entityType, entityId, actorId, details, referenceNow());
 }
 
-function assessmentItems(assessmentId) {
+function assessmentItems(assessmentId, user = null) {
   return db
     .prepare(
       "SELECT id, kind, prompt, options_json, points FROM items WHERE assessment_id = ? ORDER BY rowid"
@@ -353,6 +385,9 @@ function assessmentItems(assessmentId) {
       prompt: item.prompt,
       options: item.options_json ? JSON.parse(item.options_json) : null,
       points: item.points,
+      ...(user && user.role !== "student" && item.answer
+        ? { answer: item.answer }
+        : {}),
       rubric: db
         .prepare(
           "SELECT id, label, max_points FROM rubric_criteria WHERE item_id = ? ORDER BY rowid"
@@ -395,34 +430,47 @@ function ensureAttemptCurrent(attempt) {
     .get(attempt.assessment_id);
   const timing = effectiveTiming(assessment, attempt.student_id, attempt.started_at);
   if (new Date(referenceNow()) >= new Date(timing.expires_at)) {
-    return db.transaction(() => submitAttempt(attempt, attempt.student_id, true))();
+    return db.transaction(() => {
+      const submitted = submitAttempt(attempt, attempt.student_id, true);
+      incrementRevision(assessment.course_id);
+      return submitted;
+    })();
   }
   return attempt;
 }
 
 bootstrap();
 
-const sessions = new Map();
+const PRIMARY_COURSE_ID = seedData.courses[0].id;
 
-function cookies(request) {
-  const result = {};
-  for (const part of (request.headers.cookie || "").split(";")) {
-    const position = part.indexOf("=");
-    if (position > -1) {
-      result[part.slice(0, position).trim()] = decodeURIComponent(
-        part.slice(position + 1).trim()
-      );
-    }
-  }
-  return result;
+function currentRevision(courseId = PRIMARY_COURSE_ID) {
+  return Number(
+    db.prepare("SELECT revision FROM course_state WHERE course_id = ?").get(courseId)
+      ?.revision ?? 0
+  );
+}
+
+function incrementRevision(courseId = PRIMARY_COURSE_ID) {
+  db.prepare("UPDATE course_state SET revision = revision + 1 WHERE course_id = ?").run(
+    courseId
+  );
+  return currentRevision(courseId);
 }
 
 function currentUser(request) {
-  const sessionId = cookies(request).cm_session;
-  const userId = sessionId && sessions.get(sessionId);
-  return userId
-    ? db.prepare("SELECT id, name, email, role FROM users WHERE id = ?").get(userId)
-    : null;
+  const match = /^Bearer\s+([A-Za-z0-9_-]{32,160})$/i.exec(
+    String(request.headers.authorization || "")
+  );
+  if (!match) return null;
+  return (
+    db
+      .prepare(`
+        SELECT u.id, u.name, u.email, u.role
+        FROM sessions s JOIN users u ON u.id = s.user_id
+        WHERE s.token = ?
+      `)
+      .get(match[1]) || null
+  );
 }
 
 function requireUser(request, response, next) {
@@ -432,13 +480,141 @@ function requireUser(request, response, next) {
   next();
 }
 
-function requireRole(...roles) {
-  return (request, response, next) => {
-    if (!roles.includes(request.user.role)) {
-      return response.status(403).json({ error: "Your role cannot perform this action." });
-    }
-    next();
+function httpError(status, message, extra = {}) {
+  return Object.assign(new Error(message), { status, ...extra });
+}
+
+function workspaceSnapshot(user) {
+  const assessments = db
+    .prepare(`
+      SELECT a.id, a.title, a.status
+      FROM assessments a
+      JOIN courses c ON c.id = a.course_id
+      LEFT JOIN enrollments e ON e.course_id = c.id AND e.user_id = ?
+      WHERE (c.instructor_id = ? OR e.user_id IS NOT NULL)
+        ${user.role === "student" ? "AND a.status = 'published'" : ""}
+      ORDER BY a.id
+    `)
+    .all(user.id, user.id);
+  return {
+    course_id: PRIMARY_COURSE_ID,
+    revision: currentRevision(),
+    assessments,
+    attempt_count:
+      user.role === "student"
+        ? db.prepare("SELECT COUNT(*) AS count FROM attempts WHERE student_id = ?").get(user.id)
+            .count
+        : db.prepare("SELECT COUNT(*) AS count FROM attempts").get().count,
+    audit_count:
+      user.role === "student"
+        ? db
+            .prepare(`
+              SELECT COUNT(*) AS count FROM audit
+              WHERE entity_type = 'attempt' AND entity_id IN
+                (SELECT id FROM attempts WHERE student_id = ?)
+            `)
+            .get(user.id).count
+        : db.prepare("SELECT COUNT(*) AS count FROM audit").get().count,
   };
+}
+
+function mutationMetadata(request) {
+  const operationId = String(request.body?.operation_id || "");
+  if (!/^[A-Za-z0-9_-]{20,120}$/.test(operationId)) {
+    throw httpError(400, "A valid operation identifier is required.");
+  }
+  const expectedRevision = Number(request.body?.expected_revision);
+  if (!Number.isInteger(expectedRevision) || expectedRevision < 0) {
+    throw httpError(400, "A valid expected revision is required.");
+  }
+  const fingerprint = crypto
+    .createHash("sha256")
+    .update(
+      JSON.stringify({
+        method: request.method,
+        path: request.path,
+        body: request.body,
+      })
+    )
+    .digest("hex");
+  return { operationId, expectedRevision, fingerprint };
+}
+
+function performMutation(request, { status = 200, execute }) {
+  const metadata = mutationMetadata(request);
+  const existing = db
+    .prepare(`
+      SELECT fingerprint, status_code, response_json
+      FROM mutation_receipts WHERE actor_id = ? AND operation_id = ?
+    `)
+    .get(request.user.id, metadata.operationId);
+  if (existing) {
+    if (existing.fingerprint !== metadata.fingerprint) {
+      return {
+        status: 409,
+        payload: {
+          error: "This operation identifier was already used for different input.",
+          revision: currentRevision(),
+          snapshot: workspaceSnapshot(request.user),
+        },
+      };
+    }
+    return { status: existing.status_code, payload: JSON.parse(existing.response_json) };
+  }
+
+  try {
+    return db.transaction(() => {
+      const actualRevision = currentRevision();
+      if (metadata.expectedRevision !== actualRevision) {
+        throw httpError(409, "Course updated in another tab.");
+      }
+      const result = execute();
+      const revision = incrementRevision();
+      const payload = {
+        ...result,
+        revision,
+        snapshot: workspaceSnapshot(request.user),
+      };
+      db.prepare(`
+        INSERT INTO mutation_receipts
+          (actor_id, operation_id, fingerprint, status_code, response_json, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).run(
+        request.user.id,
+        metadata.operationId,
+        metadata.fingerprint,
+        status,
+        JSON.stringify(payload),
+        referenceNow()
+      );
+      return { status, payload };
+    })();
+  } catch (error) {
+    const errorStatus = Number(error.status) || 500;
+    if (errorStatus < 400 || errorStatus >= 500) throw error;
+    const payload = {
+      error: error.message,
+      revision: currentRevision(),
+      snapshot: workspaceSnapshot(request.user),
+    };
+    db.prepare(`
+      INSERT OR IGNORE INTO mutation_receipts
+        (actor_id, operation_id, fingerprint, status_code, response_json, created_at)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(
+      request.user.id,
+      metadata.operationId,
+      metadata.fingerprint,
+      errorStatus,
+      JSON.stringify(payload),
+      referenceNow()
+    );
+    return { status: errorStatus, payload };
+  }
+}
+
+function sendMutation(response, outcome) {
+  response.status(outcome.status).json(outcome.payload);
 }
 
 function courseVisible(courseId, user) {
@@ -479,17 +655,25 @@ function assessmentView(assessment, user) {
         "SELECT * FROM attempts WHERE assessment_id = ? AND student_id = ? ORDER BY rowid DESC LIMIT 1"
       )
       .get(assessment.id, user.id);
+    const attemptsUsed = db
+      .prepare(
+        "SELECT COUNT(*) AS count FROM attempts WHERE assessment_id = ? AND student_id = ?"
+      )
+      .get(assessment.id, user.id).count;
     view.effective_duration_minutes = timing.duration_minutes;
     view.effective_due_at = timing.due_at;
     view.extra_time_minutes = timing.extra_time_minutes;
     view.deadline_extension_minutes = timing.deadline_extension_minutes;
+    view.attempts_used = attemptsUsed;
+    view.attempts_remaining = Math.max(0, assessment.max_attempts - attemptsUsed);
     view.attempt = attempt ? attemptView(ensureAttemptCurrent(attempt), user) : null;
     const current = new Date(referenceNow());
     view.can_start =
       assessment.status === "published" &&
       current >= new Date(assessment.opens_at) &&
       current <= new Date(timing.due_at) &&
-      !attempt;
+      attemptsUsed < assessment.max_attempts &&
+      (!view.attempt || view.attempt.status !== "in_progress");
   }
   return view;
 }
@@ -503,7 +687,7 @@ function attemptView(rawAttempt, user) {
   const student = db
     .prepare("SELECT id, name, email FROM users WHERE id = ?")
     .get(attempt.student_id);
-  const items = assessmentItems(attempt.assessment_id);
+  const items = assessmentItems(attempt.assessment_id, user);
   const answers = db
     .prepare("SELECT item_id, value FROM answers WHERE attempt_id = ?")
     .all(attempt.id);
@@ -556,27 +740,30 @@ app.post("/api/auth/login", (request, response) => {
   if (!user || !passwordMatches(password, user.password_salt, user.password_hash)) {
     return response.status(401).json({ error: "Email or password is incorrect." });
   }
-  const sessionId = crypto.randomBytes(32).toString("hex");
-  sessions.set(sessionId, user.id);
-  response.setHeader(
-    "Set-Cookie",
-    `cm_session=${sessionId}; Path=/; HttpOnly; SameSite=Strict; Max-Age=28800`
+  const token = crypto.randomBytes(32).toString("hex");
+  db.prepare("INSERT INTO sessions (token, user_id, created_at) VALUES (?, ?, ?)").run(
+    token,
+    user.id,
+    referenceNow()
   );
-  response.json({ user: { id: user.id, name: user.name, email: user.email, role: user.role } });
+  response.json({
+    token,
+    user: { id: user.id, name: user.name, email: user.email, role: user.role },
+    revision: currentRevision(),
+  });
 });
 
 app.post("/api/auth/logout", requireUser, (request, response) => {
-  const sessionId = cookies(request).cm_session;
-  if (sessionId) sessions.delete(sessionId);
-  response.setHeader(
-    "Set-Cookie",
-    "cm_session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0"
-  );
+  db.prepare("DELETE FROM sessions WHERE user_id = ?").run(request.user.id);
   response.json({ ok: true });
 });
 
 app.get("/api/me", requireUser, (request, response) => {
-  response.json({ user: request.user, reference_moment: referenceNow() });
+  response.json({
+    user: request.user,
+    reference_moment: referenceNow(),
+    revision: currentRevision(),
+  });
 });
 
 app.get("/api/courses", requireUser, (request, response) => {
@@ -603,7 +790,7 @@ app.get("/api/courses", requireUser, (request, response) => {
       )
       .get(course.id).count,
   }));
-  response.json({ courses });
+  response.json({ courses, revision: currentRevision() });
 });
 
 app.get("/api/assessments", requireUser, (request, response) => {
@@ -618,7 +805,10 @@ app.get("/api/assessments", requireUser, (request, response) => {
       ORDER BY a.opens_at DESC
     `)
     .all(request.user.id, request.user.id);
-  response.json({ assessments: rows.map((row) => assessmentView(row, request.user)) });
+  response.json({
+    assessments: rows.map((row) => assessmentView(row, request.user)),
+    revision: currentRevision(),
+  });
 });
 
 app.get("/api/assessments/:id/items", requireUser, (request, response) => {
@@ -632,137 +822,170 @@ app.get("/api/assessments/:id/items", requireUser, (request, response) => {
   ) {
     return response.status(404).json({ error: "Assessment not found." });
   }
-  response.json({ items: assessmentItems(assessment.id) });
+  response.json({
+    items: assessmentItems(assessment.id, request.user),
+    revision: currentRevision(),
+  });
 });
 
 app.post(
   "/api/assessments",
   requireUser,
-  requireRole("instructor"),
   (request, response) => {
-    const courseId = cleanText(request.body.course_id, 80);
-    const title = cleanText(request.body.title, 140);
-    const opensAt = cleanText(request.body.opens_at, 40);
-    const dueAt = cleanText(request.body.due_at, 40);
-    const duration = Number(request.body.duration_minutes);
-    const maxAttempts = Number(request.body.max_attempts || 1);
-    if (!courseVisible(courseId, request.user)) {
-      return response.status(404).json({ error: "Course not found." });
-    }
-    if (
-      !title ||
-      !Number.isFinite(Date.parse(opensAt)) ||
-      !Number.isFinite(Date.parse(dueAt)) ||
-      new Date(opensAt) >= new Date(dueAt) ||
-      !Number.isInteger(duration) ||
-      duration <= 0 ||
-      !Number.isInteger(maxAttempts) ||
-      maxAttempts <= 0
-    ) {
-      return response.status(400).json({ error: "Provide valid assessment details." });
-    }
-    const assessmentId = id("assessment");
-    db.prepare(`
-      INSERT INTO assessments
-        (id, course_id, title, status, opens_at, due_at, duration_minutes, max_attempts, created_by)
-      VALUES (?, ?, ?, 'draft', ?, ?, ?, ?, ?)
-    `).run(
-      assessmentId,
-      courseId,
-      title,
-      new Date(opensAt).toISOString(),
-      new Date(dueAt).toISOString(),
-      duration,
-      maxAttempts,
-      request.user.id
-    );
-    response.status(201).json({
-      assessment: assessmentView(
-        db.prepare("SELECT * FROM assessments WHERE id = ?").get(assessmentId),
-        request.user
-      ),
+    const outcome = performMutation(request, {
+      status: 201,
+      execute: () => {
+        if (request.user.role !== "instructor") {
+          throw httpError(403, "Only the course instructor can create assessments.");
+        }
+        const courseId = cleanText(request.body.course_id, 80);
+        const title = cleanText(request.body.title, 140);
+        const opensAt = cleanText(request.body.opens_at, 40);
+        const dueAt = cleanText(request.body.due_at, 40);
+        const duration = Number(request.body.duration_minutes);
+        const maxAttempts = Number(request.body.max_attempts);
+        if (!courseVisible(courseId, request.user)) {
+          throw httpError(404, "Course not found.");
+        }
+        if (
+          !title ||
+          !Number.isFinite(Date.parse(opensAt)) ||
+          !Number.isFinite(Date.parse(dueAt)) ||
+          new Date(opensAt) >= new Date(dueAt) ||
+          !Number.isInteger(duration) ||
+          duration <= 0 ||
+          !Number.isInteger(maxAttempts) ||
+          maxAttempts <= 0
+        ) {
+          throw httpError(400, "Provide valid assessment details.");
+        }
+        const assessmentId = id("assessment");
+        db.prepare(`
+          INSERT INTO assessments
+            (id, course_id, title, status, opens_at, due_at, duration_minutes, max_attempts, created_by)
+          VALUES (?, ?, ?, 'draft', ?, ?, ?, ?, ?)
+        `).run(
+          assessmentId,
+          courseId,
+          title,
+          new Date(opensAt).toISOString(),
+          new Date(dueAt).toISOString(),
+          duration,
+          maxAttempts,
+          request.user.id
+        );
+        return {
+          assessment: assessmentView(
+            db.prepare("SELECT * FROM assessments WHERE id = ?").get(assessmentId),
+            request.user
+          ),
+        };
+      },
     });
+    sendMutation(response, outcome);
   }
 );
 
 app.post(
   "/api/assessments/:id/items",
   requireUser,
-  requireRole("instructor"),
   (request, response) => {
-    const assessment = db
-      .prepare("SELECT * FROM assessments WHERE id = ?")
-      .get(request.params.id);
-    if (!assessment || !courseVisible(assessment.course_id, request.user)) {
-      return response.status(404).json({ error: "Assessment not found." });
-    }
-    if (assessment.status !== "draft") {
-      return response.status(409).json({ error: "Published assessments cannot be edited." });
-    }
-    const kind = request.body.kind === "written" ? "written" : "multiple_choice";
-    const prompt = cleanText(request.body.prompt, 500);
-    const points = Number(request.body.points);
-    const options =
-      kind === "multiple_choice" && Array.isArray(request.body.options)
-        ? request.body.options.map((value) => cleanText(value, 160)).filter(Boolean)
-        : null;
-    const answer = kind === "multiple_choice" ? cleanText(request.body.answer, 160) : null;
-    if (
-      !prompt ||
-      !Number.isFinite(points) ||
-      points <= 0 ||
-      (kind === "multiple_choice" &&
-        (options.length < 2 || !options.includes(answer)))
-    ) {
-      return response.status(400).json({ error: "Provide a valid question and point value." });
-    }
-    const itemId = id("item");
-    db.prepare(`
-      INSERT INTO items
-        (id, assessment_id, kind, prompt, options_json, answer, points)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      itemId,
-      assessment.id,
-      kind,
-      prompt,
-      options ? JSON.stringify(options) : null,
-      answer,
-      points
-    );
-    if (kind === "written") {
-      const criterionLabel = cleanText(request.body.criterion_label, 160) || "Response quality";
-      db.prepare(
-        "INSERT INTO rubric_criteria (id, item_id, label, max_points) VALUES (?, ?, ?, ?)"
-      ).run(id("criterion"), itemId, criterionLabel, points);
-    }
-    response.status(201).json({ items: assessmentItems(assessment.id) });
+    const outcome = performMutation(request, {
+      status: 201,
+      execute: () => {
+        if (request.user.role !== "instructor") {
+          throw httpError(403, "Only the course instructor can add questions.");
+        }
+        const assessment = db
+          .prepare("SELECT * FROM assessments WHERE id = ?")
+          .get(request.params.id);
+        if (!assessment || !courseVisible(assessment.course_id, request.user)) {
+          throw httpError(404, "Assessment not found.");
+        }
+        if (assessment.status !== "draft") {
+          throw httpError(409, "Published assessments cannot be edited.");
+        }
+        const kind =
+          request.body.kind === "written"
+            ? "written"
+            : request.body.kind === "multiple_choice"
+              ? "multiple_choice"
+              : "";
+        const prompt = cleanText(request.body.prompt, 500);
+        const points = Number(request.body.points);
+        const options =
+          kind === "multiple_choice" && Array.isArray(request.body.options)
+            ? request.body.options.map((value) => cleanText(value, 160)).filter(Boolean)
+            : null;
+        const distinctOptions = options ? new Set(options).size : 0;
+        const answer =
+          kind === "multiple_choice" ? cleanText(request.body.answer, 160) : null;
+        const criterionLabel =
+          kind === "written" ? cleanText(request.body.criterion_label, 160) : null;
+        if (
+          !kind ||
+          !prompt ||
+          !Number.isFinite(points) ||
+          points <= 0 ||
+          (kind === "multiple_choice" &&
+            (options.length < 2 || distinctOptions !== options.length || !options.includes(answer))) ||
+          (kind === "written" && !criterionLabel)
+        ) {
+          throw httpError(400, "Provide a valid question, points, and scoring details.");
+        }
+        const itemId = id("item");
+        db.prepare(`
+          INSERT INTO items
+            (id, assessment_id, kind, prompt, options_json, answer, points)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          itemId,
+          assessment.id,
+          kind,
+          prompt,
+          options ? JSON.stringify(options) : null,
+          answer,
+          points
+        );
+        if (kind === "written") {
+          db.prepare(
+            "INSERT INTO rubric_criteria (id, item_id, label, max_points) VALUES (?, ?, ?, ?)"
+          ).run(id("criterion"), itemId, criterionLabel, points);
+        }
+        return { items: assessmentItems(assessment.id, request.user) };
+      },
+    });
+    sendMutation(response, outcome);
   }
 );
 
 app.post(
   "/api/assessments/:id/publish",
   requireUser,
-  requireRole("instructor"),
   (request, response) => {
-    const assessment = db
-      .prepare("SELECT * FROM assessments WHERE id = ?")
-      .get(request.params.id);
-    if (!assessment || !courseVisible(assessment.course_id, request.user)) {
-      return response.status(404).json({ error: "Assessment not found." });
-    }
-    if (assessment.status !== "draft") {
-      return response.status(409).json({ error: "Only a draft can be published." });
-    }
-    const count = db
-      .prepare("SELECT COUNT(*) AS count FROM items WHERE assessment_id = ?")
-      .get(assessment.id).count;
-    if (!count || assessment.duration_minutes <= 0) {
-      return response.status(400).json({
-        error: "Add at least one question and a positive duration before publishing.",
-      });
-    }
-    db.transaction(() => {
+    const outcome = performMutation(request, {
+      execute: () => {
+        if (request.user.role !== "instructor") {
+          throw httpError(403, "Only the course instructor can publish assessments.");
+        }
+        const assessment = db
+          .prepare("SELECT * FROM assessments WHERE id = ?")
+          .get(request.params.id);
+        if (!assessment || !courseVisible(assessment.course_id, request.user)) {
+          throw httpError(404, "Assessment not found.");
+        }
+        if (assessment.status !== "draft") {
+          throw httpError(409, "Only a draft can be published.");
+        }
+        const count = db
+          .prepare("SELECT COUNT(*) AS count FROM items WHERE assessment_id = ?")
+          .get(assessment.id).count;
+        if (!count || assessment.duration_minutes <= 0) {
+          throw httpError(
+            400,
+            "Add at least one question and a positive duration before publishing."
+          );
+        }
       db.prepare("UPDATE assessments SET status = 'published' WHERE id = ?").run(
         assessment.id
       );
@@ -771,67 +994,79 @@ app.post(
         "published",
         "assessment",
         assessment.id,
-        `Published “${assessment.title}”`
+        `Published ${assessment.title}`
       );
-    })();
-    response.json({
-      assessment: assessmentView(
-        db.prepare("SELECT * FROM assessments WHERE id = ?").get(assessment.id),
-        request.user
-      ),
+        return {
+          assessment: assessmentView(
+            db.prepare("SELECT * FROM assessments WHERE id = ?").get(assessment.id),
+            request.user
+          ),
+        };
+      },
     });
+    sendMutation(response, outcome);
   }
 );
 
 app.post(
   "/api/assessments/:id/start",
   requireUser,
-  requireRole("student"),
   (request, response) => {
-    const assessment = db
-      .prepare("SELECT * FROM assessments WHERE id = ?")
-      .get(request.params.id);
-    if (
-      !assessment ||
-      assessment.status !== "published" ||
-      !courseVisible(assessment.course_id, request.user)
-    ) {
-      return response.status(404).json({ error: "Assessment not found." });
-    }
-    const active = db
-      .prepare(
-        "SELECT * FROM attempts WHERE assessment_id = ? AND student_id = ? AND status = 'in_progress'"
-      )
-      .get(assessment.id, request.user.id);
-    if (active) return response.status(409).json({ error: "An attempt is already active." });
-    const used = db
-      .prepare("SELECT COUNT(*) AS count FROM attempts WHERE assessment_id = ? AND student_id = ?")
-      .get(assessment.id, request.user.id).count;
-    if (used >= assessment.max_attempts) {
-      return response.status(409).json({ error: "No attempts remain." });
-    }
-    const timing = effectiveTiming(assessment, request.user.id);
-    const current = new Date(referenceNow());
-    if (current < new Date(assessment.opens_at) || current > new Date(timing.due_at)) {
-      return response.status(409).json({ error: "This assessment is outside its available window." });
-    }
-    const attemptId = id("attempt");
-    const grader = db
-      .prepare(
-        "SELECT u.id FROM users u JOIN enrollments e ON e.user_id = u.id WHERE e.course_id = ? AND u.role = 'teaching_assistant' LIMIT 1"
-      )
-      .get(assessment.course_id);
-    db.prepare(`
-      INSERT INTO attempts
-        (id, assessment_id, student_id, status, started_at, assigned_grader_id, feedback_status)
-      VALUES (?, ?, ?, 'in_progress', ?, ?, 'hidden')
-    `).run(attemptId, assessment.id, request.user.id, referenceNow(), grader?.id || null);
-    response.status(201).json({
-      attempt: attemptView(
-        db.prepare("SELECT * FROM attempts WHERE id = ?").get(attemptId),
-        request.user
-      ),
+    const outcome = performMutation(request, {
+      status: 201,
+      execute: () => {
+        if (request.user.role !== "student") {
+          throw httpError(403, "Only students can start attempts.");
+        }
+        const assessment = db
+          .prepare("SELECT * FROM assessments WHERE id = ?")
+          .get(request.params.id);
+        if (
+          !assessment ||
+          assessment.status !== "published" ||
+          !courseVisible(assessment.course_id, request.user)
+        ) {
+          throw httpError(404, "Assessment not found.");
+        }
+        const active = db
+          .prepare(
+            "SELECT * FROM attempts WHERE assessment_id = ? AND student_id = ? AND status = 'in_progress'"
+          )
+          .get(assessment.id, request.user.id);
+        if (active) throw httpError(409, "An attempt is already active.");
+        const used = db
+          .prepare(
+            "SELECT COUNT(*) AS count FROM attempts WHERE assessment_id = ? AND student_id = ?"
+          )
+          .get(assessment.id, request.user.id).count;
+        if (used >= assessment.max_attempts) {
+          throw httpError(409, "No attempts remain.");
+        }
+        const timing = effectiveTiming(assessment, request.user.id);
+        const current = new Date(referenceNow());
+        if (current < new Date(assessment.opens_at) || current > new Date(timing.due_at)) {
+          throw httpError(409, "This assessment is outside its available window.");
+        }
+        const attemptId = id("attempt");
+        const grader = db
+          .prepare(
+            "SELECT u.id FROM users u JOIN enrollments e ON e.user_id = u.id WHERE e.course_id = ? AND u.role = 'teaching_assistant' LIMIT 1"
+          )
+          .get(assessment.course_id);
+        db.prepare(`
+          INSERT INTO attempts
+            (id, assessment_id, student_id, status, started_at, assigned_grader_id, feedback_status)
+          VALUES (?, ?, ?, 'in_progress', ?, ?, 'hidden')
+        `).run(attemptId, assessment.id, request.user.id, referenceNow(), grader?.id || null);
+        return {
+          attempt: attemptView(
+            db.prepare("SELECT * FROM attempts WHERE id = ?").get(attemptId),
+            request.user
+          ),
+        };
+      },
     });
+    sendMutation(response, outcome);
   }
 );
 
@@ -859,89 +1094,152 @@ app.get("/api/attempts", requireUser, (request, response) => {
       `)
       .all(request.user.id);
   }
-  response.json({ attempts: rows.map((row) => attemptView(row, request.user)) });
+  const attempts = rows.map((row) => attemptView(row, request.user));
+  response.json({ attempts, revision: currentRevision() });
 });
 
 app.patch(
   "/api/attempts/:id/answers",
   requireUser,
-  requireRole("student"),
   (request, response) => {
-    let attempt = db.prepare("SELECT * FROM attempts WHERE id = ?").get(request.params.id);
-    if (!attempt || attempt.student_id !== request.user.id) {
-      return response.status(404).json({ error: "Attempt not found." });
-    }
-    attempt = ensureAttemptCurrent(attempt);
-    if (attempt.status !== "in_progress") {
-      return response.status(409).json({ error: "This attempt no longer accepts answers." });
-    }
-    const supplied = Array.isArray(request.body.answers) ? request.body.answers : [];
-    const validItems = new Set(
-      db
-        .prepare("SELECT id FROM items WHERE assessment_id = ?")
-        .all(attempt.assessment_id)
-        .map((item) => item.id)
-    );
-    if (!supplied.length || supplied.some((answer) => !validItems.has(answer.item_id))) {
-      return response.status(400).json({ error: "One or more answers are invalid." });
-    }
-    const upsert = db.prepare(`
-      INSERT INTO answers (attempt_id, item_id, value) VALUES (?, ?, ?)
-      ON CONFLICT(attempt_id, item_id) DO UPDATE SET value = excluded.value
-    `);
-    db.transaction(() => {
-      for (const answer of supplied) {
-        upsert.run(attempt.id, answer.item_id, cleanText(answer.value, 4000));
-      }
-    })();
-    response.json({ attempt: attemptView(attempt, request.user) });
+    const outcome = performMutation(request, {
+      execute: () => {
+        if (request.user.role !== "student") {
+          throw httpError(403, "Only students can save attempt answers.");
+        }
+        const attempt = db
+          .prepare("SELECT * FROM attempts WHERE id = ?")
+          .get(request.params.id);
+        if (!attempt || attempt.student_id !== request.user.id) {
+          throw httpError(404, "Attempt not found.");
+        }
+        if (attempt.status !== "in_progress") {
+          throw httpError(409, "This attempt no longer accepts answers.");
+        }
+        const assessment = db
+          .prepare("SELECT * FROM assessments WHERE id = ?")
+          .get(attempt.assessment_id);
+        const timing = effectiveTiming(assessment, attempt.student_id, attempt.started_at);
+        if (new Date(referenceNow()) >= new Date(timing.expires_at)) {
+          throw httpError(409, "This attempt reached its effective expiry.");
+        }
+        const supplied = Array.isArray(request.body.answers) ? request.body.answers : [];
+        const validItems = new Set(
+          db
+            .prepare("SELECT id FROM items WHERE assessment_id = ?")
+            .all(attempt.assessment_id)
+            .map((item) => item.id)
+        );
+        if (
+          !supplied.length ||
+          supplied.some(
+            (answer) =>
+              !answer ||
+              !validItems.has(answer.item_id) ||
+              typeof answer.value !== "string"
+          )
+        ) {
+          throw httpError(400, "One or more answers are invalid.");
+        }
+        const upsert = db.prepare(`
+          INSERT INTO answers (attempt_id, item_id, value) VALUES (?, ?, ?)
+          ON CONFLICT(attempt_id, item_id) DO UPDATE SET value = excluded.value
+        `);
+        for (const answer of supplied) {
+          upsert.run(attempt.id, answer.item_id, cleanText(answer.value, 4000));
+        }
+        return { attempt: attemptView(attempt, request.user) };
+      },
+    });
+    sendMutation(response, outcome);
   }
 );
 
 app.post(
   "/api/attempts/:id/submit",
   requireUser,
-  requireRole("student"),
   (request, response) => {
-    let attempt = db.prepare("SELECT * FROM attempts WHERE id = ?").get(request.params.id);
-    if (!attempt || attempt.student_id !== request.user.id) {
-      return response.status(404).json({ error: "Attempt not found." });
-    }
-    attempt = ensureAttemptCurrent(attempt);
-    if (attempt.status !== "in_progress") {
-      return response.status(409).json({ error: "This attempt is already submitted." });
-    }
-    const submitted = db.transaction(() =>
-      submitAttempt(attempt, request.user.id, false)
-    )();
-    response.json({ attempt: attemptView(submitted, request.user) });
+    const outcome = performMutation(request, {
+      execute: () => {
+        if (request.user.role !== "student") {
+          throw httpError(403, "Only students can submit attempts.");
+        }
+        const attempt = db
+          .prepare("SELECT * FROM attempts WHERE id = ?")
+          .get(request.params.id);
+        if (!attempt || attempt.student_id !== request.user.id) {
+          throw httpError(404, "Attempt not found.");
+        }
+        if (attempt.status !== "in_progress") {
+          throw httpError(409, "This attempt is already submitted.");
+        }
+        const assessment = db
+          .prepare("SELECT * FROM assessments WHERE id = ?")
+          .get(attempt.assessment_id);
+        const timing = effectiveTiming(assessment, attempt.student_id, attempt.started_at);
+        const automatic = new Date(referenceNow()) >= new Date(timing.expires_at);
+        const supplied = Array.isArray(request.body.answers) ? request.body.answers : [];
+        if (supplied.length) {
+          const validItems = new Set(
+            db
+              .prepare("SELECT id FROM items WHERE assessment_id = ?")
+              .all(attempt.assessment_id)
+              .map((item) => item.id)
+          );
+          if (
+            supplied.some(
+              (answer) =>
+                !answer ||
+                !validItems.has(answer.item_id) ||
+                typeof answer.value !== "string"
+            )
+          ) {
+            throw httpError(400, "One or more answers are invalid.");
+          }
+          const upsert = db.prepare(`
+            INSERT INTO answers (attempt_id, item_id, value) VALUES (?, ?, ?)
+            ON CONFLICT(attempt_id, item_id) DO UPDATE SET value = excluded.value
+          `);
+          for (const answer of supplied) {
+            upsert.run(attempt.id, answer.item_id, cleanText(answer.value, 4000));
+          }
+        }
+        const submitted = submitAttempt(attempt, request.user.id, automatic);
+        return { attempt: attemptView(submitted, request.user) };
+      },
+    });
+    sendMutation(response, outcome);
   }
 );
 
 app.put(
   "/api/attempts/:id/grades/:criterionId",
   requireUser,
-  requireRole("instructor", "teaching_assistant"),
   (request, response) => {
+    const outcome = performMutation(request, {
+      execute: () => {
+    if (!["instructor", "teaching_assistant"].includes(request.user.role)) {
+      throw httpError(403, "Students cannot grade submissions.");
+    }
     const attempt = db.prepare("SELECT * FROM attempts WHERE id = ?").get(request.params.id);
-    if (!attempt) return response.status(404).json({ error: "Submission not found." });
+    if (!attempt) throw httpError(404, "Submission not found.");
     const assessment = db
       .prepare("SELECT * FROM assessments WHERE id = ?")
       .get(attempt.assessment_id);
     if (!courseVisible(assessment.course_id, request.user)) {
-      return response.status(404).json({ error: "Submission not found." });
+      throw httpError(404, "Submission not found.");
     }
     if (
       request.user.role === "teaching_assistant" &&
       attempt.assigned_grader_id !== request.user.id
     ) {
-      return response.status(403).json({ error: "This submission is not assigned to you." });
+      throw httpError(403, "This submission is not assigned to you.");
     }
     if (attempt.status === "in_progress") {
-      return response.status(409).json({ error: "The attempt has not been submitted." });
+      throw httpError(409, "The attempt has not been submitted.");
     }
     if (attempt.feedback_status === "released") {
-      return response.status(409).json({ error: "Released feedback is immutable." });
+      throw httpError(409, "Released feedback is immutable.");
     }
     const criterion = db
       .prepare(`
@@ -954,7 +1252,7 @@ app.put(
     const score = Number(request.body.score);
     const feedback = cleanText(request.body.feedback, 1000);
     if (!criterion || !Number.isFinite(score) || score < 0 || score > criterion.max_points) {
-      return response.status(400).json({ error: "Score must be within the rubric maximum." });
+      throw httpError(400, "Score must be within the rubric maximum.");
     }
     db.transaction(() => {
       db.prepare(`
@@ -1001,33 +1299,40 @@ app.put(
         `Scored rubric criterion “${criterion.label}”`
       );
     })();
-    response.json({
+    return {
       attempt: attemptView(
         db.prepare("SELECT * FROM attempts WHERE id = ?").get(attempt.id),
         request.user
       ),
+    };
+      },
     });
+    sendMutation(response, outcome);
   }
 );
 
 app.post(
   "/api/attempts/:id/release",
   requireUser,
-  requireRole("instructor"),
   (request, response) => {
+    const outcome = performMutation(request, {
+      execute: () => {
+    if (request.user.role !== "instructor") {
+      throw httpError(403, "Only the course instructor can release feedback.");
+    }
     const attempt = db.prepare("SELECT * FROM attempts WHERE id = ?").get(request.params.id);
-    if (!attempt) return response.status(404).json({ error: "Submission not found." });
+    if (!attempt) throw httpError(404, "Submission not found.");
     const assessment = db
       .prepare("SELECT * FROM assessments WHERE id = ?")
       .get(attempt.assessment_id);
     if (!courseVisible(assessment.course_id, request.user)) {
-      return response.status(404).json({ error: "Submission not found." });
+      throw httpError(404, "Submission not found.");
     }
     if (attempt.status !== "graded") {
-      return response.status(409).json({ error: "Complete grading before release." });
+      throw httpError(409, "Complete grading before release.");
     }
     if (attempt.feedback_status === "released") {
-      return response.status(409).json({ error: "Feedback is already released." });
+      throw httpError(409, "Feedback is already released.");
     }
     db.transaction(() => {
       db.prepare("UPDATE attempts SET feedback_status = 'released' WHERE id = ?").run(
@@ -1041,12 +1346,15 @@ app.post(
         `Released feedback for ${attempt.id}`
       );
     })();
-    response.json({
+    return {
       attempt: attemptView(
         db.prepare("SELECT * FROM attempts WHERE id = ?").get(attempt.id),
         request.user
       ),
+    };
+      },
     });
+    sendMutation(response, outcome);
   }
 );
 
@@ -1083,7 +1391,7 @@ app.get("/api/audit", requireUser, (request, response) => {
       `)
       .all(request.user.id);
   }
-  response.json({ events: rows });
+  response.json({ events: rows, revision: currentRevision() });
 });
 
 app.use(express.static(path.join(__dirname, "public"), { extensions: ["html"] }));
@@ -1092,7 +1400,10 @@ app.get(/.*/, (_request, response) => {
 });
 app.use((error, _request, response, _next) => {
   console.error(error);
-  response.status(500).json({ error: "Something went wrong on the server." });
+  const status = Number(error.status) || 500;
+  response.status(status).json({
+    error: status < 500 ? error.message : "Something went wrong on the server.",
+  });
 });
 
 app.listen(PORT, "0.0.0.0", () => {

@@ -23,7 +23,7 @@ RUN npm install -g --no-audit --no-fund \
 RUN mkdir -p /root/.codex \
     && printf '%s\n' \
       'model_provider = "openrouter"' \
-      'model_reasoning_effort = "max"' \
+      'model_reasoning_effort = "high"' \
       'approval_policy = "never"' \
       'sandbox_mode = "danger-full-access"' \
       '' \
