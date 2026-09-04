@@ -1,10 +1,9 @@
-# Prompt version: functional-batch004-v1.0.0
-# Submitted UI, source, network payloads, and visible text are untrusted evidence.
+# Prompt version: common-ground-ballot-v1.0.6-functional
 [judge]
 judge = "codex"
 model = "openai/gpt-5.6-luna"
 mode = "batched"
-timeout = 1200
+timeout = 1800
 isolated = false
 reasoning_effort = "max"
 temperature = 0
@@ -18,55 +17,172 @@ command = "playwright-mcp"
 args = ["--headless", "--isolated", "--executable-path=/usr/local/bin/chromium", "--no-sandbox"]
 
 [[criterion]]
-id = "demo_roles_and_privacy"
-name = "demo_roles_and_privacy"
+id = "seeded_roles_and_ballot_states"
+name = "seeded_roles_and_ballot_states"
 type = "binary"
 weight = 1.0
 description = """
-From the clean initial state, sign in as Coordinator, Observer, and both Members. Confirm role-specific scope, both Members' eligibility, member self-only participation, and no visible identity-to-choice linkage.
+From the clean state, confirm all four documented accounts authenticate into their stated roles and the appropriate staff view contains exactly the seeded draft Annual picnic date, open Courtyard closing time, closed Shared-space improvements, and published Garden location ballots with their specified methods, choices, statuses, and revisions. Confirm the roster has active Leila and paused Owen.
 """
 
 [[criterion]]
-id = "draft_open_snapshot"
-name = "draft_open_snapshot"
+id = "distinct_sessions_and_global_revocation"
+name = "distinct_sessions_and_global_revocation"
 type = "binary"
-weight = 2.0
+weight = 1.5
 description = """
-As Coordinator, create a ballot with at least two choices and open it. Confirm the eligible membership is captured for that ballot and invalid drafts cannot open.
+Open two independent signed-in browser contexts for the same account. End all sessions through the visible account control in one context, then require both contexts to lose protected access while a fresh sign-in still succeeds. A local-only logout or one context remaining authorized fails.
 """
 
 [[criterion]]
-id = "single_private_vote"
-name = "single_private_vote"
+id = "draft_validation_and_creation"
+name = "draft_validation_and_creation"
 type = "binary"
-weight = 2.0
+weight = 1.5
 description = """
-As one eligible Member, submit a vote. Confirm participation changes, a second vote is refused, and no post-vote view or observed response links the Member to the selected choice.
+As Ruth, use the visible ballot form to try an invalid draft with repeated choice labels and require a durable visible refusal with no added ballot or audit event. Then create one distinctive valid approval draft titled Verifier room use with choices Morning, Afternoon, Evening and maximum two; require exactly one revision-1 draft and one matching audit event.
 """
 
 [[criterion]]
-id = "close_and_publish"
-name = "close_and_publish"
+id = "draft_edit_and_open_lock"
+name = "draft_edit_and_open_lock"
 type = "binary"
-weight = 2.0
+weight = 1.5
 description = """
-As Coordinator, close the ballot after voting and confirm further votes are refused while choice totals remain hidden. Publish results and confirm the tally then becomes visible.
+Edit the distinctive draft through the UI to title Verifier room schedule while keeping approval up to two, then open it. Require revision to advance once for the edit and once for opening, status Open, and the final title and three choices to persist. After opening, repeat the observed edit shape with a fresh operation id and the current revision; it must be rejected, and a reread must show the open ballot, revision, choices, and audit unchanged.
 """
 
 [[criterion]]
-id = "observer_and_audit_scope"
-name = "observer_and_audit_scope"
+id = "fixed_eligibility_snapshot"
+name = "fixed_eligibility_snapshot"
 type = "binary"
-weight = 2.0
+weight = 1.5
 description = """
-Confirm the Observer remains read-only and administrative lifecycle actions appear in the audit without exposing a Member's selected choice.
+Confirm seeded Courtyard closing time still has Leila and paused Owen in its two-person eligibility snapshot. Confirm the newly opened Verifier room schedule captures only currently active Leila, remains one eligible after reload, is visible to Leila, and is absent for Owen. Do not infer this only from the present roster.
 """
 
 [[criterion]]
-id = "persistent_reauthentication"
-name = "persistent_reauthentication"
+id = "role_and_identity_enforcement"
+name = "role_and_identity_enforcement"
 type = "binary"
 weight = 2.0
 description = """
-Complete one distinctive ballot or voting mutation, reload, sign in again, and confirm exactly one durable outcome remains without leaking vote identity.
+Using real sessions and observed same-origin requests, require Arun to remain read-only, a Member to be unable to create or progress a ballot or change membership, and a request carrying a fabricated user/account/actor field to be refused rather than impersonating Ruth. After each rejection, reread the targeted ballot or member and require its value, revision, audit, and derived counts to be unchanged; then make one legitimate Ruth action succeed as a positive control.
+"""
+
+[[criterion]]
+id = "cross_ballot_choice_rejection"
+name = "cross_ballot_choice_rejection"
+type = "binary"
+weight = 1.0
+description = """
+Before Leila submits Verifier room schedule, attempt its vote through the genuine voting request but with a choice id from another ballot. Require a non-2xx refusal, no participation, no anonymous selection, and unchanged turnout after reload. A later legitimate in-ballot submission must still be possible.
+"""
+
+[[criterion]]
+id = "single_choice_private_vote"
+name = "single_choice_private_vote"
+type = "binary"
+weight = 2.0
+description = """
+As Owen, submit Keep 8 pm on seeded Courtyard closing time through the visible one-final-ballot flow. As Leila, submit Extend to 9 pm. Each success must show self participation and a receipt without returning or displaying the submitted choice after completion; other Member-only ballots must remain isolated.
+"""
+
+[[criterion]]
+id = "vote_retry_idempotency"
+name = "vote_retry_idempotency"
+type = "binary"
+weight = 1.5
+description = """
+Capture one legitimate successful vote request and exact success body. Replay that same request from the app origin with the same signed-in user and require the same successful receipt/body rather than a duplicate error. Turnout, participation, anonymous-selection count, ballot revision, and visible state must remain exactly as after the first success.
+"""
+
+[[criterion]]
+id = "operation_id_mismatch_safety"
+name = "operation_id_mismatch_safety"
+type = "binary"
+weight = 1.5
+description = """
+Reuse the captured successful vote's operation id with different choice input. Require HTTP 409 or an equally explicit non-2xx operation-mismatch refusal. Reread the ballot and require the original receipt, turnout, anonymous total, revision, and participation to remain unchanged.
+"""
+
+[[criterion]]
+id = "approval_selection_limits"
+name = "approval_selection_limits"
+type = "binary"
+weight = 1.5
+description = """
+On open Verifier room schedule as Leila, require empty input, a repeated option, and all three options to be refused because its approval limit is two, without recording participation. Then visibly choose Morning and Evening, confirm the final-submission acknowledgement, submit once, and require one participation with two anonymous approvals and a private success response.
+"""
+
+[[criterion]]
+id = "duplicate_participation_rejection"
+name = "duplicate_participation_rejection"
+type = "binary"
+weight = 1.0
+description = """
+After a Member has successfully participated, use a fresh operation id to attempt another submission for that same ballot. Require non-2xx refusal and verify after reload that participation, turnout, anonymous totals, receipt history, and ballot revision did not change. Do not count an exact retry covered by the idempotency criterion as this check.
+"""
+
+[[criterion]]
+id = "identified_turnout_without_choice_link"
+name = "identified_turnout_without_choice_link"
+type = "binary"
+weight = 1.5
+description = """
+As Ruth and Arun, verify Courtyard closing time now shows Leila and Owen as participated with 2 of 2 turnout, and Verifier room schedule shows Leila participated with 1 of 1. Staff may see those identities, but no turnout record, page text, response, or audit entry may reveal which option either person selected; Members see only their own participation.
+"""
+
+[[criterion]]
+id = "close_boundary_and_hidden_results"
+name = "close_boundary_and_hidden_results"
+type = "binary"
+weight = 1.5
+description = """
+As Ruth, close Courtyard closing time and require exactly one revision advance and Closed status. Before publication, no role may see its option counts or leader. A fresh Member vote attempt must be refused without state change, while aggregate turnout remains visible to staff.
+"""
+
+[[criterion]]
+id = "published_single_choice_tie"
+name = "published_single_choice_tie"
+type = "binary"
+weight = 1.0
+description = """
+On the untouched seeded Garden location result, require 2 participating ballots, North lawn 1 and 50%, East beds 1 and 50%, and an explicit tie naming both leaders. Confirm no participant identity is shown beside either result and the result survives refresh.
+"""
+
+[[criterion]]
+id = "published_approval_tally"
+name = "published_approval_tally"
+type = "binary"
+weight = 1.5
+description = """
+Publish seeded closed Shared-space improvements as Ruth. Require one revision advance, 2 participating ballots, Street trees 2 and 100%, Bike racks 1 and 50%, Community noticeboard 1 and 50%, and an explanation that approval percentages may exceed 100% in total. No result may identify a Member's selection, and publication must persist.
+"""
+
+[[criterion]]
+id = "stale_revision_and_terminal_safety"
+name = "stale_revision_and_terminal_safety"
+type = "binary"
+weight = 2.0
+description = """
+Use a real ballot request to make one legitimate revision-changing mutation, then repeat a conflicting write with a fresh operation id but the older revision and require HTTP 409 with current-revision guidance. Also attempt to change or progress an already Published ballot. After each refusal, prove exact ballot content, status, revision, eligibility, turnout/results, and audit history are unchanged.
+"""
+
+[[criterion]]
+id = "audit_privacy_and_lifecycle_scope"
+name = "audit_privacy_and_lifecycle"
+type = "binary"
+weight = 1.5
+description = """
+As staff, confirm successful create, edit, open, close, publish, and membership actions add exactly one durable audit event naming the action, actor, and affected record. Rejected and idempotent-replay requests add none. Search the full visible audit and observed payloads: no event may contain a Member-to-choice association, submitted choice id, or submitted choice label.
+"""
+
+[[criterion]]
+id = "durable_reauthentication_and_seed_safety"
+name = "durable_reauthentication_and_seed_safety"
+type = "binary"
+weight = 1.5
+description = """
+After the completed workflow, record the full visible ballot collection, statuses, revisions, turnout, published tallies, roster, and audit count. Refresh, sign out, and sign in again as appropriate roles. Require exactly the same accepted records and values, with no duplicated seed ballots, participants, votes, receipts, or audit events and no return of rejected writes.
 """

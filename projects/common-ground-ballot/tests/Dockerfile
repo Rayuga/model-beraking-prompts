@@ -1,6 +1,9 @@
 FROM node:22-bookworm-slim AS node-runtime
 FROM python:3.12-slim
 
+LABEL io.turing.task="common-ground-ballot" \
+      io.turing.task.version="1.0.6"
+
 COPY --from=node-runtime /usr/local /usr/local
 
 ENV DEBIAN_FRONTEND=noninteractive \
