@@ -58,8 +58,10 @@ function admitOffer(ctx) {
   const managers = (ctx && ctx.managers) || [];
 
   if (panel.length < MIN_PANEL) {
+    const managerOnly = panel.length > 0 && panel.every((p) => managers.includes(p));
     return { ok: false, code: 409,
-      error: `an interview panel is at least ${MIN_PANEL} people; this one is ${panel.length}` };
+      error: `an interview panel is at least ${MIN_PANEL} people; this one is ${panel.length}`
+        + (managerOnly ? ' and the hiring manager cannot be the whole panel' : '') };
   }
   const nonManagers = panel.filter((p) => !managers.includes(p));
   if (nonManagers.length === 0) {
@@ -132,7 +134,7 @@ function admitCandidate(candidates, roleCode, name) {
  * makes the whole stage machine advisory.
  */
 const CAN = {
-  'hiring manager': ['move', 'add', 'panel', 'note', 'score'],
+  'hiring manager': ['move', 'note', 'score'],
   'coordinator':    ['add', 'panel', 'note'],
   'panel':          ['score', 'note'],
 };

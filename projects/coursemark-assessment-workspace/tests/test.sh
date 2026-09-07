@@ -114,7 +114,7 @@ if [[ "$READY" != "1" ]]; then
   exit 0
 fi
 
-if ! timeout --signal=TERM --kill-after=30s 6300 \
+if ! timeout --signal=TERM --kill-after=30s 12000 \
   rewardkit --max-concurrent-agent 1 /tests >"$LOG_DIR/rewardkit.log" 2>&1; then
   write_zero_reward
   exit 0
@@ -139,7 +139,7 @@ for key in ("render", "constraints", "functional", "polish"):
         raise ValueError(f"invalid RewardKit dimension {key}={value!r}")
     data[key] = value
 
-if data["render"] <= 0.0 or data["constraints"] <= 0.0:
+if data["render"] < 1.0 or data["constraints"] < 1.0:
     reward = 0.0
 else:
     reward = 0.6 * data["functional"] + 0.4 * data["polish"]

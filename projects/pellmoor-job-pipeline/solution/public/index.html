@@ -17,6 +17,7 @@
     --shadow:0 1px 2px rgba(0,0,0,.5), 0 14px 34px rgba(0,0,0,.4);
   }
   *{box-sizing:border-box}
+  [hidden]{display:none!important}
   body{margin:0;background:var(--bg);color:var(--ink);
     font:15px/1.55 ui-sans-serif,system-ui,"Segoe UI",Inter,Helvetica,Arial,sans-serif}
   header.top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:12px 20px;
@@ -73,7 +74,7 @@
     box-shadow:var(--shadow);padding:18px;overflow:auto;z-index:5}
   #panel:empty{display:none}
   #panel header{display:flex;align-items:center;gap:10px}
-  #panel h4{margin:20px 0 8px;font-size:12.5px;text-transform:uppercase;
+  #panel h3,#panel h4{margin:20px 0 8px;font-size:12.5px;text-transform:uppercase;
     letter-spacing:.05em;color:var(--muted)}
   #close{border:0;background:transparent;font-size:22px;line-height:1;padding:2px 8px}
   .moves{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
@@ -85,7 +86,20 @@
     font-size:14px}
   ol.notes b{display:block;font-size:12.5px;color:var(--muted);font-weight:600}
   .addrow{display:flex;gap:8px;margin-top:10px}
+  .addrow label{display:flex;flex:1;gap:4px;flex-direction:column;font-size:12px;color:var(--muted)}
   .addrow input,.addrow select{flex:1;min-width:0}
+  .eyebrow{margin:0;color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.08em}
+  .history{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 16px}
+  .history span{border:1px solid var(--line);border-radius:999px;padding:3px 8px;font-size:12px}
+  .history span[aria-current]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+  .panel-list,.activity{list-style:none;padding:0;margin:0}
+  .panel-list li{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding:8px 0}
+  .panel-list span,.panel-list small{display:block}.panel-list small{color:var(--muted)}
+  .activity li{border-left:3px solid var(--line);padding:5px 0 5px 10px;margin:8px 0;font-size:13px}
+  time{display:block;color:var(--muted);font-size:11px}
+  #revision{font:700 12px/1 ui-monospace,monospace;color:var(--muted)}
+  #progress{min-width:72px;color:var(--muted);font-size:12px}
+  body[data-busy="true"]{cursor:progress}
   #toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,14px);
     background:var(--panel);border:1px solid var(--bad);border-left:4px solid var(--bad);
     border-radius:10px;padding:10px 15px;box-shadow:var(--shadow);max-width:70ch;
@@ -100,6 +114,13 @@
   #signin input{width:100%}
   #signin button{width:100%;margin-top:6px}
   .hint{font-size:12px;color:var(--muted);margin-top:16px}
+  @media(max-width:520px){
+    header.top{padding:10px 12px}.cols main{padding:14px 12px 48px}nav#roles{padding:10px 12px;flex-wrap:nowrap;overflow-x:auto}
+    nav#roles button{min-width:165px}.card{padding:12px}#board{grid-template-columns:minmax(0,1fr)}
+    #panel{padding:14px}.addrow{align-items:stretch;flex-direction:column}.figure{font-size:11px}
+    button,input,select{min-height:44px}#close{min-width:44px;min-height:44px}
+  }
+  @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important}}
 </style>
 
 <div id="signin" hidden>
@@ -107,9 +128,9 @@
     <h1>Pellmoor hiring</h1>
     <p class="sub">The pipeline has people's names in it, so it needs a sign-in.</p>
     <label><span class="lab">Email</span>
-      <input id="email" type="email" value="hiring@pellmoor.test"></label>
+      <input id="email" type="email" value="hiring@pellmoor.test" autocomplete="username"></label>
     <label><span class="lab">Password</span>
-      <input id="password" type="password"></label>
+      <input id="password" type="password" autocomplete="current-password"></label>
     <button class="primary">Sign in</button>
     <p class="hint">Demo sign-ins, password <code>password123</code><br>
       hiring@ · panel1@ · panel2@ · coord@pellmoor.test</p>
@@ -121,6 +142,7 @@
     <h1>Pellmoor hiring</h1>
     <span class="sub" id="whoami" style="margin:0"></span>
     <span class="spacer"></span>
+    <span id="progress" role="status" aria-live="polite"></span>
     <button id="theme">Theme</button>
     <button id="signout">Sign out</button>
   </header>
@@ -128,13 +150,17 @@
     <nav id="roles" aria-label="Vacancies"></nav>
     <main>
       <h2 id="role-title"></h2>
-      <p class="sub" id="role-sub"></p>
+      <p class="sub"><span id="role-sub"></span> <span id="revision"></span></p>
+      <form id="addcandidate" class="card addrow" hidden>
+        <label><span>Candidate name</span><input id="candidate-name" minlength="2" required></label>
+        <button class="primary">Add candidate</button>
+      </form>
       <div class="card"><div id="funnel"></div></div>
       <div id="board"></div>
     </main>
   </div>
 </div>
 
-<aside id="panel" aria-live="polite"></aside>
+<aside id="panel" role="dialog" aria-modal="true" aria-label="Candidate details" aria-live="polite"></aside>
 <div id="toast" role="status" aria-live="polite"></div>
 <script src="/app.js"></script>

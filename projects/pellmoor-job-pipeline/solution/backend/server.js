@@ -1,13 +1,10 @@
 'use strict';
-// Pellmoor hiring console. One Express process: the JSON API and the
-// esbuild-bundled browser side. Every rule in rules.js runs here before a write,
-// and the funnel is recomputed on every read rather than stored.
 
-const express = require('express');
-const Database = require('better-sqlite3');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const express = require('express');
+const Database = require('better-sqlite3');
 const R = require('./rules');
 
 const ROOT = path.resolve(__dirname, '..');
@@ -17,245 +14,464 @@ const PORT = Number(process.env.PORT || 3000);
 
 const db = new Database(DB_PATH);
 db.pragma('journal_mode = WAL');
+db.pragma('foreign_keys = ON');
 db.exec(`
 CREATE TABLE IF NOT EXISTS people (
-  email TEXT PRIMARY KEY, name TEXT NOT NULL, role TEXT NOT NULL);
+  email TEXT PRIMARY KEY, name TEXT NOT NULL, role TEXT NOT NULL,
+  password_salt TEXT NOT NULL, password_hash TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS roles (
-  code TEXT PRIMARY KEY, title TEXT NOT NULL, team TEXT NOT NULL, openings INTEGER NOT NULL);
+  code TEXT PRIMARY KEY, title TEXT NOT NULL, team TEXT NOT NULL,
+  openings INTEGER NOT NULL, revision INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE IF NOT EXISTS candidates (
-  id TEXT PRIMARY KEY, role TEXT NOT NULL, name TEXT NOT NULL,
-  stage TEXT NOT NULL, history TEXT NOT NULL, applied_days INTEGER NOT NULL);
+  id TEXT PRIMARY KEY, role TEXT NOT NULL REFERENCES roles(code), name TEXT NOT NULL,
+  stage TEXT NOT NULL, history TEXT NOT NULL, applied_days INTEGER NOT NULL,
+  created_by TEXT NOT NULL REFERENCES people(email), created_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS panels (
-  candidate TEXT NOT NULL, member TEXT NOT NULL, PRIMARY KEY (candidate, member));
+  candidate TEXT NOT NULL REFERENCES candidates(id),
+  member TEXT NOT NULL REFERENCES people(email), PRIMARY KEY (candidate, member));
 CREATE TABLE IF NOT EXISTS scores (
-  candidate TEXT NOT NULL, panel_member TEXT NOT NULL, score INTEGER NOT NULL,
+  candidate TEXT NOT NULL REFERENCES candidates(id),
+  panel_member TEXT NOT NULL REFERENCES people(email), score INTEGER NOT NULL,
   PRIMARY KEY (candidate, panel_member));
 CREATE TABLE IF NOT EXISTS notes (
-  id INTEGER PRIMARY KEY AUTOINCREMENT, candidate TEXT NOT NULL,
-  author TEXT NOT NULL, at INTEGER NOT NULL, body TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS sessions (token TEXT PRIMARY KEY, email TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT NOT NULL);
+  id INTEGER PRIMARY KEY AUTOINCREMENT, candidate TEXT NOT NULL REFERENCES candidates(id),
+  author TEXT NOT NULL REFERENCES people(email), at TEXT NOT NULL, body TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS activity (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, role TEXT NOT NULL REFERENCES roles(code),
+  candidate TEXT NOT NULL REFERENCES candidates(id), kind TEXT NOT NULL,
+  actor TEXT NOT NULL REFERENCES people(email), at TEXT NOT NULL, details TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS sessions (
+  token TEXT PRIMARY KEY, email TEXT NOT NULL REFERENCES people(email), created_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS mutation_receipts (
+  actor TEXT NOT NULL REFERENCES people(email), operation_id TEXT NOT NULL,
+  fingerprint TEXT NOT NULL, status_code INTEGER NOT NULL, response_json TEXT NOT NULL,
+  created_at TEXT NOT NULL, PRIMARY KEY (actor, operation_id));
+CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_candidates_role ON candidates(role);
+CREATE INDEX IF NOT EXISTS idx_activity_candidate ON activity(candidate, id);
+CREATE INDEX IF NOT EXISTS idx_sessions_email ON sessions(email);
 `);
 
-let PASSWORD = 'password123';
-let CLOCK = 0;
+function passwordRecord(password) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  return { salt, hash: crypto.scryptSync(password, salt, 64).toString('hex') };
+}
 
-function seed() {
-  const row = db.prepare("SELECT v FROM meta WHERE k='pw'").get();
-  if (row) {
-    PASSWORD = row.v;
-    CLOCK = Number(db.prepare("SELECT v FROM meta WHERE k='clock'").get().v);
-    return;
-  }
-  const s = JSON.parse(fs.readFileSync(SEED, 'utf8'));
-  PASSWORD = s.seed_password;
-  CLOCK = Date.parse(s.clock);
+function passwordMatches(password, salt, expected) {
+  const actual = crypto.scryptSync(password, salt, 64);
+  const stored = Buffer.from(expected, 'hex');
+  return actual.length === stored.length && crypto.timingSafeEqual(actual, stored);
+}
+
+function bootstrap() {
+  if (db.prepare('SELECT COUNT(*) AS count FROM people').get().count) return;
+  const seed = JSON.parse(fs.readFileSync(SEED, 'utf8'));
   db.transaction(() => {
-    for (const p of s.people) {
-      db.prepare('INSERT INTO people (email,name,role) VALUES (?,?,?)')
-        .run(p.email, p.name, p.role);
+    db.prepare("INSERT INTO meta (key,value) VALUES ('clock',?)")
+      .run(String(Date.parse(seed.clock)));
+    const addPerson = db.prepare(`INSERT INTO people
+      (email,name,role,password_salt,password_hash) VALUES (?,?,?,?,?)`);
+    for (const person of seed.people) {
+      const password = passwordRecord(seed.seed_password);
+      addPerson.run(person.email, person.name, person.role, password.salt, password.hash);
     }
-    for (const r of s.roles) {
-      db.prepare('INSERT INTO roles (code,title,team,openings) VALUES (?,?,?,?)')
-        .run(r.code, r.title, r.team, r.openings);
+    const addRole = db.prepare(`INSERT INTO roles
+      (code,title,team,openings,revision) VALUES (?,?,?,?,0)`);
+    for (const role of seed.roles) {
+      addRole.run(role.code, role.title, role.team, role.openings);
     }
-    for (const c of s.candidates) {
-      db.prepare(`INSERT INTO candidates (id,role,name,stage,history,applied_days)
-        VALUES (?,?,?,?,?,?)`).run(
-        c.id, c.role, c.name, c.stage, JSON.stringify(c.history), c.days_since_applied);
+    const addCandidate = db.prepare(`INSERT INTO candidates
+      (id,role,name,stage,history,applied_days,created_by,created_at)
+      VALUES (?,?,?,?,?,?,?,?)`);
+    for (const candidate of seed.candidates) {
+      addCandidate.run(candidate.id, candidate.role, candidate.name, candidate.stage,
+        JSON.stringify(candidate.history), candidate.days_since_applied,
+        'hiring@pellmoor.test', seed.clock);
     }
-    for (const p of s.panels) {
-      for (const m of p.members) {
-        db.prepare('INSERT INTO panels (candidate,member) VALUES (?,?)').run(p.candidate, m);
-      }
+    const addPanel = db.prepare('INSERT INTO panels (candidate,member) VALUES (?,?)');
+    for (const panel of seed.panels) {
+      for (const member of panel.members) addPanel.run(panel.candidate, member);
     }
-    for (const sc of s.scores) {
-      db.prepare('INSERT INTO scores (candidate,panel_member,score) VALUES (?,?,?)')
-        .run(sc.candidate, sc.panel_member, sc.score);
+    const addScore = db.prepare(`INSERT INTO scores
+      (candidate,panel_member,score) VALUES (?,?,?)`);
+    for (const score of seed.scores) {
+      addScore.run(score.candidate, score.panel_member, score.score);
     }
-    db.prepare("INSERT INTO meta (k,v) VALUES ('pw',?)").run(PASSWORD);
-    db.prepare("INSERT INTO meta (k,v) VALUES ('clock',?)").run(String(CLOCK));
   })();
 }
-seed();
+bootstrap();
 
-const candidates = () => db.prepare('SELECT * FROM candidates').all()
-  .map((c) => ({ ...c, history: JSON.parse(c.history) }));
-const panelOf = (id) => db.prepare('SELECT member FROM panels WHERE candidate=?')
-  .all(id).map((r) => r.member);
-const scoresOf = (id) => db.prepare('SELECT * FROM scores WHERE candidate=?').all(id);
-const managers = () => db.prepare("SELECT email FROM people WHERE role='hiring manager'")
-  .all().map((r) => r.email);
+function nextTime() {
+  const now = Number(db.prepare("SELECT value FROM meta WHERE key='clock'").get().value) + 1000;
+  db.prepare("UPDATE meta SET value=? WHERE key='clock'").run(String(now));
+  return new Date(now).toISOString();
+}
+
+function currentRevision(role) {
+  return Number(db.prepare('SELECT revision FROM roles WHERE code=?').get(role)?.revision ?? -1);
+}
+
+function incrementRevision(role) {
+  db.prepare('UPDATE roles SET revision=revision+1 WHERE code=?').run(role);
+  return currentRevision(role);
+}
+
+function candidateRow(id) {
+  const row = db.prepare('SELECT * FROM candidates WHERE id=?').get(id);
+  return row ? { ...row, history: JSON.parse(row.history) } : null;
+}
+
+function candidates() {
+  return db.prepare('SELECT * FROM candidates ORDER BY id').all()
+    .map((row) => ({ ...row, history: JSON.parse(row.history) }));
+}
+
+function panelOf(id) {
+  return db.prepare('SELECT member FROM panels WHERE candidate=? ORDER BY member')
+    .all(id).map((row) => row.member);
+}
+
+function scoresOf(id) {
+  return db.prepare(`SELECT panel_member,score FROM scores
+    WHERE candidate=? ORDER BY panel_member`).all(id);
+}
+
+function managers() {
+  return db.prepare("SELECT email FROM people WHERE role='hiring manager'")
+    .all().map((row) => row.email);
+}
+
+function roleSnapshot(code) {
+  const role = db.prepare('SELECT code,title,team,openings FROM roles WHERE code=?').get(code);
+  if (!role) return null;
+  const all = candidates();
+  const mine = all.filter((candidate) => candidate.role === code);
+  return {
+    role,
+    revision: currentRevision(code),
+    funnel: R.funnel(all, code),
+    candidates: mine.map((candidate) => ({
+      ...candidate,
+      panel: panelOf(candidate.id),
+      scores: scoresOf(candidate.id),
+      notes: db.prepare('SELECT COUNT(*) AS count FROM notes WHERE candidate=?')
+        .get(candidate.id).count,
+      activity: db.prepare('SELECT COUNT(*) AS count FROM activity WHERE candidate=?')
+        .get(candidate.id).count,
+    })),
+  };
+}
+
+function candidateSnapshot(id) {
+  const candidate = candidateRow(id);
+  if (!candidate) return null;
+  return {
+    candidate,
+    revision: currentRevision(candidate.role),
+    panel: panelOf(id),
+    scores: scoresOf(id),
+    notes: db.prepare(`SELECT n.*,p.name AS author_name FROM notes n
+      JOIN people p ON p.email=n.author WHERE n.candidate=? ORDER BY n.id`).all(id),
+    activity: db.prepare(`SELECT a.*,p.name AS actor_name FROM activity a
+      JOIN people p ON p.email=a.actor WHERE a.candidate=? ORDER BY a.id DESC`).all(id)
+      .map((event) => ({ ...event, details: JSON.parse(event.details) })),
+    people: db.prepare('SELECT email,name,role FROM people ORDER BY email').all(),
+  };
+}
+
+function currentUser(request) {
+  const match = /^Bearer\s+([A-Za-z0-9_-]{32,180})$/i.exec(
+    String(request.headers.authorization || ''));
+  if (!match) return null;
+  return db.prepare(`SELECT p.email,p.name,p.role,s.token FROM sessions s
+    JOIN people p ON p.email=s.email WHERE s.token=?`).get(match[1]) || null;
+}
+
+function requireUser(request, response, next) {
+  const person = currentUser(request);
+  if (!person) return response.status(401).json({ error: 'Please sign in.' });
+  request.person = person;
+  next();
+}
+
+function httpError(status, message) {
+  return Object.assign(new Error(message), { status });
+}
+
+function requireKeys(body, allowed) {
+  const keys = Object.keys(body || {});
+  if (keys.some((key) => !allowed.includes(key))) {
+    throw httpError(400, 'The request contains fields this action does not accept.');
+  }
+}
+
+function mutationMetadata(request) {
+  const operationId = request.body?.operation_id;
+  const expectedRevision = request.body?.expected_revision;
+  if (typeof operationId !== 'string' || !/^[A-Za-z0-9_-]{20,120}$/.test(operationId)) {
+    throw httpError(400, 'A valid operation identifier is required.');
+  }
+  if (typeof expectedRevision !== 'number' || !Number.isInteger(expectedRevision)
+      || expectedRevision < 0) {
+    throw httpError(400, 'A valid expected revision is required.');
+  }
+  const fingerprint = crypto.createHash('sha256').update(JSON.stringify({
+    method: request.method, path: request.path, body: request.body,
+  })).digest('hex');
+  return { operationId, expectedRevision, fingerprint };
+}
+
+function activity(role, candidate, kind, actor, details) {
+  db.prepare(`INSERT INTO activity (role,candidate,kind,actor,at,details)
+    VALUES (?,?,?,?,?,?)`).run(role, candidate, kind, actor, nextTime(), JSON.stringify(details));
+}
+
+function performMutation(request, role, execute, successStatus = 200) {
+  let metadata;
+  try {
+    metadata = mutationMetadata(request);
+  } catch (error) {
+    return { status: error.status || 400, payload: { error: error.message } };
+  }
+  const existing = db.prepare(`SELECT fingerprint,status_code,response_json
+    FROM mutation_receipts WHERE actor=? AND operation_id=?`)
+    .get(request.person.email, metadata.operationId);
+  if (existing) {
+    if (existing.fingerprint !== metadata.fingerprint) {
+      return { status: 409, payload: {
+        error: 'This operation identifier was already used for different input.',
+        revision: currentRevision(role), snapshot: roleSnapshot(role),
+      } };
+    }
+    return { status: existing.status_code, payload: JSON.parse(existing.response_json) };
+  }
+
+  return db.transaction(() => {
+    let status = successStatus;
+    let payload;
+    try {
+      const actual = currentRevision(role);
+      if (actual < 0) throw httpError(404, 'No such vacancy.');
+      if (metadata.expectedRevision !== actual) {
+        throw httpError(409, 'This vacancy changed since your view was loaded. Review it and retry.');
+      }
+      payload = execute();
+      const revision = incrementRevision(role);
+      payload = { ...payload, revision, snapshot: roleSnapshot(role) };
+    } catch (error) {
+      status = Number(error.status) || 500;
+      if (status >= 500) throw error;
+      payload = {
+        error: error.message,
+        revision: currentRevision(role),
+        snapshot: roleSnapshot(role),
+      };
+    }
+    db.prepare(`INSERT INTO mutation_receipts
+      (actor,operation_id,fingerprint,status_code,response_json,created_at)
+      VALUES (?,?,?,?,?,?)`).run(request.person.email, metadata.operationId,
+        metadata.fingerprint, status, JSON.stringify(payload), nextTime());
+    return { status, payload };
+  })();
+}
+
+function sendMutation(response, outcome) {
+  response.status(outcome.status).json(outcome.payload);
+}
 
 const app = express();
-app.use(express.json({ limit: '64kb' }));
-const fail = (res, r) => res.status(r.code).json({ error: r.error });
-
-function who(req) {
-  const m = (req.headers.cookie || '').match(/(?:^|;\s*)pm=([A-Za-z0-9_-]+)/);
-  if (!m) return null;
-  const s = db.prepare('SELECT email FROM sessions WHERE token=?').get(m[1]);
-  return s ? db.prepare('SELECT * FROM people WHERE email=?').get(s.email) : null;
-}
-const needAuth = (req, res, next) => {
-  const p = who(req);
-  if (!p) return res.status(401).json({ error: 'Please sign in.' });
-  req.person = p;
+app.disable('x-powered-by');
+app.use((_request, response, next) => {
+  response.set({
+    'Cache-Control': 'no-store',
+    'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; font-src 'self'; base-uri 'self'; form-action 'self'",
+    'Referrer-Policy': 'no-referrer',
+    'X-Content-Type-Options': 'nosniff',
+  });
   next();
-};
+});
+app.use(express.json({ limit: '128kb' }));
 
-app.get('/api/health', (_req, res) => res.json({ ok: true }));
+app.get('/api/health', (_request, response) => response.json({ ok: true }));
 
-app.post('/api/login', (req, res) => {
-  const { email, password } = req.body || {};
-  const p = db.prepare('SELECT * FROM people WHERE email=?').get(String(email || ''));
-  if (!p || password !== PASSWORD) {
-    return res.status(401).json({ error: 'That email and password do not match.' });
+app.post('/api/login', (request, response) => {
+  const email = typeof request.body?.email === 'string' ? request.body.email.trim() : '';
+  const password = typeof request.body?.password === 'string' ? request.body.password : '';
+  const person = db.prepare('SELECT * FROM people WHERE email=?').get(email);
+  if (!person || !passwordMatches(password, person.password_salt, person.password_hash)) {
+    return response.status(401).json({ error: 'That email and password do not match.' });
   }
-  const token = crypto.randomBytes(18).toString('base64url');
-  db.prepare('INSERT INTO sessions (token,email) VALUES (?,?)').run(token, p.email);
-  res.setHeader('Set-Cookie', `pm=${token}; Path=/; SameSite=Lax; HttpOnly`);
-  res.json({ person: p });
-});
-
-app.post('/api/logout', (req, res) => {
-  const m = (req.headers.cookie || '').match(/(?:^|;\s*)pm=([A-Za-z0-9_-]+)/);
-  if (m) db.prepare('DELETE FROM sessions WHERE token=?').run(m[1]);
-  res.setHeader('Set-Cookie', 'pm=; Path=/; Max-Age=0');
-  res.json({ ok: true });
-});
-
-app.get('/api/me', needAuth, (req, res) =>
-  res.json({ person: req.person, stages: R.STAGES, terminal: R.TERMINAL,
-             score_range: [R.SCORE_MIN, R.SCORE_MAX], min_panel: R.MIN_PANEL }));
-
-app.get('/api/roles', needAuth, (_req, res) => {
-  const cs = candidates();
-  res.json({
-    roles: db.prepare('SELECT * FROM roles ORDER BY code').all().map((r) => ({
-      ...r,
-      live: cs.filter((c) => c.role === r.code && !R.isTerminal(c.stage)).length,
-      total: cs.filter((c) => c.role === r.code).length,
-    })),
+  const token = crypto.randomBytes(32).toString('base64url');
+  db.prepare('INSERT INTO sessions (token,email,created_at) VALUES (?,?,?)')
+    .run(token, person.email, nextTime());
+  response.json({
+    token,
+    person: { email: person.email, name: person.name, role: person.role },
   });
 });
 
-// The funnel and the stage columns come from ONE response, so the chart and the
-// columns cannot disagree with each other.
-app.get('/api/roles/:code', needAuth, (req, res) => {
-  const role = db.prepare('SELECT * FROM roles WHERE code=?').get(req.params.code);
-  if (!role) return res.status(404).json({ error: 'no such vacancy' });
-  const cs = candidates().filter((c) => c.role === role.code);
-  res.json({
-    role,
-    funnel: R.funnel(candidates(), role.code),
-    candidates: cs.map((c) => ({
-      ...c, panel: panelOf(c.id), scores: scoresOf(c.id),
-      notes: db.prepare('SELECT COUNT(*) n FROM notes WHERE candidate=?').get(c.id).n,
-    })),
+app.post('/api/logout', requireUser, (request, response) => {
+  db.prepare('DELETE FROM sessions WHERE token=?').run(request.person.token);
+  response.json({ ok: true });
+});
+
+app.get('/api/me', requireUser, (request, response) => response.json({
+  person: { email: request.person.email, name: request.person.name, role: request.person.role },
+  stages: R.STAGES,
+  terminal: R.TERMINAL,
+  score_range: [R.SCORE_MIN, R.SCORE_MAX],
+  min_panel: R.MIN_PANEL,
+}));
+
+app.get('/api/roles', requireUser, (_request, response) => {
+  const all = candidates();
+  response.json({ roles: db.prepare(`SELECT code,title,team,openings,revision
+    FROM roles ORDER BY code`).all().map((role) => ({
+      ...role,
+      live: all.filter((candidate) => candidate.role === role.code
+        && !R.isTerminal(candidate.stage)).length,
+      total: all.filter((candidate) => candidate.role === role.code).length,
+    })) });
+});
+
+app.get('/api/roles/:code', requireUser, (request, response) => {
+  const snapshot = roleSnapshot(request.params.code);
+  if (!snapshot) return response.status(404).json({ error: 'No such vacancy.' });
+  response.json(snapshot);
+});
+
+app.get('/api/candidates/:id', requireUser, (request, response) => {
+  const snapshot = candidateSnapshot(request.params.id);
+  if (!snapshot) return response.status(404).json({ error: 'No such candidate.' });
+  response.json(snapshot);
+});
+
+app.post('/api/candidates', requireUser, (request, response) => {
+  const role = typeof request.body?.role === 'string' ? request.body.role : '';
+  const outcome = performMutation(request, role, () => {
+    requireKeys(request.body, ['role', 'name', 'operation_id', 'expected_revision']);
+    const permission = R.may(request.person, 'add');
+    if (!permission.ok) throw httpError(permission.code, permission.error);
+    const verdict = R.admitCandidate(candidates(), role, request.body.name);
+    if (!verdict.ok) throw httpError(verdict.code, verdict.error);
+    const id = `CAND-${crypto.randomBytes(5).toString('hex').toUpperCase()}`;
+    const at = nextTime();
+    db.prepare(`INSERT INTO candidates
+      (id,role,name,stage,history,applied_days,created_by,created_at)
+      VALUES (?,?,?,'applied',?,0,?,?)`)
+      .run(id, role, verdict.name, JSON.stringify(['applied']), request.person.email, at);
+    activity(role, id, 'candidate_created', request.person.email,
+      { name: verdict.name, stage: 'applied' });
+    return { candidate: candidateRow(id) };
+  }, 201);
+  sendMutation(response, outcome);
+});
+
+app.post('/api/candidates/:id/stage', requireUser, (request, response) => {
+  const candidate = candidateRow(request.params.id);
+  if (!candidate) return response.status(404).json({ error: 'No such candidate.' });
+  const outcome = performMutation(request, candidate.role, () => {
+    requireKeys(request.body, ['stage', 'operation_id', 'expected_revision']);
+    const permission = R.may(request.person, 'move');
+    if (!permission.ok) throw httpError(permission.code, permission.error);
+    const to = typeof request.body.stage === 'string' ? request.body.stage : '';
+    const fresh = candidateRow(candidate.id);
+    const verdict = R.admitTransition(fresh.stage, to, {
+      panel: panelOf(fresh.id), scores: scoresOf(fresh.id), managers: managers(),
+    });
+    if (!verdict.ok) throw httpError(verdict.code, verdict.error);
+    const history = fresh.history.includes(to) ? fresh.history : [...fresh.history, to];
+    db.prepare('UPDATE candidates SET stage=?,history=? WHERE id=?')
+      .run(to, JSON.stringify(history), fresh.id);
+    activity(fresh.role, fresh.id, 'stage_changed', request.person.email,
+      { from: fresh.stage, to });
+    return { candidate: candidateRow(fresh.id) };
   });
+  sendMutation(response, outcome);
 });
 
-app.get('/api/candidates/:id', needAuth, (req, res) => {
-  const c = candidates().find((x) => x.id === req.params.id);
-  if (!c) return res.status(404).json({ error: 'no such candidate' });
-  res.json({
-    candidate: c, panel: panelOf(c.id), scores: scoresOf(c.id),
-    notes: db.prepare('SELECT * FROM notes WHERE candidate=? ORDER BY id').all(c.id),
-    people: db.prepare('SELECT * FROM people').all(),
+app.post('/api/candidates/:id/panel', requireUser, (request, response) => {
+  const candidate = candidateRow(request.params.id);
+  if (!candidate) return response.status(404).json({ error: 'No such candidate.' });
+  const outcome = performMutation(request, candidate.role, () => {
+    requireKeys(request.body, ['member', 'operation_id', 'expected_revision']);
+    const permission = R.may(request.person, 'panel');
+    if (!permission.ok) throw httpError(permission.code, permission.error);
+    const member = typeof request.body.member === 'string' ? request.body.member : '';
+    if (!db.prepare('SELECT 1 FROM people WHERE email=?').get(member)) {
+      throw httpError(404, 'No such person.');
+    }
+    if (panelOf(candidate.id).includes(member)) throw httpError(409, 'That person is already on the panel.');
+    db.prepare('INSERT INTO panels (candidate,member) VALUES (?,?)').run(candidate.id, member);
+    activity(candidate.role, candidate.id, 'panel_added', request.person.email, { member });
+    return { panel: panelOf(candidate.id) };
+  }, 201);
+  sendMutation(response, outcome);
+});
+
+app.post('/api/candidates/:id/score', requireUser, (request, response) => {
+  const candidate = candidateRow(request.params.id);
+  if (!candidate) return response.status(404).json({ error: 'No such candidate.' });
+  const outcome = performMutation(request, candidate.role, () => {
+    requireKeys(request.body, ['score', 'operation_id', 'expected_revision']);
+    const permission = R.may(request.person, 'score');
+    if (!permission.ok) throw httpError(permission.code, permission.error);
+    const verdict = R.admitScore(request.body.score);
+    if (!verdict.ok) throw httpError(verdict.code, verdict.error);
+    if (!panelOf(candidate.id).includes(request.person.email)) {
+      throw httpError(403, 'Only this candidate\'s panel members may score them.');
+    }
+    db.prepare(`INSERT INTO scores (candidate,panel_member,score) VALUES (?,?,?)
+      ON CONFLICT(candidate,panel_member) DO UPDATE SET score=excluded.score`)
+      .run(candidate.id, request.person.email, request.body.score);
+    activity(candidate.role, candidate.id, 'score_recorded', request.person.email,
+      { score: request.body.score });
+    return { scores: scoresOf(candidate.id) };
+  }, 201);
+  sendMutation(response, outcome);
+});
+
+app.post('/api/candidates/:id/notes', requireUser, (request, response) => {
+  const candidate = candidateRow(request.params.id);
+  if (!candidate) return response.status(404).json({ error: 'No such candidate.' });
+  const outcome = performMutation(request, candidate.role, () => {
+    requireKeys(request.body, ['body', 'operation_id', 'expected_revision']);
+    const permission = R.may(request.person, 'note');
+    if (!permission.ok) throw httpError(permission.code, permission.error);
+    const body = typeof request.body.body === 'string' ? request.body.body.trim() : '';
+    if (!body || body.length > 1000) throw httpError(400, 'A note needs 1 to 1000 characters.');
+    const at = nextTime();
+    const result = db.prepare(`INSERT INTO notes (candidate,author,at,body)
+      VALUES (?,?,?,?)`).run(candidate.id, request.person.email, at, body);
+    activity(candidate.role, candidate.id, 'note_added', request.person.email,
+      { note_id: Number(result.lastInsertRowid), body });
+    return { note: { id: Number(result.lastInsertRowid), author: request.person.email, at, body } };
+  }, 201);
+  sendMutation(response, outcome);
+});
+
+app.patch('/api/notes/:id', requireUser, (_request, response) =>
+  response.status(409).json({ error: 'Notes are append-only; add a correction instead.' }));
+app.delete('/api/notes/:id', requireUser, (_request, response) =>
+  response.status(409).json({ error: 'Notes are append-only and cannot be deleted.' }));
+app.delete('/api/activity/:id', requireUser, (_request, response) =>
+  response.status(409).json({ error: 'Recorded activity cannot be deleted.' }));
+app.delete('/api/candidates/:id', requireUser, (request, response) => {
+  if (!candidateRow(request.params.id)) return response.status(404).json({ error: 'No such candidate.' });
+  response.status(409).json({
+    error: 'A candidate is withdrawn, not deleted. The record is the trail.',
   });
-});
-
-app.post('/api/candidates', needAuth, (req, res) => {
-  { const g = R.may(req.person, 'add'); if (!g.ok) return fail(res, g); }
-  const { role, name } = req.body || {};
-  if (!db.prepare('SELECT 1 FROM roles WHERE code=?').get(String(role || ''))) {
-    return res.status(404).json({ error: 'no such vacancy' });
-  }
-  const r = R.admitCandidate(candidates(), role, name);
-  if (!r.ok) return fail(res, r);
-  const id = 'CAND-' + crypto.randomBytes(3).toString('hex').toUpperCase();
-  db.prepare(`INSERT INTO candidates (id,role,name,stage,history,applied_days)
-    VALUES (?,?,?,'applied',?,0)`).run(id, role, r.name, JSON.stringify(['applied']));
-  res.status(201).json({ id });
-});
-
-app.post('/api/candidates/:id/stage', needAuth, (req, res) => {
-  { const g = R.may(req.person, 'move'); if (!g.ok) return fail(res, g); }
-  const c = candidates().find((x) => x.id === req.params.id);
-  if (!c) return res.status(404).json({ error: 'no such candidate' });
-  const to = String((req.body || {}).stage || '');
-  const verdict = R.admitTransition(c.stage, to, {
-    panel: panelOf(c.id), scores: scoresOf(c.id), managers: managers(),
-  });
-  if (!verdict.ok) return fail(res, verdict);
-  // History records where they have BEEN. A stage already visited is not added
-  // twice, so moving back and forward again does not inflate the funnel.
-  const history = c.history.includes(to) ? c.history : [...c.history, to];
-  db.prepare('UPDATE candidates SET stage=?, history=? WHERE id=?')
-    .run(to, JSON.stringify(history), c.id);
-  res.json({ stage: to, funnel: R.funnel(candidates(), c.role) });
-});
-
-app.post('/api/candidates/:id/panel', needAuth, (req, res) => {
-  { const g = R.may(req.person, 'panel'); if (!g.ok) return fail(res, g); }
-  const c = candidates().find((x) => x.id === req.params.id);
-  if (!c) return res.status(404).json({ error: 'no such candidate' });
-  const member = String((req.body || {}).member || '');
-  if (!db.prepare('SELECT 1 FROM people WHERE email=?').get(member)) {
-    return res.status(404).json({ error: 'no such person' });
-  }
-  db.prepare('INSERT OR IGNORE INTO panels (candidate,member) VALUES (?,?)')
-    .run(c.id, member);
-  res.status(201).json({ panel: panelOf(c.id) });
-});
-
-app.post('/api/candidates/:id/score', needAuth, (req, res) => {
-  { const g = R.may(req.person, 'score'); if (!g.ok) return fail(res, g); }
-  const c = candidates().find((x) => x.id === req.params.id);
-  if (!c) return res.status(404).json({ error: 'no such candidate' });
-  const verdict = R.admitScore((req.body || {}).score);
-  if (!verdict.ok) return fail(res, verdict);
-  // You score as yourself, and only if you are on the panel.
-  if (!panelOf(c.id).includes(req.person.email)) {
-    return res.status(403).json({ error: 'only the panel scores this candidate' });
-  }
-  db.prepare(`INSERT INTO scores (candidate,panel_member,score) VALUES (?,?,?)
-    ON CONFLICT(candidate,panel_member) DO UPDATE SET score=excluded.score`)
-    .run(c.id, req.person.email, Number(req.body.score));
-  res.status(201).json({ scores: scoresOf(c.id) });
-});
-
-app.post('/api/candidates/:id/notes', needAuth, (req, res) => {
-  const c = candidates().find((x) => x.id === req.params.id);
-  if (!c) return res.status(404).json({ error: 'no such candidate' });
-  const body = String((req.body || {}).body || '').trim();
-  if (!body) return res.status(409).json({ error: 'a note needs something in it' });
-  db.prepare('INSERT INTO notes (candidate,author,at,body) VALUES (?,?,?,?)')
-    .run(c.id, req.person.email, Date.now(), body);
-  res.status(201).json({ ok: true });
-});
-
-// Notes are append-only. Both of these exist so the refusal is explicit rather
-// than a 404 that looks like a routing mistake.
-app.patch('/api/notes/:id', needAuth, (_req, res) =>
-  res.status(409).json({ error: 'notes are never edited; add another saying so' }));
-app.delete('/api/notes/:id', needAuth, (_req, res) =>
-  res.status(409).json({ error: 'notes are never deleted; add another saying so' }));
-
-// A candidate is never deleted. The policy says notes are never deleted and the
-// funnel is derived from history, so removing the record would destroy both —
-// and "withdrawn is terminal" only means anything if the withdrawn record
-// survives. Leaving somebody the pipeline is a transition, not a deletion.
-app.delete('/api/candidates/:id', needAuth, (req, res) => {
-  const c = candidates().find((x) => x.id === req.params.id);
-  if (!c) return res.status(404).json({ error: 'no such candidate' });
-  return res.status(409).json({
-    error: 'a candidate is withdrawn, not deleted — the record is the trail. '
-         + 'Move them to withdrawn instead.' });
 });
 
 app.use(express.static(path.join(ROOT, 'public')));
-app.get(/.*/, (_req, res) => res.sendFile(path.join(ROOT, 'public', 'index.html')));
+app.get(/.*/, (_request, response) => response.sendFile(path.join(ROOT, 'public', 'index.html')));
+app.use((error, _request, response, _next) => {
+  const status = Number(error.status) || 500;
+  if (status >= 400 && status < 500) {
+    return response.status(status).json({ error: 'The request body is malformed.' });
+  }
+  console.error(error);
+  response.status(500).json({ error: 'Something went wrong on the server.' });
+});
 
-app.listen(PORT, '0.0.0.0', () => console.log(`pellmoor pipeline on ${PORT}`));
+app.listen(PORT, '0.0.0.0', () => console.log(`Pellmoor pipeline listening on ${PORT}`));

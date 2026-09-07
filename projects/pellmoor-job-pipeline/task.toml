@@ -1,31 +1,39 @@
 schema_version = "1.4"
-artifacts = ["/workspace/pellmoor-job-pipeline", "/logs/verifier"]
+artifacts = ["/app"]
 
 [task]
 name = "turing/pellmoor-job-pipeline"
-version = "1.0.0"
-description = "Full-stack TypeScript, d3, esbuild, Express and SQLite hiring pipeline with an explicit stage machine, terminal outcomes, panel and score gates on an offer, and a funnel derived from stage history, judged browser-only by Luna"
+version = "2.0.12"
+description = "Revision-safe hiring pipeline with role-scoped candidate workflows, panel scoring, durable activity, deterministic funnel analytics, and replay-safe SQLite writes"
 keywords = ["webdev", "codearena", "full-stack", "typescript", "d3", "esbuild", "express", "sqlite", "recruitment", "state-machine", "browser-judge", "rewardkit"]
 
 [metadata]
 difficulty = "hard"
 category = "Software"
-subcategory = "web-development"
-persona = "Full-stack web developer building a hiring console for a small agency"
-tags = ["full-stack", "browser", "arena", "rl-training"]
+subcategory = "Job & Recruitment Boards"
+tags = ["full-stack", "recruitment", "state-machine", "sqlite", "authentication", "optimistic-concurrency", "idempotency", "accessibility"]
 
 
 provenance = "authored 2026-09-01; agency hiring paperwork, contract in a hosting note"
 arena_slice = "full-stack-typescript-d3-esbuild-express-sqlite-pipeline"
 active_target_model = "openrouter/openai/gpt-5.4-mini"
 active_target_reasoning_effort = "high"
+seed_fixture_sha256 = "f03708525256a00e08e89a93221a2b0ec1eaffc1c9efe5ae0a1a1d5c974e369c"
+golden_server_sha256 = "d1d20c78992a4792ddaf775b79d4a598e47cdd44a0e7aadc5f5fed60875290af"
+golden_rules_sha256 = "3ae4db90830ed3e450e9e69b3db1694a9031c5c4ccf64d1f37ef9ed46bd9ff0e"
+golden_client_sha256 = "b69e5f52f256e94713573da22757ea7f8d54c3a7a3a319933b9ba5468cf21a72"
+golden_index_sha256 = "928d166dbdfff64b74710e6644ad05c52e4655079c4d747ec4695e9d1c75a411"
+golden_package_sha256 = "0d38637a844e56a898828ccfd12ca287991c814ff980cea79084a4594afd1cf2"
+golden_solve_sha256 = "e3b027c98765f2f853f045dfd4585eea507f63d80c8d2aa92f75ba08be6e0e3a"
+
+difficulty_explanation = "The task couples a strict hiring stage machine with panel and scoring gates, role enforcement, per-vacancy funnel derivation, append-only activity, bearer sessions, optimistic revisions and replay-safe mutations. A valid action changes several visible and durable views while rejected actions must leave all of them unchanged."
 
 
 
 solution_explanation = """
 The reference implementation is one Express process serving the esbuild-bundled
 browser side from public/ and a JSON API on port 3000, with better-sqlite3 at
-pellmoor.db, under /workspace/pellmoor-job-pipeline.
+pellmoor.db under /app.
 
 backend/rules.js holds the stage machine and the gates as pure functions over the
 stored pipeline: whether a transition is admissible, whether an offer may go out,
@@ -34,21 +42,24 @@ write and recomputes the funnel on every read, so a client that posts a stage, a
 funnel count or somebody else's identity is ignored rather than believed.
 
 src/app.ts draws the funnel with d3 against real scales and renders the stage
-columns from the same payload, so the chart and the columns cannot disagree —
+columns from the same payload, so the chart and the columns cannot disagree --
 they are two views of one response rather than two independent queries.
 """
 
+verification_explanation = "Two lightweight Render checks and two lightweight self-contained Constraints checks gate a working local application after a real server-backed authentication preflight. Functional browser criteria exercise the seeded pipeline, legal and rejected transitions, offer gates, role isolation, derived funnels, durable activity, stale revisions and idempotent retries. Twelve narrow Polish criteria cover concrete responsive and accessible interaction quality."
+
 [agent]
-timeout_sec = 5400.0
+timeout_sec = 7200.0
 
 [environment]
-network_mode = "public"
+network_mode = "no-network"
 build_timeout_sec = 1800.0
 cpus = 2
 memory_mb = 4096
+storage_mb = 4096
 
 [verifier]
-timeout_sec = 7200.0
+timeout_sec = 12600.0
 environment_mode = "separate"
 
 [verifier.env]
@@ -57,8 +68,8 @@ OPENAI_BASE_URL = "https://openrouter.ai/api/v1"
 OPENROUTER_API_KEY = "${OPENROUTER_API_KEY}"
 REWARDKIT_JUDGE = "codex"
 REWARDKIT_MODEL = "openai/gpt-5.6-luna"
-REWARDKIT_REASONING_EFFORT = "max"
+REWARDKIT_REASONING_EFFORT = "high"
 
 [verifier.environment]
 network_mode = "allowlist"
-allowed_hosts = ["openrouter.ai"]
+allowed_hosts = ["openrouter.ai", "api.openai.com"]

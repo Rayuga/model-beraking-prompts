@@ -1,6 +1,9 @@
 FROM node:22-bookworm-slim AS node-runtime
 FROM python:3.12-slim
 
+LABEL io.turing.task="pellmoor-job-pipeline" \
+      io.turing.task.version="2.0.12"
+
 COPY --from=node-runtime /usr/local /usr/local
 
 ENV DEBIAN_FRONTEND=noninteractive \
@@ -31,7 +34,7 @@ RUN npm install -g --no-audit --no-fund \
 RUN mkdir -p /root/.codex \
     && printf '%s\n' \
       'model_provider = "openrouter"' \
-      'model_reasoning_effort = "max"' \
+      'model_reasoning_effort = "high"' \
       'approval_policy = "never"' \
       'sandbox_mode = "danger-full-access"' \
       '' \
@@ -62,8 +65,8 @@ RUN mkdir -p /opt/playwright-browsers \
     && ln -sf "$CHROMIUM_BIN" /usr/local/bin/chromium \
     && rm -rf /var/lib/apt/lists/*
 
-COPY assets /assets
-RUN chmod -R a+rX /assets
+COPY pellmoor_seed_data.json /recruitment/records/pellmoor_seed_data.json
+RUN chmod -R a+rX /recruitment
 
 COPY . /tests
 RUN chmod +x /tests/test.sh && chmod -R go-rwx /tests

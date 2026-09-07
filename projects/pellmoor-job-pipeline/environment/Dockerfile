@@ -1,15 +1,11 @@
-# Agent workspace. Copies only assets/ — never solution/ or tests/, because an
+# Agent workspace. Copies only task inputs -- never solution/ or tests/, because an
 # agent able to read either would invalidate every score this task produces.
-FROM node:22-bookworm-slim
+FROM node:22-bookworm
+
+LABEL io.turing.task="pellmoor-job-pipeline" \
+      io.turing.task.version="2.0.12"
 
 ENV NODE_PATH=/usr/local/lib/node_modules
-
-# Build toolchain for the better-sqlite3 addon, plus the ordinary tools for
-# opening what the attachments are saved as: poppler-utils reads a PDF text
-# layer, unzip opens the OOXML files. No apt version pins.
-RUN apt-get update && apt-get install -y --no-install-recommends \
-      python3 make g++ ca-certificates git procps sqlite3 unzip poppler-utils \
-    && rm -rf /var/lib/apt/lists/*
 
 RUN npm install -g --no-audit --no-fund \
       express@5.1.0 \
@@ -19,8 +15,9 @@ RUN npm install -g --no-audit --no-fund \
       d3@7.9.0 \
     && npm cache clean --force
 
-COPY recruitment/ /recruitment/
-RUN chmod -R a+rX /recruitment && mkdir -p /workspace/pellmoor-job-pipeline
+COPY assets/recruitment/ /recruitment/
+COPY assets/instructions/ /instructions/
+RUN chmod -R a+rX /recruitment /instructions && mkdir -p /app
 
-WORKDIR /workspace/pellmoor-job-pipeline
+WORKDIR /app
 CMD ["sleep", "infinity"]

@@ -231,7 +231,7 @@ async function loadAudit() {
 
 function setView(view) {
   state.activeView = view;
-  document.querySelectorAll("[data-view]").forEach((button) => {
+  document.querySelectorAll(".tab[data-view]").forEach((button) => {
     const active = button.dataset.view === view;
     button.classList.toggle("active", active);
     button.setAttribute("aria-current", active ? "page" : "false");

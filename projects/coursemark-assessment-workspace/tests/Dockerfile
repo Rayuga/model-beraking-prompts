@@ -1,6 +1,9 @@
 FROM node:22-bookworm-slim AS node-runtime
 FROM python:3.12-slim
 
+LABEL io.turing.task="coursemark-assessment-workspace" \
+      io.turing.task.version="1.0.20"
+
 COPY --from=node-runtime /usr/local /usr/local
 
 ENV DEBIAN_FRONTEND=noninteractive \
@@ -52,7 +55,7 @@ RUN mkdir -p /opt/playwright-browsers \
     && ln -sf "$CHROMIUM_BIN" /usr/local/bin/chromium \
     && rm -rf /var/lib/apt/lists/*
 
-COPY assets /assets
+COPY coursemark_seed.json /assets/artifacts/coursemark_seed.json
 RUN chmod -R a+rX /assets
 COPY . /tests
 RUN chmod +x /tests/test.sh && chmod -R go-rwx /tests
