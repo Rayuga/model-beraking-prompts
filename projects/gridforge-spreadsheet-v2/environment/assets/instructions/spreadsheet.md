@@ -4,6 +4,8 @@ Open the seeded workbook as a familiar spreadsheet with row and column headers,
 a formula bar, selection details, the saved revision, and a clear saved or
 unsaved state.
 
+Provide at least 80 rows and 20 columns, from A to T.
+
 Support common spreadsheet editing and navigation with the mouse and keyboard,
 including selection, clipboard actions, and undo/redo. Pasted tabular data in TSV or CSV form
 should fill the matching area.

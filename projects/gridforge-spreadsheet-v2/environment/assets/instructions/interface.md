@@ -10,6 +10,6 @@ should include:
   and revision history controls.
 - Visible errors for invalid formulas, rejected saves, and invalid actions.
 
-The product is judged by behavior, not visual polish, but the spreadsheet
-should be readable, keyboard accessible, and usable in a normal browser. Keep
+The spreadsheet should be readable, keyboard accessible, and usable in a
+normal browser, with a clear visual layout. Keep
 its labels, focus states, save feedback, and revision information clear.

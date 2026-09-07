@@ -2,7 +2,8 @@
 
 GridForge has a small seeded-user login so edits can be attributed to people.
 Users should be able to sign in as one of the seeded users, edit the workbook,
-and see who last changed a selected cell.
+and see who last changed a selected cell. A toolbar user selector or a simple
+seeded-user entry screen is fine.
 
 Track each cell change with its previous and new values, user, and time.
 

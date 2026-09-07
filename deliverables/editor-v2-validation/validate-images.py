@@ -22,8 +22,8 @@ from pathlib import Path
 os.environ['LITELLM_LOCAL_MODEL_COST_MAP'] = 'True'
 from rewardkit.runner import discover
 criteria = {d.name: len(d.criteria) for d in discover('/tests')}
-for script in ('/tests/test.sh', '/solution/solve.sh'):
-    subprocess.run(['bash', '-n', script], check=True)
+for script in [*Path('/tests').glob('*.sh'), Path('/solution/solve.sh')]:
+    subprocess.run(['bash', '-n', str(script)], check=True)
 for script in Path('/solution/app').rglob('*.js'):
     subprocess.run(['node', '--check', str(script)], check=True)
 subprocess.run(['bash', '/tests/test.sh'], check=True)

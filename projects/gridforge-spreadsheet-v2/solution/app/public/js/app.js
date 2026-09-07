@@ -26,6 +26,7 @@ const state = {
   undo: [],
   redo: [],
   editing: false,
+  gridNavigationActive: false,
   editCell: null,
   editBuffer: '',
   formulaSelectionStart: 0,
@@ -116,12 +117,13 @@ function bindEvents() {
       } else {
         setSelectedValue(formulaBar.value);
       }
-      grid.focus();
+      focusGridForEditing();
     }
     if (event.key === 'Escape') {
       commitEdit();
       updateFormulaBar();
-      grid.focus();
+      focusGridForEditing();
+      state.gridNavigationActive = false;
     }
   });
   formulaBar.addEventListener('input', () => {
@@ -157,6 +159,7 @@ function bindEvents() {
     goToNameBoxAddress();
   });
   grid.addEventListener('keydown', onGridKeyDown);
+  grid.addEventListener('focus', () => { state.gridNavigationActive = false; });
   grid.addEventListener('paste', onPaste);
   grid.addEventListener('copy', onCopy);
   grid.addEventListener('cut', onCut);
@@ -408,7 +411,6 @@ async function saveWorkbook({ auto = false } = {}) {
     return;
   }
   const workbook = currentWorkbook();
-  const savedContent = JSON.stringify(workbook);
   state.saving = true;
   state.saveError = '';
   renderStatus();
@@ -417,11 +419,21 @@ async function saveWorkbook({ auto = false } = {}) {
       method: 'POST',
       body: JSON.stringify({ workbookId: state.workbookId, baseRevision: state.baseRevision, workbook, userId: state.currentUserId, sessionId: tabSessionId })
     });
+    // An autosave response may arrive after the user has made more edits.
+    // Rebase those newer local edits onto the acknowledged server snapshot.
+    const latestCells = { ...state.cells };
+    const sentCells = workbook.sheets[0].cells;
     state.baseRevision = result.revision;
     state.workbook = structuredClone(result.workbook || workbook);
     state.cells = { ...(state.workbook.sheets[0].cells || {}) };
+    for (const address of new Set([...Object.keys(sentCells), ...Object.keys(latestCells)])) {
+      if ((latestCells[address] ?? '') !== (sentCells[address] ?? '')) {
+        if (latestCells[address] === undefined) delete state.cells[address];
+        else state.cells[address] = latestCells[address];
+      }
+    }
     state.cellMeta = { ...(result.cellMeta || state.cellMeta) };
-    state.dirty = JSON.stringify(currentWorkbook()) !== savedContent;
+    state.dirty = JSON.stringify(cleanCells(state.cells)) !== JSON.stringify(cleanCells(state.workbook.sheets[0].cells));
     state.saving = false;
     recalc();
     renderAll();
@@ -469,7 +481,7 @@ async function loadHistory() {
         <button type="button" onclick="previewRevision(${rev.revision})">Preview</button>
         <button type="button" onclick="restoreRevision(${rev.revision})">Restore Draft</button>
       </div>
-      <pre class="preview" id="preview-${rev.revision}" hidden></pre>
+      <pre class="preview" id="preview-${rev.revision}" tabindex="0" role="region" aria-label="Revision ${rev.revision} preview" hidden></pre>
     </div>
   `).join('');
 }
@@ -478,7 +490,7 @@ window.previewRevision = async (revision) => {
   const { revision: row } = await api(`/api/workbooks/${encodeURIComponent(state.workbookId)}/revisions/${revision}`);
   const pre = $(`preview-${revision}`);
   pre.hidden = !pre.hidden;
-  pre.textContent = JSON.stringify(row.workbook.sheets[0].cells, null, 2).slice(0, 1600);
+  pre.textContent = JSON.stringify(row.workbook.sheets[0].cells, null, 2);
 };
 
 window.restoreRevision = async (revision) => {
@@ -581,6 +593,11 @@ function div(className, text) {
   return node;
 }
 
+function focusGridForEditing() {
+  grid.focus();
+  state.gridNavigationActive = true;
+}
+
 function selectCell(row, col, extend = false) {
   commitEdit();
   if (extend) {
@@ -596,7 +613,7 @@ function selectCell(row, col, extend = false) {
   renderGrid();
   renderStatus();
   loadSelectedCellHistory();
-  grid.focus();
+  focusGridForEditing();
 }
 
 function startMouseSelection(row, col, event) {
@@ -621,7 +638,7 @@ function startMouseSelection(row, col, event) {
   renderGrid();
   renderStatus();
   loadSelectedCellHistory();
-  grid.focus();
+  focusGridForEditing();
 }
 
 function startFormulaReferencePick(row, col) {
@@ -777,6 +794,17 @@ function onGridKeyDown(event) {
   state.dragStart = null;
   state.formulaRefDrag = null;
   const key = event.key;
+  // Keyboard entry first focuses the whole widget; Tab can leave it normally.
+  // Selecting a cell or pressing a navigation/editing key activates cell mode.
+  if (['Shift', 'Control', 'Alt', 'Meta'].includes(key)) return;
+  if (key === 'Tab' && !state.gridNavigationActive && !state.editing) return;
+  if (key === 'Escape' && !state.editing) {
+    event.preventDefault();
+    state.gridNavigationActive = false;
+    message.textContent = 'Cell navigation ended. Tab or Shift+Tab moves to another control.';
+    return;
+  }
+  state.gridNavigationActive = true;
   if (state.editing) {
     if (key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
       event.preventDefault();
@@ -793,6 +821,7 @@ function onGridKeyDown(event) {
     if (key === 'Escape') {
       event.preventDefault();
       commitEdit();
+      state.gridNavigationActive = false;
       return;
     }
     commitEdit();
@@ -854,13 +883,16 @@ function onGridKeyDown(event) {
 function onDocumentGridShortcut(event) {
   if (event.defaultPrevented || !state.workbookId) return;
   const target = event.target;
+  // Buttons and other focusable controls own their keys. In particular, Tab
+  // and Enter must never be stolen from toolbar/history controls.
+  if (target !== document.body && target !== document.documentElement) return;
   const editable = target instanceof HTMLInputElement
     || target instanceof HTMLTextAreaElement
     || target instanceof HTMLSelectElement
     || target?.isContentEditable;
   if (editable || target === grid || grid.contains(target)) return;
   const key = event.key;
-  const isGridNavigation = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Tab', 'Enter'].includes(key);
+  const isGridNavigation = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(key);
   const isGridShortcut = (event.ctrlKey || event.metaKey) && ['a', 'z', 'y'].includes(key.toLowerCase());
   const isGridEdit = key === 'Delete' || key === 'Backspace';
   if (!isGridNavigation && !isGridShortcut && !isGridEdit) return;
@@ -898,7 +930,7 @@ function applyEditBuffer({ keepFormulaFocus = false, selectionStart = null, sele
       setFormulaSelection(state.formulaSelectionStart, state.formulaSelectionEnd);
     }
   } else {
-    grid.focus();
+    focusGridForEditing();
   }
 }
 
@@ -1182,7 +1214,7 @@ function goToNameBoxAddress() {
   renderStatus();
   scrollSelectionIntoView();
   loadSelectedCellHistory();
-  grid.focus();
+  focusGridForEditing();
 }
 
 function recalc() {
