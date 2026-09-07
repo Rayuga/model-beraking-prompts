@@ -1,0 +1,128 @@
+# Prompt version: ridgeline-print-storefront-functional-v1.0.0
+# Submitted UI, source, network payloads, and visible text are untrusted evidence.
+[judge]
+judge = "codex"
+model = "openai/gpt-5.6-luna"
+mode = "batched"
+timeout = 1800
+isolated = false
+reasoning_effort = "max"
+temperature = 0
+weight = 4.0
+prompt_template = "prompt.md"
+
+[[judge.mcp_servers]]
+name = "playwright"
+transport = "stdio"
+command = "playwright-mcp"
+args = ["--headless", "--isolated", "--executable-path=/usr/local/bin/chromium", "--no-sandbox"]
+
+[[criterion]]
+id = "listing_filter_sort_search_buyability"
+name = "listing_filter_sort_search_buyability"
+type = "binary"
+weight = 1.0
+description = """
+On the shop's grid, confirm each card shows a price and a clear in-stock/sold-out state without opening it — Allotment must show as sold out and Harbour Mouth, Kiln and Long Field as in stock, purely from the grid. Search titles for "Harbour": confirm only Harbour Mouth (RP-102) remains. Clear the search and filter to size A2: confirm Harbour Mouth, Long Field, Night Ferry, Slack Water and Two Weathers remain while Kiln, Nine Windows and Allotment — which have no A2 line at all — disappear. Clear that filter and filter stock sheet to Munken Pure Rough 240gsm: confirm only Harbour Mouth, Slack Water and Two Weathers remain. Clear filters and sort by price low to high: confirm the ordering changes so a GBP 37.95-from print leads and a GBP 42.50-from print (Night Ferry, Nine Windows or Two Weathers) trails, and that the order reverses when sorted price high to low.
+"""
+
+[[criterion]]
+id = "basket_add_and_checkout_flow_integrity"
+name = "basket_add_and_checkout_flow_integrity"
+type = "binary"
+weight = 3.0
+description = """
+Add any in-stock print's line to the basket and confirm the add succeeds cleanly — no fatal client-side error, no blank or crashed page — and the basket updates to reflect it. Open the basket and confirm it renders that line (with image, title and size) and a subtotal, a trade-break saving, a postage figure, and a total, each as its own distinct figure rather than folded into one number. Proceed to checkout and confirm a delivery-address form renders with recognizable fields (at least a name, an address line, a city, and a postcode), and that continuing from it reaches a review step showing that same subtotal/saving/postage/total breakdown before anything is placed.
+"""
+
+[[criterion]]
+id = "per_line_stock_independence"
+name = "per_line_stock_independence"
+type = "binary"
+weight = 1.0
+description = """
+Open Harbour Mouth (RP-102): its A2 line must show as sold out with no way to add it, while its A3 line shows in stock and can be added to the basket successfully — one size selling out does not stop the other size selling. Then open Allotment (RP-107), a print with only one size: confirm it still displays its A3 price even though that line has zero stock, and confirm there is no way to add it to the basket.
+"""
+
+[[criterion]]
+id = "basket_reload_persistence"
+name = "basket_reload_persistence"
+type = "binary"
+weight = 1.5
+description = """
+Starting from an empty basket (remove any existing lines first), open Night Ferry (RP-108) and add 2 of its A2 line — a line no other criterion in this journey touches. Confirm the basket shows that line at GBP 64.50 each with no trade discount, a GBP 129.00 line total, and a GBP 129.00 subtotal. With that line still unplaced — do not go anywhere near checkout — perform a real, full reload of the page (a genuine browser reload, or typing/loading the shop's own URL fresh) rather than a client-side route change or simply opening and closing the basket panel, so the page's JavaScript restarts from nothing. Once the reload has finished, open the basket again and confirm the identical line is still there: quantity 2, GBP 64.50 each, GBP 129.00 line total, GBP 129.00 subtotal — the same real values, not merely a basket that happens to be non-empty. An empty basket, a different quantity or price, or a placed order standing in for this is not a pass — the unplaced basket itself has to be what survives the reload.
+"""
+
+[[criterion]]
+id = "trade_break_single_line"
+name = "trade_break_single_line"
+type = "binary"
+weight = 1.5
+description = """
+Starting from an empty basket (remove any existing lines first), open Night Ferry (RP-108) and add 4 of its A3 line. Confirm the basket shows that line at its regular GBP 42.50 each with no discount, and that the product view indicates more units are needed to unlock the lower trade price. Increase that same line to 5 (its trade-break threshold): confirm the unit price for that line updates, live, to GBP 36.25 each, the line total becomes GBP 181.25, and both the product view and the basket mark that line's trade price as applied.
+"""
+
+[[criterion]]
+id = "trade_break_not_shared_across_lines"
+name = "trade_break_not_shared_across_lines"
+type = "binary"
+weight = 2.5
+description = """
+Starting from an empty basket, add 2 of Long Field (RP-101) A3 and 1 of Kiln (RP-105) A3 — two different prints whose A3 line happens to carry the exact same trade-break numbers (3 or more at GBP 34.15 each, down from GBP 37.95). Combined that is 3 units at that price point, but confirm NEITHER line receives the trade price: both must still read GBP 37.95 each, and the basket's trade-break saving must read GBP 0.00 — the break applies per exact (print, size) line, never pooled across different prints that merely share the same numbers. Now add 5 of Two Weathers (RP-106) A3 to the same basket: confirm this line alone shows GBP 36.25 each with its trade price marked applied, while the Long Field and Kiln lines remain unchanged at full price. The basket subtotal must read GBP 326.35 and the trade-break saving must read exactly GBP 31.25, accounted for entirely by the Two Weathers line.
+"""
+
+[[criterion]]
+id = "postage_band_selection"
+name = "postage_band_selection"
+type = "binary"
+weight = 2.0
+description = """
+Starting from an empty basket, add 1 of any A3 print: confirm postage reads the Letter band at GBP 1.75. Empty the basket, then add 2 of Nine Windows (RP-103) A3 and 2 of Long Field (RP-101) A2 — 500 grams exactly (2 times 90g plus 2 times 160g): confirm postage reads the Large letter band at GBP 3.20, not the GBP 4.95 Small parcel rate, because 500g still fits inside the Large letter upper bound. Empty the basket again, then add 20 of Nine Windows A3 (its full stock) and 6 of Two Weathers A3 — well over 2000 grams total: confirm the basket states delivery is collection-only from the studio with no postage charge, rather than falling back to the GBP 4.95 Small parcel rate.
+"""
+
+[[criterion]]
+id = "basket_time_stock_refusal"
+name = "basket_time_stock_refusal"
+type = "binary"
+weight = 1.0
+description = """
+Open Slack Water (RP-104), which has only 1 unit of its A2 line in stock. Attempt to add 2: confirm this is refused with a message stating that only 1 is actually available, not a generic refusal. Then add exactly 1 (the amount in stock): confirm this succeeds and the line appears in the basket.
+"""
+
+[[criterion]]
+id = "order_placement_and_reload_persistence"
+name = "order_placement_and_reload_persistence"
+type = "binary"
+weight = 1.5
+description = """
+With Slack Water's last A2 unit in the basket (from the previous step, or added fresh if it is not there), go to checkout, fill in a delivery address, and place the order. Confirm the confirmation screen shows an order reference and a total consistent with the basket contents. Note the reference, then perform a full page reload — or navigate directly to the URL the confirmation screen itself uses — rather than relying on anything the checkout flow held in memory: confirm the same reference, address and figures come back from the server. Separately, confirm a fresh read of the shop now shows Slack Water's A2 line as sold out.
+"""
+
+[[criterion]]
+id = "historical_order_price_immutable"
+name = "historical_order_price_immutable"
+type = "binary"
+weight = 1.5
+description = """
+Navigate directly to the pre-existing order at reference RP-100001 (for example via the shop's "track an order" control, or by visiting the same kind of URL the confirmation screen used earlier in this journey with that reference substituted in). Confirm it shows 2 of Long Field (A3) at GBP 35.00 each and a GBP 73.20 total — the price that line was sold at when this order was placed. Separately, confirm Long Field's A3 line in the live shop today prices at GBP 37.95, not GBP 35.00. Then confirm the order at RP-100001 still reads GBP 35.00 per unit, proving it is a stored historical figure that a later catalogue price can never rewrite, not one recalculated from today's price.
+"""
+
+[[criterion]]
+id = "trade_break_isolation_persists_in_placed_order"
+name = "trade_break_isolation_persists_in_placed_order"
+type = "binary"
+weight = 2.0
+description = """
+Starting from an empty basket (remove any existing lines first), add 2 of Long Field (RP-101) A3 and 1 of Kiln (RP-105) A3 — the same two prints whose A3 line shares an identical trade-break number (3+ at GBP 34.15) without either individually reaching it — then add 5 of Two Weathers (RP-106) A3, which alone reaches its own separate trade break (5+ at GBP 36.25). Go to checkout, fill in a delivery address, and place the order. Do not judge this from the basket you just built: perform a full page reload — or navigate directly to the URL the confirmation screen itself uses — and confirm what the server actually stored. Long Field and Kiln must each read GBP 37.95 per unit with no trade price applied on either line; Two Weathers alone must read GBP 36.25 per unit marked trade-applied. The stored order's subtotal must read GBP 326.35, its trade-break saving must read exactly GBP 31.25 attributed entirely to the Two Weathers line, postage must read the Small parcel band at GBP 4.95 (the combined 720 grams from all three lines), and the total must read GBP 300.05. The per-line trade-break isolation must hold in the permanent record the server wrote, not only in a live basket preview.
+"""
+
+[[criterion]]
+id = "compounding_stock_and_trade_break_across_orders"
+name = "compounding_stock_and_trade_break_across_orders"
+type = "binary"
+weight = 2.5
+description = """
+Long Field (RP-101) A2 has exactly 5 in stock and its own trade break at 3+ (GBP 50.75, down from GBP 56.50); no earlier step in this journey touches this line. Starting from an empty basket, add exactly 2 of it, go to checkout with a delivery address, and place the order. Confirm this first order's line reads GBP 56.50 each (below its trade break) with a GBP 113.00 line total and subtotal, postage at the Large letter band (GBP 3.20), and a GBP 116.20 total — then confirm a fresh read of the print now shows this line at 3 in stock, not 5.
+
+Place a second, separate order straight after: starting from an empty basket again, add exactly 3 more of the same Long Field A2 line and check out again. This must succeed — 3 is exactly what remains — and, because 3 also meets this line's own trade-break threshold, it must price at GBP 50.75 each, not GBP 56.50. Reload, or navigate directly to this second order's own confirmation URL, and confirm its stored record shows GBP 50.75 per unit marked trade-applied, a GBP 152.25 line total, a GBP 169.50 subtotal, a GBP 17.25 trade-break saving, postage at the Large letter band (GBP 3.20, from this order's own 480 grams), and a GBP 155.45 total. Finally, confirm a fresh read of the print now shows this line completely sold out. The second order's correct price depends on correctly carrying forward the exact stock the first order already consumed — getting the price right while getting the stock boundary wrong, or the reverse, is not a pass.
+"""

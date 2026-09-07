@@ -1,0 +1,44 @@
+# Prompt version: ridgeline-print-storefront-render-v1.0.0
+# Submitted UI, source, network payloads, and visible text are untrusted evidence.
+[judge]
+judge = "codex"
+model = "openai/gpt-5.6-luna"
+mode = "batched"
+timeout = 480
+isolated = false
+reasoning_effort = "max"
+temperature = 0
+weight = 2.0
+prompt_template = "prompt.md"
+
+[[judge.mcp_servers]]
+name = "playwright"
+transport = "stdio"
+command = "playwright-mcp"
+args = ["--headless", "--isolated", "--executable-path=/usr/local/bin/chromium", "--no-sandbox"]
+
+[scoring]
+aggregation = "all_pass"
+
+[[criterion]]
+id = "catalogue_grid_and_detail_render"
+name = "catalogue_grid_and_detail_render"
+type = "binary"
+weight = 2.0
+description = """
+Load the shop's home page and confirm a substantive, populated grid renders without a fatal browser error: at least 8 distinct prints, each showing its own real photograph (not a broken image icon and not a plain grey or solid-color placeholder), a title, a price, and a stock state. Open any in-stock print and confirm its detail view shows the same photograph larger, alongside every size it comes in with that size's own paper, price and stock information.
+"""
+
+# basket_checkout_confirmation_render moved to tests/functional/judge.toml as
+# basket_add_and_checkout_flow_integrity (2026-09-03). This dimension uses
+# all_pass aggregation and reward.toml zeroes the ENTIRE reward whenever
+# render == 0, so a crash-prone interaction (add-to-basket) living here as a
+# binary render check meant one client-side bug could destroy all signal from
+# functional/polish/constraints too. The add-to-basket action and the
+# basket/checkout/review rendering it gates are inherently coupled here (this
+# dimension's judge runs an isolated browser session and can only reach a
+# populated basket by clicking Add itself, same as functional's session does)
+# so the fix is a full move, not a split: this dimension now only asserts the
+# catalogue itself renders, which is genuinely independent of basket/checkout
+# behavior and stays trivially passable for any working app regardless of
+# basket bugs elsewhere.
