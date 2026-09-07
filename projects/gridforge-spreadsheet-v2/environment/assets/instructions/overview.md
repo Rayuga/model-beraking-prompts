@@ -13,6 +13,8 @@ revision.
   documented in `APP_MANIFEST.md`.
 - No external database or hosted spreadsheet service.
 - `package.json` must expose a working `npm start` command.
+- Express 5.2.1 is already available under `/opt/gridforge-deps`; copy or use
+  those supplied modules instead of running a package install.
 - Put `APP_MANIFEST.md` beside `package.json` with a fenced `bash start` block,
   the SQLite file path (using `.db`, `.sqlite`, or `.sqlite3`), and the main
   workbook and revision API routes.
@@ -27,3 +29,7 @@ engine, or another spreadsheet/grid widget for the editable grid.
 Small controls outside the grid, such as a formula bar, name box, find/replace
 inputs, or dialogs, are allowed. The app must own the workbook model, selection,
 keyboard handling, clipboard handling, formulas, undo/redo, and save behavior.
+
+Keep package.json and APP_MANIFEST.md in /app. State one absolute SQLite
+file path under /app in the manifest. A fresh database must recreate the seed;
+normal restarts must keep existing saved data. Serve runtime resources locally.

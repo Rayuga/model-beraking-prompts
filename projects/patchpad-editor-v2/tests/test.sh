@@ -3,7 +3,7 @@ set -euo pipefail
 umask 077
 
 LOG_DIR="${VERIFIER_LOG_DIR:-/logs/verifier}"
-APP_COPY="/tmp/gridforge-v2-submission"
+APP_COPY="/tmp/patchpad-v2-submission"
 APP_PID=""
 
 mkdir -p "$LOG_DIR"
@@ -49,7 +49,7 @@ for link in Path("/app").rglob("*"):
         target = link.resolve(strict=True)
     except (OSError, RuntimeError):
         raise SystemExit(1)
-    trusted_roots = [root, Path("/usr/local/lib/node_modules"), Path("/opt/gridforge-deps")]
+    trusted_roots = [root, Path("/usr/local/lib/node_modules"), Path("/opt/patchpad-deps")]
     if not any(target == base or base in target.parents for base in trusted_roots):
         raise SystemExit(1)
 PY
@@ -90,7 +90,7 @@ setsid env -i \
   HOME="$APP_COPY" \
   PORT="3000" \
   HOST="0.0.0.0" \
-  SEED_PATH="/assets/workbook_seed.json" \
+  SEED_PATH="/assets/incident_seed.json" \
   setpriv --reuid=65534 --regid=65534 --clear-groups \
   sh -c 'cd "$1" && exec npm start' sh "$APP_RUN" >"$LOG_DIR/app.log" 2>&1 &
 APP_PID="$!"

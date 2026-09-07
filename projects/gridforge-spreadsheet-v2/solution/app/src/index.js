@@ -341,7 +341,6 @@ app.get('/api/workbooks/:id/cells/:addr/history', (req, res) => {
     LEFT JOIN users u ON u.id = h.user_id
     WHERE h.workbook_id = ? AND h.cell_addr = ?
     ORDER BY h.id DESC
-    LIMIT 20
   `).all(req.params.id, req.params.addr.toUpperCase());
   res.json({ history: rows.map((item) => ({
     cell: item.cell_addr,
@@ -359,7 +358,6 @@ app.get('/api/workbooks/:id/revisions', (req, res) => {
     SELECT revision, created_at FROM revisions
     WHERE workbook_id = ?
     ORDER BY revision DESC
-    LIMIT 20
   `).all(req.params.id);
   res.json({ revisions: rows });
 });

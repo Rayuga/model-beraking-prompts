@@ -11,3 +11,13 @@ Provide a revision history with timestamps so people can preview or restore an
 earlier version. A restored version should begin as a draft, remain undoable,
 and preserve the existing history. Include automatically saved versions in the
 same history.
+
+Autosave a completed edit within five seconds. Restoring an old version must
+leave time to inspect or undo that draft before it is saved.
+
+Use a JSON save request with an integer baseRevision, workbookId, and workbook
+payload containing id, title, and sheets. Sheets have id, name, and cells, an
+address-keyed object of raw string values. Reject missing or invalid structure,
+unknown or conflicting identities, non-integer revisions, and non-string cell
+values. A cell save cannot rename a workbook or sheet. Invalid requests return
+a 4xx response and leave stored content and revisions unchanged.

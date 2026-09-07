@@ -5,7 +5,7 @@ a formula bar, selection details, the saved revision, and a clear saved or
 unsaved state.
 
 Support common spreadsheet editing and navigation with the mouse and keyboard,
-including selection, clipboard actions, and undo/redo. Pasted tabular data
+including selection, clipboard actions, and undo/redo. Pasted tabular data in TSV or CSV form
 should fill the matching area.
 
 Selections should behave naturally for a cell or rectangular area, including
@@ -34,3 +34,7 @@ caret, operators, and arguments in the way people expect from a spreadsheet.
 
 Show understandable errors for invalid formulas, circular references, and
 division by zero, and allow the sheet to recover when the formula is corrected.
+
+Keep function suggestions directly below the cell being edited. Picking a
+new reference replaces the previous picked reference until an operator or
+argument separator is entered; subsequent typing continues after the reference.

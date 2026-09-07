@@ -11,4 +11,5 @@ should include:
 - Visible errors for invalid formulas, rejected saves, and invalid actions.
 
 The product is judged by behavior, not visual polish, but the spreadsheet
-should be usable in a normal browser.
+should be readable, keyboard accessible, and usable in a normal browser. Keep
+its labels, focus states, save feedback, and revision information clear.

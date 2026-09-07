@@ -1,25 +1,27 @@
 [judge]
-judge = "claude-code"
-model = "anthropic/claude-sonnet-5"
+judge = "codex"
+model = "openai/gpt-5.6-luna"
 mode = "batched"
-timeout = 16800
+timeout = 6500
 isolated = false
+reasoning_effort = "high"
+temperature = 0
 prompt_template = "prompt.md"
-weight = 1.0
+weight = 0.6
 
 [[judge.mcp_servers]]
 name = "playwright"
 transport = "stdio"
 command = "playwright-mcp"
-args = ["--headless", "--isolated", "--browser=chromium", "--no-sandbox"]
+args = ["--headless", "--isolated", "--executable-path=/usr/local/bin/chromium", "--no-sandbox"]
 
 [[criterion]]
-id = "workbook_load_custom_surface_status"
-name = "workbook_load_custom_surface_status"
+id = "workbook_load_status_and_keyboard_basics"
+name = "workbook_load_status_and_keyboard_basics"
 type = "binary"
 weight = 0.5
 description = """
-Open the running GridForge app URL provided by the verifier harness. This criterion is all-or-nothing: if any sub-check fails, mark it failed. Verify the workbook is visible and usable immediately after load without an unknown username/password login. Require the exact workbook title "Northwind Operations Plan", sheet name "Plan", row numbers, column letters, selected-address status, raw formula/value editor, saved revision, and saved/dirty state. Select B2, C2, and D2 and require displayed values 3, 120, and 360, with raw D2 exactly =B2*C2. Inspect the live DOM and loaded scripts read-only and require the editable grid not to be a textarea, contenteditable surface, one input per cell, or a known spreadsheet/grid/calculation library including Handsontable, AG Grid, Luckysheet, x-spreadsheet, HyperFormula, or SheetJS as the calculation engine. Select B10 through the visible grid and use real key presses in this exact order, checking the visible selected address after every key: ArrowRight=C10, ArrowDown=C11, ArrowLeft=B11, ArrowUp=B10, Enter=B11, Shift+Enter=B10, Tab=C10, Shift+Tab=B10. Then enter CUSTOM-GRID-PROOF in blank F2 and commit with Enter; require F2 exact and selection F3. Enter DELETE-ME-F3 in F3 and commit. Enter KEYBOARD-G3 in G3 and commit with Shift+Tab; require G3 exact and selection F3. Press Delete once and require only F3 blank, then Undo once and require F3=DELETE-ME-F3 while F2 and G3 remain exact. The reasoning must report the observed eight-address keyboard sequence and final F2/F3/G3 values. Missing evidence, a wrong address, seed shown only after typing, direct mutation, a hidden/native cell-input grid, or any failed sub-check is a failure.
+Open the running GridForge app URL provided by the verifier harness. This criterion is all-or-nothing: if any sub-check fails, mark it failed. Verify the workbook is visible and usable immediately after load without an unknown username/password login. Require the exact workbook title "Northwind Operations Plan", sheet name "Plan", row numbers, column letters, selected-address status, raw formula/value editor, saved revision, and saved/dirty state. Select B2, C2, and D2 and require displayed values 3, 120, and 360, with raw D2 exactly =B2*C2. Select B10 through the visible grid and use real key presses in this exact order, checking the visible selected address after every key: ArrowRight=C10, ArrowDown=C11, ArrowLeft=B11, ArrowUp=B10, Enter=B11, Shift+Enter=B10, Tab=C10, Shift+Tab=B10. Then enter CUSTOM-GRID-PROOF in blank F2 and commit with Enter; require F2 exact and selection F3. Enter DELETE-ME-F3 in F3 and commit. Enter KEYBOARD-G3 in G3 and commit with Shift+Tab; require G3 exact and selection F3. Press Delete once and require only F3 blank, then Undo once and require F3=DELETE-ME-F3 while F2 and G3 remain exact. The reasoning must report the observed eight-address keyboard sequence and final F2/F3/G3 values. Missing evidence, a wrong address, seed shown only after typing, direct mutation, or any failed sub-check is a failure. Inspect the live grid read-only: reject a textarea, contenteditable, one input per cell, or a prohibited third-party grid/calculation engine; small controls outside the grid are allowed.
 """
 
 [[criterion]]
@@ -37,7 +39,7 @@ name = "formula_bar_raw_formula_and_precedence"
 type = "binary"
 weight = 2.0
 description = """
-This criterion is all-or-nothing and must be executed with real visible keyboard and grid interactions. Do not award it from generic formula support or from different formulas. Select D2 and require grid value 360 and raw editor exactly =B2*C2. Replace it by typing exactly =B2*(C2+10), commit, reselect D2, and require raw text unchanged and displayed value 390. Select blank G2 and type only =; require visible in-progress raw = with no formula error. Click B2 through the visible grid and require raw =B2. Without typing an operator or comma, click C2 and require raw =C2. Press only the + key and inspect before typing anything else; require visible raw text exactly =C2+. If the result is =+, C2 disappears, the click navigates away, or the formula is repaired by another action, fail immediately. Type only 3*4, commit, and require raw G2 exactly =C2+3*4 and displayed G2=132. Enter the following independent formulas and require exact raw text and displayed results after reselecting each cell: G3 =(2+3)*4 -> 20; G4 =20/2+3*4 -> 22; G5 =20/(2+3)*4 -> 16; G8 =20-3*4 -> 8. The reasoning must include an ordered checkpoint table containing D2 raw/value, G2 raw after =, =B2, =C2, and the single + key, and every G3/G4/G5/G8 raw/value pair. Missing rows, different examples, inferred behavior, or any failed checkpoint is a failure.
+This criterion is all-or-nothing and must be executed with real visible keyboard and grid interactions. Do not award it from generic formula support or from different formulas. Select D2 and require grid value 360 and raw editor exactly =B2*C2. Replace it by typing exactly =B2*(C2+10), commit, reselect D2, and require raw text unchanged and displayed value 390. Enter the following independent formulas and require exact raw text and displayed results after reselecting each cell: G2 =C2+3*4 -> 132; G3 =(2+3)*4 -> 20; G4 =20/2+3*4 -> 22; G5 =20/(2+3)*4 -> 16; G8 =20-3*4 -> 8. The reasoning must include an ordered checkpoint table containing D2 raw/value and every G2/G3/G4/G5/G8 raw/value pair. Missing rows, different examples, inferred behavior, or any failed checkpoint is a failure. Mouse-based reference insertion and replacement are scored only by the dedicated formula-reference criteria, not here.
 """
 
 [[criterion]]
@@ -109,7 +111,7 @@ name = "circular_reference_isolation_and_undo_recovery"
 type = "binary"
 weight = 1.0
 description = """
-This criterion is all-or-nothing. Use normal visible cell editing and visible Undo only; do not reload, manually refresh, use APIs, mutate the DOM, or replace formulas with expected results. First set J20=5 and J21 raw formula =J20+1 and require J21=6. Replace J20 with raw formula =J21+1 to create a two-cell loop. Require both J20 and J21 to visibly show a circular/dependency-loop error, while seeded A14 still displays ANCHOR-TOP and independently entered K20=9 remains 9. Press Undo exactly once. Require J20 to return to 5, J21 to recover automatically to 6, K20 to remain 9, and neither J20 nor J21 to retain an error. Next set J23=1, J24=2, J25=3, J22 raw formula =SUM(J23:J25), and require J22=6. Replace J25 with raw formula =J22 so J22 depends on a range that includes a path back to J22. Require at least J22 and J25 to visibly show a circular/dependency-loop error while J23=1, J24=2, K20=9, and A14=ANCHOR-TOP remain unchanged. Replace J25 with 4 and, without reload or refresh, require J22=7 and J25=4 with no remaining circular error. The reasoning must provide exact before-loop, loop, and recovered values/errors for J20:J21 and J22:J25 plus the A14/K20 isolation controls. A generic statement that cycles are detected, a different cycle, missing isolation controls, or any failed checkpoint fails.
+This criterion is all-or-nothing. Use normal visible cell editing and visible Undo only; do not reload, manually refresh, use APIs, mutate the DOM, or replace formulas with expected results. First enter K20=9, then set J20=5 and J21 raw formula =J20+1 and require J21=6. Replace J20 with raw formula =J21+1 to create a two-cell loop. Require both J20 and J21 to visibly show a circular/dependency-loop error, while seeded A14 still displays ANCHOR-TOP and K20 remains 9. Press Undo exactly once. Require J20 to return to 5, J21 to recover automatically to 6, K20 to remain 9, and neither J20 nor J21 to retain an error. Next set J23=1, J24=2, J25=3, J22 raw formula =SUM(J23:J25), and require J22=6. Replace J25 with raw formula =J22 so J22 depends on a range that includes a path back to J22. Require at least J22 and J25 to visibly show a circular/dependency-loop error while J23=1, J24=2, K20=9, and A14=ANCHOR-TOP remain unchanged. Replace J25 with 4 and, without reload or refresh, require J22=7 and J25=4 with no remaining circular error. The reasoning must provide exact before-loop, loop, and recovered values/errors for J20:J21 and J22:J25 plus the A14/K20 isolation controls. A generic statement that cycles are detected, a different cycle, missing isolation controls, or any failed checkpoint fails.
 """
 
 [[criterion]]
