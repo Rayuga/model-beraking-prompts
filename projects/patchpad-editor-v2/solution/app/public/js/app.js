@@ -31,11 +31,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 function bindControls() {
   const findBox = document.getElementById('find-box');
   document.getElementById('save-btn').addEventListener('click', saveDocument);
-  document.getElementById('undo-btn').addEventListener('click', undo);
-  document.getElementById('redo-btn').addEventListener('click', redo);
-  document.getElementById('find-next-btn').addEventListener('click', findNext);
-  document.getElementById('replace-current-btn').addEventListener('click', replaceCurrent);
-  document.getElementById('replace-all-btn').addEventListener('click', replaceAll);
+  for (const [id, command] of [
+    ['undo-btn', undo], ['redo-btn', redo], ['find-next-btn', findNext],
+    ['replace-current-btn', replaceCurrent], ['replace-all-btn', replaceAll]
+  ]) {
+    document.getElementById(id).addEventListener('click', () => {
+      command();
+      editor.focus();
+    });
+  }
   findBox.addEventListener('input', (event) => {
     state.query = event.target.value;
     state.activeMatch = -1;
@@ -143,6 +147,7 @@ window.restoreRevision = async (revision) => {
   recomputeMatches();
   render();
   message.textContent = `Revision ${revision} restored as unsaved draft. Use Undo to return to the pre-restore draft.`;
+  editor.focus();
 };
 
 function snapshot() {
@@ -242,6 +247,12 @@ function onPaste(event) {
 }
 
 function onKeyDown(event) {
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    state.typingGroup = null;
+    document.getElementById('find-box').focus();
+    return;
+  }
   if (event.metaKey || event.ctrlKey) {
     const key = event.key.toLowerCase();
     if (key === 'f') {

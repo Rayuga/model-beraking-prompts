@@ -7,6 +7,8 @@ cursor position.
 Include familiar keyboard behavior for moving or selecting by words, using Tab
 and Shift+Tab for indentation, and opening Find from the keyboard. Find results
 should be reachable in both directions without going back to the mouse.
+Escape from the editing area should focus the Find input so people can use
+Tab and Shift+Tab to move through the surrounding controls again.
 
 Support emoji and accented text as complete visible characters when moving,
 selecting, or deleting.

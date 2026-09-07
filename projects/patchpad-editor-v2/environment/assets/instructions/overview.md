@@ -21,6 +21,8 @@ or another ready-made editor for the document surface.
 Keep an `APP_MANIFEST.md` beside `package.json` with the start command, SQLite
 path, and main API routes.
 
-Keep package.json and APP_MANIFEST.md in /app. State one absolute SQLite
-file path under /app in the manifest. A fresh database must recreate the seed;
+Keep package.json and APP_MANIFEST.md in /app. Include one line in the manifest
+labelled `SQLite path:` followed by the absolute database file path under /app,
+optionally enclosed in backticks. The filename can have any extension or none.
+A fresh database must recreate the seed;
 normal restarts must keep existing saved data. Serve runtime resources locally.

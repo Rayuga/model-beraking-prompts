@@ -10,7 +10,7 @@ prerequisite fails, assign the lowest score to every criterion (no for binary; 1
 failure and score every criterion independently. Do not edit or save the report.
 
 As part of the global browser gate, observe a successful same-origin data
-request supplying the workbook or report currently shown in the UI. Discover
+request supplying the incident report currently shown in the UI. Discover
 the route from the app's own requests. Static HTML, bundled seed data, or
 browser storage without a server data response is not enough. This is only a
 basic loading check; do not extend it into the detailed Functional checks.

@@ -16,4 +16,5 @@ Please read all of them before starting. Seed data is available at
 The workspace is offline while you build. Use the supplied seed and the
 dependencies already available in the image; do not install or fetch anything.
 Put the finished app in `/app` and start it with `npm start` on port `3000`.
+Serve the editor at the root page `/`.
 Include `APP_MANIFEST.md` with the start command and SQLite database path.

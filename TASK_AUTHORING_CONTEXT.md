@@ -1,6 +1,69 @@
 # Current WebDev Task Authoring Context
 
-Updated: 2026-09-04
+Updated: 2026-09-08
+
+## Latest QC and PatchPad handoff
+
+The latest supplied rubric is root `WebDev Rubrics QC.xlsx`: 53 rows in
+`Quality Checks` and 58 listed checks in `Deterministic Checks`. Use this newer
+rubric for current submissions where it supersedes the historical scorecard
+below. The workbook lists checks, not executable platform-checker code.
+
+The active revised PatchPad task is `projects/patchpad-editor-v2/`, package
+`turing/patchpad-editor-v2`, version `2.0.3`. The user explicitly requires this
+name; do not rename it to patchpad-incident-editor. The latest platform result
+reported 52/53 passed with only coverage failing; identity was not a remaining
+failure. Other QC repairs are retained. Use the patchpad-editor-v2-2.0.3-task.zip archive; the previous
+patchpad-incident-editor archive is superseded. The older submitted PatchPad
+and GridForge tasks were not changed.
+
+On September 7, nine platform findings were traced to overlapping problems:
+hidden database-extension constraints, ambiguous stale-draft handling, a Tab
+indentation/focus-traversal contradiction, an unstated visible match count,
+platform-specific word boundaries, a version-suffixed identity, and missing
+prompt version/copy-edit residue. The brief, reference, and tests were aligned.
+Escape now leaves the editor for Find; Tab still indents. Both common word
+boundary conventions are accepted, with exact coordinate/clipboard checks.
+
+Evidence and the corrected task ZIP are under
+`deliverables/patchpad-incident-editor-validation/`. Read
+`patchpad_qc_rework.json` for the nine dispositions and 53-check inventory.
+Local unpaid checks cover 22 browser regression groups, 11 manifest cases,
+RewardKit discovery, syntax, and empty-submission zero scoring. This is not a
+full Oracle or a new 53/53 platform verdict; upload QC and a complete Oracle
+remain to be run. No paid model calls were made for this repair.
+
+The final reported coverage gap concerned server restart idempotence and
+manifest API-route documentation. Two Functional criteria now cover those
+requirements, giving 33 total criteria (2 Render, 2 Constraints, 25 Functional,
+4 Polish). `tests/app-lifecycle.sh` is trusted verifier infrastructure, shared
+by test.sh and the restart criterion; it restarts npm start without resetting
+SQLite or calling solve.sh. Judge terminal use is narrowly permitted to read
+the manifest as documentation and invoke that helper. Golden tests verified
+two process replacements preserve the saved report and entire revision history.
+Disposable broken copies proved startup reseeding and missing route docs fail.
+The harness was also tested with a local stub to verify restart cleanup and
+score aggregation; that injected test score is explicitly not an Oracle result.
+
+Oracle `run-74864554` (export under `run-outputs/patchpad-editor-v2/`) completed
+on version 2.0.2: reward 0.8143, Functional 0.6905, other dimensions 1.0,
+25/33 criteria passed, no-op zero. Both new coverage criteria passed. Eight
+failures concerned Unicode, paste/cut, Find, restore Undo, and multi-caret paths.
+The action trajectory was not exported; do not call every failure an app bug.
+Local reproduction confirmed clicked Find Next and Restore Draft left button
+focus, whereas held-modifier multi-caret and atomic paste/cut worked.
+
+Version 2.0.3 returns focus after clicked Find/Undo/Redo/Replace and asynchronous
+Restore Draft, while keyboard Find cycling keeps input focus. The verifier now
+copies selected document text after Escape, establishes an exact paste baseline,
+requires actual held modifiers and waits for clipboard/API completion without
+issuing rescue actions. All eight failure paths have exact regression checks in
+`oracle-failures-regression.cjs`, including both Alt/Control multi-carets and
+keyboard/button restore Undo. Their local pass is not a fresh full Oracle score.
+
+Keep the human product voice. Do not make requirements vague to induce model
+failure or pin undocumented reference-only behavior. A prompt-version marker
+helps trace evidence but does not make an LLM judge deterministic.
 
 This is the current shared standard for WebDev/RL task authoring in this
 repository. It combines the latest admin instructions, the root validation

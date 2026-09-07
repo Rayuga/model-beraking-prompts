@@ -1,7 +1,7 @@
 # Persistence
 
 Provide find and replace for the open report, including moving through matches,
-replacing one match, and replacing all matches.
+replacing one match, and replacing all matches. Show how many matches were found.
 
 Show whether the report is saved or has unsaved changes. Saving changed content
 should create one new SQLite revision; saving unchanged content should not.
