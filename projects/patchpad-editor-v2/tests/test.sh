@@ -79,6 +79,30 @@ if ! bash /tests/app-lifecycle.sh start; then
   exit 0
 fi
 
+# Explicit readiness probe before grading. The lifecycle helper also waits on
+# restarts; here require the browser entry itself, not just a healthy API.
+if ! python3 - <<'PY' >>"$LOG_DIR/readiness.log" 2>&1
+import time
+import urllib.request
+
+deadline = time.monotonic() + 60
+while time.monotonic() < deadline:
+    try:
+        with urllib.request.urlopen('http://127.0.0.1:3000/', timeout=2) as response:
+            response.read(1024)
+        print('Application entry ready before grading')
+        break
+    except (OSError, TimeoutError) as error:
+        print(f'Waiting for application entry: {error}', flush=True)
+        time.sleep(.5)
+else:
+    raise SystemExit('Application entry did not become ready before grading')
+PY
+then
+  write_zero_reward
+  exit 0
+fi
+
 if ! timeout --signal=TERM --kill-after=30s 12000 \
   rewardkit --max-concurrent-agent 1 /tests >"$LOG_DIR/rewardkit.log" 2>&1; then
   write_zero_reward

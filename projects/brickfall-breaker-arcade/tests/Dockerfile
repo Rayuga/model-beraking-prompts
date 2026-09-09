@@ -1,5 +1,5 @@
-FROM node:22-bookworm-slim AS node-runtime
-FROM python:3.12-slim
+FROM node:22-bookworm-slim@sha256:83f487e0a63425e5b4d146fb5e5be574bcbe1b7b843d3ebafdd95eaf7767a7e5 AS node-runtime
+FROM python:3.12-slim@sha256:78387bc3881b8273120a12ebe6c1ab22b018ccc2c9adf565ae1ac9b536e184ea
 
 COPY --from=node-runtime /usr/local /usr/local
 
@@ -58,9 +58,10 @@ RUN mkdir -p /opt/playwright-browsers \
 RUN python3 -c "from pathlib import Path; p=Path('/usr/local/lib/python3.12/site-packages/rewardkit/agents.py'); s=p.read_text(); old='            \"--skip-git-repo-check\",\n'; new=old+'            \"--dangerously-bypass-approvals-and-sandbox\",\n'; assert old in s and new not in s; p.write_text(s.replace(old,new,1))"
 
 LABEL org.turing.task="brickfall-breaker-arcade" \
-      org.turing.verifier-version="2.2.1"
+      org.turing.verifier-version="2.0.1"
 
-COPY assets /assets
+COPY brickfall_seed.xlsx /assets/artifacts/brickfall_seed.xlsx
+COPY brickfall_scenarios.json /assets/artifacts/brickfall_scenarios.json
 RUN chmod -R a+rX /assets
 COPY . /tests
 RUN chmod +x /tests/test.sh && chmod -R go-rwx /tests
