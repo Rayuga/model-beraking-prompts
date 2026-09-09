@@ -1,42 +1,32 @@
 # Working with the sheet
 
-Open the seeded workbook as a familiar spreadsheet with row and column headers,
-a formula bar, selection details, the saved revision, and a clear saved or
-unsaved state.
+Our plan needs room to grow: give us at least 80 rows and 20 columns, A to T.
+Use familiar row and column headers, a formula bar, and a clear indication of
+the selected cells, saved revision, and whether there are unsaved edits.
 
-Provide at least 80 rows and 20 columns, from A to T.
+People should be able to move around and edit with a mouse or keyboard, select
+a cell or rectangular area, drag in either direction, and extend a selection.
+Copying, cutting, pasting, and undo/redo should feel like a spreadsheet. We
+often bring in tables as TSV or CSV, so pasted rows and columns should land
+in the corresponding cells.
 
-Support common spreadsheet editing and navigation with the mouse and keyboard,
-including selection, clipboard actions, and undo/redo. Pasted tabular data in TSV or CSV form
-should fill the matching area.
+We also need fill, find and replace, and a name box for jumping to a cell or
+selecting an area. Filling should continue number patterns and adjust relative
+formula references. A complete edit, paste, fill, or replace-all should be one
+action to undo or redo.
 
-Selections should behave naturally for a cell or rectangular area, including
-dragging in either direction and extending an existing selection.
+For calculations, support formulas beginning with `=`, arithmetic,
+parentheses, cell and range references, and `SUM`, `AVG`, `MIN`, `MAX`,
+and `COUNT`. People will mix values, cells, and ranges in these functions.
+Show the calculated result in the grid while keeping the original formula
+available for editing and saving, and update dependent cells when inputs
+change.
 
-Include the everyday tools people expect from a spreadsheet: filling values or
-formulas across an area, finding and replacing cell text, and using a name box
-to jump to a cell or select an area. Number patterns and relative formula
-references should continue naturally during a fill.
+While someone builds a formula, suggest functions just below the cell they
+are editing and let them pick references by pointing at cells or areas. Keep
+those references easy to see. Until they type an operator or argument
+separator, picking again should replace their previous reference; typing then
+continues after the reference.
 
-Undo and redo should treat a complete edit, paste, fill, or replace-all as one
-spreadsheet action.
-
-## Formulas
-
-Formulas start with `=`. Keep the original formula available for editing and
-saving while showing its calculated result in the grid. Support normal
-arithmetic, parentheses, cell and range references, and `SUM`, `AVG`, `MIN`,
-`MAX`, and `COUNT`. Functions should accept the usual combinations of values,
-cells, and ranges. Calculated cells should update when their inputs change.
-
-Formula editing should offer useful function suggestions near the cell being
-edited and let people point to cells or areas in the grid to build an
-expression. Keep referenced areas easy to recognize and handle the formula
-caret, operators, and arguments in the way people expect from a spreadsheet.
-
-Show understandable errors for invalid formulas, circular references, and
-division by zero, and allow the sheet to recover when the formula is corrected.
-
-Keep function suggestions directly below the cell being edited. Picking a
-new reference replaces the previous picked reference until an operator or
-argument separator is entered; subsequent typing continues after the reference.
+Invalid syntax, division by zero, and circular references should produce
+understandable errors. Correcting a formula should let the calculation recover.

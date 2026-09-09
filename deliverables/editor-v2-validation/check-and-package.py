@@ -31,7 +31,11 @@ for slug in SLUGS:
     check("canonical three-part slug", len(slug.split("-")) == 3 and task["task"]["name"] == "turing/" + slug)
     check("version matches package", version == json.loads((root / "solution/app/package.json").read_text(encoding="utf-8"))["version"])
     check("target GPT-5.4-mini", task["metadata"]["active_target_model"] == "openrouter/openai/gpt-5.4-mini")
-    check("offline agent and separate verifier", task["environment"]["network_mode"] == "no-network" and task["verifier"]["environment_mode"] == "separate")
+    expected_agent_network = "no-network" if slug.startswith("gridforge") else "public"
+    check("intended agent network and separate verifier", task["environment"]["network_mode"] == expected_agent_network and task["verifier"]["environment_mode"] == "separate")
+    brief_paths = [root / "instruction.md", *(root / "environment/assets/instructions").glob("*.md")]
+    brief = " ".join(" ".join(p.read_text(encoding="utf-8").lower().split()) for p in brief_paths)
+    check("public network agrees with build instructions", task["environment"]["network_mode"] != "public" or not any(s in brief for s in ("workspace is offline", "offline while you build", "network is disabled")))
     check("provider allowlist", {"openrouter.ai", "api.openai.com"} <= set(task["verifier"]["environment"]["allowed_hosts"]))
     check("total time within six hours", task["agent"]["timeout_sec"] + task["environment"]["build_timeout_sec"] + task["verifier"]["timeout_sec"] <= 21600)
     required = ["task.toml", "instruction.md", "environment/Dockerfile", "solution/solve.sh", "tests/Dockerfile", "tests/test.sh", "tests/reward.toml"]
@@ -53,7 +57,7 @@ for slug in SLUGS:
         count_by_dimension[dim] = len(criteria)
         timeout_sum += judge["timeout"]
     check("criterion ids unique", len(ids) == len(set(ids)))
-    check("expected functional criterion count", count_by_dimension["functional"] == (36 if slug.startswith("gridforge") else 23))
+    check("expected functional criterion count", count_by_dimension["functional"] == (36 if slug.startswith("gridforge") else 26))
     check("small hard gates", count_by_dimension["render"] == 2 and count_by_dimension["constraints"] == 2)
     runner = (root / "tests/test.sh").read_text(encoding="utf-8")
     check("timeouts fit with overhead", timeout_sum + 1000 < 12000 < task["verifier"]["timeout_sec"])

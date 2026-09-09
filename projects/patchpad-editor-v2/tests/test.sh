@@ -4,7 +4,6 @@ umask 077
 
 LOG_DIR="${VERIFIER_LOG_DIR:-/logs/verifier}"
 APP_COPY="/tmp/patchpad-v2-submission"
-APP_PID=""
 
 mkdir -p "$LOG_DIR"
 chmod 700 "$LOG_DIR"
@@ -21,14 +20,7 @@ ensure_reward() {
 }
 
 cleanup() {
-  if [[ -n "$APP_PID" ]]; then
-    kill -- -"$APP_PID" 2>/dev/null || true
-    for _ in $(seq 1 20); do
-      kill -0 "$APP_PID" 2>/dev/null || break
-      sleep 0.1
-    done
-    kill -KILL -- -"$APP_PID" 2>/dev/null || true
-  fi
+  bash /tests/app-control.sh stop 2>/dev/null || true
   ensure_reward
 }
 
@@ -80,40 +72,10 @@ then
 fi
 chmod -R a+rX /app 2>/dev/null || true
 chown -R 65534:65534 /app
-APP_RUN="/app"
 mkdir -p "$APP_COPY"
 chown 65534:65534 "$APP_COPY"
 
-setsid env -i \
-  PATH="/usr/local/bin:/usr/bin:/bin" \
-  NODE_PATH="/usr/local/lib/node_modules" \
-  HOME="$APP_COPY" \
-  PORT="3000" \
-  HOST="0.0.0.0" \
-  SEED_PATH="/assets/incident_seed.json" \
-  setpriv --reuid=65534 --regid=65534 --clear-groups \
-  sh -c 'cd "$1" && exec npm start' sh "$APP_RUN" >"$LOG_DIR/app.log" 2>&1 &
-APP_PID="$!"
-
-READY=0
-for _ in $(seq 1 120); do
-  if python3 - <<'PY' >/dev/null 2>&1
-import urllib.request
-for url in ("http://127.0.0.1:3000/health", "http://127.0.0.1:3000/"):
-    try:
-        urllib.request.urlopen(url, timeout=2).read()
-        raise SystemExit(0)
-    except Exception:
-        pass
-raise SystemExit(1)
-PY
-  then
-    READY=1
-    break
-  fi
-  sleep 0.25
-done
-if [[ "$READY" != "1" ]]; then
+if ! bash /tests/app-control.sh start; then
   exit 0
 fi
 

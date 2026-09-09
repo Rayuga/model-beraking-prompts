@@ -2,6 +2,8 @@
 
 Provide find and replace for the open report, including moving through matches,
 replacing one match, and replacing all matches.
+Show the total number of matches for the current search so people can judge
+the scope of a replacement before changing the report.
 
 Show whether the report is saved or has unsaved changes. Saving changed content
 should create one new SQLite revision; saving unchanged content should not.

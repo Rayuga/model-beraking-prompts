@@ -1,15 +1,15 @@
-# Interface expectations
+# Finding our way around
 
-Use labels and controls that are discoverable by intent. Nothing should require
-a hidden route, magic element id, or external instructions to use. The app
-should include:
+People should recognize the workbook they're in and be able to start work
+without knowing URLs or reading developer notes. Show the workbook title and
+give the grid most of the working space.
 
-- A workbook title or workbook list showing the seeded workbook.
-- A custom grid area.
-- Save, undo, redo, formula editing, fill, find, replace, name-box navigation,
-  and revision history controls.
-- Visible errors for invalid formulas, rejected saves, and invalid actions.
+Keep saving, undo and redo, the formula bar, fill, find and replace, the name
+box, and revision history easy to find. Labels can be your own as long as
+their purpose is clear. Someone using a keyboard should be able to reach the
+controls and see where focus is.
 
-The spreadsheet should be readable, keyboard accessible, and usable in a
-normal browser, with a clear visual layout. Keep
-its labels, focus states, save feedback, and revision information clear.
+When a formula is invalid, a save is rejected, or an action can't be completed,
+tell the person what happened. Keep save feedback and revision information
+readable alongside their work. Aim for a clear layout that is comfortable to
+use in a normal browser.

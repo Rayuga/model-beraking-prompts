@@ -8,6 +8,10 @@ Include familiar keyboard behavior for moving or selecting by words, using Tab
 and Shift+Tab for indentation, and opening Find from the keyboard. Find results
 should be reachable in both directions without going back to the mouse.
 
+For word shortcuts, moving right should pass the current word and its following
+whitespace to the start of the next word. Holding Shift selects that same span,
+including the whitespace; moving left goes back to the previous word's start.
+
 Support emoji and accented text as complete visible characters when moving,
 selecting, or deleting.
 

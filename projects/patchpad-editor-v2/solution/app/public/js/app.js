@@ -14,6 +14,7 @@ const state = {
   redo: [],
   typingGroup: null,
   dirty: false,
+  editingKeysActive: false,
   query: '',
   matches: [],
   activeMatch: -1
@@ -50,10 +51,12 @@ function bindControls() {
     } else if (event.key === 'Escape') {
       event.preventDefault();
       editor.focus();
+      state.editingKeysActive = true;
     }
   });
 
   editor.addEventListener('keydown', onKeyDown);
+  editor.addEventListener('focus', () => { state.editingKeysActive = false; });
   editor.addEventListener('paste', onPaste);
   editor.addEventListener('mousedown', onMouseDown);
 }
@@ -236,12 +239,27 @@ function markDirty() {
 }
 
 function onPaste(event) {
+  state.editingKeysActive = true;
   event.preventDefault();
   const text = (event.clipboardData?.getData('text/plain') || '').replace(/\r\n?/g, '\n');
   if (text) insertText(text);
 }
 
 function onKeyDown(event) {
+  if (['Shift', 'Control', 'Meta', 'Alt'].includes(event.key)) return;
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    state.editingKeysActive = false;
+    state.typingGroup = null;
+    return;
+  }
+  if (event.key === 'Tab' && !state.editingKeysActive) return;
+  if (event.key === 'Enter' && !state.editingKeysActive) {
+    event.preventDefault();
+    state.editingKeysActive = true;
+    return;
+  }
+  state.editingKeysActive = true;
   if (event.metaKey || event.ctrlKey) {
     const key = event.key.toLowerCase();
     if (key === 'f') {
@@ -333,6 +351,7 @@ function onMouseDown(event) {
   if (!pos) return;
   event.preventDefault();
   editor.focus();
+  state.editingKeysActive = true;
   if (event.altKey || event.ctrlKey || event.metaKey) {
     state.selection = null;
     const existing = [state.caret, ...state.extraCarets].map(normalizePos);

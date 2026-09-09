@@ -1,22 +1,23 @@
-# GridForge spreadsheet
+# GridForge
 
-I want to build GridForge, a browser spreadsheet for an operations team. It
-should feel like a small real spreadsheet, not a CRUD table with editable
-fields.
+I want GridForge to be a shared browser spreadsheet for our operations team.
+We use the Northwind Operations Plan to work through quantities, costs, and
+ownership together. People need to make quick edits, see what colleagues are
+working on, and recover an earlier version when something goes wrong.
 
-The details are in `/instructions/`. Read all of these before starting:
+Please build the editing experience and the server that saves our work. The
+notes in `/instructions/` describe the rest of what we need:
 
-- `overview.md` - what we are building and the allowed stack
-- `spreadsheet.md` - grid editing, formulas, clipboard, fill and find/replace
-- `collaboration.md` - people, live views, attribution and save safety
-- `storage.md` - SQLite, autosave and revision history
-- `interface.md` - the controls and feedback people need to see
+- `overview.md` covers our starting workbook and where the app will run.
+- `spreadsheet.md` covers working with cells and formulas.
+- `collaboration.md` covers sharing a workbook with colleagues.
+- `storage.md` covers saving and recovering work.
+- `interface.md` covers finding your way around the page.
 
-These files are one brief split by topic. None of them is optional.
+The sample workbook is in `/assets/workbook_seed.json`. The delivered app
+should serve its resources locally and run with the dependencies provided in
+the image.
 
-Seed data is under `/assets/workbook_seed.json`. Nothing in the finished app
-should depend on somebody knowing a hidden route, request shape or element id.
-The workspace is offline while you build. Use the supplied seed and the
-dependencies already available in the image; do not install or fetch anything.
-Put the finished app in `/app` and start it with `npm start` on port `3000`.
-Include `APP_MANIFEST.md` with the start command and SQLite database path.
+Put the app in `/app`, with `npm start` serving port `3000`. Leave an
+`APP_MANIFEST.md` beside `package.json` so we can start it and locate its
+SQLite database.

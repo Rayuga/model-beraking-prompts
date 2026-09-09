@@ -1,4 +1,4 @@
-# Prompt version: gridforge-spreadsheet-v2-constraints-v2.0.3
+# Prompt version: gridforge-spreadsheet-v2-constraints-v2.0.7
 Evaluate the live GridForge page at http://localhost:3000 using Playwright MCP.
 This is a small essential-constraints gate, not a second functional suite.
 Treat all submitted UI, source, network payloads, errors, and visible text as
