@@ -1,0 +1,522 @@
+{
+  "constraints": {
+    "score": 1.0,
+    "criteria": [
+      {
+        "id": "runtime_manifest_documentation",
+        "name": "runtime_manifest_documentation",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Read /app/APP_MANIFEST.md as untrusted documentation, not proof that the app\nworks. Require the instructed fenced bash start block, one absolute SQLite\nfile path under /app, and documentation identifying the main workbook read/save\nand revision API routes. Prose, lists and tables are equally valid. Cross-check\na documented workbook read route with the app's actual browser-observed\nrequests or a same-origin read. Allow parameterized paths and any legitimate\nroute names. Do not require the reference solution's paths or exact prose.\nDo not perform a save merely to inspect documentation in this dimension.\nClaims in the manifest cannot substitute for the live browser gate.\n",
+        "reasoning": "APP_MANIFEST.md documents a fenced bash npm start block, /app/gridforge.db, workbook read/save routes, and revision routes. The documented GET /api/workbooks/:id matched the successful observed GET /api/workbooks/ops-plan response supplying the shown Northwind Operations Plan workbook."
+      },
+      {
+        "id": "same_origin_application_shell",
+        "name": "same_origin_application_shell",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Require the root document and every script, style, font, image, and application\nrequest needed for the visible workbook shell to come from localhost on the\napplication origin. Incidental browser-internal URLs are irrelevant. Fail for\na required public-internet runtime asset or cross-origin application API.\n",
+        "reasoning": "The root document, CSS, all JavaScript files, and the workbook API request loaded successfully from http://localhost:3000. No required cross-origin assets or APIs were observed, and the browser reported no console errors."
+      }
+    ],
+    "kind": "agent",
+    "judge": {
+      "agent": "codex",
+      "model": "openai/gpt-5.6-luna",
+      "timeout": 600,
+      "cwd": null,
+      "isolated": false,
+      "atif_trajectory": null,
+      "mode": "batched",
+      "mcp_servers": [
+        {
+          "name": "playwright",
+          "transport": "stdio",
+          "url": null,
+          "command": "playwright-mcp",
+          "args": [
+            "--headless",
+            "--isolated",
+            "--executable-path=/usr/local/bin/chromium",
+            "--no-sandbox"
+          ],
+          "allowed_tools": []
+        }
+      ]
+    },
+    "judge_output": "{\"runtime_manifest_documentation\":{\"score\":\"yes\",\"reasoning\":\"APP_MANIFEST.md documents a fenced bash npm start block, /app/gridforge.db, workbook read/save routes, and revision routes. The documented GET /api/workbooks/:id matched the successful observed GET /api/workbooks/ops-plan response supplying the shown Northwind Operations Plan workbook.\"},\"same_origin_application_shell\":{\"score\":\"yes\",\"reasoning\":\"The root document, CSS, all JavaScript files, and the workbook API request loaded successfully from http://localhost:3000. No required cross-origin assets or APIs were observed, and the browser reported no console errors.\"}}\n"
+  },
+  "functional": {
+    "score": 0.683,
+    "criteria": [
+      {
+        "id": "custom_grid_surface",
+        "name": "custom_grid_surface",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 0.125,
+        "description": "Enter the workbook using the ordinary seeded-user choice if needed. Inspect the live editable grid read-only: it must not be a textarea, contenteditable, one input per cell, or a prohibited third-party spreadsheet/grid/calculation widget. Small controls outside the grid are allowed. Prove it is an editing surface by entering CUSTOM-GRID-PROOF in F2 through real grid keyboard input and committing; require the exact value.",
+        "reasoning": "Custom native table grid with one floating editor; no prohibited widget or per-cell inputs. F2 committed CUSTOM-GRID-PROOF exactly."
+      },
+      {
+        "id": "workbook_seed_and_status",
+        "name": "workbook_seed_and_status",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 0.125,
+        "description": "Enter the workbook through its normal UI. Require title Northwind Operations Plan, sheet Plan, row numbers, column letters, selected-address status, raw formula/value editor, saved revision and saved/dirty state. Before formula criteria run, select B2, C2 and D2 and require numeric results 3,120,360 and raw D2 exactly =B2*C2. Do not require an immediately visible workbook before choosing a seeded user.",
+        "reasoning": "Loaded Northwind Operations Plan / Plan with row numbers, column letters, address box, formula bar, saved revision/status. Initial B2=3, C2=120, D2=360 with raw D2 =B2*C2."
+      },
+      {
+        "id": "keyboard_cell_navigation",
+        "name": "keyboard_cell_navigation",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 0.125,
+        "description": "Select B10 through the visible grid. Use real keys and record every selected address: ArrowRight=C10, ArrowDown=C11, ArrowLeft=B11, ArrowUp=B10, Enter=B11, Shift+Enter=B10, Tab=C10, Shift+Tab=B10. Score this navigation behavior independently of grid implementation and other edits.",
+        "reasoning": "Observed C10,C11,B11,B10,B10,B8,C8,B8; required Enter=B11, Shift+Enter=B10, Tab=C10, Shift+Tab=B10."
+      },
+      {
+        "id": "keyboard_edit_delete_undo",
+        "name": "keyboard_edit_delete_undo",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 0.125,
+        "description": "Through the grid, enter DELETE-ME-F3 in F3 and commit with Enter; require F4 selected. Enter KEYBOARD-G3 in G3 and commit with Shift+Tab; require F3 selected. Record F2 unchanged as an outside control. Delete once must blank F3 only. Undo once must restore DELETE-ME-F3 with G3 and F2 unchanged. Establish these values yourself regardless of earlier criterion results.",
+        "reasoning": "Values, delete, and undo were correct, but G3 committed with Shift+Tab selected E3 instead of required F3."
+      },
+      {
+        "id": "autosave_completed_edit",
+        "name": "autosave_completed_edit",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 0.25,
+        "description": "Use visible UI; select Riley Stone, record current revision R, set F30 to AUTOSAVE-F30 and commit without pressing Save. Require visible Dirty or Saving followed within five seconds by Saved, one new revision R+1 and the exact saved value. This criterion measures autosave only, not history preview or reload.",
+        "reasoning": "F30 ended AUTOSAVE-F30; observed Saving then Saved (Rev 52), baseline Rev 51, without pressing Save."
+      },
+      {
+        "id": "unchanged_save_no_new_revision",
+        "name": "unchanged_save_no_new_revision",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 0.125,
+        "description": "Establish a successful visible changed save of G30=NOOP-BASE-G30, using manual Save if autosave is broken. Wait for Saved. Record current revision and revision-list count. Press visible Save twice without edits if enabled; a disabled Save is acceptable. Require revision and list count unchanged. Do not depend on a previous autosave criterion passing.",
+        "reasoning": "After G30=NOOP-BASE-G30, Rev 54 and 54 revision cards remained unchanged after two clean Save clicks."
+      },
+      {
+        "id": "saved_workbook_restart_and_seed_idempotence",
+        "name": "saved_workbook_restart_and_seed_idempotence",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 0.25,
+        "description": "Establish your own successful visible save: set Q70=RESTART-Q70 and R70 raw formula =7*8, and save. Require displayed R70=56. From actual UI-generated API reads record the complete stored workbook (all raw cells/formulas, workbook and sheet identity), current revision, workbook-list identities/count, and saved revision history; exclude transient presence/session fields. Keep the server-read snapshot, not only browser storage. Invoke the trusted verifier control exactly as bash /tests/restart-app.sh. This stops and starts the same application with the same SQLite file, never clears or reseeds it on the verifier's behalf. Open a fresh browser context without copied storage, choose a seeded user if needed, and observe fresh same-origin reads. Require Q70 and raw/calculated R70 and the complete saved snapshot to remain unchanged, with exactly one seeded workbook and no duplicate revision. Invoke the control once more and repeat the readback to check idempotent startup. Do not edit or save during either restart/readback. Do not execute any other terminal command to repair, reset or modify the app.",
+        "reasoning": "Fresh contexts after both trusted restarts read the same full workbook snapshot, id ops-plan, title, Plan sheet, Q70=RESTART-Q70, raw R70==7*8, calculated R70=56, revision 46, and 46 revisions; no duplicate workbook/revision appeared."
+      },
+      {
+        "id": "cell_edit_history_attribution",
+        "name": "cell_edit_history_attribution",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 0.125,
+        "description": "Select Riley Stone. Record current raw F31, enter HISTORY-F31 and save through UI. Inspect history for F31: require the previous raw value, exact new HISTORY-F31 value, Riley Stone and a nonempty parseable timestamp. Check this saved edit's entry rather than assuming the cell previously blank. History from another cell does not count.",
+        "reasoning": "Saved F31=HISTORY-F31 as Riley Stone, but visible Cell History for F31 reported \u201cNo history recorded for this cell yet.\u201d"
+      },
+      {
+        "id": "revision_history_listing",
+        "name": "revision_history_listing",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 0.125,
+        "description": "Establish a successful visible save of G31=HISTORY-G31 and record its new revision. Open history. Require its revision number and a parseable timestamp, and unique revision identifiers throughout the returned history list. This scores the revision list, not preview or restore.",
+        "reasoning": "Visible history listed unique revisions 1\u201320 with parseable timestamps and revision 20."
+      },
+      {
+        "id": "revision_preview_nonmutation",
+        "name": "revision_preview_nonmutation",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 0.125,
+        "description": "Through UI establish your own pair of versions: set F32=PREVIEW-BASE and save, record revision P; change F32 to PREVIEW-CURRENT and save, recording the current complete workbook and revision. Preview P through its visible control. Require preview F32=PREVIEW-BASE while live F32 remains PREVIEW-CURRENT and fresh same-origin reads show the current complete workbook/revision unchanged. Do not restore or save while testing preview.",
+        "reasoning": "Saved F32 PREVIEW-BASE at Rev 22 and PREVIEW-CURRENT at Rev 23; preview showed PREVIEW-BASE while live remained PREVIEW-CURRENT and revision stayed 23."
+      },
+      {
+        "id": "revision_restore_draft_single_undo",
+        "name": "revision_restore_draft_single_undo",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 0.25,
+        "description": "Through UI establish your own pair of saved versions: F33=RESTORE-BASE, then F33=RESTORE-CURRENT. Record both revision ids, the current complete workbook and revision list. Restore the earlier version through its visible control. Require F33=RESTORE-BASE as a Dirty draft and no immediate new saved revision or stored content change. Undo once before saving must restore the whole pre-restore workbook including F33=RESTORE-CURRENT; stored content and revision history remain unchanged. Do not make this criterion depend on preview working.",
+        "reasoning": "Restored Rev 24 into a visible Unsaved draft with F33=RESTORE-BASE; one Undo returned the whole draft to F33=RESTORE-CURRENT without a new saved revision."
+      },
+      {
+        "id": "distant_row_saved_integrity",
+        "name": "distant_row_saved_integrity",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 0.25,
+        "description": "Using the actual grid scrollbar or mouse wheel, visit rows 14,40,80 and require A14=ANCHOR-TOP, A40=ANCHOR-MIDDLE,A80=ANCHOR-BOTTOM. Set B14=TOP-EDIT-14,B40=MIDDLE-EDIT-40,B80=BOTTOM-EDIT-80,C80=7,D80=8,E80 raw =C80*D80 and require E80=56. Save through normal UI, using manual Save if needed, reload and complete seeded-user entry if shown. Scroll again and require every anchor, raw formula and value at its exact row. Recalculation after changing dependencies is scored by the dedicated formula criteria, not here.",
+        "reasoning": "Using scrolling, observed anchors at A14/A40/A80, saved edits B14/B40/B80 and E80 raw =C80*D80, value 56; reload preserved all values and formula."
+      },
+      {
+        "id": "formula_bar_raw_formula_and_precedence",
+        "name": "formula_bar_raw_formula_and_precedence",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 2.0,
+        "description": "This criterion is all-or-nothing and must be executed with real visible keyboard and grid interactions. Do not award it from generic formula support or from different formulas. Select D2 and require grid value 360 and raw editor exactly =B2*C2. Replace it by typing exactly =B2*(C2+10), commit, reselect D2, and require raw text unchanged and displayed value 390. Enter the following independent formulas and require exact raw text and displayed results after reselecting each cell: G2 =C2+3*4 -> 132; G3 =(2+3)*4 -> 20; G4 =20/2+3*4 -> 22; G5 =20/(2+3)*4 -> 16; G8 =20-3*4 -> 8. The reasoning must include an ordered checkpoint table containing D2 raw/value and every G2/G3/G4/G5/G8 raw/value pair. Missing rows, different examples, inferred behavior, or any failed checkpoint is a failure. Mouse-based reference insertion and replacement are scored only by the dedicated formula-reference criteria, not here.\n",
+        "reasoning": "Checkpoint table: D2|=B2*(C2+10)|390; G2|=C2+3*4|132; G3|=(2+3)*4|20; G4|=20/2+3*4|22; G5|=20/(2+3)*4|16; G8|=20-3*4|8."
+      },
+      {
+        "id": "formula_reference_replacement_selection",
+        "name": "formula_reference_replacement_selection",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 2.0,
+        "description": "This criterion is all-or-nothing. Use only the visible grid, active raw formula editor, and real mouse/keyboard input. Do not award it from a different cell, a different formula, source inspection, or the final computed value alone. Select blank G6 and type only =. Click B3 through the visible grid and require in-progress raw text exactly =B3. Using normal mouse/keyboard selection in the raw editor, select only the visible B3 text while preserving the leading =, then click C3 once through the visible grid. Require raw text exactly =C3. Press only + and inspect before typing anything else: visible raw text must be exactly =C3+. If + replaces C3, raw text becomes =+, the click navigates away, or the formula is repaired by another action, fail immediately. Type only 3*4, commit, require displayed G6=362, reselect G6, and require raw text exactly =C3+3*4. The reasoning must report an ordered five-row table for =B3, selected B3, =C3, the raw text immediately after the single + key, and the committed G6 raw/value. A substituted workflow, generic claim, omitted checkpoint, or any failed row is a failure.\n",
+        "reasoning": "Ordered checkpoints: =B3; selected B3 preserved; =C3 after replacement; =C3+ after +; committed G6 raw =C3+3*4 and value 362."
+      },
+      {
+        "id": "formula_mid_edit_caret_operator_preservation",
+        "name": "formula_mid_edit_caret_operator_preservation",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.5,
+        "description": "This criterion is all-or-nothing: if any sub-check fails, mark it failed. Use the visible grid and formula editing UI only. Enter exactly =B2+10 in G7 and commit it. Reopen G7 through the normal raw formula editor or formula bar, place the caret between B2 and +10, type exactly *C2, and verify before committing or after reselecting G7 that the raw formula is exactly =B2*C2+10. Verify G7 displays 370. Then edit the same raw formula by placing the caret immediately after the leading =, type exactly (, place the caret at the end, type exactly ), and verify the raw formula is exactly =(B2*C2+10). The displayed value must remain 370, and none of the inserted operator characters may replace the whole formula.\n",
+        "reasoning": "Observed mid-edit =B2*C2+10, committed value 370, then parenthesized raw =(B2*C2+10) with value still 370."
+      },
+      {
+        "id": "formula_alternating_mouse_references",
+        "name": "formula_alternating_mouse_references",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.5,
+        "description": "This criterion is all-or-nothing. Use only the visible grid, active formula editor, and real mouse/keyboard input; do not type any cell address manually, repair an intermediate formula, use direct APIs, or substitute another example. Confirm I10 is blank, select it, and type only =. Click seeded B2 once and require the in-progress raw formula to be exactly =B2. Press only * and inspect immediately; require exactly =B2*. Click seeded C2 once and require exactly =B2*C2. Press only + and inspect immediately; require exactly =B2*C2+. Click seeded B3 once and require exactly =B2*C2+B3. Press only / and inspect immediately; require exactly =B2*C2+B3/. Click seeded B3 once and require exactly =B2*C2+B3/B3. Press Enter, then reselect I10 and require raw formula exactly =B2*C2+B3/B3 and displayed value 361. The reasoning must report an ordered checkpoint table for all eight raw-formula states and the final displayed value. If an operator replaces the preceding reference, a click navigates away, a reference remains selected and is overwritten, any address is typed manually, or any checkpoint is omitted, fail.\n",
+        "reasoning": "States: =, =B2, =B2*, =B2*C2, =B2*C2+, =B2*C2+B3, =B2*C2+B3/, =B2*C2+B3/B3; final I10 raw matched and value was 361."
+      },
+      {
+        "id": "formula_mouse_range_reference_insertion",
+        "name": "formula_mouse_range_reference_insertion",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 2.0,
+        "description": "This criterion is all-or-nothing. Use visible grid editing and one real mouse down/drag/up reference gesture only; direct writes, DOM mutation, hidden routes, manually typing F22:F24, clicking cells individually, or repairing the formula fails. Set F22=3, F23=2, and F24=5 through normal editing. Confirm H22 blank, select it, and type exactly =SU without committing. Require a visible formula suggestion dropdown containing SUM directly below H22 rather than below the formula bar or elsewhere on the page. Click the visible SUM suggestion once with the real mouse and require in-progress raw text exactly =SUM(. While H22 remains in formula-entry mode, drag once from visible F22 through F24. Require in-progress raw text exactly =SUM(F22:F24 and require F22, F23, and F24 each visibly outlined or highlighted as formula references. Press only ) and inspect before Enter: require visible raw text exactly =SUM(F22:F24). If ) replaces F22:F24, the formula becomes =SUM(), the drag loses formula mode, or the formula is repaired by another action, fail immediately. Press Enter, require raw H22 exactly =SUM(F22:F24) and displayed H22=10. Change F24 to 8 and without reload or manual refresh require H22=13 with the same raw formula. The reasoning must report the dropdown location and raw text after choosing SUM, exact raw text and three-cell highlight state immediately after the drag, raw text immediately after the single ) key, and the committed and recalculated raw/value pairs. A different range/example, generic mouse-drag claim, missing checkpoint, or any failed sub-check is a failure.\n",
+        "reasoning": "Suggestion dropdown #formula-suggestions appeared below H22; after SUM selection raw was =SUM(; drag produced =SUM(F22:F24 with all three references highlighted; ) produced =SUM(F22:F24); committed value 10 and recalculated to 13 after F24=8."
+      },
+      {
+        "id": "multi_argument_functions_dependency_recalculation",
+        "name": "multi_argument_functions_dependency_recalculation",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.5,
+        "description": "This criterion is all-or-nothing and only the exact range-plus-scalar formulas below satisfy it. Use normal visible editing; no API writes, DOM mutation, hidden routes, or manual result replacement. Set F25=3, F26=2, F27=5, and G25=120. Enter exact raw formulas H25 =SUM(F25:F27,G25), H26 =AVG(F25:F27,G25), H27 =MIN(F25:F27,G25), H28 =MAX(F25:F27,G25), and H29 =COUNT(F25:F27,G25). Reselect every result cell and require the exact raw formula, comma, and trailing G25 argument plus displayed values H25=130, H26=32.5, H27=2, H28=120, H29=4. Change only G25 to 150. Without reload or refresh require H25=160, H26=40, H27=2, H28=150, H29=4 with every raw formula unchanged. The reasoning must contain a five-row table with address, exact raw formula, value before G25 changes, and value after it changes. Testing only single-range formulas such as SUM(D2:D4) or AVG(C2:C4), omitting any row, citing seeded formulas instead of creating these inputs, or making a generic recalculation claim is an automatic failure.\n",
+        "reasoning": "Table: H25 =SUM(F25:F27,G25) 130\u2192160; H26 =AVG(F25:F27,G25) 32.5\u219240; H27 =MIN(F25:F27,G25) 2\u21922; H28 =MAX(F25:F27,G25) 120\u2192150; H29 =COUNT(F25:F27,G25) 4\u21924."
+      },
+      {
+        "id": "shift_click_and_reverse_drag_range_selection",
+        "name": "shift_click_and_reverse_drag_range_selection",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 2.0,
+        "description": "This criterion is all-or-nothing and must use the named mouse gestures through the visible custom grid. Do not use the name box, keyboard range extension, direct APIs, DOM mutation, or a substituted range. Confirm J35:L37 is blank. Select J35 and paste the exact three-row TSV matrix \"RANGE-A<TAB>RANGE-B<TAB>RANGE-C<NEWLINE>RANGE-D<TAB>RANGE-E<TAB>RANGE-F<NEWLINE>RANGE-G<TAB>RANGE-H<TAB>RANGE-I\" once using real tabs/newlines; require its nine exact values in J35:L37. Click J35 once, then hold Shift and click L37 once. Require the selected-range status to be exactly J35:L37 and require all nine cells J35:L37, including K36=RANGE-E, to be visibly selected; a single selected L37 cell fails. Click elsewhere to clear the range. Next press the mouse at L37, drag diagonally upward and left, and release at J35. Require the normalized selected-range status to again be exactly J35:L37 and all nine cells to be selected. Press Delete exactly once and require all nine cells to become blank while I35, M37, and J38 remain unchanged. Press Undo exactly once and require the entire exact RANGE-A through RANGE-I matrix to return together. The reasoning must separately report the Shift+Click status, reverse-drag status, K36 selection state, nine-cell values after Delete and Undo, and boundary-cell values. If either gesture is replaced by another selection method or any checkpoint fails, fail.\n",
+        "reasoning": "Shift-click and reverse drag both reported J35:L37 with nine selected cells including K36. Delete blanked all nine; one Undo restored RANGE-A through RANGE-I. Boundaries I35, M37, J38 stayed blank."
+      },
+      {
+        "id": "division_by_zero_error",
+        "name": "division_by_zero_error",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 0.5,
+        "description": "Use normal visible editing to set H2 raw =10/0. Require a visible division-by-zero or formula error, not Infinity, blank or a normal numeric value. Correct H2 to =10/2 and require 5 without reload; this positive recovery is part of the same error-handling behavior.",
+        "reasoning": "H2 showed #DIV/0! for =10/0, then recovered to 5 for =10/2 without reload."
+      },
+      {
+        "id": "invalid_formula_recovery",
+        "name": "invalid_formula_recovery",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 0.5,
+        "description": "Use normal visible editing to set H3 raw =SUM(. Require a visible invalid-formula error. Correct H3 to =SUM(2,3) and require 5 without reload; edit I3=OK and require the grid remains usable. Circular-reference behavior is scored only by the dedicated cycle criteria.",
+        "reasoning": "H3 showed #SYNTAX! for =SUM(, recovered to 5 for =SUM(2,3), and I3=OK remained usable."
+      },
+      {
+        "id": "scalar_cycle_isolation_single_undo",
+        "name": "scalar_cycle_isolation_single_undo",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 0.5,
+        "description": "Use visible editing: K20=9,J20=5,J21 raw =J20+1; require J21=6. Replace J20 with =J21+1. Require J20 and J21 circular/dependency-loop errors while K20=9 and A14=ANCHOR-TOP remain unchanged. Undo once must restore J20=5 and automatically recalculate J21=6, preserving the outside controls. Do not reload or repair the formula manually.",
+        "reasoning": "J20/J21 showed circular errors while K20=9 and A14 were unchanged; one Undo restored J20=5 and J21=6."
+      },
+      {
+        "id": "range_cycle_isolation_recovery",
+        "name": "range_cycle_isolation_recovery",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 0.5,
+        "description": "Set J23=1,J24=2,J25=3,J22 raw =SUM(J23:J25) and K22=RANGE-CONTROL through UI; require J22=6. Replace J25 with =J22. Require J22 and J25 circular/dependency-loop errors, J23=1,J24=2 and K22 unchanged. Replace J25 with 4 and require J22=7 and no remaining cycle error without reload. This criterion tests range-based dependency cycles, not the separate scalar Undo test.",
+        "reasoning": "J22/J25 showed #CIRCULAR! while J23=1, J24=2, K22=RANGE-CONTROL remained; changing J25=4 recovered J22=7."
+      },
+      {
+        "id": "tsv_rectangular_import",
+        "name": "tsv_rectangular_import",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 0.5,
+        "description": "Using actual browser clipboard setup, paste once at J2 with Ctrl/Cmd+V exact TSV text TSV-A<TAB>11<TAB>12<NEWLINE>TSV-B<TAB>21<TAB>22<NEWLINE>TSV-C<TAB>31<TAB>32, using real tab/newline characters. Require all nine exact raw values at J2:L4. Do not type the transferred cells manually or dispatch synthetic clipboard events. Undo/Redo is scored separately.",
+        "reasoning": "Real clipboard paste at J2 produced the exact 3x3 TSV-A/11/12 through TSV-C/31/32 matrix."
+      },
+      {
+        "id": "paste_single_undo_redo",
+        "name": "paste_single_undo_redo",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 0.5,
+        "description": "Record every raw value at J8:L10 and neighboring I8,M10,J11 through visible UI. Paste exact TSV UNDO-A<TAB>41<TAB>42<NEWLINE>UNDO-B<TAB>51<TAB>52<NEWLINE>UNDO-C<TAB>61<TAB>62 at J8 using real clipboard and shortcut. Require all nine imported values. Undo exactly once must restore the entire pre-paste snapshot; Redo once must restore the entire imported matrix. The three outside controls must remain unchanged. Establish your own paste, not one left by another criterion.",
+        "reasoning": "Exact UNDO matrix pasted at J8; one Undo restored the full pre-paste snapshot and one Redo restored all nine values. I8, M10, J11 stayed unchanged."
+      },
+      {
+        "id": "csv_rectangular_import",
+        "name": "csv_rectangular_import",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 0.5,
+        "description": "Put exact CSV text CSV-A,CSV-B<NEWLINE>CSV-C,CSV-D on the real clipboard with an actual newline. Paste once at O2 using normal Ctrl/Cmd+V. Require O2=CSV-A,P2=CSV-B,O3=CSV-C,P3=CSV-D. Do not require TSV, cut or Undo behavior for this CSV criterion.",
+        "reasoning": "Real clipboard CSV paste produced O2=CSV-A, P2=CSV-B, O3=CSV-C, P3=CSV-D."
+      },
+      {
+        "id": "range_copy_preserves_source",
+        "name": "range_copy_preserves_source",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 0.25,
+        "description": "Enter J55=COPY-A,K55=COPY-B,J56=COPY-C,K56=COPY-D through UI. Select J55:K56 with the visible name box, Copy once, select M55 and Paste once through normal shortcuts. Require M55=COPY-A,N55=COPY-B,M56=COPY-C,N56=COPY-D and all four source values unchanged. No manually retyping the destination.",
+        "reasoning": "Name-box selected J55:K56, copied once, pasted at M55; destination matched and all four source cells stayed unchanged."
+      },
+      {
+        "id": "range_cut_moves_source",
+        "name": "range_cut_moves_source",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 0.25,
+        "description": "Independently enter M55=CUT-A,N55=CUT-B,M56=CUT-C,N56=CUT-D through UI; record neighboring L55,O56. Select M55:N56 with the name box, Cut once, select P55 and Paste once using real clipboard shortcuts. Require M55:N56 blank, P55=CUT-A,Q55=CUT-B,P56=CUT-C,Q56=CUT-D and outside controls unchanged. Do not depend on the Copy criterion preparing the source.",
+        "reasoning": "Name-box cut M55:N56 and pasted at P55; source became blank, destination matched CUT-A through CUT-D, and boundary controls were unchanged."
+      },
+      {
+        "id": "fill_numbers_and_formula_relative_refs",
+        "name": "fill_numbers_and_formula_relative_refs",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 1.0,
+        "description": "This criterion is all-or-nothing across downward and sideways numeric/formula fill. Use normal visible editing, range selection, visible Fill Down/Fill Right controls or handles, and visible Undo/Redo only; direct writes, DOM mutation, hidden routes, or manually typing generated cells fail. Set M2=1 and M3=2, select M2:M7, and fill down once. Require M2:M7 exactly 1,2,3,4,5,6; Undo once must clear only generated M4:M7 together, then Redo once must restore them. Enter raw N2 =B2*C2, select N2:N4, fill down once, and require exact raw formulas N2 =B2*C2, N3 =B3*C3, N4 =B4*C4 with their correct displayed values. For sideways fill, confirm L60:O60 and K61:M61 blank, set J60=2 and K60=4, select J60:O60, and Fill Right once. Require J60:O60 exactly 2,4,6,8,10,12; Undo once must blank only L60:O60 while preserving J60/K60, then Redo must restore the sequence. Enter raw J61 =J60*10, select J61:M61, Fill Right once, and require exact raw formulas =J60*10, =K60*10, =L60*10, =M60*10 with displayed values 20,40,60,80. Undo once must clear generated K61:M61 together while J61 remains; Redo must restore all three. The reasoning must give before/after Undo/Redo tables for both directions and exact raw shifted formulas. Any missing direction, substituted values, or failed checkpoint fails.\n",
+        "reasoning": "Fill Down produced 1,1,1,1,1,1 instead of 1,2,3,4,5,6. Undo/Redo grouping worked and formula fill produced correct shifted formulas, but the criterion is all-or-nothing."
+      },
+      {
+        "id": "find_replace_navigation_and_atomic_replace_all",
+        "name": "find_replace_navigation_and_atomic_replace_all",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 1.0,
+        "description": "This criterion is all-or-nothing: if any sub-check fails, mark it failed. Use only normal visible grid editing and the visible Find, Replace, Find Next, Replace Current, Replace All, Undo, and Redo controls; direct API writes, DOM mutation, hidden routes, browser-storage edits, or manually changing matched cells fail. Set J50=FIND-QC-ONE, J51=FIND-QC-TWO, and J52=FIND-QC-THREE through normal cell editing, then select A1. Enter FIND-QC in the visible Find field. Activate Find Next four times and require the selected cell or visible match status to visit exactly J50, J51, J52, then J50, proving wraparound with exactly three matches. Enter REPLACED-QC in the visible Replace field and activate Replace Current once. Require J50=REPLACED-QC-ONE while J51=FIND-QC-TWO and J52=FIND-QC-THREE. Activate Replace All once and require J51=REPLACED-QC-TWO and J52=REPLACED-QC-THREE, with J50 unchanged. Press Undo exactly once and require J51 and J52 to return together to their exact FIND-QC values while J50 remains REPLACED-QC-ONE. Press Redo exactly once and require J51 and J52 to return together to their exact REPLACED-QC values without changing J50.\n",
+        "reasoning": "Find Next visited J51,J52,J50,J51 instead of J50,J51,J52,J50. Replace Current targeted J51, and Undo also changed J50, violating the required checkpoints."
+      },
+      {
+        "id": "name_box_jump_and_range_selection",
+        "name": "name_box_jump_and_range_selection",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 1.5,
+        "description": "Use the visible name box or cell address box, not direct API calls, hidden routes, formula-bar shortcuts, or DOM mutation. Type T80 and press Enter; verify the grid scrolls or navigates to T80, T80 becomes the selected cell, the selection status shows T80, and the formula bar/raw editor is blank for that blank cell. Type NAMEBOX-T80 through normal grid editing and commit it. Before deleting anything, use normal visible selection and the raw editor to record every raw value/formula and displayed result in B2:D4, plus A2, E4, and T80 as outside-range controls. Keep this exact pre-delete snapshot; do not reset cells to their seed values. Earlier criteria may have changed D2 to =B2*(C2+10), displaying 390. Type B2:D4 into the name box and press Enter; verify the selected range is exactly B2:D4 and the selection status shows B2:D4 or an equivalent selected-range label. Press Delete once and verify all nine cells in B2:D4 are blank and A2, E4, and T80 are unchanged. Press Undo exactly once and require all nine raw values/formulas and displayed results to match the recorded pre-delete snapshot, with A2 and E4 unchanged and T80 still containing NAMEBOX-T80. Do not expect D2=360 unless that was its actual pre-delete result. Reselect B2:D4 through the name box after inspecting the restored cells, then type BADREF into the name box and press Enter; verify the app rejects the invalid address without changing the selected B2:D4 range, without changing any cell, without crashing, and without navigating away from the workbook. Report the pre-delete and post-Undo snapshots and the three outside-range controls. Numeric display formatting may differ if the numeric value is unchanged; raw formulas and text must match exactly.\n",
+        "reasoning": "T80 jump and snapshot/delete/undo worked, but BADREF was accepted into the name box instead of rejected; selection changed to BADREF and the draft became dirty."
+      },
+      {
+        "id": "two_tab_stale_save_conflict",
+        "name": "two_tab_stale_save_conflict",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 1.5,
+        "description": "This criterion is all-or-nothing: if any sub-check fails, mark it failed. Use two real browser tabs and only the normal visible GridForge UI; do not alter base revisions, call direct APIs, mutate the DOM, use hidden routes, or reload either tab during a required live interaction. Load the same current revision in tabs A and B and select Riley Stone in A and Morgan Lee in B. First, while B is clean, set R20 to CLEAN-LIVE-RILEY in A and complete a successful save. Within 5 seconds and without reload, require B to advance to the same saved revision and display R20=CLEAN-LIVE-RILEY; selecting R20 in B must identify Riley Stone as its saved editor. Next test concurrent edits to different cells. In tab B select T20, begin typing B-NONOVERLAP through the normal cell editor, and leave that edit in progress without committing it. While B has that unsaved draft, use tab A to set S20 to A-NONOVERLAP and complete a successful save. Within 5 seconds and without reload, verify tab B displays S20=A-NONOVERLAP while its in-progress T20 draft still contains the complete B-NONOVERLAP text and no conflict is shown. Commit B's T20 edit and let it save. Verify both tabs show R20=CLEAN-LIVE-RILEY, S20=A-NONOVERLAP, and T20=B-NONOVERLAP and all three values remain stored. Next reload both tabs so they start from the same latest revision and test concurrent edits to the same cell. In tab B select S21, begin typing TAB-B-LOCAL-DRAFT, and leave the edit in progress without committing. In tab A set that same S21 cell to TAB-A-WINS and save. Within 5 seconds and without reload, verify tab B preserves its complete local draft rather than replacing it with TAB-A-WINS, visibly reports a live conflict naming S21, and remains Dirty or failed rather than Saved. Commit and attempt to save tab B's conflicting draft; verify the save is rejected with a visible conflict and does not overwrite tab A. Only after that rejection, reload tab B and verify S21 contains TAB-A-WINS, not TAB-B-LOCAL-DRAFT, while R20, S20, and T20 still contain the earlier values. The reasoning must report the clean-update revision/value/attribution, dirty non-overlap values, and same-cell conflict result separately.\n",
+        "reasoning": "Clean R20 propagation and non-overlap draft visibility worked, but T20 was blank after final reload, so it was not stored. Same-cell conflict did not visibly name S21."
+      },
+      {
+        "id": "live_remote_selection_boundaries_and_legend",
+        "name": "live_remote_selection_boundaries_and_legend",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 0.5,
+        "description": "This criterion is all-or-nothing: if any sub-check fails, mark it failed. Use three real browser tabs or windows showing GridForge and only normal visible grid interactions; do not use reload, polling, direct API reads or writes, DOM mutation, hidden routes, injected styles, or manually copied selection state. Set views A1 and A2 to Riley Stone and view B to Morgan Lee. Within 5 seconds require the visible presence summary to show Riley Stone with exactly 2 open views and Morgan Lee with exactly 1 open view, and require all three sessions in the selection legend. Select B2 in A1, D4 in A2, and exact range C3:E4 in B using visible range selection. Without reloading, require A1's legend to map distinct colors to Riley Stone at B2, Riley Stone at D4, and Morgan Lee at C3:E4; the Riley entries must have separate colors without invented tab names. Require boundary-only remote colors on D4 and every cell in C3:E4, with cell interiors, values, and editing unobstructed. Move B from C3:E4 to F6 and within 5 seconds require the old Morgan boundaries gone, Morgan's legend at F6, and its boundary only at F6. Select G7 in both A2 and B. Require two distinguishable boundary rings on G7 and matching Riley/Morgan legend entries. Close A2. Within 5 seconds require the presence summary to show Riley Stone with exactly 1 view and Morgan Lee with exactly 1 view; remove A2's Riley legend and boundary while Morgan's G7 state remains. In B switch Morgan Lee to Priya Shah without reload and keep G7 selected. Within 5 seconds require Riley Stone with 1 view, Priya Shah with 1 view, no Morgan presence entry, Priya at G7, and no duplicate or ghost boundary. Finally move B through H8, I9, and J10 quickly. Within 5 seconds require the legend to end at Priya Shah \u2014 J10, Priya's boundary only at J10, and no stale Priya boundary on G7, H8, or I9. The local view may appear in the legend but must not be drawn remotely over itself. The reasoning must report all three exact presence-count states and the final legend/boundary state; any omitted state or substituted workflow fails.\n",
+        "reasoning": "Remote boxes appeared for Morgan\u2019s C3:E4 and Riley\u2019s D4, but presence showed names without required view counts and the legend contained only names, not the required distinct Riley selections/addresses. Final boundary and switch states were not satisfied."
+      },
+      {
+        "id": "stale_save_and_workbook_identity_rejections",
+        "name": "stale_save_and_workbook_identity_rejections",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 2.0,
+        "description": "This criterion is all-or-nothing: if any sub-check fails, mark it failed. Use the visible spreadsheet UI to produce and observe one successful save before sending any direct probe. Record its real URL, method, content type, editing-session or authentication mechanism, complete implementation-specific body, returned revision, and revision-list endpoint. Fail rather than guessing any request detail. Record revision R and an exact deep copy W of the workbook at R. Clone the observed request without changing fields not named here, use R and W, change only T2 to CURRENT-T2, and send it through direct same-origin fetch. Require HTTP 200 or 201, T2=CURRENT-T2, current revision R+1, and exactly one new revision. Record exact deep copies of this protected workbook response and revision list. Next send four otherwise-current independent clones: (1) use stale R and W while changing T2 to FORGED-STALE-OVERWRITE, requiring a 4xx response, never 5xx, with T2 identified as conflicting; (2) use an unknown workbook id in the URL; (3) use the real URL but a different top-level body workbookId; and (4) use the real URL and top-level id but a different nested workbook.id. Probes 2 through 4 must also return 4xx, never 5xx. Report an explicit four-row table with probe number, exact observed status and response body. After every rejected probe, re-read the real workbook and revisions and require exact deep equality with the protected copies. Any omitted probe, guessed request shape, 2xx or 5xx rejection result, changed T2, changed identity, advanced revision, added revision or missing equality check fails.\n",
+        "reasoning": "Probe table: 1 stale\u2014409, {success:false,conflict:true,conflictingCells:[T2],...}; 2 unknown URL\u2014400, mismatched workbook ID; 3 top-level workbookId\u2014200, revision 42, merged; 4 nested workbook.id\u2014400, mismatched workbook ID. Probe 3 mutated revision/equality, so the all-or-nothing criterion failed."
+      },
+      {
+        "id": "api_save_validation_matrix",
+        "name": "api_save_validation_matrix",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "This criterion is one all-or-nothing server validation matrix. First use a visible edit to produce and observe one successful save. Record its exact URL, method, content type, session/authentication mechanism, complete implementation-specific body, current integer revision R, workbook response W, and complete revision list L. Fail rather than guessing any field or route. Send exactly nineteen independent same-origin fetch probes cloned from that request, preserving all fields not named by the probe. Revision probes: (1) missing baseRevision; (2) null; (3) R encoded as a string; (4) R+0.5; (5) -1; (6) R+1000. Workbook-shape probes: (7) missing workbook; (8) null workbook; (9) workbook array; (10) correct workbook id but missing sheets; (11) empty sheets; (12) first sheet missing cells; (13) cells array; (14) cells object containing invalid address BADREF; (15) A1 numeric rather than string; (16) A1 null rather than string. Immutable-metadata probes: (17) change only workbook title; (18) change only first sheet id; (19) change only first sheet name. Require a 4xx response, never 2xx or 5xx, for every probe. After each probe re-read the real workbook and revisions and require exact deep equality with W and L, including revision, cells, title, sheet identity, attribution, and list length. The reasoning must provide an explicit nineteen-row table with probe number/name, exact status, response body, and post-probe equality result. A missing probe, guessed shape, silent normalization, mutation, new revision, generic summary, or omitted evidence fails the entire criterion.\n",
+        "reasoning": "All 19 probes returned 400 and every post-probe equality check was true. Bodies: 1/2 missing baseRevision; 3/4 invalid base revision; 5 invalid positive integer; 6 future revision; 7/8 missing workbook snapshot; 9 mismatched workbook ID; 10/11 at least one sheet; 12/13 malformed cells object; 14 invalid BADREF; 15 A1 number; 16 A1 object; 17 cannot rename workbook; 18 unknown sheet identity; 19 cannot rename sheet."
+      },
+      {
+        "id": "api_session_user_mismatch_rejected",
+        "name": "api_session_user_mismatch_rejected",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 1.0,
+        "description": "This criterion is all-or-nothing. Use visible UI to select one seeded user, set R2 to SESSION-OWNER-CHECK, and observe the exact successful save. Record URL, method, content type, complete implementation-specific body, claimed user value, and the real editing-session mechanism. Fail rather than assuming a cookie, header, field, or JavaScript global. Require the legitimate save to advance exactly one revision, create exactly one revision, and attribute R2 to the selected user. Record protected deep copies of the workbook and revision list. Send exactly four independent clones from that protected state, changing only the named item: (1) claimed user becomes a different valid seeded user while the legitimate session remains; (2) claimed user becomes a totally unknown user while the session remains; (3) remove only the observed session credential; (4) replace only that credential with an unknown session value of the same shape. Require 4xx and never 2xx or 5xx for all four. After each probe re-read workbook and revisions and require exact deep equality with the protected copies, including R2, attribution, revision, and list length. The reasoning must provide a four-row table with exact changed field/credential, status, response body, and equality result. A guessed mechanism, omitted probe, mutation, changed attribution, new revision, generic summary, or missing evidence fails.\n",
+        "reasoning": "Four independent probes all returned HTTP 200 with {success:true,revision:44,noChange:true}: Morgan, unknown user, removed userId, and unknown-session user. Equality remained true, but the required 4xx rejection did not occur."
+      }
+    ],
+    "kind": "agent",
+    "judge": {
+      "agent": "codex",
+      "model": "openai/gpt-5.6-luna",
+      "timeout": 6500,
+      "cwd": null,
+      "isolated": false,
+      "atif_trajectory": null,
+      "mode": "batched",
+      "mcp_servers": [
+        {
+          "name": "playwright",
+          "transport": "stdio",
+          "url": null,
+          "command": "playwright-mcp",
+          "args": [
+            "--headless",
+            "--isolated",
+            "--executable-path=/usr/local/bin/chromium",
+            "--no-sandbox"
+          ],
+          "allowed_tools": []
+        }
+      ]
+    },
+    "judge_output": "{\"custom_grid_surface\":{\"score\":\"yes\",\"reasoning\":\"Custom native table grid with one floating editor; no prohibited widget or per-cell inputs. F2 committed CUSTOM-GRID-PROOF exactly.\"},\"workbook_seed_and_status\":{\"score\":\"yes\",\"reasoning\":\"Loaded Northwind Operations Plan / Plan with row numbers, column letters, address box, formula bar, saved revision/status. Initial B2=3, C2=120, D2=360 with raw D2 =B2*C2.\"},\"keyboard_cell_navigation\":{\"score\":\"no\",\"reasoning\":\"Observed C10,C11,B11,B10,B10,B8,C8,B8; required Enter=B11, Shift+Enter=B10, Tab=C10, Shift+Tab=B10.\"},\"keyboard_edit_delete_undo\":{\"score\":\"no\",\"reasoning\":\"Values, delete, and undo were correct, but G3 committed with Shift+Tab selected E3 instead of required F3.\"},\"autosave_completed_edit\":{\"score\":\"yes\",\"reasoning\":\"F30 ended AUTOSAVE-F30; observed Saving then Saved (Rev 52), baseline Rev 51, without pressing Save.\"},\"unchanged_save_no_new_revision\":{\"score\":\"yes\",\"reasoning\":\"After G30=NOOP-BASE-G30, Rev 54 and 54 revision cards remained unchanged after two clean Save clicks.\"},\"saved_workbook_restart_and_seed_idempotence\":{\"score\":\"yes\",\"reasoning\":\"Fresh contexts after both trusted restarts read the same full workbook snapshot, id ops-plan, title, Plan sheet, Q70=RESTART-Q70, raw R70==7*8, calculated R70=56, revision 46, and 46 revisions; no duplicate workbook/revision appeared.\"},\"cell_edit_history_attribution\":{\"score\":\"no\",\"reasoning\":\"Saved F31=HISTORY-F31 as Riley Stone, but visible Cell History for F31 reported \u201cNo history recorded for this cell yet.\u201d\"},\"revision_history_listing\":{\"score\":\"yes\",\"reasoning\":\"Visible history listed unique revisions 1\u201320 with parseable timestamps and revision 20.\"},\"revision_preview_nonmutation\":{\"score\":\"yes\",\"reasoning\":\"Saved F32 PREVIEW-BASE at Rev 22 and PREVIEW-CURRENT at Rev 23; preview showed PREVIEW-BASE while live remained PREVIEW-CURRENT and revision stayed 23.\"},\"revision_restore_draft_single_undo\":{\"score\":\"yes\",\"reasoning\":\"Restored Rev 24 into a visible Unsaved draft with F33=RESTORE-BASE; one Undo returned the whole draft to F33=RESTORE-CURRENT without a new saved revision.\"},\"distant_row_saved_integrity\":{\"score\":\"yes\",\"reasoning\":\"Using scrolling, observed anchors at A14/A40/A80, saved edits B14/B40/B80 and E80 raw =C80*D80, value 56; reload preserved all values and formula.\"},\"formula_bar_raw_formula_and_precedence\":{\"score\":\"yes\",\"reasoning\":\"Checkpoint table: D2|=B2*(C2+10)|390; G2|=C2+3*4|132; G3|=(2+3)*4|20; G4|=20/2+3*4|22; G5|=20/(2+3)*4|16; G8|=20-3*4|8.\"},\"formula_reference_replacement_selection\":{\"score\":\"yes\",\"reasoning\":\"Ordered checkpoints: =B3; selected B3 preserved; =C3 after replacement; =C3+ after +; committed G6 raw =C3+3*4 and value 362.\"},\"formula_mid_edit_caret_operator_preservation\":{\"score\":\"yes\",\"reasoning\":\"Observed mid-edit =B2*C2+10, committed value 370, then parenthesized raw =(B2*C2+10) with value still 370.\"},\"formula_alternating_mouse_references\":{\"score\":\"yes\",\"reasoning\":\"States: =, =B2, =B2*, =B2*C2, =B2*C2+, =B2*C2+B3, =B2*C2+B3/, =B2*C2+B3/B3; final I10 raw matched and value was 361.\"},\"formula_mouse_range_reference_insertion\":{\"score\":\"yes\",\"reasoning\":\"Suggestion dropdown #formula-suggestions appeared below H22; after SUM selection raw was =SUM(; drag produced =SUM(F22:F24 with all three references highlighted; ) produced =SUM(F22:F24); committed value 10 and recalculated to 13 after F24=8.\"},\"multi_argument_functions_dependency_recalculation\":{\"score\":\"yes\",\"reasoning\":\"Table: H25 =SUM(F25:F27,G25) 130\u2192160; H26 =AVG(F25:F27,G25) 32.5\u219240; H27 =MIN(F25:F27,G25) 2\u21922; H28 =MAX(F25:F27,G25) 120\u2192150; H29 =COUNT(F25:F27,G25) 4\u21924.\"},\"shift_click_and_reverse_drag_range_selection\":{\"score\":\"yes\",\"reasoning\":\"Shift-click and reverse drag both reported J35:L37 with nine selected cells including K36. Delete blanked all nine; one Undo restored RANGE-A through RANGE-I. Boundaries I35, M37, J38 stayed blank.\"},\"division_by_zero_error\":{\"score\":\"yes\",\"reasoning\":\"H2 showed #DIV/0! for =10/0, then recovered to 5 for =10/2 without reload.\"},\"invalid_formula_recovery\":{\"score\":\"yes\",\"reasoning\":\"H3 showed #SYNTAX! for =SUM(, recovered to 5 for =SUM(2,3), and I3=OK remained usable.\"},\"scalar_cycle_isolation_single_undo\":{\"score\":\"yes\",\"reasoning\":\"J20/J21 showed circular errors while K20=9 and A14 were unchanged; one Undo restored J20=5 and J21=6.\"},\"range_cycle_isolation_recovery\":{\"score\":\"yes\",\"reasoning\":\"J22/J25 showed #CIRCULAR! while J23=1, J24=2, K22=RANGE-CONTROL remained; changing J25=4 recovered J22=7.\"},\"tsv_rectangular_import\":{\"score\":\"yes\",\"reasoning\":\"Real clipboard paste at J2 produced the exact 3x3 TSV-A/11/12 through TSV-C/31/32 matrix.\"},\"paste_single_undo_redo\":{\"score\":\"yes\",\"reasoning\":\"Exact UNDO matrix pasted at J8; one Undo restored the full pre-paste snapshot and one Redo restored all nine values. I8, M10, J11 stayed unchanged.\"},\"csv_rectangular_import\":{\"score\":\"yes\",\"reasoning\":\"Real clipboard CSV paste produced O2=CSV-A, P2=CSV-B, O3=CSV-C, P3=CSV-D.\"},\"range_copy_preserves_source\":{\"score\":\"yes\",\"reasoning\":\"Name-box selected J55:K56, copied once, pasted at M55; destination matched and all four source cells stayed unchanged.\"},\"range_cut_moves_source\":{\"score\":\"yes\",\"reasoning\":\"Name-box cut M55:N56 and pasted at P55; source became blank, destination matched CUT-A through CUT-D, and boundary controls were unchanged.\"},\"fill_numbers_and_formula_relative_refs\":{\"score\":\"no\",\"reasoning\":\"Fill Down produced 1,1,1,1,1,1 instead of 1,2,3,4,5,6. Undo/Redo grouping worked and formula fill produced correct shifted formulas, but the criterion is all-or-nothing.\"},\"find_replace_navigation_and_atomic_replace_all\":{\"score\":\"no\",\"reasoning\":\"Find Next visited J51,J52,J50,J51 instead of J50,J51,J52,J50. Replace Current targeted J51, and Undo also changed J50, violating the required checkpoints.\"},\"name_box_jump_and_range_selection\":{\"score\":\"no\",\"reasoning\":\"T80 jump and snapshot/delete/undo worked, but BADREF was accepted into the name box instead of rejected; selection changed to BADREF and the draft became dirty.\"},\"two_tab_stale_save_conflict\":{\"score\":\"no\",\"reasoning\":\"Clean R20 propagation and non-overlap draft visibility worked, but T20 was blank after final reload, so it was not stored. Same-cell conflict did not visibly name S21.\"},\"live_remote_selection_boundaries_and_legend\":{\"score\":\"no\",\"reasoning\":\"Remote boxes appeared for Morgan\u2019s C3:E4 and Riley\u2019s D4, but presence showed names without required view counts and the legend contained only names, not the required distinct Riley selections/addresses. Final boundary and switch states were not satisfied.\"},\"stale_save_and_workbook_identity_rejections\":{\"score\":\"no\",\"reasoning\":\"Probe table: 1 stale\u2014409, {success:false,conflict:true,conflictingCells:[T2],...}; 2 unknown URL\u2014400, mismatched workbook ID; 3 top-level workbookId\u2014200, revision 42, merged; 4 nested workbook.id\u2014400, mismatched workbook ID. Probe 3 mutated revision/equality, so the all-or-nothing criterion failed.\"},\"api_save_validation_matrix\":{\"score\":\"yes\",\"reasoning\":\"All 19 probes returned 400 and every post-probe equality check was true. Bodies: 1/2 missing baseRevision; 3/4 invalid base revision; 5 invalid positive integer; 6 future revision; 7/8 missing workbook snapshot; 9 mismatched workbook ID; 10/11 at least one sheet; 12/13 malformed cells object; 14 invalid BADREF; 15 A1 number; 16 A1 object; 17 cannot rename workbook; 18 unknown sheet identity; 19 cannot rename sheet.\"},\"api_session_user_mismatch_rejected\":{\"score\":\"no\",\"reasoning\":\"Four independent probes all returned HTTP 200 with {success:true,revision:44,noChange:true}: Morgan, unknown user, removed userId, and unknown-session user. Equality remained true, but the required 4xx rejection did not occur.\"}}\n"
+  },
+  "polish": {
+    "score": 0.6875,
+    "criteria": [
+      {
+        "id": "labelled_primary_controls",
+        "name": "labelled_primary_controls",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Require visible, understandable controls for Save, Undo, Redo, formula entry,\nfilling, Find Next, Replace and Replace All. Accept equivalent fill buttons,\nmenus, or discoverable drag handles; do not require separate Fill Down and\nFill Right buttons or those exact labels. Text inputs and the seeded-user\nselection control must have visible labels or accessible names; that user\ncontrol may be on the entry screen rather than in the workbook toolbar.\n",
+        "reasoning": "Save, Undo, Redo, Fill, and Formula Bar are visible; Find opens labelled Find, Next, Replace, and Replace All controls."
+      },
+      {
+        "id": "keyboard_focus_and_grid_entry",
+        "name": "keyboard_focus_and_grid_entry",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 1.0,
+        "description": "Starting at the page, use Tab and Shift+Tab to reach representative toolbar\ncontrols, the formula editor, and the custom grid. Each focused control must\nhave a visible focus indicator, and focus must not become trapped.\n",
+        "reasoning": "Tab reaches toolbar controls, formula editor, and grid with visible focus styling, but focus becomes trapped on the custom grid main element when pressing Tab or Shift+Tab."
+      },
+      {
+        "id": "spreadsheet_visual_hierarchy",
+        "name": "spreadsheet_visual_hierarchy",
+        "value": 0.75,
+        "raw": 4,
+        "weight": 1.0,
+        "description": "Require the workbook title, toolbar, formula area, row and column headers,\nselected cell, side panel, and saved-state information to be visually distinct\nand readable without overlapping text or controls at a 1280 by 800 viewport.\n\nRate 1 for unreadable or heavily overlapping content, 3 for readable content\nwith inconsistent grouping or minor crowding, and 5 for clear grouping with\nall listed areas readable and free of overlap. Use 2 or 4 for intermediate\nquality. Missing or broken application content receives 1.\n",
+        "reasoning": "Title, compact toolbar, formula area, headers, selected-cell indicators, saved status, and revision-history panel are readable and distinct at 1280\u00d7800, with minor header density and panel/grid crowding."
+      },
+      {
+        "id": "presence_history_and_feedback_readability",
+        "name": "presence_history_and_feedback_readability",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Require a clearly labelled presence area, readable revision-history controls\nor entries, and visible status/error regions whose wording or role distinguishes\nnormal save feedback from a failure. Information must not depend on color alone.\n",
+        "reasoning": "Active Colleagues is clearly labelled, revision entries identify revision numbers and save types, and the visible \u201cSaved (Rev 56)\u201d status distinguishes normal feedback by wording."
+      }
+    ],
+    "kind": "agent",
+    "judge": {
+      "agent": "codex",
+      "model": "openai/gpt-5.6-luna",
+      "timeout": 3000,
+      "cwd": null,
+      "isolated": false,
+      "atif_trajectory": null,
+      "mode": "batched",
+      "mcp_servers": [
+        {
+          "name": "playwright",
+          "transport": "stdio",
+          "url": null,
+          "command": "playwright-mcp",
+          "args": [
+            "--headless",
+            "--isolated",
+            "--executable-path=/usr/local/bin/chromium",
+            "--no-sandbox"
+          ],
+          "allowed_tools": []
+        }
+      ]
+    },
+    "judge_output": "{\"labelled_primary_controls\":{\"score\":\"yes\",\"reasoning\":\"Save, Undo, Redo, Fill, and Formula Bar are visible; Find opens labelled Find, Next, Replace, and Replace All controls.\"},\"keyboard_focus_and_grid_entry\":{\"score\":\"no\",\"reasoning\":\"Tab reaches toolbar controls, formula editor, and grid with visible focus styling, but focus becomes trapped on the custom grid main element when pressing Tab or Shift+Tab.\"},\"spreadsheet_visual_hierarchy\":{\"score\":4,\"reasoning\":\"Title, compact toolbar, formula area, headers, selected-cell indicators, saved status, and revision-history panel are readable and distinct at 1280\u00d7800, with minor header density and panel/grid crowding.\"},\"presence_history_and_feedback_readability\":{\"score\":\"yes\",\"reasoning\":\"Active Colleagues is clearly labelled, revision entries identify revision numbers and save types, and the visible \u201cSaved (Rev 56)\u201d status distinguishes normal feedback by wording.\"}}\n"
+  },
+  "render": {
+    "score": 1.0,
+    "criteria": [
+      {
+        "id": "page_load_and_refresh",
+        "name": "page_load_and_refresh",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Open the root page and require a substantive GridForge interface with readable\nworkbook content. Reload once and require it to return without a fatal\nbrowser error, blank document, raw JSON response, or server error page.\n",
+        "reasoning": "Loaded the GridForge workbook \u201cNorthwind Operations Plan\u201d with a visible grid, received a successful same-origin GET /api/workbooks/ops-plan (200), and reload returned the workbook without browser errors."
+      },
+      {
+        "id": "basic_control_interaction",
+        "name": "basic_control_interaction",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Focus one visible text control such as Find and enter a short search string.\nRequire the entered text to remain editable and the page to remain responsive.\nDo not require search results, an edit, or a saved mutation for this smoke test.\nClear the search and close any panel opened for this check.\n",
+        "reasoning": "Opened Find and Replace, entered \u201cServer\u201d into the visible Find textbox, verified it remained editable, then cleared the field and closed the panel."
+      }
+    ],
+    "kind": "agent",
+    "judge": {
+      "agent": "codex",
+      "model": "openai/gpt-5.6-luna",
+      "timeout": 450,
+      "cwd": null,
+      "isolated": false,
+      "atif_trajectory": null,
+      "mode": "batched",
+      "mcp_servers": [
+        {
+          "name": "playwright",
+          "transport": "stdio",
+          "url": null,
+          "command": "playwright-mcp",
+          "args": [
+            "--headless",
+            "--isolated",
+            "--executable-path=/usr/local/bin/chromium",
+            "--no-sandbox"
+          ],
+          "allowed_tools": []
+        }
+      ]
+    },
+    "judge_output": "{\"page_load_and_refresh\":{\"score\":\"yes\",\"reasoning\":\"Loaded the GridForge workbook \u201cNorthwind Operations Plan\u201d with a visible grid, received a successful same-origin GET /api/workbooks/ops-plan (200), and reload returned the workbook without browser errors.\"},\"basic_control_interaction\":{\"score\":\"yes\",\"reasoning\":\"Opened Find and Replace, entered \u201cServer\u201d into the visible Find textbox, verified it remained editable, then cleared the field and closed the panel.\"}}\n"
+  }
+}

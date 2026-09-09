@@ -3,6 +3,7 @@
 Run from the repository root. Reports and this helper are excluded from ZIPs.
 """
 from pathlib import Path
+import argparse
 import hashlib
 import json
 import re
@@ -13,6 +14,18 @@ import zipfile
 REPO = Path(__file__).resolve().parents[2]
 OUT = Path(__file__).resolve().parent
 SLUGS = ("gridforge-spreadsheet-v2", "patchpad-editor-v2")
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--task', choices=SLUGS)
+parser.add_argument('--output-dir', type=Path)
+args = parser.parse_args()
+if args.task:
+    SLUGS = (args.task,)
+if args.output_dir:
+    OUT = args.output_dir.resolve()
+elif args.task == "gridforge-spreadsheet-v2":
+    config = tomllib.loads((REPO / "projects" / args.task / "task.toml").read_text(encoding="utf-8"))
+    OUT = REPO / "deliverables" / "gridforge" / ("gridforge-v2-" + config["task"]["version"] + "-validation")
+OUT.mkdir(parents=True, exist_ok=True)
 findings = {}
 for slug in SLUGS:
     root = REPO / "projects" / slug
@@ -80,7 +93,7 @@ for slug in SLUGS:
     if failures:
         print(slug, "FAILED", failures)
         continue
-    destination = OUT / (slug + "-" + version + "-task.zip")
+    destination = OUT / (slug + ".zip" if slug == "gridforge-spreadsheet-v2" else slug + "-" + version + "-task.zip")
     hashes = {}
     with zipfile.ZipFile(destination, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         for path in files:

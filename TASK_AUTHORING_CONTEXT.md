@@ -1,6 +1,61 @@
 # Current WebDev Task Authoring Context
 
-Updated: 2026-09-09
+Updated: 2026-09-10
+
+## September 10: Agent bootstrap and release preflight
+
+This entry supersedes older GridForge version notes below. GridForge is now
+`2.0.10`; its upload ZIP is
+`deliverables/gridforge/gridforge-v2-2.0.10-validation/gridforge-spreadsheet-v2.zip`.
+Agent and verifier networking are public; the verifier remains separate.
+
+GridForge release files now live together under `deliverables/gridforge/`, with
+one existing version folder per release. `deliverables/gridforge/README.md`
+identifies the latest upload. Each version contains only one task upload archive,
+`gridforge-spreadsheet-v2.zip`. Duplicate `*-task.zip` aliases were removed only
+after SHA-256 equality was verified; retained ZIP bytes and historical reports
+are unchanged. Older report archive names refer to these former aliases.
+The packager now emits only the canonical name for GridForge. Editable source
+stays at `projects/gridforge-spreadsheet-v2/`; the older
+`projects/gridforge-spreadsheet/` is a separate legacy task, not a delivery copy.
+Inside each upload ZIP, retain the one `gridforge-spreadsheet-v2/` wrapper required
+by the portal. Do not add the outer `gridforge/` release collection to the ZIP.
+
+Platform run `run-ce624351` used OpenHands SDK `1.44.1` with
+`gemini/gemini-3.7-flash`. It ended after about 12 seconds during agent setup:
+`curl (77) error setting certificate file: /etc/ssl/certs/ca-certificates.crt`.
+The minimal agent image installed curl with `--no-install-recommends` but did
+not explicitly install `ca-certificates`. The previous local agent image also
+confirmed the bundle was absent. No model execution or verification occurred;
+the displayed zero is not a measured task score or a model-breaking result.
+
+Fix: explicitly install `ca-certificates` in the AGENT Dockerfile, run
+`update-ca-certificates`, and assert that the bundle is nonempty at build time.
+Do not assume a successful verifier/Oracle run validates agent installation:
+Oracle can bypass the OpenHands bootstrap, and the verifier is a different image.
+Public network permission does not supply TLS trust roots or bootstrap tools.
+Never work around this by disabling certificate verification.
+
+Validation for this release: agent image built successfully; a certificate-
+verified GET of the exact failed URL, `https://astral.sh/uv/install.sh`, returned
+HTTP 200; all 34 local structural checks passed. Golden implementation, verifier
+criteria/weights, and dependency versions are unchanged from 2.0.9. Only agent
+trust-store setup and release metadata changed. The installer itself, remaining
+SDK setup steps, paid model run, and fresh Oracle were NOT run in this validation.
+The evidence is in `bootstrap-fix-report.json` beside the ZIP. This establishes
+the fix for the observed error, not a guarantee of all later platform stages.
+
+Before future uploads, build BOTH images and test the selected agent's bootstrap
+prerequisites, including secure HTTPS from inside its exact image. Perform this
+before spending time on platform QC. Preserve old ZIPs/evidence, compare changed
+files, and update only root package versions, never dependency versions through
+global text replacement. An updated ZIP may trigger platform QC again; do not
+promise reuse of previous QC or bypass platform checks.
+
+Common Ground QC work was interrupted for this diagnosis. Its saved 1.0.7 source
+is not yet packaged or fully re-audited. Read
+`deliverables/common-ground-ballot-1.0.7-validation/README.md` before continuing;
+the historical 1.0.6 Oracle 1.0 must not be presented as a new 1.0.7 result.
 
 ## September 9 merge resolution
 

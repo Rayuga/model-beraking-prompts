@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GridForge - Northwind Operations Plan</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- App Header & Navigation Toolbar -->
+  <header class="app-header">
+    <div class="brand-section">
+      <div class="logo-badge" title="GridForge Collaborative Spreadsheet">GridForge</div>
+      <div class="workbook-title-box">
+        <span class="workbook-title" id="workbook-title">Northwind Operations Plan</span>
+        <span class="sheet-badge" id="sheet-name">Sheet: Plan</span>
+      </div>
+    </div>
+
+    <div class="toolbar-actions">
+      <!-- Undo / Redo -->
+      <button class="btn btn-sm" id="btn-undo" title="Undo (Ctrl+Z)" aria-label="Undo">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path></svg>
+        Undo
+      </button>
+      <button class="btn btn-sm" id="btn-redo" title="Redo (Ctrl+Y)" aria-label="Redo">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 7v6h-6"></path><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"></path></svg>
+        Redo
+      </button>
+
+      <!-- Fill Action -->
+      <button class="btn btn-sm" id="btn-fill-down" title="Fill Selection Down (Ctrl+D)" aria-label="Fill Down">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+        Fill
+      </button>
+
+      <!-- Find & Replace -->
+      <button class="btn btn-sm" id="btn-find-replace" title="Find and Replace (Ctrl+F)" aria-label="Find and Replace">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        Find
+      </button>
+
+      <!-- Cell History -->
+      <button class="btn btn-sm" id="btn-cell-history" title="Inspect Cell History" aria-label="Cell History">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg>
+        Cell History
+      </button>
+
+      <!-- Revision History -->
+      <button class="btn btn-sm" id="btn-revisions" title="Browse Revisions" aria-label="Revision History">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/></svg>
+        Revisions
+      </button>
+
+      <!-- Save Button & Status -->
+      <div class="save-status saved" id="save-status-badge">
+        <span id="save-status-icon">✓</span>
+        <span id="save-status-text">Saved (Rev 1)</span>
+      </div>
+
+      <button class="btn btn-primary btn-sm" id="btn-save-now" title="Save now (Ctrl+S)">
+        Save
+      </button>
+    </div>
+
+    <!-- Collaboration & Users -->
+    <div class="collaboration-section">
+      <div class="user-selector-container">
+        <span class="user-avatar-badge" id="current-user-avatar" style="background:#2563eb">R</span>
+        <select class="user-select" id="user-select" title="Switch User">
+          <option value="riley">Riley Stone</option>
+          <option value="morgan">Morgan Lee</option>
+          <option value="priya">Priya Shah</option>
+        </select>
+      </div>
+
+      <div class="presence-legend" id="presence-legend" title="Active Colleagues">
+        <!-- Live user pills inserted here -->
+      </div>
+    </div>
+  </header>
+
+  <!-- Formula & Name Box Bar -->
+  <div class="formula-bar-container">
+    <input type="text" class="name-box" id="name-box" value="A1" title="Name Box (Type cell address to jump e.g. B5 or A1:C10)" aria-label="Cell reference">
+    <span class="fx-label" title="Formula">fx</span>
+    <input type="text" class="formula-input" id="formula-input" placeholder="Enter value or =formula (e.g. =SUM(B2:B10))" aria-label="Formula Bar">
+  </div>
+
+  <!-- Revision Preview Banner -->
+  <div class="preview-banner" id="preview-banner">
+    <div>
+      <strong>Previewing Revision #<span id="preview-rev-num"></span></strong>
+      (<span id="preview-rev-author"></span> &bull; <span id="preview-rev-time"></span>) - <em>Changes are read-only in preview</em>
+    </div>
+    <div style="display:flex; gap:8px;">
+      <button class="btn btn-primary btn-sm" id="btn-confirm-restore">Restore This Version</button>
+      <button class="btn btn-sm" id="btn-exit-preview">Exit Preview</button>
+    </div>
+  </div>
+
+  <!-- Main Spreadsheet Grid Wrapper -->
+  <main class="grid-wrapper" id="grid-wrapper" tabindex="0">
+    <!-- Grid Table -->
+    <table class="spreadsheet-table" id="grid-table">
+      <!-- Rendered dynamically -->
+    </table>
+
+    <!-- Selection Outline Box -->
+    <div id="selection-box">
+      <div id="fill-handle" title="Drag to fill pattern or formulas"></div>
+    </div>
+
+    <!-- Floating Cell Editor -->
+    <input type="text" id="floating-editor" autocomplete="off" spellcheck="false">
+
+    <!-- Formula Autocomplete Suggestions Popup -->
+    <div id="formula-suggestions"></div>
+
+    <!-- Remote Presence Cursors Layer -->
+    <div id="remote-cursors-layer"></div>
+  </main>
+
+  <!-- Revision History Modal -->
+  <div class="modal-backdrop" id="revisions-modal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title">Revision History</h3>
+        <button class="btn btn-sm" id="btn-close-revisions">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="revision-list" id="revision-list">
+          <!-- Revisions rendered here -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" id="btn-close-revisions-footer">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cell History Modal / Inspector -->
+  <div class="modal-backdrop" id="cell-history-modal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title">Cell History: <span id="cell-history-ref">A1</span></h3>
+        <button class="btn btn-sm" id="btn-close-cell-history">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="cell-history-list" id="cell-history-list">
+          <!-- Cell history items rendered here -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" id="btn-close-cell-history-footer">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Find & Replace Modal -->
+  <div class="modal-backdrop" id="find-replace-modal">
+    <div class="modal-box" style="max-width:440px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Find and Replace</h3>
+        <button class="btn btn-sm" id="btn-close-find-replace">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label" for="find-input">Find</label>
+          <input type="text" class="form-input" id="find-input" placeholder="Search cell text or formula">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="replace-input">Replace with</label>
+          <input type="text" class="form-input" id="replace-input" placeholder="Replacement value">
+        </div>
+        <div class="checkbox-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="find-match-case"> Match case
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" id="find-entire-cell"> Entire cell only
+          </label>
+        </div>
+      </div>
+      <div class="modal-footer" style="justify-content:space-between;">
+        <div style="font-size:11px; color:var(--text-muted);" id="find-results-count"></div>
+        <div style="display:flex; gap:6px;">
+          <button class="btn btn-sm" id="btn-find-prev">Previous</button>
+          <button class="btn btn-sm" id="btn-find-next">Next</button>
+          <button class="btn btn-sm" id="btn-replace-one">Replace</button>
+          <button class="btn btn-primary btn-sm" id="btn-replace-all">Replace All</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Conflict Resolution Modal -->
+  <div class="modal-backdrop" id="conflict-modal">
+    <div class="modal-box" style="max-width:500px;">
+      <div class="modal-header">
+        <h3 class="modal-title" style="color:var(--danger-color);">Concurrent Edit Conflict</h3>
+        <button class="btn btn-sm" id="btn-close-conflict">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom:12px;">Another colleague saved changes to cell(s) you were editing:</p>
+        <div id="conflict-details-list" style="margin-bottom:12px;"></div>
+        <p style="font-size:12px; color:var(--text-muted);">Would you like to overwrite with your draft or accept the remote version?</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" id="btn-conflict-accept-remote">Accept Remote Version</button>
+        <button class="btn btn-primary" id="btn-conflict-keep-draft">Keep My Draft &amp; Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" aria-live="polite"></div>
+
+  <!-- Scripts -->
+  <script src="js/formula.js"></script>
+  <script src="js/clipboard.js"></script>
+  <script src="js/history.js"></script>
+  <script src="js/find_replace.js"></script>
+  <script src="js/collaboration.js"></script>
+  <script src="js/grid.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

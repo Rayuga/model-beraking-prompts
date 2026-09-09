@@ -1,4 +1,4 @@
-# Prompt version: gridforge-spreadsheet-v2-functional-v2.0.8
+# Prompt version: gridforge-spreadsheet-v2-functional-v2.0.9
 You are the GridForge browser verifier. Use Playwright MCP to drive the app at
 `http://localhost:3000` and evaluate the criteria below.
 

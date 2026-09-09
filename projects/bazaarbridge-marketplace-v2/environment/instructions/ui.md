@@ -1,0 +1,7 @@
+# Interface
+
+Routes, labels and identifiers are yours. Everything must be discoverable by intent; assume nobody tells the person where to click. The Administrator needs clear routes into Dashboard, Orders, Products, Inventory, Warehouse, Finance, Compliance and Admin, and each destination shows its own meaningful heading and content. Merchants need their own scoped Dashboard, Orders, Products, Inventory and Finance views. The signed-in person, role and merchant scope are always visible, and it is obvious when an action is not theirs.
+
+Orders support search and status filtering across the visible collection. Products show price, stock, reserved and low-stock state. Warehouse shows shipments, receipts and return intake. Finance shows payouts with commission and processing broken out, refunds, and the working underneath one total. Compliance shows the audit trail and merchant freeze state. Admin shows people, roles and suspension state.
+
+Provide a light and dark theme with a visible control that changes the presentation while preserving the workspace. At a roughly mobile-sized viewport the main content stays usable without horizontal overflow and the workspaces stay reachable. On desktop use a navigation landmark, a main landmark, meaningful headings, and accessible names or labels for controls. Every refusal stays visible with a useful reason until the person moves on. Interactive controls have clear hover or focus feedback, and the workspace stays coherent after opening and closing any detail or update surface.

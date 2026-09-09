@@ -1,0 +1,62 @@
+schema_version = "1.4"
+artifacts = ["/app"]
+[task]
+name = "turing/bazaarbridge-marketplace-commerce"
+version = "9.3.9"
+description = "Full-stack Node.js, Express, and SQLite BazaarBridge marketplace application with three merchants, nine accounts, eight desks (Dashboard, Orders, Products, Inventory, Warehouse, Finance, Compliance, Admin), and browser-only Luna judging. The brief is desk-specific field notes plus a short policy anchored on SKU case-insensitivity, whole-dollar prices, commission bands, the $10,000 two-person payout rule, the 30-day return window, receipt-gated refunds, freeze-with-reason, and masked bank tokens. The functional rubric runs 24 conjunctive stateful chains against one continuous database: reservations with a final-unit race, server-derived order and refund amounts with decoy payload fields, ordered hub-scoped fulfilment and completed-shipment immutability, maker-checker payout and refund approval with ledger-change invalidation, merchant tenant isolation graded on response bodies, immediate suspension and role-demotion enforcement, and signed-out replay isolation. Refusals are graded by unchanged re-read plus no new activity entry rather than one status-code shape."
+keywords = ["webdev", "turing", "full-stack", "nodejs", "express", "sqlite", "marketplace", "authentication", "browser-judge", "rewardkit"]
+
+[metadata]
+difficulty = "hard"
+difficulty_explanation = """
+v9.0.0 — model-breaking expansion. The domain grew from three users and four
+desks to nine users, three merchants and eight desks, but the difficulty comes
+from interacting state, not surface area. Merchant-scoped lists and direct reads
+are graded against response bodies, not rendered hiding. Product and stock
+writes reject empty, fractional, negative and reason-less values and resist
+case-insensitive SKU collisions. Ordering and fulfilment follow strict
+transitions (New→Packed→Shipped, CREATED→PICKED→IN_TRANSIT→DELIVERED) with a
+final-unit reservation race, wrong-hub refusal and completed-shipment
+immutability. Returns respect an open/closed 30-day window; refunds require a
+warehouse receipt and a server-derived amount; payouts and refunds need a
+requester distinct from the approver, replay idempotency, a $10,000 two-person
+rule, and ledger-change invalidation of a prior approval; frozen merchants
+cannot receive or release money and freeze/unfreeze demands a stated reason.
+Suspension revokes the session and demotion bites on the very next write.
+Every chain is a conjunction: any failed leg fails the whole criterion, with
+positive controls first and unchanged re-reads after every refusal. The 24
+criteria total 72.5 functional weight with ~92% adversarial-probe share.
+"""
+category = "programming"
+tags = ["full-stack", "browser", "arena", "rl-training"]
+provenance = "turing/bazaarbridge-marketplace-commerce v9.3.9: fairness/verifier QC fix over v9.3.8 — policy anchors for the view-only Viewer role, gross-sales definition, order and shipment stage semantics, reservation semantics, checker-owned bank-token reveal, and payout/refund reference idempotency; product-real payout/refund labels; agent timeout 7200 with polish 900 and 11100<12000<12600 nesting; public agent/verifier networking retained by explicit policy"
+arena_slice = "full-stack-node-express-sqlite-marketplace"
+
+[agent]
+timeout_sec = 7200.0
+
+[environment]
+build_timeout_sec = 600.0
+network_mode = "public"
+cpus = 2
+memory_mb = 4096
+
+[verifier]
+timeout_sec = 12600.0
+environment_mode = "separate"
+
+[verifier.env]
+OPENAI_API_KEY = "${OPENAI_API_KEY}"
+REWARDKIT_JUDGE = "codex"
+REWARDKIT_MODEL = "gpt-5.6-luna"
+REWARDKIT_REASONING_EFFORT = "max"
+
+[verifier.environment]
+network_mode = "public"
+
+# Network posture is intentionally public for the agent and the separate
+# verifier (finalized BazaarBridge policy and an explicit user override). The
+# QC network finding is rejected by instruction, not fixed by switching modes,
+# and no host allowlist is added.
+# No [verifier.environment].docker_image is pinned: the run builds
+# tests/Dockerfile, so image absence is intentional rather than a defect.

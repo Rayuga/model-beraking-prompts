@@ -79,6 +79,21 @@ if ! bash /tests/app-control.sh start; then
   exit 0
 fi
 
+# Wait for an HTTP response here as well as in the restart lifecycle helper.
+ready=0
+for attempt in $(seq 1 30); do
+  if curl --fail --silent --show-error --max-time 2 http://localhost:3000/health >/dev/null 2>&1 \
+      || curl --fail --silent --show-error --max-time 2 http://localhost:3000/ >/dev/null 2>&1; then
+    ready=1
+    break
+  fi
+  sleep 1
+done
+if [[ "$ready" != 1 ]]; then
+  echo "Application readiness timed out; grading was not started." >>"$LOG_DIR/app.log"
+  exit 0
+fi
+
 if ! timeout --signal=TERM --kill-after=30s 12000 \
   rewardkit --max-concurrent-agent 1 /tests >"$LOG_DIR/rewardkit.log" 2>&1; then
   write_zero_reward

@@ -1,6 +1,6 @@
 # Model-Breaking WebDev Playbook
 
-Updated: 2026-09-04
+Updated: 2026-09-10
 
 This is the portable, day-to-day operating guide for creating, hardening,
 running, and delivering model-breaking Harbor WebDev tasks in this repository.
@@ -45,6 +45,30 @@ A low score is valid only when the model built and booted a real app, the judge
 actually exercised it, `graded=1`, `no_op=0`, and the failures describe product
 behavior. A build crash, missing artifact, timeout, or global browser-gate
 failure is not a model-breaking result.
+
+## Preflight Before Upload QC
+
+- Build both the agent and verifier images. An Oracle pass does not prove the
+  model agent's installer works; they exercise different setup paths.
+- In minimal Debian/Node images, explicitly install `ca-certificates` alongside
+  `curl`, especially with `--no-install-recommends`. Run
+  `update-ca-certificates` and check the bundle is nonempty during the build.
+- Test a certificate-verified HTTPS request to the selected agent's actual
+  bootstrap URL from the built agent image. Public networking alone is not
+  enough. Never use `curl -k`, disable TLS validation, or add live keys to images.
+- Inspect run stages before treating a fast zero as an app score. A missing
+  `agent_execution` and `verifier_result` means no product evaluation occurred.
+- Separate evidence precisely: image build, HTTPS probe, installer execution,
+  model execution, Oracle, and platform QC are different checks. Claim only
+  those actually completed. New ZIPs may require platform QC again.
+- Preserve historical artifacts and make narrowly scoped release changes.
+  Compare the previous ZIP with the new source; when bumping package versions,
+  change root metadata only, not dependency versions or integrity data.
+
+Example: GridForge `run-ce624351` failed during OpenHands setup because the agent
+image lacked its CA bundle. Version `2.0.10` fixed that specific failure; a secure
+GET of the failed bootstrap URL returned HTTP 200. No model or verifier had run
+in the failed attempt. Full evidence is linked in `TASK_AUTHORING_CONTEXT.md`.
 
 ## Domain selection
 
