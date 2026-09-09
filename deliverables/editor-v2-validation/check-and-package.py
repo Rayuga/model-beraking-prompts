@@ -20,6 +20,7 @@ for slug in SLUGS:
     def check(name, condition):
         checks.append({"check": name, "passed": bool(condition)})
     task = tomllib.loads((root / "task.toml").read_text(encoding="utf-8"))
+    version = task["task"]["version"]
     files = sorted(p for p in root.rglob("*") if p.is_file())
     for path in files:
         if path.suffix == ".json":
@@ -28,7 +29,7 @@ for slug in SLUGS:
             tomllib.loads(path.read_text(encoding="utf-8"))
     check("JSON and TOML parse", True)
     check("canonical three-part slug", len(slug.split("-")) == 3 and task["task"]["name"] == "turing/" + slug)
-    check("version 2.0.0", task["task"]["version"] == "2.0.0")
+    check("version matches package", version == json.loads((root / "solution/app/package.json").read_text(encoding="utf-8"))["version"])
     check("target GPT-5.4-mini", task["metadata"]["active_target_model"] == "openrouter/openai/gpt-5.4-mini")
     check("offline agent and separate verifier", task["environment"]["network_mode"] == "no-network" and task["verifier"]["environment_mode"] == "separate")
     check("provider allowlist", {"openrouter.ai", "api.openai.com"} <= set(task["verifier"]["environment"]["allowed_hosts"]))
@@ -52,12 +53,13 @@ for slug in SLUGS:
         count_by_dimension[dim] = len(criteria)
         timeout_sum += judge["timeout"]
     check("criterion ids unique", len(ids) == len(set(ids)))
-    check("original functional criterion count", count_by_dimension["functional"] == (20 if slug.startswith("gridforge") else 23))
-    check("two small criteria in each hard gate", count_by_dimension["render"] == count_by_dimension["constraints"] == 2)
+    check("expected functional criterion count", count_by_dimension["functional"] == (36 if slug.startswith("gridforge") else 23))
+    check("small hard gates", count_by_dimension["render"] == 2 and count_by_dimension["constraints"] == 2)
     runner = (root / "tests/test.sh").read_text(encoding="utf-8")
     check("timeouts fit with overhead", timeout_sum + 1000 < 12000 < task["verifier"]["timeout_sec"])
-    check("npm start without golden-only entry-file check", "exec npm start" in runner and "! -s /app/src/index.js" not in runner)
-    check("runner strips app credentials and isolates UID", "env -i" in runner and "--reuid=65534" in runner and "umask 077" in runner)
+    control = (root / "tests/app-control.sh").read_text(encoding="utf-8") if (root / "tests/app-control.sh").exists() else ""
+    check("npm start without golden-only entry-file check", ("exec npm start" in runner or '"npm", "start"' in control) and "! -s /app/src/index.js" not in runner)
+    check("runner strips app credentials and isolates UID", (("env -i" in runner and "--reuid=65534" in runner) or ('env=app_env' in control and '--reuid=65534' in control)) and "umask 077" in runner)
     check("no literal API key", all(not re.search(rb"sk-or-v1-[A-Za-z0-9]{20,}", p.read_bytes()) for p in files))
     check("UTF-8 LF files", all(b"\r\n" not in p.read_bytes() and not p.read_bytes().startswith(b"\xef\xbb\xbf") for p in files))
     check("no dependencies, caches or authoring documents in task", all(not ({"node_modules", "__pycache__", ".git", "reports", "jobs"} & set(p.relative_to(root).parts)) and p.suffix not in {".zip", ".pyc", ".xlsx", ".docx", ".db"} for p in files))
@@ -66,13 +68,13 @@ for slug in SLUGS:
     name = "gridforge" if slug.startswith("gridforge") else "patchpad"
     check("declared offline dependency path exists in both Dockerfiles", all("/opt/" + name + "-deps" in (root / f).read_text(encoding="utf-8") and "express@5.2.1" in (root / f).read_text(encoding="utf-8") for f in ("environment/Dockerfile", "tests/Dockerfile")))
     check("split brief mounted from assets", "COPY assets/instructions/ /instructions/" in (root / "environment/Dockerfile").read_text(encoding="utf-8") and len(list((root / "environment/assets/instructions").glob("*.md"))) == 5)
-    result = {"version": "2.0.0", "criteria": count_by_dimension, "judge_timeout_sum": timeout_sum, "checks": checks, "full_oracle": "not run", "model": "not run"}
+    result = {"version": version, "criteria": count_by_dimension, "judge_timeout_sum": timeout_sum, "checks": checks, "full_oracle": "not run", "model": "not run"}
     findings[slug] = result
     failures = [c for c in checks if not c["passed"]]
     if failures:
         print(slug, "FAILED", failures)
         continue
-    destination = OUT / (slug + "-2.0.0-task.zip")
+    destination = OUT / (slug + "-" + version + "-task.zip")
     hashes = {}
     with zipfile.ZipFile(destination, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         for path in files:

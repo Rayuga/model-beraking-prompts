@@ -4,11 +4,26 @@ Date: 2026-09-07. This is local engineering evidence, not a platform QC result,
 Oracle score, or model score. Reports and validation helpers are outside both
 task upload ZIPs.
 
+Update: GridForge 2.0.3 supersedes the older uploads. See
+GRIDFORGE-2.0.3-GOLDEN-FIXES.md for the preview, keyboard and in-flight save
+fixes. Local comparisons confirm that the previous rubric and instruction
+contracts are unchanged. A new full platform Oracle/QC result is pending.
+
+GridForge 2.0.2 superseded 2.0.1 and 2.0.0. See
+GRIDFORGE-2.0.2-FIXES.md for the second platform round: split scoring,
+restart/idempotence coverage, manifest documentation and prompt consistency.
+GridForge 2.0.1 fixed the platform's
+seeded-user entry, required-fill-button, and sequential Undo findings, accepts
+equivalent numeric formatting, and removes the duplicated Constraints reload
+criterion. See GRIDFORGE-2.0.1-FIXES.md for focused evidence. PatchPad remains
+2.0.0. Older archive files are retained as historical versions, not recommended
+uploads.
+
 ## Delivered format
 
 | Task | Render | Constraints | Functional | Polish | Total scored |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| gridforge-spreadsheet-v2 | 2 | 2 | 20 | 4 | 28 |
+| gridforge-spreadsheet-v2 | 2 | 2 | 36 | 4 | 44 |
 | patchpad-editor-v2 | 2 | 2 | 23 | 4 | 31 |
 
 The current format has four RewardKit dimensions, plus an unscored runner
@@ -17,7 +32,7 @@ dimension. Render checks loading and basic interaction; Constraints checks
 local serving and the entry/reload contract. Detailed custom-surface, editing,
 formula, concurrency, and persistence requirements remain in Functional.
 
-Both tasks are version 2.0.0, target GPT-5.4-mini (high), and configure the
+Both tasks target GPT-5.4-mini (high) and configure the
 GPT-5.6-luna Codex judge (high). Final reward is zero unless Render and
 Constraints pass, otherwise 60% Functional + 40% Polish. The gate judge
 weights are tiny positive schema values, but the runner assigns them no
@@ -112,11 +127,11 @@ descriptions, not runnable implementations; our 33 checks are local checks.
 
 ## Remaining risks and possible false positives
 
-1. **Genuine risk: compound Functional criteria.** Several inherited criteria
-   are all-or-nothing bundles. QC may reasonably flag collapsed independent
-   behaviors. They were not broadly split because this migration was asked
-   to preserve the existing verifiers. If the platform flags them, split the
-   independent outcomes and preserve total feature weight.
+1. **Compound Functional criteria:** GridForge 2.0.2 splits the five groups
+   identified in the new platform review while preserving total feature
+   weights. Other connected scenarios and PatchPad's inherited criteria
+   still need platform review; do not interpret the local fixes as a blanket
+   independence certification.
 2. **Genuine validation gap: full Oracle and target run.** The many-view,
    long-document, clipboard, and complete mutation sequences need the real
    judge run. Timing windows are now instructed, but remain runtime tests.

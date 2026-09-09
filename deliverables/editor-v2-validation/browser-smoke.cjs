@@ -46,6 +46,39 @@ const { chromium } = require('/usr/local/lib/node_modules/@playwright/mcp/node_m
       assert.equal(await cell('H25').textContent(), '160');
       assert.equal(await cell('H26').textContent(), '40');
     });
+    await check('formula edit then range deletion restores current snapshot', async () => {
+      const jump = async address => {
+        await page.locator('#name-box').fill(address);
+        await page.locator('#name-box').press('Enter');
+      };
+      await edit('D2', '=B2*(C2+10)');
+      assert.equal(await cell('D2').textContent(), '390');
+      await jump('T80');
+      await page.keyboard.type('NAMEBOX-T80');
+      await page.keyboard.press('Enter');
+      const inside = ['B2','C2','D2','B3','C3','D3','B4','C4','D4'];
+      const outside = ['A2','E4','T80'];
+      const snapshot = async addresses => {
+        const values = {};
+        for (const address of addresses) {
+          await jump(address);
+          values[address] = {
+            raw: await page.locator('#formula-bar').inputValue(),
+            display: await cell(address).textContent()
+          };
+        }
+        return values;
+      };
+      const before = await snapshot([...inside, ...outside]);
+      assert.equal(before.T80.raw, 'NAMEBOX-T80');
+      await jump('B2:D4');
+      await page.keyboard.press('Delete');
+      for (const address of inside) assert.equal(await cell(address).textContent(), '');
+      await page.locator('#undo-btn').click();
+      assert.deepEqual(await snapshot([...inside, ...outside]), before);
+      assert.equal(await cell('D2').textContent(), '390');
+      assert.equal(await cell('D2').getAttribute('data-raw'), '=B2*(C2+10)');
+    });
     await check('cycle isolation and single Undo recovery', async () => {
       await edit('K20', '9'); await edit('J20', '5'); await edit('J21', '=J20+1');
       await edit('J20', '=J21+1');
@@ -69,6 +102,34 @@ const { chromium } = require('/usr/local/lib/node_modules/@playwright/mcp/node_m
       assert.deepEqual(await current(), before);
       await page.reload();
       await page.waitForFunction(() => document.querySelector('[data-addr="T2"]')?.textContent === 'V2-SMOKE-SAVED');
+    });
+    await check('saved workbook survives two server restarts without reseeding', async () => {
+      await edit('Q70', 'RESTART-Q70');
+      await edit('R70', '=7*8');
+      await page.locator('#save-btn').click();
+      await page.waitForFunction(() => document.querySelector('#save-state').textContent === 'Saved');
+      const before = await current();
+      const revisions = await get('/api/workbooks/ops-plan/revisions');
+      const workbooks = await get('/api/workbooks');
+      const {promisify} = require('node:util');
+      const execute = promisify(require('node:child_process').execFile);
+      for (let round = 0; round < 2; round++) {
+        await execute('bash', ['/tests/restart-app.sh'], {timeout: 30000});
+        const fresh = await browser.newContext();
+        const view = await fresh.newPage();
+        await view.goto('http://localhost:3000/');
+        await view.waitForFunction(() => document.querySelector('#workbook-title')?.textContent === 'Northwind Operations Plan');
+        const read = route => view.evaluate(async route => (await fetch(route)).json(), route);
+        assert.deepEqual(await read('/api/workbooks/ops-plan'), before);
+        assert.deepEqual(await read('/api/workbooks/ops-plan/revisions'), revisions);
+        assert.deepEqual(await read('/api/workbooks'), workbooks);
+        await view.locator('#name-box').fill('Q70'); await view.locator('#name-box').press('Enter');
+        assert.equal(await view.locator('[data-addr="Q70"]').textContent(), 'RESTART-Q70');
+        assert.equal(await view.locator('[data-addr="R70"]').textContent(), '56');
+        await fresh.close();
+      }
+      await page.reload();
+      await page.waitForFunction(() => document.querySelector('#workbook-title')?.textContent === 'Northwind Operations Plan');
     });
   } else {
     const current = async () => (await get('/api/documents/incident-alpha')).document;
