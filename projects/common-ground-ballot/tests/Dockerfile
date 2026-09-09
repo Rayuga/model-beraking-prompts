@@ -1,8 +1,8 @@
-FROM node:22-bookworm-slim AS node-runtime
-FROM python:3.12-slim
+FROM node:22-bookworm-slim@sha256:83f487e0a63425e5b4d146fb5e5be574bcbe1b7b843d3ebafdd95eaf7767a7e5 AS node-runtime
+FROM python:3.12-slim@sha256:78387bc3881b8273120a12ebe6c1ab22b018ccc2c9adf565ae1ac9b536e184ea
 
 LABEL io.turing.task="common-ground-ballot" \
-      io.turing.task.version="1.0.6"
+      io.turing.task.version="2.0.0"
 
 COPY --from=node-runtime /usr/local /usr/local
 
@@ -13,11 +13,11 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PLAYWRIGHT_BROWSERS_PATH=/opt/playwright-browsers
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      ca-certificates python3 python3-pip procps util-linux fonts-liberation fonts-noto-color-emoji \
+      ca-certificates curl python3 python3-pip procps util-linux fonts-liberation fonts-noto-color-emoji \
     && rm -rf /var/lib/apt/lists/*
 
+# Codex is provisioned by the Harbor/RewardKit judge runner when needed.
 RUN npm install -g --no-audit --no-fund \
-      @openai/codex@0.151.0 \
       @playwright/mcp@0.0.79 \
       express@5.1.0 \
       better-sqlite3@12.4.1 \

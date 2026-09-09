@@ -1,5 +1,8 @@
 # Local runtime
 
+You may download development dependencies while building. The finished app must
+serve its runtime resources locally as described below.
+
 - Use Node.js 22, Express, and `better-sqlite3`, which are already installed.
 - Run one process with `node /app/server.js` on port 3000, listening on
   `0.0.0.0`, and serve the browser UI from the same origin.

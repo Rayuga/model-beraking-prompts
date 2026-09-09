@@ -2,6 +2,139 @@
 
 Updated: 2026-09-10
 
+## September 10: Common Ground canonical upload revision
+
+This is the latest Common Ground state and supersedes the pending-name notes
+below. Active source is now `projects/common-ground-ballot/`, package
+`turing/common-ground-ballot`, version `2.0.0`. The original 1.0.6 source was
+moved to `projects/common-ground-ballot-v0/` without changing its contents.
+Its original task metadata is intentionally retained for historical reference.
+
+Deliverables are grouped under `deliverables/common-ground-ballot/`:
+- `2.0.0/`: revised canonical ZIP, local evidence, source QC and README.
+- `v0/`: unchanged historical 1.0.6 ZIPs, run evidence and reports.
+- `pre-template-2.0.0/`: preserved earlier draft ZIP with the v2 suffix.
+
+The revised task injects only `OPENROUTER_API_KEY` for credentials, retaining
+`openai/gpt-5.6-luna` and Codex/max in all four dimensions. `test.sh` contains
+no key configuration. OpenRouter provider routing is configured in the verifier
+image, with no OpenAI-key alias or direct-OpenAI login requirement.
+
+The explicit Codex npm installation has been removed from `tests/Dockerfile`.
+Local inspection established that RewardKit 0.1.7 provisions the CLI when it
+is missing. This exact startup path was tested from the new no-Codex image:
+it installed `codex-cli 0.153.4` in about 44 seconds, preserved the OpenRouter
+provider, accepted the prefixed model argument, and loaded the Playwright MCP
+configuration. No API keys or model calls were used. This demonstrates runner
+provisioning, not an assertion that Harbor always preinstalls the CLI.
+
+Playwright MCP, Chromium and RewardKit remain installed as in the actual
+BazaarBridge v2 template. Their removal is not justified by the Codex bootstrap
+test; obtain a corrected runtime template if the lead intends those to be
+platform-injected too. Runner-owned Codex currently uses a latest-version
+installer, so future versions may differ from the one tested here.
+
+Both images built. Eleven golden browser regression groups passed, including
+two real process restarts, durable sessions/receipts, anonymous vote totals,
+server rejection checks and mobile account actions. Five runtime checks and
+three agent preflight checks passed. The local nine-case harness uses an
+explicit RewardKit score test double, not an Oracle judge. Consult the current
+JSON reports and `qc-preflight.json` for final evidence and package hashes.
+No new paid Oracle/model run or platform upload has been performed.
+Historical Oracle 1.0 applies only to the preserved 1.0.6 package.
+
+GridForge's finalized task and delivery remain unchanged by this migration.
+The user requested a push after Ballot is complete. The earlier push was
+blocked by approval policy; explicit confirmation of the existing remote
+`Rayuga/model-beraking-prompts`, branch `main`, has been requested again.
+Do not report a successful push until Git confirms it.
+
+## September 10: Lead template update and delivery handover
+
+This section supersedes older template recommendations where they conflict.
+The new reference is `projects/bazaarbridge-marketplace-v2/`. It is a reference
+task, not a project to modify while updating GridForge or Common Ground.
+
+### Lead's requested runtime template
+
+- Follow the reference's overall `task.toml`, `environment/Dockerfile`,
+  `tests/Dockerfile`, and `tests/test.sh` organization for future task work.
+  Keep task-specific runtime dependencies, seed paths, lifecycle helpers and
+  requirements intact; do not copy marketplace behavior into another task.
+- Keep agent networking public and the separate verifier networking public.
+- Use OpenRouter credentials, not the sample's direct OpenAI credentials.
+  The provider key name is `OPENROUTER_API_KEY`, supplied by the platform;
+  never store a literal key in source, scripts, Dockerfiles, reports or ZIPs.
+- Preserve `REWARDKIT_JUDGE = "codex"` and the OpenRouter model identifier
+  `REWARDKIT_MODEL = "openai/gpt-5.6-luna"`. Every dimension's `judge.toml`
+  must likewise use `model = "openai/gpt-5.6-luna"`, not bare `gpt-5.6-luna`.
+- Keep provider-key export, remapping and provider setup out of `test.sh`.
+  That script should handle application startup, bounded readiness, lifecycle
+  cleanup, invoking the verifier, and writing the reward artifacts.
+- The lead says Harbor already provides judge tooling, so future verifier
+  Dockerfiles should not redundantly install Codex and platform-provided tools.
+  Keep the application/runtime dependencies the task actually needs.
+- Do not declare non-provider secret placeholders that the platform cannot
+  inject. Put ordinary non-secret runtime defaults in the task environment.
+- After changing infrastructure, check readiness, timeout nesting, provider
+  routing, required executables in the actual verifier environment, and reward
+  generation. Preserve the scored package and historical evidence separately.
+
+### Important reference discrepancy
+
+The files currently supplied in `projects/bazaarbridge-marketplace-v2/` do NOT
+yet demonstrate the lead's no-install tooling setup. Its `tests/Dockerfile`
+still explicitly installs `@openai/codex@0.151.0`, `@playwright/mcp@0.0.79`,
+Chromium and `harbor-rewardkit==0.1.7`. Its task config uses direct
+`OPENAI_API_KEY` and the bare model name. These are not instructions to copy
+those provider choices into our tasks.
+
+Treat removal of tool installation as the intended new platform contract, but
+do not claim the local sample proves tools are injected into the separate
+verifier image. Confirm that injection or obtain the corrected Dockerfile
+before describing a no-install package as runtime-verified. Do not silently
+remove dependencies and assume an old Oracle score validates the new runner.
+The existing GridForge compatibility aliases (`OPENAI_API_KEY` mapped from
+OpenRouter and `OPENAI_BASE_URL`) are historical configuration, not a new
+requirement for future tasks; routing changes still need runtime validation.
+
+### Current task decisions
+
+- GridForge is frozen for this delivery. The user explicitly said to leave it
+  as it is rather than migrate it to the new infrastructure template now.
+- Final GridForge artifacts are in `deliverables/gridforge/final-deliverables/`:
+  the task ZIP, four named directories under `job-directory/`, and
+  `CASE-STUDY-gridforge-spreadsheet-v2.docx` plus
+  `EVAL-REPORT-gridforge-spreadsheet-v2.docx`.
+- All four exports record version `2.0.10` and the same task checksum. Rewards:
+  Oracle `0.9545`, GPT-5.4-mini `0.2697`, Haiku 4.5 `0.0268`, and Gemini 3.7
+  Flash `0.6848`. The user accepts Oracle at `0.95` or above for this submission;
+  this does not turn its two failed Functional checks into passes.
+- The user wants evaluation and case-study documents focused on recorded
+  results, without speculative fairness commentary. Preserve exact scores and
+  evidence; do not claim independent revalidation or perfect passes.
+- Apply the new template work to Common Ground next, preserve its original
+  version, prepare its upload ZIP, and push again after the changes.
+- Naming preference: the revised active task should be `common-ground-ballot`,
+  with the original source archived as `common-ground-ballot-v0`. That rename
+  is still pending: actual paths remain `projects/common-ground-ballot/`
+  (original 1.0.6) and `projects/common-ground-ballot-v2/` (revised 2.0.0).
+- Revised Ballot validation and the provisional old-slug ZIP currently live
+  in `deliverables/common-ground-ballot-v2/`. Its README has stale 1.0.7 notes;
+  refresh it when preparing the canonical upload. Local regression reports
+  exist, but no fresh platform Oracle has run for the revised task. Historical
+  Oracle 1.0 belongs only to the original 1.0.6 package.
+
+### Git handover
+
+The current workspace snapshot was committed locally as `01657ee` (GridForge
+delivery and run evidence, current Ballot preparation, reference task and shared
+context). The attempted push to `Rayuga/model-beraking-prompts`, branch `main`,
+was blocked by the tool approval policy, not by a Git merge conflict. Explicit
+confirmation of that payload and remote was requested. Do not report it as
+pushed or retry through an indirect workaround. This handover update was made
+after that commit and needs inclusion in the next authorized commit/push.
+
 ## September 10: Agent bootstrap and release preflight
 
 This entry supersedes older GridForge version notes below. GridForge is now
@@ -52,10 +185,10 @@ files, and update only root package versions, never dependency versions through
 global text replacement. An updated ZIP may trigger platform QC again; do not
 promise reuse of previous QC or bypass platform checks.
 
-Common Ground QC work was interrupted for this diagnosis. Its saved 1.0.7 source
-is not yet packaged or fully re-audited. Read
-`deliverables/common-ground-ballot-1.0.7-validation/README.md` before continuing;
-the historical 1.0.6 Oracle 1.0 must not be presented as a new 1.0.7 result.
+Common Ground has since been preserved as original 1.0.6 plus revised 2.0.0
+work. See the current handover above for actual paths, the pending canonical
+rename, and the requested lead-template migration. Historical 1.0.6 Oracle 1.0
+is not evidence of a fresh Oracle run for the revision.
 
 ## September 9 merge resolution
 

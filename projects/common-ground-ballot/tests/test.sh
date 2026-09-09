@@ -4,8 +4,6 @@ umask 077
 
 LOG_DIR="${VERIFIER_LOG_DIR:-/logs/verifier}"
 APP_COPY="/tmp/common-ground-submission"
-PROBE="/tmp/common-ground-probe.py"
-APP_PID=""
 
 mkdir -p "$LOG_DIR"
 chmod 700 "$LOG_DIR"
@@ -27,10 +25,7 @@ ensure_reward() {
 }
 
 cleanup() {
-  if [[ -n "$APP_PID" ]]; then
-    kill -- -"$APP_PID" 2>/dev/null || true
-    wait "$APP_PID" 2>/dev/null || true
-  fi
+  python3 /tests/app-lifecycle.py stop 2>/dev/null || true
   ensure_reward
 }
 
@@ -50,10 +45,10 @@ while IFS= read -r app_link; do
 done < <(find /app -type l -print 2>/dev/null)
 
 mkdir -p /assets/artifacts
-if [[ ! -f /assets/artifacts/common_ground_seed.json && -f /tests/assets/artifacts/common_ground_seed.json ]]; then
+if [[ -f /tests/assets/artifacts/common_ground_seed.json ]]; then
   cp /tests/assets/artifacts/common_ground_seed.json /assets/artifacts/common_ground_seed.json
 fi
-if [[ ! -f /app/common_ground_seed.json && -f /assets/artifacts/common_ground_seed.json ]]; then
+if [[ -f /assets/artifacts/common_ground_seed.json ]]; then
   cp /assets/artifacts/common_ground_seed.json /app/common_ground_seed.json
 fi
 if [[ ! -f /app/common_ground_seed.json ]]; then exit 0; fi
@@ -80,38 +75,20 @@ if ! setpriv --reuid=65534 --regid=65534 --clear-groups test -w /app 2>/dev/null
   APP_SEED="$APP_COPY/common_ground_seed.json"
 fi
 
-setsid env -i \
-  PATH="/usr/local/bin:/usr/bin:/bin" \
-  NODE_PATH="/usr/local/lib/node_modules" \
-  HOME="$APP_COPY" PORT="3000" DB_PATH="$APP_DB" SEED_PATH="$APP_SEED" \
-  setpriv --reuid=65534 --regid=65534 --clear-groups \
-  node "$APP_ENTRY" >"$LOG_DIR/app.log" 2>&1 &
-APP_PID="$!"
-
-cat > "$PROBE" <<'PY'
-import sys
-import urllib.error
-import urllib.request
-
-for url in ("http://127.0.0.1:3000/api/health", "http://127.0.0.1:3000/"):
-    try:
-        urllib.request.urlopen(url, timeout=2).read()
-    except urllib.error.HTTPError:
-        sys.exit(0)
-    except Exception:
-        continue
-    sys.exit(0)
-sys.exit(1)
-PY
+python3 /tests/app-lifecycle.py start --entry "$APP_ENTRY" \
+  --database "$APP_DB" --seed "$APP_SEED" --log "$LOG_DIR/app.log"
 
 READY=0
-for _ in $(seq 1 120); do
-  if python3 "$PROBE" >/dev/null 2>&1; then READY=1; break; fi
-  sleep 0.25
+for _ in $(seq 1 30); do
+  if curl --fail --silent --show-error --max-time 2 http://127.0.0.1:3000/api/health >/dev/null 2>&1; then
+    READY=1
+    break
+  fi
+  sleep 1
 done
 if [[ "$READY" != "1" ]]; then exit 0; fi
 
-if ! timeout 3540 rewardkit --max-concurrent-agent 1 /tests >"$LOG_DIR/rewardkit.log" 2>&1; then
+if ! timeout --kill-after=15 4500 rewardkit --max-concurrent-agent 1 /tests >"$LOG_DIR/rewardkit.log" 2>&1; then
   write_zero_reward
   exit 0
 fi
@@ -135,7 +112,7 @@ for key in ("render", "constraints", "functional", "polish"):
         raise ValueError(f"invalid RewardKit dimension {key}={value!r}")
     data[key] = value
 
-reward = 0.0 if data["render"] <= 0.0 or data["constraints"] <= 0.0 else 0.6 * data["functional"] + 0.4 * data["polish"]
+reward = 0.0 if data["render"] < 1.0 or data["constraints"] < 1.0 else 0.6 * data["functional"] + 0.4 * data["polish"]
 reward = round(reward, 4)
 data.update({"reward": reward, "browser": reward, "graded": 1, "no_op": 0})
 json_tmp = json_path.with_name(".reward.json.tmp")
