@@ -1,6 +1,26 @@
 # Current WebDev Task Authoring Context
 
-Updated: 2026-09-08
+Updated: 2026-09-09
+
+## September 9 merge resolution
+
+This update supersedes older network and current-version notes below. Active
+sources are PatchPad `2.0.4` and GridForge `2.0.8`. Both agent and verifier
+environments now use public networking, as requested. Dependency installation
+during development is allowed; the required custom editor/grid and locally
+served runtime resources remain part of each brief.
+
+The merge retains incoming GridForge brief/bootstrap-tool fixes and PatchPad's
+separate seed, custom-surface and unsaved-discard checks. It also retains the
+locally tested PatchPad focus/clipboard fixes, Escape-to-Find behavior, flexible
+word navigation, manifest parser contract and API documentation check. PatchPad
+uses only `tests/app-lifecycle.sh` and one restart criterion, not two competing
+lifecycle helpers or duplicate restart rewards. It has 35 criteria in total:
+2 Render, 2 Constraints, 27 Functional and 4 Polish.
+
+Previously exported ZIPs and run evidence remain historical, not evidence for
+these merged source versions. Repackage before uploading. Static validation
+does not establish a new Oracle pass; Docker was unavailable during this merge.
 
 ## Latest QC and PatchPad handoff
 

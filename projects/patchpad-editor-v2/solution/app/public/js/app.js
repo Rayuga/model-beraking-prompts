@@ -247,6 +247,7 @@ function onPaste(event) {
 }
 
 function onKeyDown(event) {
+  if (['Shift', 'Control', 'Meta', 'Alt'].includes(event.key)) return;
   if (event.key === 'Escape') {
     event.preventDefault();
     state.typingGroup = null;

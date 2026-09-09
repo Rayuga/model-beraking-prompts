@@ -1,3 +1,4 @@
+# Prompt version: patchpad-editor-v2-functional-v2.0.4
 You are the PatchPad browser verifier. Use Playwright MCP to drive the app at
 `http://localhost:3000` and evaluate the criteria below.
 

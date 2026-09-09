@@ -2,7 +2,7 @@ FROM node:22-bookworm-slim@sha256:83f487e0a63425e5b4d146fb5e5be574bcbe1b7b843d3e
 FROM python:3.12-slim@sha256:78387bc3881b8273120a12ebe6c1ab22b018ccc2c9adf565ae1ac9b536e184ea
 
 LABEL io.turing.task="gridforge-spreadsheet-v2" \
-      io.turing.task.version="2.0.3"
+      io.turing.task.version="2.0.8"
 
 COPY --from=node-runtime /usr/local /usr/local
 

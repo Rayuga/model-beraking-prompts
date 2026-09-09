@@ -1,23 +1,25 @@
-# Persistence and revisions
+# Saving and recovering work
 
-Save workbook changes automatically and make the current save state clear. A
-manual Save action can still be available when someone wants to save now.
+People shouldn't have to remember to save every small change. Autosave a
+completed edit within five seconds, show whether it has reached the server,
+and offer Save for someone who wants to save now. Opening the workbook again
+should bring back the latest saved cells and formulas.
 
-Keep saved workbook data in SQLite and create revisions only when something has
-actually changed. Opening the workbook again should show the latest saved cells
-and formulas, without presenting unfinished work as saved.
+Keep the workbook in SQLite and add a revision only when its content changes.
+Let people browse timestamped revisions, including autosaves, and preview an
+earlier version before deciding to restore it. Restoring should put that
+version into an undoable draft and preserve the history. Give the person time
+to inspect or undo that draft before autosaving it.
 
-Provide a revision history with timestamps so people can preview or restore an
-earlier version. A restored version should begin as a draft, remain undoable,
-and preserve the existing history. Include automatically saved versions in the
-same history.
+We need each save to carry the target workbook identity, a complete workbook
+snapshot, and the integer revision it was based on. Keep the snapshot in the
+supplied seed's layout: a workbook identity and title, sheets with identities
+and names, and cells keyed by address. Store each cell's raw entry as text,
+including numbers and formulas, so reopening it preserves what was entered.
 
-Autosave a completed edit within five seconds. Restoring an old version must
-leave time to inspect or undo that draft before it is saved.
-
-Use a JSON save request with an integer baseRevision, workbookId, and workbook
-payload containing id, title, and sheets. Sheets have id, name, and cells, an
-address-keyed object of raw string values. Reject missing or invalid structure,
-unknown or conflicting identities, non-integer revisions, and non-string cell
-values. A cell save cannot rename a workbook or sheet. Invalid requests return
-a 4xx response and leave stored content and revisions unchanged.
+A cell edit shouldn't rename the workbook or its sheets. If a save arrives
+with missing data, malformed workbook or cell data, unknown or mismatched
+identities, or an invalid revision, refuse it with a 4xx response and leave
+the stored content and history alone. Revision values must be integers; raw
+cell values must be strings. The same checks belong on the server so a broken
+or outdated browser can't damage someone else's work.

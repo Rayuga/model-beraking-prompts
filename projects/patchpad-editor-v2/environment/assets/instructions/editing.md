@@ -10,6 +10,10 @@ should be reachable in both directions without going back to the mouse.
 Escape from the editing area should focus the Find input so people can use
 Tab and Shift+Tab to move through the surrounding controls again.
 
+For word shortcuts, either familiar rightward convention is fine: the end of
+the current word or the start of the next word. Holding Shift selects the same
+span; moving left goes back to the previous word's start.
+
 Support emoji and accented text as complete visible characters when moving,
 selecting, or deleting.
 

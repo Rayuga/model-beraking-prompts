@@ -25,13 +25,13 @@ for p in files:
         json.loads(p.read_text(encoding='utf-8'))
 check('All TOML and JSON parse', True)
 config = tomllib.loads((TASK / 'task.toml').read_text(encoding='utf-8'))
-check('User-requested identity matches directory and semantic version', config['task']['name'] == 'turing/' + SLUG and config['task']['version'] == '2.0.3')
+check('User-requested identity matches directory and semantic version', config['task']['name'] == 'turing/' + SLUG and config['task']['version'] == '2.0.4')
 check('Task files only, no credentials or generated dependencies', all(
     not ({'node_modules', '__pycache__', '.git', 'jobs', 'reports'} & set(p.relative_to(TASK).parts))
     and p.suffix not in {'.zip', '.db', '.pyc', '.xlsx', '.docx'}
     and not re.search(rb'sk-or-v1-[A-Za-z0-9]{20,}', p.read_bytes()) for p in files))
 check('UTF-8 without BOM; Unix line endings', all(not p.read_bytes().startswith(b'\xef\xbb\xbf') and b'\r\n' not in p.read_bytes() for p in files))
-check('Separate verifier and offline agent', config['verifier']['environment_mode'] == 'separate' and config['environment']['network_mode'] == 'no-network')
+check('Separate verifier and public networking', config['verifier']['environment_mode'] == 'separate' and config['environment']['network_mode'] == 'public' and config['verifier']['environment']['network_mode'] == 'public')
 check('No unexpected environment placeholders', set(re.findall(r'\$\{([^}]+)\}', (TASK / 'task.toml').read_text(encoding='utf-8'))) <= {'OPENAI_API_KEY', 'OPENROUTER_API_KEY', 'ANTHROPIC_API_KEY', 'GEMINI_API_KEY'})
 check('Six-hour total timeout budget', config['agent']['timeout_sec'] + config['environment']['build_timeout_sec'] + config['verifier']['timeout_sec'] <= 21600)
 check('Identical agent and verifier seeds', (TASK / 'environment/assets/incident_seed.json').read_bytes() == (TASK / 'tests/incident_seed.json').read_bytes())
@@ -44,12 +44,12 @@ for dim in ('render', 'constraints', 'functional', 'polish'):
     criteria[dim] = judge['criterion']
     timeouts += judge['judge']['timeout']
     prompt = (judge_path.parent / judge['judge']['prompt_template']).read_text(encoding='utf-8')
-    check(dim + ': versioned prompt and clean subject', source.startswith(f'# Prompt version: {SLUG}-{dim}-v2.0.3') and 'workbook' not in prompt.lower())
+    check(dim + ': versioned prompt and clean subject', source.startswith(f'# Prompt version: {SLUG}-{dim}-v2.0.4') and 'workbook' not in prompt.lower())
     check(dim + ': Codex, fixed model, batched criteria', judge['judge']['judge'] == 'codex' and judge['judge']['model'] == config['verifier']['env']['REWARDKIT_MODEL'] and judge['judge']['mode'] == 'batched' and judge['judge']['temperature'] == 0)
     check(dim + ': browser gate, injection protection and independence', all(s in prompt for s in ('{criteria}', 'http://localhost:3000', 'untrusted evidence', 'scoring directives', 'browser gate', 'independently')))
     check(dim + ': valid positive criteria', all(c['type'] in ('binary', 'likert') and c['weight'] > 0 and c['description'].strip() for c in judge['criterion']))
 all_ids = [c['id'] for group in criteria.values() for c in group]
-check('33 unique criteria: original 31 plus restart and manifest coverage', len(all_ids) == len(set(all_ids)) == 33)
+check('35 unique criteria: split seed checks plus restart and manifest coverage', len(all_ids) == len(set(all_ids)) == 35)
 check('Judge timeouts leave overhead', timeouts + 1000 < 12000 < config['verifier']['timeout_sec'])
 brief = '\n'.join(p.read_text(encoding='utf-8') for p in (TASK / 'environment/assets/instructions').glob('*.md'))
 check('New expectations are in the brief', all(s in brief for s in ('SQLite path:', 'any extension or none', 'Escape', 'Find input', 'how many matches', 'unsaved draft')))
@@ -101,7 +101,7 @@ fixes = {
         'files': ['tests/polish/judge.toml', 'environment/assets/instructions/editing.md']},
     'verifier_is_deterministic_and_offline_pinned': {
         'assessment': 'Genuine missing Functional prompt version. Adding a version does not make an LLM judge deterministic.',
-        'fix': 'Version all four judge prompts consistently at 2.0.3 and record source hashes in this report.',
+        'fix': 'Version all four judge prompts consistently at 2.0.4 and record source hashes in this report.',
         'files': ['tests/functional/judge.toml', 'tests/render/judge.toml', 'tests/constraints/judge.toml', 'tests/polish/judge.toml']},
     'dimension_prompts_are_accurate_and_consistent': {
         'assessment': 'Genuine copy residue and metadata omissions; misspelled marker was cosmetic rather than a behavioral failure.',
@@ -120,10 +120,10 @@ quality = [r for r in quality if len(r) > 2 and r[2]]
 deterministic = [r for r in deterministic if any(v is not None for v in r)]
 assert len(quality) == 53
 report = {
-    'task': SLUG, 'version': '2.0.3', 'date': '2026-09-08',
+    'task': SLUG, 'version': '2.0.4', 'date': '2026-09-09',
     'scope': 'Oracle run-74864554 focus defects and verifier interaction ambiguities repaired. Includes historical QC dispositions and local checks; not a new platform verdict or full Oracle score.',
     'source_workbook': {'file': workbook.name, 'sha256': hashlib.sha256(workbook.read_bytes()).hexdigest(), 'quality_checks': len(quality), 'listed_deterministic_checks': len(deterministic), 'note': 'Workbook descriptions are not executable platform checker implementations.'},
-    'latest_platform_screenshot': {'passed': 52, 'failed': 1, 'failed_id': 'dimensions_cover_every_graded_requirement', 'applies_to': 'previous upload, not the new 2.0.3 archive'},
+    'latest_platform_screenshot': {'passed': 52, 'failed': 1, 'failed_id': 'dimensions_cover_every_graded_requirement', 'applies_to': 'previous upload, not the new 2.0.4 archive'},
     'reported_findings': [{'id': key, 'status': 'fixed_locally_pending_platform_review' if key == 'dimensions_cover_every_graded_requirement' else 'not_failed_in_latest_platform_screenshot', **value} for key, value in fixes.items()],
     'quality_inventory': [{'id': r[2], 'block': r[1], 'status': 'coverage_fix_pending_platform_review' if r[2] == 'dimensions_cover_every_graded_requirement' else 'reported_pass_in_latest_screenshot_not_regraded_here'} for r in quality],
     'structural_checks': checks,
@@ -143,7 +143,7 @@ report['oracle_failure_fixes'] = [
 for evidence in ('coverage-negative-controls.json', 'harness-integration.json'):
     path = OUT / evidence
     report[evidence] = json.loads(path.read_text(encoding='utf-8')) if path.exists() else {'status': 'not_completed'}
-archive_path = OUT / f'{SLUG}-2.0.3-task.zip'
+archive_path = OUT / f'{SLUG}-2.0.4-task.zip'
 hashes = {}
 with zipfile.ZipFile(archive_path, 'w', compression=zipfile.ZIP_DEFLATED) as z:
     for p in files:

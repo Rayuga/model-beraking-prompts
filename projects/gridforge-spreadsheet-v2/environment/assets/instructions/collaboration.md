@@ -1,38 +1,27 @@
-# Collaboration and edit history
+# Working together
 
-GridForge has a small seeded-user login so edits can be attributed to people.
-Users should be able to sign in as one of the seeded users, edit the workbook,
-and see who last changed a selected cell. A toolbar user selector or a simple
-seeded-user entry screen is fine.
+Let people choose one of the seeded users so the team can tell who changed
+what. A toolbar selector or a simple entry screen is fine. When someone selects
+a cell, they should be able to inspect its history, including the previous
+value, new value, person, and time.
 
-Track each cell change with its previous and new values, user, and time.
+Each open view is a separate editing session, even when the same person opens
+two views. Saves and attribution belong to the user chosen in that view.
+The server should refuse invalid, expired, or contradictory session details.
 
-## Editing sessions
+Show who's here and where they're working, with a small legend and a separate
+color for each view's current cell or range. Selection outlines should leave
+the contents readable and editable. If two views select the same cell, keep
+both colors recognizable. As people move, change users, or close a view,
+remove the old presence indicators.
 
-Treat every open workbook view as its own editing session and tie it to the
-seeded user selected in that view. Saves and attribution must belong to that
-same view and user. Invalid, expired, or contradictory session details should
-be refused by the server.
+Colleagues' saved changes should appear without a reload. Keep presence and
+saved changes current within five seconds on a local connection. Someone's
+unsaved draft must survive incoming changes: combine edits to different cells,
+and show a conflict if both people changed the same cell.
 
-## Live collaboration
-
-Support live collaboration across open workbook views. Show who is present,
-keep each view distinct, and display their current selections with clear
-spreadsheet-style colors and a small legend. Presence should stay current as
-people move, switch users, or leave.
-
-Keep saved edits synchronized across open views without a reload and persisted
-with the workbook.
-Preserve local drafts, combine changes to different cells, and show a conflict
-when people change the same cell.
-
-## Conflict safety
-
-Make saves revision-aware and merge unrelated concurrent edits while rejecting
-conflicts. The server must reject conflicting stale, malformed, or identity-changing save
-requests without changing the workbook or revision history.
-
-Show a separate color and current cell or range for each open view, including
-two views owned by the same person. Remote selection outlines must leave cell
-contents clear, including when people select the same cell. Keep presence and
-saved changes current within five seconds on a local connection.
+Use the saved revision each view was working from when resolving concurrent
+saves. Keep unrelated work from both views, but reject an overlapping stale
+save instead of replacing the first person's saved value. Malformed saves or
+requests that contradict the workbook's identity should be refused by the
+server without altering the workbook or its revision history.

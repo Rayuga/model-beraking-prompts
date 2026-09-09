@@ -31,8 +31,12 @@ for slug in SLUGS:
     check("canonical three-part slug", len(slug.split("-")) == 3 and task["task"]["name"] == "turing/" + slug)
     check("version matches package", version == json.loads((root / "solution/app/package.json").read_text(encoding="utf-8"))["version"])
     check("target GPT-5.4-mini", task["metadata"]["active_target_model"] == "openrouter/openai/gpt-5.4-mini")
-    check("offline agent and separate verifier", task["environment"]["network_mode"] == "no-network" and task["verifier"]["environment_mode"] == "separate")
-    check("provider allowlist", {"openrouter.ai", "api.openai.com"} <= set(task["verifier"]["environment"]["allowed_hosts"]))
+    expected_agent_network = "public"
+    check("intended agent network and separate verifier", task["environment"]["network_mode"] == expected_agent_network and task["verifier"]["environment_mode"] == "separate")
+    brief_paths = [root / "instruction.md", *(root / "environment/assets/instructions").glob("*.md")]
+    brief = " ".join(" ".join(p.read_text(encoding="utf-8").lower().split()) for p in brief_paths)
+    check("public network agrees with build instructions", task["environment"]["network_mode"] != "public" or not any(s in brief for s in ("workspace is offline", "offline while you build", "network is disabled")))
+    check("public verifier network", task["verifier"]["environment"]["network_mode"] == "public")
     check("total time within six hours", task["agent"]["timeout_sec"] + task["environment"]["build_timeout_sec"] + task["verifier"]["timeout_sec"] <= 21600)
     required = ["task.toml", "instruction.md", "environment/Dockerfile", "solution/solve.sh", "tests/Dockerfile", "tests/test.sh", "tests/reward.toml"]
     check("required entry files", all((root / p).is_file() for p in required))
@@ -53,11 +57,13 @@ for slug in SLUGS:
         count_by_dimension[dim] = len(criteria)
         timeout_sum += judge["timeout"]
     check("criterion ids unique", len(ids) == len(set(ids)))
-    check("expected functional criterion count", count_by_dimension["functional"] == (36 if slug.startswith("gridforge") else 23))
+    check("expected functional criterion count", count_by_dimension["functional"] == (36 if slug.startswith("gridforge") else 27))
     check("small hard gates", count_by_dimension["render"] == 2 and count_by_dimension["constraints"] == 2)
     runner = (root / "tests/test.sh").read_text(encoding="utf-8")
     check("timeouts fit with overhead", timeout_sum + 1000 < 12000 < task["verifier"]["timeout_sec"])
     control = (root / "tests/app-control.sh").read_text(encoding="utf-8") if (root / "tests/app-control.sh").exists() else ""
+    if (root / "tests/app-lifecycle.sh").exists():
+        runner += '\n' + (root / "tests/app-lifecycle.sh").read_text(encoding="utf-8")
     check("npm start without golden-only entry-file check", ("exec npm start" in runner or '"npm", "start"' in control) and "! -s /app/src/index.js" not in runner)
     check("runner strips app credentials and isolates UID", (("env -i" in runner and "--reuid=65534" in runner) or ('env=app_env' in control and '--reuid=65534' in control)) and "umask 077" in runner)
     check("no literal API key", all(not re.search(rb"sk-or-v1-[A-Za-z0-9]{20,}", p.read_bytes()) for p in files))

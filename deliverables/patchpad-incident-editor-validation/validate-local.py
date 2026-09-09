@@ -15,7 +15,7 @@ from rewardkit.runner import discover
 
 evidence = {'scope': 'Unpaid local checks; not a full Oracle or platform QC score'}
 evidence['criteria'] = {d.name: len(d.criteria) for d in discover('/tests')}
-assert evidence['criteria'] == {'render': 2, 'constraints': 2, 'functional': 25, 'polish': 4}
+assert evidence['criteria'] == {'render': 2, 'constraints': 2, 'functional': 27, 'polish': 4}
 for script in ('/tests/test.sh', '/tests/app-lifecycle.sh', '/solution/solve.sh'):
     subprocess.run(['bash', '-n', script], check=True)
 for script in Path('/solution/app').rglob('*.js'):

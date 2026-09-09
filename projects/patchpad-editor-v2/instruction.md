@@ -13,8 +13,9 @@ The brief is split into these files under `/instructions/`:
 
 Please read all of them before starting. Seed data is available at
 `/assets/incident_seed.json`.
-The workspace is offline while you build. Use the supplied seed and the
-dependencies already available in the image; do not install or fetch anything.
+Network access is available during setup and development. The seed and required
+dependencies are provided in the image. Keep the delivered app self-contained:
+opening or running it must not fetch network assets or install packages.
 Put the finished app in `/app` and start it with `npm start` on port `3000`.
 Serve the editor at the root page `/`.
 Include `APP_MANIFEST.md` with the start command and SQLite database path.

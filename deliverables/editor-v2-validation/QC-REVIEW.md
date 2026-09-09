@@ -4,7 +4,17 @@ Date: 2026-09-07. This is local engineering evidence, not a platform QC result,
 Oracle score, or model score. Reports and validation helpers are outside both
 task upload ZIPs.
 
-Update: GridForge 2.0.3 supersedes the older uploads. See
+Update: GridForge 2.0.7 supersedes the older uploads. The agent is now
+no-network and its Dockerfile installs curl and coreutils at image-build time.
+Verifier networking remains separate and allowlisted. This matches the reported
+QC network requirement, but local image-build verification remains blocked by
+the configured corporate proxy's DNS failure. See GRIDFORGE-2.0.7-OFFLINE-AGENT.md.
+
+GridForge 2.0.4 changed the agent
+network mode to public so Harbor can bootstrap OpenHands; the verifier remains
+separate and allowlisted. See GRIDFORGE-2.0.4-NETWORK-FIX.md.
+
+GridForge 2.0.3 superseded the older uploads. See
 GRIDFORGE-2.0.3-GOLDEN-FIXES.md for the preview, keyboard and in-flight save
 fixes. Local comparisons confirm that the previous rubric and instruction
 contracts are unchanged. A new full platform Oracle/QC result is pending.
@@ -15,16 +25,17 @@ restart/idempotence coverage, manifest documentation and prompt consistency.
 GridForge 2.0.1 fixed the platform's
 seeded-user entry, required-fill-button, and sequential Undo findings, accepts
 equivalent numeric formatting, and removes the duplicated Constraints reload
-criterion. See GRIDFORGE-2.0.1-FIXES.md for focused evidence. PatchPad remains
-2.0.0. Older archive files are retained as historical versions, not recommended
-uploads.
+criterion. See GRIDFORGE-2.0.1-FIXES.md for focused evidence. PatchPad 2.0.2
+supersedes 2.0.1; see PATCHPAD-2.0.2-QC-FIXES.md for keyboard, restart and
+instruction fixes, and the unresolved public-network review policy. Older archive files are
+retained as historical versions, not recommended uploads.
 
 ## Delivered format
 
 | Task | Render | Constraints | Functional | Polish | Total scored |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | gridforge-spreadsheet-v2 | 2 | 2 | 36 | 4 | 44 |
-| patchpad-editor-v2 | 2 | 2 | 23 | 4 | 31 |
+| patchpad-editor-v2 | 2 | 2 | 26 | 4 | 34 |
 
 The current format has four RewardKit dimensions, plus an unscored runner
 preflight as the fifth checking layer. There is no invented fifth scoring
@@ -114,7 +125,7 @@ descriptions, not runnable implementations; our 33 checks are local checks.
 | Workbook checks | Evidence or qualification |
 | --- | --- |
 | 1-7: natural request, coverage, no leakage, achievable product | Concise root briefs and split product requirements; targeted ambiguity fixes. Exhaustive instruction-to-criterion fairness remains subject to the risk below. |
-| 8-12: identity, network, credentials, timeout, Docker wiring | Canonical v2 slugs, no-network agent, separate pinned verifier, provider allowlist, nested budgets, no prebuilt agent override. Live credentials were not tested. |
+| 8-12: identity, network, credentials, timeout, Docker wiring | Canonical v2 slugs, public agent network for Harbor bootstrap, separate pinned verifier, provider allowlist, nested budgets, no prebuilt agent override. Live credentials were not tested. |
 | 13-16: assets, seed, dependencies, answer separation | Identical agent/verifier seed copies; successful offline golden starts; no solution or tests copied into the agent image. |
 | 17-20: reference coverage and runtime | Static reference supplied; builds and representative browser regressions pass. Full Oracle coverage is pending; changes are not yet committed. |
 | 21-25: safe runner, image, launch contract, schema, browser prompts | Unprivileged launch, no-op zero, syntax and real RewardKit discovery pass; live browser instructions included. |
