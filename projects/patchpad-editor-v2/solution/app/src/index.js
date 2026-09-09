@@ -31,7 +31,7 @@ app.get('/api/documents/:id', (req, res) => {
 
 app.post('/api/documents/:id/save', (req, res) => {
   const { documentId, baseRevision, content } = req.body || {};
-  if (documentId && documentId !== req.params.id) {
+  if (Object.hasOwn(req.body || {}, 'documentId') && documentId !== req.params.id) {
     return res.status(400).json({ error: 'Document id mismatch' });
   }
   if (!Number.isInteger(baseRevision) || typeof content !== 'string') {

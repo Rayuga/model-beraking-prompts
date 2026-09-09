@@ -19,3 +19,5 @@ opening or running it must not fetch network assets or install packages.
 Put the finished app in `/app` and start it with `npm start` on port `3000`.
 Serve the editor at the root page `/`.
 Include `APP_MANIFEST.md` with the start command and SQLite database path.
+Write the database declaration on one line as `SQLite path: /app/your-file.db`,
+using your actual absolute database path, as described in `overview.md`.

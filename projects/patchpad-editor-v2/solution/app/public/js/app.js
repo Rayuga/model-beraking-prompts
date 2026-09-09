@@ -14,6 +14,8 @@ const state = {
   redo: [],
   typingGroup: null,
   dirty: false,
+  savedContent: '',
+  saving: false,
   query: '',
   matches: [],
   activeMatch: -1
@@ -97,6 +99,11 @@ async function loadDocument(id) {
   state.title = loadedDocument.title;
   state.baseRevision = loadedDocument.current_revision;
   state.lines = String(loadedDocument.content || '').split('\n');
+  state.savedContent = state.lines.join('\n');
+  state.undo = [];
+  state.redo = [];
+  state.typingGroup = null;
+  state.preferredCol = 0;
   state.caret = { line: 0, col: 0 };
   state.extraCarets = [];
   state.selection = null;
@@ -119,7 +126,7 @@ async function loadRevisions() {
       <span>${escapeHtml(rev.saved_at)}</span><br>
       <button type="button" onclick="previewRevision(${rev.revision})">Preview</button>
       <button type="button" onclick="restoreRevision(${rev.revision})">Restore Draft</button>
-      <pre id="revision-preview-${rev.revision}" hidden></pre>
+      <pre id="revision-preview-${rev.revision}" role="region" aria-label="Revision ${rev.revision} preview" hidden></pre>
     </div>
   `).join('');
 }
@@ -129,7 +136,7 @@ window.previewRevision = async (revision) => {
   const { revision: row } = await api(`/api/documents/${encodeURIComponent(state.documentId)}/revisions/${revision}`);
   const pre = document.getElementById(`revision-preview-${revision}`);
   pre.hidden = !pre.hidden;
-  pre.textContent = row.content.slice(0, 1200);
+  pre.textContent = row.content;
 };
 
 window.restoreRevision = async (revision) => {
@@ -140,7 +147,8 @@ window.restoreRevision = async (revision) => {
   state.selection = null;
   state.extraCarets = [];
   state.preferredCol = 0;
-  state.undo = [preRestore];
+  state.undo.push(preRestore);
+  if (state.undo.length > 150) state.undo.shift();
   state.redo = [];
   state.typingGroup = null;
   markDirty();
@@ -207,23 +215,30 @@ function textContent() {
 }
 
 async function saveDocument() {
+  if (state.saving) return;
   clearMessage();
   if (!state.dirty) {
     message.textContent = 'No changes to save.';
     renderStatus();
     return;
   }
+  const submittedContent = textContent();
+  const submittedDocumentId = state.documentId;
+  state.saving = true;
+  renderStatus();
   try {
     const data = await api(`/api/documents/${encodeURIComponent(state.documentId)}/save`, {
       method: 'POST',
       body: JSON.stringify({
         documentId: state.documentId,
         baseRevision: state.baseRevision,
-        content: textContent()
+        content: submittedContent
       })
     });
+    if (state.documentId !== submittedDocumentId) return;
     state.baseRevision = data.revision;
-    state.dirty = false;
+    state.savedContent = submittedContent;
+    markDirty();
     await loadDocuments();
     await loadRevisions();
     render();
@@ -233,11 +248,14 @@ async function saveDocument() {
       : error.message;
     message.scrollIntoView({ block: 'nearest' });
     renderStatus();
+  } finally {
+    state.saving = false;
+    renderStatus();
   }
 }
 
 function markDirty() {
-  state.dirty = true;
+  state.dirty = textContent() !== state.savedContent;
 }
 
 function onPaste(event) {
@@ -256,6 +274,11 @@ function onKeyDown(event) {
   }
   if (event.metaKey || event.ctrlKey) {
     const key = event.key.toLowerCase();
+    if (key === 'home' || key === 'end') {
+      event.preventDefault();
+      moveCaret(event.key, event.shiftKey, true);
+      return;
+    }
     if (key === 'f') {
       event.preventDefault();
       const findBox = document.getElementById('find-box');
@@ -344,7 +367,7 @@ function onMouseDown(event) {
   const pos = pointToPosition(event);
   if (!pos) return;
   event.preventDefault();
-  editor.focus();
+  editor.focus({ preventScroll: true });
   if (event.altKey || event.ctrlKey || event.metaKey) {
     state.selection = null;
     const existing = [state.caret, ...state.extraCarets].map(normalizePos);
@@ -504,7 +527,7 @@ async function readClipboard() {
   try {
     if (navigator.clipboard?.readText) {
       const text = await navigator.clipboard.readText();
-      if (text) return text;
+      return text;
     }
   } catch {
     // Browser permission can block scripted clipboard reads; keep local fallback.
@@ -543,10 +566,30 @@ function pointToPosition(event) {
   if (!lineEl) return null;
   const line = Number(lineEl.dataset.line);
   const textEl = lineEl.querySelector('.text');
-  const rect = textEl.getBoundingClientRect();
-  const charWidth = measureCharWidth();
-  const col = Math.max(0, Math.floor((event.clientX - rect.left - 10) / charWidth));
-  return normalizePos({ line, col });
+  // Screen positions are glyph positions, not UTF-16 offsets: an emoji or
+  // combining sequence may occupy a different width from its code units.
+  // Measure only complete grapheme boundaries across the rendered spans.
+  const content = state.lines[line];
+  if (!content) return { line, col: 0 };
+  const walker = document.createTreeWalker(textEl, NodeFilter.SHOW_TEXT);
+  const nodes = [];
+  let node;
+  while ((node = walker.nextNode())) nodes.push(node);
+  const boundaries = [...graphemeSegmenter.segment(content)].map(part => part.index);
+  boundaries.push(content.length);
+  const range = document.createRange();
+  let nodeIndex = 0, offset = 0, col = 0, distance = Infinity;
+  for (const boundary of boundaries) {
+    while (nodeIndex < nodes.length - 1 && boundary > offset + nodes[nodeIndex].length) {
+      offset += nodes[nodeIndex++].length;
+    }
+    if (!nodes[nodeIndex]) break;
+    range.setStart(nodes[nodeIndex], boundary - offset);
+    range.collapse(true);
+    const nextDistance = Math.abs(event.clientX - range.getBoundingClientRect().left);
+    if (nextDistance < distance) { distance = nextDistance; col = boundary; }
+  }
+  return { line, col };
 }
 
 let cachedCharWidth = null;
@@ -761,7 +804,7 @@ function advancePosition(start, text) {
   });
 }
 
-function moveCaret(key, selecting) {
+function moveCaret(key, selecting, documentEdge = false) {
   state.typingGroup = null;
   const old = { ...state.caret };
   let next = { ...state.caret };
@@ -775,10 +818,11 @@ function moveCaret(key, selecting) {
     next = nextPosition(state.caret);
     state.preferredCol = next.col;
   } else if (key === 'Home') {
-    next = { line: state.caret.line, col: 0 };
+    next = { line: documentEdge ? 0 : state.caret.line, col: 0 };
     state.preferredCol = 0;
   } else if (key === 'End') {
-    next = { line: state.caret.line, col: state.lines[state.caret.line].length };
+    const line = documentEdge ? state.lines.length - 1 : state.caret.line;
+    next = { line, col: state.lines[line].length };
     state.preferredCol = next.col;
   } else if (key === 'ArrowUp' || key === 'ArrowDown') {
     const targetLine = key === 'ArrowUp'
@@ -1055,7 +1099,7 @@ function renderStatus() {
   const count = state.query ? `${state.matches.length} matches` : 'No active search';
   const mode = state.dirty ? 'Dirty' : 'Saved';
   document.getElementById('save-state').textContent = `${mode} | ${count}`;
-  document.getElementById('save-btn').disabled = !state.dirty;
+  document.getElementById('save-btn').disabled = !state.dirty || state.saving;
 }
 
 

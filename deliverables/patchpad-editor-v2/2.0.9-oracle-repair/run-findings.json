@@ -1,0 +1,88 @@
+{
+  "oracle_reward": {
+    "constraints": 1.0,
+    "functional": 0.7108,
+    "polish": 1.0,
+    "render": 1.0,
+    "reward": 0.8265,
+    "graded": 1,
+    "no_op": 0
+  },
+  "oracle_failures": [
+    {
+      "id": "word_navigation_and_selection_shortcuts",
+      "name": "word_navigation_and_selection_shortcuts",
+      "value": 0.0,
+      "raw": "no",
+      "weight": 0.5,
+      "description": "Feature metadata: feature=cursor_navigation; sub_feature=word_navigation_and_selection_shortcuts; kind=graded; depends_on=seed_document_integrity. This criterion is all-or-nothing. Use the visible editor and real keyboard to append a new final line containing exactly \"NORTH WIND\" without saving. Use Home to reach column 1 of this line. Press the platform Ctrl/Cmd+ArrowRight shortcut once: accept column 6 (end of NORTH) or column 7 (start of WIND), since both are familiar word-navigation conventions. Press Home again, then modifier+Shift+ArrowRight and copy with Ctrl/Cmd+C. Require column 6 with clipboard exactly \"NORTH\", or column 7 with clipboard exactly \"NORTH \" including its trailing space, consistent with the earlier motion. Press End to reach column 11 and clear the selection. Press modifier+ArrowLeft once and require column 7. Press End again, then modifier+Shift+ArrowLeft and copy: require column 7 and clipboard exactly \"WIND\". No shortcut may change the document or lose editor focus. Do not dispatch events, set selection state, or invoke application handlers. Quote all measured coordinates and copied strings. Reload without saving and verify the added line is absent.\n",
+      "reasoning": "NORTH WIND was typed at logical line 1202 rather than as a new final line; therefore the required final-line setup was not established, despite observed clipboard values NORTH plus trailing space and WIND."
+    },
+    {
+      "id": "unicode_grapheme_backspace_delete",
+      "name": "unicode_grapheme_backspace_delete",
+      "value": 0.0,
+      "raw": "no",
+      "weight": 0.5,
+      "description": "Feature metadata: feature=unicode_editing; sub_feature=grapheme_backspace_and_delete; kind=graded; depends_on=seed_document_integrity. This criterion is all-or-nothing. Using the real clipboard and visible editor, append the exact lines \"UNICODE-BACKSPACE:A\ud83d\ude42B\" and \"UNICODE-DELETE:Ae\u0301B\", where the second marker contains a decomposed e followed by U+0301 COMBINING ACUTE ACCENT. Use the visible Find control to locate the emoji, collapse the live editor selection immediately after it with a real ArrowRight press, and press Backspace exactly once. Require the first line to become exactly \"UNICODE-BACKSPACE:AB\"; one Undo must restore the exact original line including the complete emoji. Next use visible Find to locate the decomposed e\u0301 grapheme, collapse the live editor selection immediately before it with a real ArrowLeft press, and press Delete exactly once. Require the second line to become exactly \"UNICODE-DELETE:AB\"; one Undo must restore the exact decomposed original. Read editor content only for verification; do not set selection state, inject text, dispatch keyboard events, mutate DOM, or call editor handlers from JavaScript. Reload without saving and require both UNICODE markers to be absent. After each Find action, verify the intended full grapheme is the selected document text. If the Find input still has focus, press its documented Escape exit once to return to the editor without changing that selection. Confirm the custom editor has focus before ArrowLeft/ArrowRight, Backspace/Delete, and the one Undo. Await the visible result after each command; never apply an extra Undo or Delete to repair it.\n",
+      "reasoning": "The visible Find actions returned empty observed selections for \ud83d\ude42 and e\u0301; the required Backspace/Delete mutations were not observed, with lines remaining UNICODE-BACKSPACE:A\ud83d\ude42B and UNICODE-DELETE:Ae\u0301B."
+    },
+    {
+      "id": "unicode_grapheme_navigation_selection",
+      "name": "unicode_grapheme_navigation_selection",
+      "value": 0.0,
+      "raw": "no",
+      "weight": 0.5,
+      "description": "Feature metadata: feature=unicode_editing; sub_feature=grapheme_navigation_and_selection; kind=graded; depends_on=seed_document_integrity. This criterion is all-or-nothing. Using the real clipboard and visible editor, append the exact line \"UNICODE-NAV:A\ud83d\ude42e\u0301B\", where e\u0301 is a decomposed e followed by U+0301 COMBINING ACUTE ACCENT. Use the visible Find control to select exactly \"A\ud83d\ude42e\u0301B\", then press ArrowLeft once to collapse the live selection at its start. Hold Shift and press ArrowRight exactly once, copy with Ctrl/Cmd+C, and require the real clipboard to equal exactly \"A\". Press ArrowRight once to collapse after A; then Shift+ArrowRight exactly once must copy exactly the complete emoji \"\ud83d\ude42\". Press ArrowRight once to collapse after the emoji; then Shift+ArrowRight exactly once must copy exactly the complete decomposed grapheme \"e\u0301\". Each visible character must therefore be crossed and selected in one real keyboard step, without exposing a surrogate half or a detached combining mark. Do not set selection state, inject text, dispatch keyboard events, mutate DOM, or call editor handlers from JavaScript. Reload without saving and require the UNICODE-NAV marker to be absent. After Find selects the full sample, exit the Find input with its documented Escape action if needed and confirm editor focus without clicking document text. Keep focus in the editor throughout the exact Arrow/Shift+Arrow sequence. Await each real clipboard read and compare Unicode code points, not glyph appearance or a stale earlier clipboard value.\n",
+      "reasoning": "This exact grapheme navigation sequence was not established before the final required API criterion; no qualifying clipboard observations exist."
+    },
+    {
+      "id": "selection_real_mouse_word_line_range_keyboard",
+      "name": "selection_real_mouse_word_line_range_keyboard",
+      "value": 0.0,
+      "raw": "no",
+      "weight": 1.5,
+      "description": "Feature metadata: feature=selection; sub_feature=real_mouse_and_keyboard_paths; kind=graded; depends_on=seed_document_integrity. This criterion is all-or-nothing. Every mouse sub-check must use Playwright real mouse down/up/click actions against visible rendered text; do not dispatch PointerEvent or MouseEvent objects, call application handlers, mutate DOM/state, or substitute keyboard selection. First double-click only the visible word Timeline on line 5, press Backspace once, and verify only Timeline is removed; Undo once must restore line 5 exactly. Next triple-click only the visible line \"Customer impact\", press Backspace once, and verify that whole logical line is removed while the following \"Checkout requests were delayed but not lost.\" remains intact; Undo once must restore both lines exactly. Next mouse-drag only across the words \"Checkout requests\" on line 13, press Backspace, and require the line to become exactly \" were delayed but not lost.\"; Undo once must restore it. Finally use keyboard only on line 18: Home, Shift+ArrowRight four times, type DONE, and require exactly \"DONE: Replace temporary dashboard link before publishing.\" with surrounding lines unchanged. Reload without saving and require all seeded lines restored. Failure of any one interaction path fails the criterion. Treat double-click, triple-click and the later drag as separate gestures. End the previous gesture, release all buttons/modifiers, and measure fresh visible text coordinates. Start the Checkout requests drag with one ordinary mouse-down, not a continuing multi-click; keep the button down while moving to the end of those two words, then release once. Read/copy the resulting selection before deletion to establish what the gesture selected. A wrong selection after a correctly executed gesture still fails.\n",
+      "reasoning": "Double-click, triple-click, and keyboard replacement checks worked, but the required drag selected/copy-read the entire line rather than exactly Checkout requests, so the conjunctive criterion failed."
+    },
+    {
+      "id": "undo_paste_cut_atomic",
+      "name": "undo_paste_cut_atomic",
+      "value": 0.0,
+      "raw": "no",
+      "weight": 1.0,
+      "description": "Feature metadata: feature=undo_redo; sub_feature=paste_and_cut_atomicity; kind=graded; depends_on=clipboard_external_multiline_internal_exact. This criterion is all-or-nothing. Reload to the current saved report, navigate to its end with the real editor, and press Enter once to create an empty final line. Record this exact pre-paste document. Set the real clipboard to the following three lines, with actual newlines:\nPASTE-A\nPASTE-B\nPASTE-C\nPress Ctrl/Cmd+V exactly once and wait for the document to update. Require these exact three final lines and no other change from the recorded pre-paste document. One Undo must restore the complete pre-paste document, including its empty final line; one Redo must restore the three pasted lines. From the end of PASTE-C, press ArrowUp, Home, then Shift+ArrowRight seven times to select exactly PASTE-B. Press Ctrl/Cmd+X once and wait for the update: the middle line must be empty and PASTE-A/PASTE-C unchanged. One Undo must restore PASTE-B completely, and one Redo must empty only that middle line. Any partial paste or cut reversal fails. Reload without saving afterward.\n",
+      "reasoning": "Paste and Undo/Redo restored the three PASTE lines, but after cutting PASTE-B the observed result showed PASTE-A followed by PASTE-C rather than an explicitly observed empty middle line."
+    },
+    {
+      "id": "find_replace_exact_counts_and_offsets",
+      "name": "find_replace_exact_counts_and_offsets",
+      "value": 0.0,
+      "raw": "no",
+      "weight": 0.5,
+      "description": "Feature metadata: feature=find_replace; sub_feature=wrap_counts_and_offset_integrity; kind=graded; depends_on=render_and_constraints. This criterion is all-or-nothing. In the visible controls search NEXT and require exactly 3 matches. Use Find Next repeatedly and copy each active selection to verify the exact three NEXT lines are visited in document order and the fourth Find Next wraps to the first line. Set replacement to FOLLOWUP and Replace Current once; require exactly line 18 to become \"FOLLOWUP: Replace temporary dashboard link before publishing.\", with the other two NEXT lines unchanged. Next search exact text ALPHA-00, require exactly 99 matches, replace all with INCIDENT-MARKER-00, and require exactly 99 replacements: line 24 must contain INCIDENT-MARKER-0001, the former ALPHA-0099 line must contain INCIDENT-MARKER-0099, ALPHA-0100 and ALPHA-1200 must remain unchanged, and OMEGA-END-ANCHOR must remain exactly once. Reload without saving and require the original saved content to return. Before Replace All, explicitly change the visible replacement field from FOLLOWUP to INCIDENT-MARKER-00 and read back both fields: search ALPHA-00, replacement INCIDENT-MARKER-00. Activate Replace All exactly once. Never leave FOLLOWUP in the replacement field for this second operation.\n",
+      "reasoning": "Replace All produced 99 INCIDENT-MARKER-00 replacements with correct ALPHA-0001/0099 and unchanged ALPHA-0100/1200, but the four Find-cycle copies were stale PASTE-B and Replace Current changed line 19 instead of required line 18."
+    },
+    {
+      "id": "revision_history_preview_restore_undo_exact",
+      "name": "revision_history_preview_restore_undo_exact",
+      "value": 0.0,
+      "raw": "no",
+      "weight": 1.5,
+      "description": "Feature metadata: feature=revision_history; sub_feature=preview_restore_and_undo; kind=graded; depends_on=none. This criterion is all-or-nothing. Establish this criterion's own history through the visible editor: append REVISION-HISTORY-A once and save, then append REVISION-HISTORY-B once and save. Record the exact current draft and current revision. Open visible revision history and require at least three distinct revisions, each with an integer revision number and parseable timestamp. Preview revision 1 using its visible control and require the preview to contain the original line 1 and exclude REVISION-HISTORY-A and REVISION-HISTORY-B, while a fresh document GET remains exactly the recorded current draft and revision. Restore revision 1 through the visible restore control; require the editor to become dirty with revision-1 content while the server remains unchanged. Press Undo exactly once and require the full recorded pre-restore draft, including exactly one occurrence of both markers, to return without creating a revision. Any immediate save, corrupted preview, or multi-step restoration fails.\n",
+      "reasoning": "Revisions 4 and 5 were created and restore/one-Undo behaved correctly, but the preview observation was not isolated from the current editor: body text still contained both history markers, so exclusion from the preview was not established."
+    }
+  ],
+  "haiku_reward": {
+    "reward": 0.0,
+    "render": 0.0,
+    "constraints": 0.0,
+    "functional": 0.0,
+    "polish": 0.0,
+    "graded": 0,
+    "no_op": 1
+  },
+  "haiku_failure": "Explicit SQLite path: line absent; unchanged parser rejected manifest before browser grading",
+  "historical_task_version": "2.0.8",
+  "not_a_current_release_grade": true
+}
