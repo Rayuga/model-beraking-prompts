@@ -128,7 +128,9 @@ for key in ("render", "constraints", "functional", "polish"):
         raise ValueError(f"invalid RewardKit dimension {key}={value!r}")
     data[key] = value
 
-reward = 0.0 if data["render"] < 1.0 or data["constraints"] < 1.0 else 0.6 * data["functional"] + 0.4 * data["polish"]
+# Constraints includes the required custom-document-surface prerequisite.
+# No presentation or partial behavior credit survives a prohibited editor.
+reward = 0.0 if data["render"] < 1.0 or data["constraints"] < 1.0 else 0.9 * data["functional"] + 0.1 * data["polish"]
 reward = round(reward, 4)
 data["reward"] = reward
 data["graded"] = 1

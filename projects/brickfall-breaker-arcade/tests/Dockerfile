@@ -57,12 +57,22 @@ RUN mkdir -p /opt/playwright-browsers \
 # RewardKit 0.1.7 must grant the isolated Codex judge noninteractive MCP access.
 RUN python3 -c "from pathlib import Path; p=Path('/usr/local/lib/python3.12/site-packages/rewardkit/agents.py'); s=p.read_text(); old='            \"--skip-git-repo-check\",\n'; new=old+'            \"--dangerously-bypass-approvals-and-sandbox\",\n'; assert old in s and new not in s; p.write_text(s.replace(old,new,1))"
 
+# Fail the build if any declared judge command/browser is absent. The browser
+# smoke uses the exact executable path in every judge.toml and needs no network.
+RUN command -v codex && codex --version \
+    && command -v playwright-mcp && playwright-mcp --version \
+    && command -v rewardkit \
+    && python3 -c "import importlib.metadata as m; assert m.version('harbor-rewardkit') == '0.1.7'" \
+    && test -x /usr/local/bin/chromium
+RUN node -e "const pw = require('node:module').createRequire(require.resolve('@playwright/mcp'))('playwright'); (async () => { const b = await pw.chromium.launch({executablePath:'/usr/local/bin/chromium',headless:true,args:['--no-sandbox']}); try { const p = await b.newPage(); await p.setContent('<title>Brickfall verifier smoke</title>'); if (await p.title() !== 'Brickfall verifier smoke') throw new Error('browser smoke failed'); } finally { await b.close(); } })().catch(e => { console.error(e); process.exit(1); });"
+
 LABEL org.turing.task="brickfall-breaker-arcade" \
-      org.turing.verifier-version="2.0.1"
+      org.turing.verifier-version="2.0.4"
 
 COPY brickfall_seed.xlsx /assets/artifacts/brickfall_seed.xlsx
 COPY brickfall_scenarios.json /assets/artifacts/brickfall_scenarios.json
 RUN chmod -R a+rX /assets
 COPY . /tests
-RUN chmod +x /tests/test.sh && chmod -R go-rwx /tests
+RUN mkdir -p /app /logs/verifier \
+    && chmod +x /tests/test.sh && chmod -R go-rwx /tests
 WORKDIR /tests

@@ -1,9 +1,15 @@
 FROM node:22-bookworm-slim@sha256:83f487e0a63425e5b4d146fb5e5be574bcbe1b7b843d3ebafdd95eaf7767a7e5
 
 LABEL io.turing.task="patchpad-editor-v2" \
-      io.turing.task.version="2.0.9"
+      io.turing.task.version="2.0.14"
 
 ENV NODE_PATH=/usr/local/lib/node_modules
+
+# Agent bootstrap needs TLS trust roots and basic download/shell tools.
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl coreutils \
+    && update-ca-certificates \
+    && test -s /etc/ssl/certs/ca-certificates.crt \
+    && rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -p /opt/patchpad-deps \
     && cd /opt/patchpad-deps \

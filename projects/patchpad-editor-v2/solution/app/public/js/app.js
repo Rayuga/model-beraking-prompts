@@ -62,6 +62,8 @@ function bindControls() {
   editor.addEventListener('keydown', onKeyDown);
   editor.addEventListener('paste', onPaste);
   editor.addEventListener('mousedown', onMouseDown);
+  document.addEventListener('focusin', renderFocusStatus);
+  document.addEventListener('focusout', () => queueMicrotask(renderFocusStatus));
 }
 
 async function api(url, options = {}) {
@@ -1100,6 +1102,23 @@ function renderStatus() {
   const mode = state.dirty ? 'Dirty' : 'Saved';
   document.getElementById('save-state').textContent = `${mode} | ${count}`;
   document.getElementById('save-btn').disabled = !state.dirty || state.saving;
+  document.getElementById('undo-btn').disabled = state.undo.length === 0;
+  document.getElementById('redo-btn').disabled = state.redo.length === 0;
+  renderFocusStatus();
+}
+
+function renderFocusStatus() {
+  const active = document.activeElement;
+  const label = document.getElementById('focus-state');
+  if (active === editor) {
+    label.textContent = 'Editing area focused. Escape opens Find.';
+  } else if (active === document.getElementById('find-box')) {
+    label.textContent = 'Find focused. Escape returns to the selected text.';
+  } else if (active === document.getElementById('replace-box')) {
+    label.textContent = 'Replacement field focused.';
+  } else {
+    label.textContent = 'Click the report to edit, or use Find to select text.';
+  }
 }
 
 

@@ -8,6 +8,13 @@ and metadata intact, create it only once, and do not duplicate it when the app
 starts again.
 The supplied report starts at saved revision 1; each changed save adds one.
 
+Provide a server-backed list of available reports, including each report's id,
+title and author, so we can see which reports are stored. It can be included
+in the initial page-data response or exposed through a same-origin API; no
+particular route name or document-list sidebar is required. A fresh workspace
+should list only the supplied report, and restarting the app must not add
+another copy or lose its saved content and revision history.
+
 Use one Node.js application listening on `0.0.0.0:${PORT:-3000}`, with SQLite as
 the source of truth. The application should run with `npm start` and must not
 depend on hosted databases or editor services.

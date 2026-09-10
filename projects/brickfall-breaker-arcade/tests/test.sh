@@ -121,7 +121,7 @@ fi
 
 # The browser dimensions share one persisted app. Serialize their agents so a
 # Polish mutation cannot disturb Functional checkpoints or concurrency checks.
-if ! timeout --signal=TERM --kill-after=30s 6300 \
+if ! timeout --signal=TERM --kill-after=30s 11400 \
   rewardkit --max-concurrent-agent 1 /tests >"$LOG_DIR/rewardkit.log" 2>&1; then
   write_zero_reward
   exit 0

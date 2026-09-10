@@ -1,4 +1,4 @@
-# Prompt version: brickfall-breaker-arcade-render-v2.0.1
+# Prompt version: brickfall-breaker-arcade-render-v2.0.4
 
 Global browser gate (mandatory before scoring any criterion):
 Use a fresh isolated browser context for this gate, leaving other tabs and

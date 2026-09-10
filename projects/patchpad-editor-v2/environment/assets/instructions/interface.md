@@ -3,6 +3,9 @@
 Keep the editor usable in a normal browser. Show the seeded report, editing
 surface, save state, revision, cursor position, and clear feedback when an
 action or save fails.
+Keep the supplied report title, "Northwind API Incident Report", visible in
+the editor interface while the report is open, so people can identify what
+they are editing.
 
 Make Save, Undo, Redo, Find Next, Replace Current, Replace All, and revision
 history easy to discover. Keep labels, keyboard focus, errors, and history

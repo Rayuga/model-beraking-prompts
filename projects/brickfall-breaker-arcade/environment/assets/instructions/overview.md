@@ -11,9 +11,9 @@ their profile has unlocked, but a new run always starts at score zero, three
 lives, combo x1, no power-up and one waiting ball. In the mechanics lab show
 all levels with name, base/capped speed, accent and brick-type totals.
 Its digest is lowercase SHA-256 of UTF-8 signatures sorted by row then column:
-`${row}:${column}:${type}:${drop}` records joined with `|`. Show every
+`${row}:${column}:${type}:${drop}` records joined with `|`; an empty or absent
+drop is the empty string (so that record ends in `:`), not `null` or `undefined`. Show every
 workbook Constant there too, preserving its exact key and value.
-
 The game has `menu`, `ready`, `playing`, `paused`, `life-lost`,
 `level-complete`, `game-over` and `completed` states. Make transitions
 visible and require an intentional launch, continue or restart action. No
