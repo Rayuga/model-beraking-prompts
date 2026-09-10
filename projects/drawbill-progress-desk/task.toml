@@ -1,0 +1,267 @@
+schema_version = "1.4"
+
+artifacts = [
+  { source = "/app", exclude = [
+      "**/node_modules/**",
+      "**/dist/**",
+      "**/build/**",
+      "**/.vite/**",
+      "**/__pycache__/**",
+      "**/data/**",
+      "**/*.db", "**/*.db-wal", "**/*.db-shm",
+      "**/*.sqlite", "**/*.sqlite3",
+      "**/.git/**",
+  ] },
+]
+
+[task]
+name = "turing/drawbill-progress-desk"
+version = "1.10.5"
+description = "Build DrawBill, a general-contractor progress-billing desk with a living schedule of values, four jobs, sixteen seeded identities, SQLite as the ledger, live plant-network vendor desks, and the plant's own hosted card desk as quote-not-hold — from a brief that states the plant's symptoms rather than its invariants."
+authors = [{ name = "Turing WebDev", email = "webdev@turing.com" }]
+keywords = ["vibe-code", "webdev", "fullstack", "nodejs", "express", "sqlite", "payments", "construction", "progress-billing", "role-based-access", "browser-judge"]
+
+[metadata]
+category = "Software"
+subcategory = "Web Development"
+tags = [
+  "fullstack", "backend-api", "frontend-ui", "nodejs", "express", "sqlite",
+  "authorization", "payments", "progress-billing", "offline-verifiable",
+]
+author_name = "Turing WebDev"
+author_email = "webdev@turing.com"
+author_organization = "Turing"
+criteria_count = 77
+
+provenance = "arena product request for a GC progress-billing desk"
+arena_slice = "full-stack-express-node-sqlite-progress-billing"
+
+seed_artifact = "environment/assets/artifacts/jobs_seed_data.json"
+seed_sha256 = "520d74cf23edeb7613bacd032d1f45145ed0487c94c58118650c31e8fa43fb77"
+
+difficulty = "hard"
+difficulty_explanation = """
+All companies, people and jobs in this task are SYNTHETIC.
+
+Small surface with the difficulty concentrated in settlement composition,
+vendor-desk integration and role isolation rather than feature volume. The
+brief does not list an algorithm or an API contract. behaviour*.md is the
+plant talking about what went wrong with the spreadsheet this replaces.
+
+Composition. This-period work is last posted snapshot subtracted from current
+billed-to-date. Stored conversion, dual-rate fee, split retainage that steps
+down for work in place when completed-and-stored crosses half of current
+contracted while stored piles keep a tenth, county tax on WIP only, bond once
+on the original contract, and a fringe rider from the payroll desk are all
+composed from live desks. Three papers on three jobs with three rate profiles
+are graded line item by line item. A late Riverwalk paper composes negative
+through liquidated damages net of weather days, and Checkout must refuse it.
+
+Vendor desks. Tax, retainage, fee, bond, fringe, weather, damages, blackout
+and copy desks already run on the plant network while the product is being
+built. A till that invents the numbers instead of asking is caught by the
+plant's call ledger at quote time and again when the card desk says paid.
+
+Role isolation. Filer is not certifier is not releaser is not notary. Chris
+has an empty file. Marcus does not read foundations. Read scoping is graded
+on the response body. Unknown identities are turned away. Client-supplied
+nets, rates, tax windows and fabricated lines do not steer the books.
+
+`render` and `constraints` are held to four criteria between them (one render,
+three constraints): the desk renders with its seeded books as Avery, a status
+surface names SQLite, a paper filed through the interface is still there after
+a reload, and no desk token is served to the browser. Every working submission
+clears all four, which is the point — the gate exists to zero blank pages,
+hardcoded mocks and leaked secrets, not to punish a product that works but
+misses one behaviour. The reload check is the gate's one behavioural tooth: a
+gate that only reads strings off a page is cleared by a mock with no ledger at
+all. Everything else is graded in functional and polish, where a miss costs
+part of the reward instead of all of it.
+"""
+solution_explanation = """
+The reference solution is a Node.js and Express server hosting a vanilla
+public/js front end, with SQLite reached through the Node runtime's own
+`node:sqlite` module so nothing needs a native build. Card sessions are opened
+on the plant's own card desk, server side. Plant desks are asked over HTTP with
+the env token.
+
+Composition lives in `src/compose.js` and talks to `src/vendors.js`. Inclusive
+calendar days use Luxon. Money is integer pennies. Seeding is idempotent from
+JSON under `/app/artifacts` first, then `SEED_DIR`, then `/assets/artifacts`.
+
+Identity is a validated demo-user header. Role and company scope are read from
+the people table on every request; extra body fields claiming a role are
+ignored. Isolation filters apply to response bodies, not only the rendered
+page.
+"""
+verification_explanation = """
+Grading is a single phase: four browser-judge dimensions driven by codex through
+Playwright MCP against the running submission.
+
+**Reward.** `render` and `constraints` are gates rather than scored dimensions:
+
+    reward = 0                                  if render < 1.0 or constraints < 1.0
+    reward = 0.6 * functional + 0.4 * polish    otherwise
+
+The formula lives in one place, `tests/test.sh`, which writes the graded reward
+into `reward.json` as numbers only. `tests/reward.toml` exists because the
+layout check requires the file; each RewardKit workspace deletes it so it
+cannot become a second aggregation.
+
+Each judge session is graded against a freshly seeded application, except
+`functional/judge_desks_restart.toml`: that session stops and starts the Node
+process with `/app/data/drawbill.db` left in place so a process restart and
+idempotent seed can be graded against books a real session wrote. It sorts
+immediately after `functional/judge_desks.toml`, which files and pays the
+April paper, and `tests/test.sh` asserts both names exist before it judges.
+Every other group still removes the database and resets the plant copy desks.
+
+- **render** (gate, 1 criterion, 1 session) — default Avery session.
+- **constraints** (gate, 3 criteria, 1 session) — the books are SQLite, a paper
+  created through the interface is read back from the server after a reload, and
+  no desk token is served to the browser. Small on purpose, but not toothless:
+  the reload check is what a hardcoded page cannot fake, and without it a mock
+  clears the gate and farms the graded dimensions. Restart durability, unknown
+  identities, composition, payment, desks and role isolation are graded in
+  functional, where a miss costs part of the reward.
+- **functional** (0.6 of the reward, 65 criteria, 13 sessions) — seed, desks,
+  a process restart grading books off disk (the group after desks is restarted
+  rather than reseeded), unknown identity, server-backed writes,
+  mill index / encumbrance / DBE / payroll-COI plant gates, Harborview line
+  items, file/certify/release, pay and notices, Downtown, Riverwalk, period
+  gates, forged payloads, roles and staff.
+- **polish** (0.4 of the reward, 8 criteria, 2 sessions) — live quote, health
+  surface, visible refusals, reachable staff actions, legible composition
+  lines, usable switcher, Checkout return posted, APP_MANIFEST.md runtime
+  contract.
+
+The 77 criteria are spread over 17 judge sessions. No session carries more
+than five criteria.
+
+The timing ladder. Everything inside the verifier is measured against one
+absolute deadline rather than a fixed judging budget, so no phase can overrun
+another: `tests/test.sh` stamps its own start time and sets
+
+    JUDGE_END = start + VERIFIER_TIMEOUT_SEC (12200s) - 180s tail reserve
+
+The tail reserve covers the score merge and the trajectory copy that run after
+the last group. Everything before judging is capped and is therefore already
+inside that deadline: install 600s (an offline `npm ci` out of the baked
+`/opt/npm-offline` cache — the reference takes under a minute), an optional
+Vite build 240s, the vendor-desk probe 10s, and the first readiness poll 90s
+(180 ticks x 0.5s). Worst case that is 940s of preamble.
+
+Judging then divides what is ACTUALLY left by the number of groups still to
+run, recomputed each iteration:
+
+    GROUP_BUDGET = (JUDGE_END - now) / groups_remaining
+    GROUP_END    = now + GROUP_BUDGET
+
+Every cost of a group is charged inside its own GROUP_END: the app restart,
+the browser cleanup, and all three RewardKit attempts, each of which is sliced
+at `GROUP_END - now`. A retry can therefore only spend time this group had
+already been given, so retries on early groups can no longer starve later ones,
+and a group that finishes early donates its slack to the groups after it. The
+loop cannot pass JUDGE_END, so the 180s tail is always there and the merge
+always writes a real reward rather than leaving the 0.0 written at entry.
+
+Worst case at the first group: (12200 - 180 - 940) / 17 = 652s per group. The
+restart poll is capped at 45s (90 ticks x 0.5s) — a process that already booted
+once comes back in seconds — leaving 607s for the judge. The per-session
+RewardKit timeout is 600s, so the chain nests strictly at every level:
+
+    600s judge session < 607s attempt slice < 652s group share
+      < 11080s judging < 12020s (verifier - tail) < 12200s verifier
+
+Across the run: build (900s) + agent (8500s) + verifier (12200s) = 21600s.
+
+The 8500s agent budget is 2.4 hours against a 12-hour expert estimate.
+
+`tests/coverage.json` is the requirement-to-verifier map.
+
+Determinism. Every judge session pins the same judge (`codex`), the same model
+(`openai/gpt-5.6-luna`), `temperature = 0`, and a versioned prompt. The
+verifier image is built from `tests/Dockerfile`. Seed artifacts are frozen and
+staged byte-identically.
+
+Nothing in this task depends on a third party. The card rail is the plant's own
+card desk on `localhost:3101`, so there is no payment provider to call and no
+credential to inject: the only variable either side is handed is
+`OPENROUTER_API_KEY` for the judge.
+
+Network is declared on the two environment tables only, the shape this suite's
+other tasks use: `[environment]` and `[verifier.environment]` are public, and
+neither `[agent]` nor `[verifier]` declares a network of its own. Both images
+need it at build — the agent's runs apt, compiles the vendor desks and fills
+`/opt/npm-offline`; the verifier's installs apt, the pinned codex, Playwright
+with Chromium and the RewardKit wheel — and the judge calls its model provider
+from inside the verifier container at grade time.
+
+The product needs no egress of its own, so the dependency pin is enforced where
+it decides the reward: `tests/test.sh` installs the submission with
+`npm_config_offline=true` out of the baked cache, and `stack.md` tells the agent
+exactly that, so a package outside the pin is absent at grade time.
+The verifier's own image builds on the open network, on the platform team's
+instruction, but scoring runs fenced to the judge provider. Determinism rests on
+what it installs rather than on what it could reach: `tests/test.sh` installs
+offline from the baked cache, the judge model and temperature are pinned, and
+the browser is baked into the image.
+
+The verifier drives codex through `tests/__judge__/run_judge.py`. Judge sessions
+run one at a time.
+"""
+expert_time_estimate_hours = 12.0
+relevant_experience = """
+Building a back-office web application end to end: schema design, a server-side
+role model, a hosted card rail, and an HTTP API whose every write is authorised on
+the server. Comfort translating a complaint-style billing brief into settlement
+composition that asks live vendor desks rather than hard-coding rates.
+"""
+
+[agent]
+timeout_sec = 8500.0
+
+[environment]
+build_timeout_sec = 900.0
+cpus = 4
+memory_mb = 8192
+storage_mb = 10240
+# The agent environment. Public here covers the image build (apt, the bytenode
+# compile of the desks, and the npm ci that fills /opt/npm-offline); the product
+# itself needs no egress, since the frozen tarballs are already in that cache and
+# the plant desks answer on 127.0.0.1:3101.
+network_mode = "public"
+
+[environment.env]
+PORT = "3000"
+BASE_URL = "http://localhost:3000"
+APP_PUBLIC_URL = "http://localhost:3000"
+APP_PUBLIC_PORT = "3000"
+VENDOR_BASE_URL = "http://localhost:3101"
+VENDOR_PORT = "3101"
+
+[verifier]
+timeout_sec = 12200.0
+environment_mode = "separate"
+
+[verifier.env]
+OPENROUTER_API_KEY = "${OPENROUTER_API_KEY}"
+REWARDKIT_JUDGE = "codex"
+REWARDKIT_MODEL = "openai/gpt-5.6-luna"
+VENDOR_BASE_URL = "http://localhost:3101"
+VENDOR_PORT = "3101"
+PORT = "3000"
+BASE_URL = "http://localhost:3000"
+APP_PUBLIC_URL = "http://localhost:3000"
+
+[verifier.environment]
+# The verifier environment: apt, the pinned codex and Playwright MCP, the
+# Chromium download, the RewardKit wheel, and the judge's own calls to its model
+# provider all resolve here.
+#
+# No docker_image key on purpose: setting one would stop Harbor building
+# tests/Dockerfile, which is where every version this task depends on is pinned
+# (@playwright/mcp@0.0.79, @openai/codex@0.153.2, harbor-rewardkit==0.2.0, and
+# build-time assertions that codex resolves offline and a chromium-family
+# executable exists).
+network_mode = "public"
