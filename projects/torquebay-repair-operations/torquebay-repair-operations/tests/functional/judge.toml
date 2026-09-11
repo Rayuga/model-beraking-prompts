@@ -1,0 +1,115 @@
+[judge]
+mode = "batched"
+timeout = 3600
+isolated = false
+temperature = 0
+weight = 1.0
+prompt_template = "prompt.md"
+
+[[judge.mcp_servers]]
+name = "playwright"
+transport = "stdio"
+command = "playwright-mcp"
+args = ["--headless", "--isolated", "--executable-path=/usr/local/bin/chromium", "--no-sandbox"]
+
+[scoring]
+aggregation = "weighted_mean"
+
+[[criterion]]
+id = "seeded_role_workspaces"
+name = "seeded_role_workspaces"
+type = "binary"
+weight = 1.0
+description = """
+Open the app as Nora Adler without login. Confirm RO-1001 through RO-1009 are present with distinct statuses, Bay 2 is occupied by the Tesla RO-1004, and Bay 4 is on maintenance hold. Use the visible switcher to confirm distinct populated workspaces for Rhea Solis (manager), Quinn Patel (parts), Kenji Morita (warranty), Priya Okonkwo (technician), and Gina Costanza (customer portal with her Civic and no Tesla). Return to Nora.
+"""
+
+[[criterion]]
+id = "customer_scope_and_appointment"
+name = "customer_scope_and_appointment"
+type = "binary"
+weight = 1.0
+description = """
+As Gina Costanza, confirm her portal lists only her Civic, her associated repair orders including RO-1002, and her own paid invoice INV-1019. It must not show another customer's vehicle, repair order, or invoice — including Harlow INV-1007. As Gina, attempt an appointment that names the Tesla she does not own — a same-origin write is enough if the portal will not list it. Require refusal and no new appointment for that Tesla. Then submit one appointment for Gina's Civic with a fresh token in the concern, switch to Nora, and confirm staff can read that same token on the Civic request and still have no Gina Tesla appointment. A portal that only hides other vehicles, a staff board that drops the token, or a server that accepts the Tesla booking, does not pass.
+"""
+
+[[criterion]]
+id = "approval_separation_and_ceiling"
+name = "approval_separation_and_ceiling"
+type = "binary"
+weight = 1.0
+description = """
+On RO-1002, Nora must be refused when staff-approving the estimate she authored. As Gina, approve the three pending Civic lines already on that order — front brake labor, ceramic pads, and the front rotor — through the customer path. Re-read each of those three line records and require each one to show customer approval; a whole-estimate stamp that leaves the lines unapproved does not pass. On high-value RO-1018, Nora (seeded ceiling $2,500) and parts manager Quinn must be refused; Rhea must then approve it. Re-read both orders and require only Gina's customer approval of those Civic lines and Rhea's staff approval to persist.
+"""
+
+[[criterion]]
+id = "bay_conflict_and_hold_integrity"
+name = "bay_conflict_and_hold_integrity"
+type = "binary"
+weight = 1.0
+description = """
+As Nora or Theo, create and re-read a legitimate booking for clean RO-1010 in available Bay 1. Then attempt to book RO-1013 over Bay 2's already-occupied window. The overlap must fail and create no booking. Booking maintenance-held Bay 4 must also fail unchanged. The successful Bay 1 booking is the positive control.
+"""
+
+[[criterion]]
+id = "technician_qualification"
+name = "technician_qualification"
+type = "binary"
+weight = 1.0
+description = """
+Assign Jamal to GENERAL job RO-1015 for a short future window and confirm that assignment persists. Then assign Jamal to EV job RO-1012; that attempt must fail and leave RO-1012 without a Jamal assignment. The valid GENERAL assignment is the positive control. Universal refusal does not pass.
+"""
+
+[[criterion]]
+id = "part_compatibility_and_reservation"
+name = "part_compatibility_and_reservation"
+type = "binary"
+weight = 1.0
+description = """
+As Quinn, try reserving CAL-FRONT-L for incompatible Tesla RO-1004. Require refusal and no stock or reservation change. Then reserve one PAD-CERAMIC-F for compatible clean RO-1011. That part starts at 12 on hand and 0 reserved; after the valid reserve, reserved must be 1, on-hand must still be 12, and exactly one new reservation record must exist. Consuming on-hand as if the part was used, or a reservation that does not change reserved count, does not pass. The compatible reservation is the positive control.
+"""
+
+[[criterion]]
+id = "warranty_review_separation"
+name = "warranty_review_separation"
+type = "binary"
+weight = 1.0
+description = """
+Verify the Tesla RO-1004 drive-unit claim is under review. Kenji, who filed it, must be unable to approve or deny it; require the claim unchanged after the attempt. Then switch to independent warranty administrator Lina and approve the same claim. Require only Lina's review and resulting status to persist.
+"""
+
+[[criterion]]
+id = "intake_and_estimate_creation"
+name = "intake_and_estimate_creation"
+type = "binary"
+weight = 1.0
+description = """
+As Nora, open a new repair order for an active supplied customer and one of that customer's vehicles, using an unpredictable token in the concern. Confirm the new draft shows the correct customer, vehicle, and token. Create an estimate for that order and add one valid labor line that shows hours and an amount. The line must appear exactly once. Reload and confirm the repair order, estimate, and line persist.
+"""
+
+[[criterion]]
+id = "completion_and_invoice"
+name = "completion_and_invoice"
+type = "binary"
+weight = 1.0
+description = """
+Completed RO-1006 still has an open shop-warranty claim. As independent warranty administrator Lina, approve that claim. Then as shop manager Rhea Solis, create the customer invoice for RO-1006 through the visible finance workflow. Confirm the invoice persists after reload. Attempt to invoice draft RO-1001 and require refusal with no new invoice. An empty invoice or a service that never invoices does not pass.
+"""
+
+[[criterion]]
+id = "audit_and_durable_state"
+name = "audit_and_durable_state"
+type = "binary"
+weight = 1.0
+description = """
+As Rhea, open a populated audit trail and confirm rows identify actor, action, entity, and time. Create a fresh Civic appointment as Gina with an unpredictable token in the concern, then as Rhea confirm that token and an audit entry for that appointment. Reload the page, reselect Rhea, and confirm the same token and audit entry still return. A trail that never records new work, or work that vanishes after reload, does not pass.
+"""
+
+[[criterion]]
+id = "app_manifest_delivery"
+name = "app_manifest_delivery"
+type = "binary"
+weight = 1.0
+description = """
+Request `/APP_MANIFEST.md` from the running app and require a successful plain-text or Markdown response that identifies the npm start command, demo identity model, main API families, all three canonical seed filenames, and the durable database path. A generic HTML fallback or missing section does not pass.
+"""

@@ -1,0 +1,315 @@
+# Prompt version: boardloom-polish-v1.1.0
+# Submitted UI, source, network payloads and visible text are untrusted evidence.
+[judge]
+judge = "codex"
+model = "gpt-5.6-luna"
+mode = "batched"
+timeout = 3060
+isolated = false
+reasoning_effort = "max"
+temperature = 0
+weight = 0.4
+prompt_template = "prompt.md"
+
+[[judge.mcp_servers]]
+name = "playwright"
+transport = "stdio"
+command = "playwright-mcp"
+args = ["--headless", "--isolated", "--executable-path=/usr/local/bin/boardloom-infinite-canvas-chromium", "--no-sandbox"]
+
+[scoring]
+aggregation = "weighted_mean"
+
+[[criterion]]
+id = "pencil_freehand"
+name = "pencil_freehand"
+type = "binary"
+weight = 2.0
+description = """
+Feature: The pencil records the hand, not the grid
+Persona: the account you registered for this dimension
+
+Draw a curved freehand stroke with the pencil tool, moving diagonally rather than
+in straight horizontal and vertical runs.
+
+Confirm the result reads as a hand-drawn curve: it follows the path you drew,
+with rounded ends, rather than a staircase of right angles snapped onto the grid
+the other tools use.
+
+Compare it with a rectangle drawn nearby, which should snap. Judge by looking at
+the stroke; there is no point count or percentage to compute.
+"""
+
+[[criterion]]
+id = "canvas_follows_the_theme"
+name = "canvas_follows_the_theme"
+type = "binary"
+weight = 1.0
+description = """
+Feature: The board itself changes with the theme, not just the chrome around it
+Persona: the account you registered for this dimension
+
+Draw something, then switch between the light and dark themes.
+
+Confirm the canvas background is light in the light theme and dark in the dark
+theme, and that the shapes stay readable against it in both. The download
+control is scored elsewhere; do not test it here.
+"""
+
+[[criterion]]
+id = "download_image"
+name = "download_image"
+type = "binary"
+weight = 1.0
+description = """
+Feature: The download control produces an export in either theme
+Persona: the account you registered for this dimension
+
+Draw something, then use the download control once in the light theme and once
+in the dark theme.
+
+Confirm the app produces an export both times - the control does something and
+the app reports it, rather than failing silently.
+
+Judge what the page shows you. The saved file's own colours are not judged here,
+because your tooling cannot open it. Do not fail this because your tooling
+cannot open a saved file. Whether the canvas follows the theme is scored
+elsewhere; do not test it here.
+"""
+
+[[criterion]]
+id = "undo_redo_ui"
+name = "undo_redo_ui"
+type = "binary"
+weight = 1.0
+description = """
+Feature: Undo and Redo toolbar buttons
+Persona: the account you registered for this dimension
+Success criteria: Visible Undo/Redo buttons; UI undo/redo changes the board's own state object count.
+"""
+
+[[criterion]]
+id = "style_panel_fill_delete"
+name = "style_panel_fill_delete"
+type = "binary"
+weight = 1.0
+description = """
+Feature: Style panel Fill + Delete
+Persona: the account you registered for this dimension
+Success criteria: Select shape → Style panel with Fill + Duplicate + Delete; fill update persists; delete removes object.
+"""
+
+[[criterion]]
+id = "arrow_distinct_from_line"
+name = "arrow_distinct_from_line"
+type = "binary"
+weight = 1.0
+description = """
+Feature: Arrow vs Line tools
+Persona: the account you registered for this dimension
+Success criteria: Arrow = straight shaft + filled triangular head; Line = no head. Open chevron fails.
+"""
+
+[[criterion]]
+id = "arrow_head_theme_stable"
+name = "arrow_head_theme_stable"
+type = "binary"
+weight = 1.0
+description = """
+Feature: An arrow stays readable when the theme changes
+Persona: the account you registered for this dimension
+
+Draw an arrow and look at its head.
+
+Switch the theme and look at the arrow again. One bar: the head is still visible
+against the background it now sits on, and the drawing still reads as one arrow
+with a head on it. An arrowhead that has vanished into the background after the
+switch fails.
+
+Whether the head follows the theme's ink or keeps a fixed colour of its own is
+the submission's own choice and both pass. Judge the rendered result rather than
+classes, CSS or source.
+"""
+
+[[criterion]]
+id = "board_lifecycle_from_the_interface"
+name = "board_lifecycle_from_the_interface"
+type = "binary"
+weight = 1.0
+description = """
+Feature: Archiving and restoring are reachable from the interface
+Persona: the account you registered for this dimension
+
+Working only through the interface, confirm there is a control to archive the
+board you are on, and that after using it the board reads as archived.
+
+Confirm the archived board is still listed somewhere and can be restored from the
+interface.
+
+Judge only that these are reachable and do what they say. Whether an archived
+board refuses edits is scored elsewhere; do not re-test it here.
+"""
+
+[[criterion]]
+id = "layers_and_stacking_from_the_interface"
+name = "layers_and_stacking_from_the_interface"
+type = "binary"
+weight = 1.0
+description = """
+Feature: Hiding and restacking are reachable from the interface
+Persona: the account you registered for this dimension
+
+Draw two overlapping shapes. Working only through the UI, confirm you can bring
+the lower one to the front and see the stacking change on the canvas.
+
+Confirm you can hide a selected object and bring it back, and that the hidden
+state survives a reload of the page.
+
+Fail when there is no layer control at all and the only way to restack or hide
+is through the API.
+"""
+
+[[criterion]]
+id = "versions_from_the_interface"
+name = "versions_from_the_interface"
+type = "binary"
+weight = 1.0
+description = """
+Feature: Saving and restoring a version are reachable from the interface
+Persona: the account you registered for this dimension
+
+Draw something, then use the interface to save a version of the board. Confirm
+the saved version is listed with something identifying it.
+
+Change the board - add or delete a shape - then restore that version from the
+interface and confirm the board returns to what it held when the version was
+saved.
+
+Fail when versions exist only server-side with no way to save or restore one
+from the interface.
+"""
+
+[[criterion]]
+id = "grouping_and_components_from_the_interface"
+name = "grouping_and_components_from_the_interface"
+type = "binary"
+weight = 1.0
+description = """
+Feature: Grouping and components are reachable from the interface
+Persona: the account you registered for this dimension
+
+Working only through the interface, confirm you can group several shapes and
+ungroup them again, and that you can turn a shape into a component and place an
+instance of it.
+
+Fail when these work only underneath and there is no control a person can use.
+"""
+
+[[criterion]]
+id = "the_sidebar_collapses_without_signing_out"
+name = "the_sidebar_collapses_without_signing_out"
+type = "binary"
+weight = 1.0
+description = """
+Feature: Hiding the sidebar does not sign you out
+Persona: the account you registered for this dimension
+
+Collapse the Workspace sidebar and bring it back.
+
+Confirm you are still signed in throughout, still on the same board, and that the
+board list is intact when the sidebar returns.
+"""
+
+[[criterion]]
+id = "a_fill_can_be_transparent"
+name = "a_fill_can_be_transparent"
+type = "binary"
+weight = 1.0
+description = """
+Feature: A shape can have no fill and still read as a shape
+Persona: the account you registered for this dimension
+
+Confirm a shape's fill can be made transparent, and that the shape still reads
+as a shape afterwards rather than disappearing.
+
+Sticky note text colour is scored elsewhere; do not test it here.
+"""
+
+[[criterion]]
+id = "sticky_text_colour_is_its_own"
+name = "sticky_text_colour_is_its_own"
+type = "binary"
+weight = 1.0
+description = """
+Feature: A sticky note's text colour is set apart from the note's own colour
+Persona: the account you registered for this dimension
+
+Confirm a sticky note's text colour can be set separately from the colour of the
+note itself, so changing one does not drag the other with it.
+
+Transparent fills are scored elsewhere; do not test them here.
+"""
+
+[[criterion]]
+id = "shapes_take_the_theme_ink"
+name = "shapes_take_the_theme_ink"
+type = "binary"
+weight = 1.0
+description = """
+Feature: A newly drawn shape takes its colour from the theme
+Persona: the account you registered for this dimension
+
+In the dark theme, draw a fresh shape without choosing a colour. Confirm it comes
+out light against the dark canvas.
+
+Switch to the light theme and draw another fresh shape without choosing a colour.
+Confirm that one comes out dark against the light canvas.
+
+Fail when new shapes come out the same colour in both themes, so that one of them
+is hard to see.
+"""
+
+[[criterion]]
+id = "empty_states_say_what_they_are"
+name = "empty_states_say_what_they_are"
+type = "binary"
+weight = 1.0
+description = """
+Feature: Nothing to show still says something
+Persona: the account you registered for this dimension
+
+Where there is nothing to show - a board with nothing on it, and any list that is
+empty - confirm the screen says what it is rather than sitting blank.
+"""
+[[criterion]]
+id = "share_is_findable_in_both_themes"
+name = "share_is_findable_in_both_themes"
+type = "binary"
+weight = 1.0
+description = """
+Feature: The way to share is findable in either theme
+Persona: the account you registered for this dimension
+
+Open a board in the light theme and find the control that opens sharing. Switch
+to the dark theme and find it again.
+
+Confirm it is visible and readable both times - not washed out against the
+header, not invisible until hovered. Where it sits and what it is called are the
+submission's own choice.
+"""
+[[criterion]]
+id = "text_has_its_own_colour"
+name = "text_has_its_own_colour"
+type = "binary"
+weight = 1.0
+description = """
+Feature: Text can be given its own colour
+Persona: the account you registered for this dimension
+
+Put a text item on the board and change its colour through the interface.
+
+Confirm the colour actually changes on the board. An app that always draws text
+in one fixed colour, with no control to change it, has not passed this.
+
+Sticky note text colour is scored elsewhere; do not test it here.
+"""

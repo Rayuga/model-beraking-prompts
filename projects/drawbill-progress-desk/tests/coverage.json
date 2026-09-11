@@ -1,0 +1,344 @@
+{
+  "task": "turing/drawbill-progress-desk",
+  "version": "1.10.5",
+  "note": "Every requirement stated in instruction.md or /instructions/ maps to at least one judge criterion, and every judge criterion traces back to a stated requirement. Criteria are addressed as <dimension>/<criterion_id>. A dimension is a directory under tests/ and may hold several judge TOML files. Stub judge.toml files next to judge_*.toml are not scored.",
+  "reward": "render and constraints are gates: if either scores below 1.0 the reward is 0. Otherwise reward = 0.6 * functional + 0.4 * polish.",
+  "dimensions": {
+    "render": "Liveness gate, 1 criterion: default Avery session on a DrawBill surface. Deliberately thin because it hard-zeroes the run.",
+    "constraints": "Access gate, 3 criteria over 1 session: the books are named as SQLite on a surface of the product's own, they are written on the server rather than in the page (a paper created through the UI is read back after a reload), and no desk token is served to the browser. Deliberately small - with render this is the whole of the hard gate - but it carries one behavioural check on purpose, because a gate with no server-backed tooth is cleared by a hardcoded mock. Restart durability, unknown identities, composition, certify, release, card payment, desks and roles are graded in functional, where a miss costs part of the reward instead of the run. Where the ledger sits on disk is a storage contract the verifier's own reset honours (it removes /app/data and any stray *.db before a fresh group), not a string any criterion asks the product to publish.",
+    "functional": "Product behaviour, 65 criteria over 13 sessions, including the restart session that grades the books coming back off disk and the unknown-identity refusal: four seeded jobs and plant tickets; live desks asked at quote and again at pay; mill index, owner encumbrance, DBE participation, and payroll/COI gates; joint-check payees; withdraw of an uncertified pencil; Harborview April line items; file/certify/release roles; paid notices, posted breakdown and certify-time then paid waivers; Downtown first paper and abandoned Checkout; Riverwalk negative net and refused Checkout; Avery cannot file Westfork; period gates; forged payloads; role and staff isolation. Write/composition sessions weight 2.0; seed session weight 1.0.",
+    "polish": "8 criteria over 2 sessions: live quote before the card, product health surface, refusals visible on screen, staff actions reachable by intent, composition lines legible, identity switcher usable, Checkout return posted, APP_MANIFEST.md served at GET /APP_MANIFEST.md documenting identity/endpoints/SQLite."
+  },
+  "requirements": [
+    {
+      "id": "STACK-01",
+      "source": "instruction.md, stack.md",
+      "requirement": "One Node process serves the UI and API on port 3000 with Express, SQLite via node:sqlite, and the plant's card desk.",
+      "criteria": ["render/default_session", "constraints/sqlite_ledger", "polish/health_surface"]
+    },
+    {
+      "id": "STACK-02",
+      "source": "stack.md, integration.md",
+      "requirement": "SQLite is the ledger at /app/data/drawbill.db; seed JSON is copied into /app and loaded on first boot; pennies in the books, whole dollars in artifacts; data survives a process restart and seeding does not run twice.",
+      "criteria": ["constraints/sqlite_ledger", "constraints/pencil_survives_reload", "functional/ledger_survives_process_restart", "functional/seed_not_applied_twice", "functional/browse_jobs"]
+    },
+    {
+      "id": "STACK-03",
+      "source": "CREDENTIALS.md, security-payment.md",
+      "requirement": "Plant desk tokens stay on the server and out of browser code.",
+      "criteria": ["constraints/secrets_not_in_browser"]
+    },
+    {
+      "id": "IDENT-01",
+      "source": "instruction.md, overview-shape.md, ui.md",
+      "requirement": "A fresh browser is already Avery Lin with no login; a visible switcher changes seeded identity.",
+      "criteria": ["render/default_session", "polish/identity_switcher_usable"]
+    },
+    {
+      "id": "IDENT-02",
+      "source": "security.md, behaviour-roles.md",
+      "requirement": "An unknown identity is turned away and does not become Avery; a request with no identity is Avery.",
+      "criteria": ["functional/unknown_identity_401", "functional/chris_empty_file"]
+    },
+    {
+      "id": "SEED-01",
+      "source": "overview-jobs.md, ui-reach.md",
+      "requirement": "Four seeded jobs load and can be told apart, including Westfork Clinic TI. Avery can see Westfork and cannot file an owner paper on it.",
+      "criteria": ["functional/browse_jobs", "functional/avery_cannot_file_westfork"]
+    },
+    {
+      "id": "SEED-02",
+      "source": "ui-reach.md, overview-people.md",
+      "requirement": "Harborview SOV shows the five seeded lines with tags, originals and unit rates.",
+      "criteria": ["functional/harborview_sov"]
+    },
+    {
+      "id": "SEED-03",
+      "source": "overview-jobs.md",
+      "requirement": "A job can be opened from catalog fields without using the marketing title Harborview.",
+      "criteria": ["functional/job_resolved_without_name"]
+    },
+    {
+      "id": "SEED-04",
+      "source": "overview-jobs.md, ui-reach.md",
+      "requirement": "Downtown and Riverwalk profiles carry their own originals, county windows and SOV tags.",
+      "criteria": ["functional/job_profile_from_catalog"]
+    },
+    {
+      "id": "SEED-05",
+      "source": "ui-reach.md, behaviour-tickets.md",
+      "requirement": "Plant file shows Diego's Harborview tickets, Casey's receiving ticket, executed CO-01, draft CO-02, Ironclad's sub-invoice, payroll stamps, insurance expiry, and the foundation inspection stamp.",
+      "criteria": ["functional/plant_tickets_and_cos"]
+    },
+    {
+      "id": "DESK-01",
+      "source": "integration-desks.md, CREDENTIALS-desks.md",
+      "requirement": "The till asks the live plant desks at quote time rather than remembering percentages.",
+      "criteria": ["functional/desks_asked_at_quote"]
+    },
+    {
+      "id": "DESK-02",
+      "source": "integration-copy.md",
+      "requirement": "Composition desks (tax, retainage, fee) are asked again when the card desk says paid, and the four after-pay destinations named in integration-copy.md — paper, SMS and email receipts plus the diary hold — receive the paid figures. Waivers are covered separately by PAY-03 and the member punch by PAY-02.",
+      "criteria": ["functional/desks_asked_again_at_pay"]
+    },
+    {
+      "id": "DESK-03",
+      "source": "security-validation.md, behaviour-stored.md",
+      "requirement": "A client-supplied Downtown tax window does not steer Harborview's county desk.",
+      "criteria": ["functional/decoy_downtown_tax_on_harborview"]
+    },
+    {
+      "id": "DESK-04",
+      "source": "ui-reach.md, integration-desks.md",
+      "requirement": "Harborview April payees include both Northline Construction and Ironclad Steel on one card amount.",
+      "criteria": ["functional/joint_check_metadata"]
+    },
+    {
+      "id": "DESK-05",
+      "source": "behaviour-fee.md, integration-desks.md",
+      "requirement": "The mill extra is forty thousand because the index desk already knows it; a typed amount that does not match the index is not an extra.",
+      "criteria": ["functional/mill_index_desk"]
+    },
+    {
+      "id": "DESK-09",
+      "source": "integration-desks.md, behaviour-tickets.md",
+      "requirement": "The permit / inspection desk decides the gate on permit-gated lines; the till does not keep that rule to itself. Harborview 03-400 superstructure stays at zero until foundations are complete and stamped.",
+      "criteria": ["functional/permit_gate_desk"]
+    },
+    {
+      "id": "DESK-10",
+      "source": "integration-desks.md, behaviour-stamps.md",
+      "requirement": "The architect e-stamp desk stamps a certified paper; the till may not stamp it in its own tables.",
+      "criteria": ["functional/certify_roles"]
+    },
+    {
+      "id": "DESK-06",
+      "source": "integration-desks.md",
+      "requirement": "The till may not invent remaining owner encumbrance; a positive-net quote asks the encumbrance desk.",
+      "criteria": ["functional/encumbrance_desk"]
+    },
+    {
+      "id": "DESK-07",
+      "source": "integration-desks.md, overview-jobs.md",
+      "requirement": "Harborview's Horizon deck line asks the DBE desk; Downtown has no participation line and must still compose.",
+      "criteria": ["functional/dbe_participation"]
+    },
+    {
+      "id": "DESK-08",
+      "source": "integration-desks.md, ui-reach.md",
+      "requirement": "Certified payroll and COI are desk-owned; composing a paper asks those desks rather than only displaying plant-file stamps.",
+      "criteria": ["functional/payroll_and_coi"]
+    },
+    {
+      "id": "PAPER-01",
+      "source": "overview-paper.md",
+      "requirement": "An uncertified Downtown pencil can be withdrawn and the period typed again; a certified, released, or paid paper cannot.",
+      "criteria": ["functional/withdraw_uncertified_pencil"]
+    },
+    {
+      "id": "QUOTE-01",
+      "source": "behaviour-money.md, ui-reach.md",
+      "requirement": "This-period work is current billed-to-date minus the last posted snapshot; stored and converted piles are distinguished.",
+      "criteria": ["functional/quote_wip_and_stored"]
+    },
+    {
+      "id": "QUOTE-02",
+      "source": "behaviour-fee.md",
+      "requirement": "Fee is dual-rate: original this-period work at eight, executed extras at six, general conditions excluded.",
+      "criteria": ["functional/quote_fee_dual_rate"]
+    },
+    {
+      "id": "QUOTE-03",
+      "source": "behaviour-stored.md",
+      "requirement": "County tax is a single line on this-period work in place only; stored, fee, bond, retainage, fringe and damages are not a tax base.",
+      "criteria": ["functional/quote_tax_wip_only"]
+    },
+    {
+      "id": "QUOTE-04",
+      "source": "behaviour-retainage.md",
+      "requirement": "Harborview April retainage splits: stepped-down twentieth on WIP, tenth on new stored, converted not retained again, GC excluded.",
+      "criteria": ["functional/quote_retainage_split"]
+    },
+    {
+      "id": "QUOTE-05",
+      "source": "behaviour-fringe.md",
+      "requirement": "April Harborview fringe rider sits on the card total and is not folded into tax, fee or retainage bases.",
+      "criteria": ["functional/quote_fringe_rider"]
+    },
+    {
+      "id": "QUOTE-06",
+      "source": "behaviour-fee.md",
+      "requirement": "Bond is once on the first posted paper; Harborview April carries $0.00 bond.",
+      "criteria": ["functional/second_bond_not_on_app2"]
+    },
+    {
+      "id": "QUOTE-07",
+      "source": "behaviour-damages.md",
+      "requirement": "Harborview April carries $0.00 damages with a Riverwalk positive control.",
+      "criteria": ["functional/quote_no_damages_on_harborview"]
+    },
+    {
+      "id": "FLOW-01",
+      "source": "overview-shape.md, ui-staff.md",
+      "requirement": "Avery can file Harborview App 2 for 2030-04-01 through 2030-04-30.",
+      "criteria": ["functional/file_harborview_app2", "polish/staff_actions_reachable"]
+    },
+    {
+      "id": "FLOW-02",
+      "source": "behaviour-stamps.md, security-roles.md",
+      "requirement": "Only Samira certifies the exact composed net; Avery's certify is refused.",
+      "criteria": ["functional/certify_roles", "polish/refusals_visible_on_screen"]
+    },
+    {
+      "id": "FLOW-03",
+      "source": "security-roles.md, overview-shape.md",
+      "requirement": "Victor releases Harborview to the rail; Samira cannot release; Victor cannot mint Checkout.",
+      "criteria": ["functional/release_roles"]
+    },
+    {
+      "id": "PAY-01",
+      "source": "integration-card.md, ui-checkout.md",
+      "requirement": "Avery pays Harborview App 2 via hosted Checkout at $287,755.00 and the paper posts.",
+      "criteria": ["functional/pay_harborview_app2", "functional/posted_breakdown_matches_quote", "polish/checkout_return_posted"]
+    },
+    {
+      "id": "PAY-02",
+      "source": "behaviour-notices.md, integration-copy.md",
+      "requirement": "After pay, paper/SMS/email copies, diary and punch match the card desk; Chris stays empty.",
+      "criteria": ["functional/notices_match_the_charge"]
+    },
+    {
+      "id": "PAY-03",
+      "source": "behaviour-notices.md, security-roles.md",
+      "requirement": "Conditional waivers exist once Samira has certified, before the card clears; after pay, unconditional waivers wait on Ruth.",
+      "criteria": ["functional/waivers_conditional_then_unconditional"]
+    },
+    {
+      "id": "PAY-04",
+      "source": "integration-card.md",
+      "requirement": "Replaying confirm does not duplicate the posted row or notices.",
+      "criteria": ["functional/confirm_replay_one_row"]
+    },
+    {
+      "id": "DOWN-01",
+      "source": "behaviour-money.md, behaviour-fee.md",
+      "requirement": "Downtown April composes its own net and first-paper profile (bond, Downtown tax, full tenth).",
+      "criteria": ["functional/downtown_composed_net", "functional/downtown_first_paper_profile"]
+    },
+    {
+      "id": "DOWN-02",
+      "source": "overview-paper.md, behaviour-books.md",
+      "requirement": "Downtown Checkout is opened then abandoned; nothing posts and the period stays open.",
+      "criteria": ["functional/downtown_checkout_abandoned", "functional/abandon_writes_nothing"]
+    },
+    {
+      "id": "PAY-05",
+      "source": "integration-card.md, security-validation.md",
+      "requirement": "A fabricated Checkout session id is refused with a 4xx and writes nothing.",
+      "criteria": ["functional/fabricated_session_refused"]
+    },
+    {
+      "id": "RIVER-01",
+      "source": "behaviour-damages.md",
+      "requirement": "Riverwalk 2030-04-01..04-10 composes negative through damages net of weather days.",
+      "criteria": ["functional/riverwalk_composed_net_negative", "functional/riverwalk_damages_net_of_weather"]
+    },
+    {
+      "id": "RIVER-02",
+      "source": "behaviour-damages.md, ui-checkout.md",
+      "requirement": "A negative Riverwalk net refuses Checkout; Owen Park releases, not Victor.",
+      "criteria": ["functional/riverwalk_negative_refuses_checkout"]
+    },
+    {
+      "id": "RIVER-03",
+      "source": "behaviour-books.md",
+      "requirement": "Seeded Harborview March App 1 stays posted and is not collected again.",
+      "criteria": ["functional/march_app1_not_collected_again"]
+    },
+    {
+      "id": "PERIOD-01",
+      "source": "behaviour-calendar.md",
+      "requirement": "Inclusive overlap on the same job is refused; two jobs sharing April is not overlap.",
+      "criteria": ["functional/inclusive_period_overlap", "functional/adjacent_may_not_overlap"]
+    },
+    {
+      "id": "PERIOD-02",
+      "source": "behaviour-books.md",
+      "requirement": "Books are not open before 2030-03-01; June 25-30 blackout refuses; slash and timestamp dates refuse.",
+      "criteria": ["functional/books_not_open_january", "functional/blackout_june_refused", "functional/malformed_period_refused"]
+    },
+    {
+      "id": "FORGE-01",
+      "source": "security-validation.md, behaviour-money.md",
+      "requirement": "Client-supplied net, tax window, rates and fabricated SOV lines do not move the composed figures.",
+      "criteria": ["functional/client_net_ignored", "functional/forged_lines_do_not_move_the_net"]
+    },
+    {
+      "id": "FORGE-02",
+      "source": "behaviour-stamps.md",
+      "requirement": "Samira stamps the composed net: a penny-off proposed amount is refused, or ignored so the certified net stays the composed figure.",
+      "criteria": ["functional/penny_off_certify_refused"]
+    },
+    {
+      "id": "SCOPE-01",
+      "source": "security-isolation.md",
+      "requirement": "Chris cannot read Northline papers after pay; each sub PM reads their own line and only their own line — Marcus sees 03-200 and not 03-100, Lena sees 03-300 and not 03-200; and Westfork's PM does not see Northline's Harborview books.",
+      "criteria": ["functional/isolation_after_pay", "functional/marcus_cannot_read_foundations", "functional/priya_cannot_leave_pencil"]
+    },
+    {
+      "id": "ROLE-01",
+      "source": "security.md, behaviour-roles.md",
+      "requirement": "A role name typed onto a request is not a promotion.",
+      "criteria": ["functional/role_in_body_ignored"]
+    },
+    {
+      "id": "ROLE-02",
+      "source": "behaviour-roles.md, security-roles.md",
+      "requirement": "Jonah can file a pencil and cannot pay; Priya stays in pencil; Lena and Wei cannot pay or file owner papers they are not for.",
+      "criteria": ["functional/priya_cannot_leave_pencil", "functional/jonah_cannot_pay", "functional/lena_cannot_pay", "functional/wei_cannot_bill"]
+    },
+    {
+      "id": "FLOW-04",
+      "source": "behaviour-stamps.md, overview-shape.md",
+      "requirement": "A paper's own state gates the ladder: an uncertified pencil cannot be released, and an unreleased paper cannot mint a card session.",
+      "criteria": ["functional/paper_state_gates_rail_and_card"]
+    },
+    {
+      "id": "ROLE-04",
+      "source": "behaviour-roles.md, security-roles.md",
+      "requirement": "Ruth the notary does not file pay applications; Avery does.",
+      "criteria": ["functional/ruth_cannot_file"]
+    },
+    {
+      "id": "ROLE-03",
+      "source": "security-roles.md, behaviour-roles.md",
+      "requirement": "Casey cannot certify; Harper is read-only; Diego/Helen cannot file or certify owner paper; Avery cannot notarize while Ruth can; Chris has an empty file.",
+      "criteria": ["functional/casey_cannot_certify", "functional/harper_read_only", "functional/staff_cannot_file_owner_paper", "functional/avery_cannot_notarize", "functional/chris_empty_file"]
+    },
+    {
+      "id": "DOC-01",
+      "source": "policy.md",
+      "requirement": "APP_MANIFEST.md documents how demo identity works, the main HTTP endpoints, and how SQLite is reached, and the app serves that same file at GET /APP_MANIFEST.md.",
+      "criteria": ["polish/app_manifest_documents_runtime"]
+    },
+    {
+      "id": "UI-01",
+      "source": "ui-reach.md, ui-checkout.md",
+      "requirement": "A live quote before the card shows the composed net; each composition line is readable, not just the net.",
+      "criteria": ["polish/live_quote_before_card", "polish/composed_figures_legible"]
+    },
+    {
+      "id": "UI-02",
+      "source": "ui-staff.md",
+      "requirement": "The product exposes its own status surface that reports the app is up. The ledger engine is named on that surface or in chrome.",
+      "criteria": ["polish/health_surface", "constraints/sqlite_ledger"]
+    },
+    {
+      "id": "UI-03",
+      "source": "ui-staff.md",
+      "requirement": "Turned-down payment or certify is visible on screen with a reason; file/certify/release Harborview App 2 are reachable by intent.",
+      "criteria": ["polish/refusals_visible_on_screen", "polish/staff_actions_reachable"]
+    }
+  ]
+}

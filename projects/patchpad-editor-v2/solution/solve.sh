@@ -8,10 +8,11 @@ cd /app
 
 rm -f data/*.db data/*.db-* 2>/dev/null || true
 
-test -d /opt/patchpad-deps/node_modules
+test -d /usr/local/lib/node_modules/express
 echo "[solve.sh] using preinstalled node_modules from image"
 rm -rf node_modules
-cp -R /opt/patchpad-deps/node_modules ./node_modules
+mkdir -p node_modules
+cp -R /usr/local/lib/node_modules/express node_modules/express
 
 echo "[solve.sh] creating SQLite schema + seed"
 node --experimental-sqlite -e "import('./src/db.js').then(() => console.log('seed ok'))"

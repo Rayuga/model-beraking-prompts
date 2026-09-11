@@ -25,7 +25,6 @@ start_app() {
   [[ ! -e "$PID_FILE" ]] || { echo 'App already managed; use restart' >&2; return 1; }
   mkdir -p "$APP_HOME"
   chown 65534:65534 "$APP_HOME"
-  # A normal restart preserves /app and SQLite, and never reruns solve.sh.
   setsid env -i \
     PATH="/usr/local/bin:/usr/bin:/bin" \
     NODE_PATH="/usr/local/lib/node_modules" \

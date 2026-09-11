@@ -1,6 +1,29 @@
 # GridForge Releases
 
-## Final Delivery: 2.0.10
+## Active Separate Task: v3 (3.0.0)
+
+Upload [gridforge-spreadsheet-v3.zip](gridforge-v3-3.0.0-validation/gridforge-spreadsheet-v3.zip).
+Editable source is `projects/gridforge-spreadsheet-v3/`. This forks the latest
+v2 fixes without moving or changing the existing v2 source or releases.
+See the [v3 checks and limitations](gridforge-v3-3.0.0-validation/README.md).
+
+## Preserved v2: 2.0.12
+
+Upload [gridforge-spreadsheet-v2.zip](gridforge-v2-2.0.12-validation/gridforge-spreadsheet-v2.zip).
+This metadata-only release removes the obsolete target-model fields, retaining
+the 2.0.11 implementation and judge settings. See the
+[release checks](gridforge-v2-2.0.12-validation/README.md).
+
+## Previous Prepared Upload: 2.0.11
+
+Upload [gridforge-spreadsheet-v2.zip](gridforge-v2-2.0.11-validation/gridforge-spreadsheet-v2.zip).
+See the [release evidence and remaining risks](gridforge-v2-2.0.11-validation/README.md).
+This version aligns the OpenAI/max judge template, fixes golden keyboard and
+background-render bugs, and corrects the demonstrated identity/Find fairness
+issues. Local browser checks passed; exact Docker builds were blocked by local
+network infrastructure. Platform QC/Oracle/model runs are not completed for it.
+
+## Historical Final Delivery: 2.0.10
 
 The prepared submission is in [final-deliverables](final-deliverables/):
 
@@ -23,7 +46,7 @@ Packaging checks and copied-file hashes are recorded outside the submission in
 `run-analysis/final-delivery-manifest.json`. The final folder is prepared locally;
 it has not been uploaded by the assistant.
 
-## Latest Upload: 2.0.10
+## Historical Upload: 2.0.10
 
 Upload [gridforge-spreadsheet-v2.zip](gridforge-v2-2.0.10-validation/gridforge-spreadsheet-v2.zip).
 This release includes the agent certificate fix for `run-ce624351`.
@@ -45,14 +68,15 @@ belong beside their release ZIP, not inside the upload task.
   SHA-256 hashes. Historical reports retain their original archive names; those
   names now refer to the retained canonical ZIP in the same version folder.
 - JSON reports, screenshots and validation scripts are supporting local evidence.
-- Editable source remains in `projects/gridforge-spreadsheet-v2/` at the repo root.
+- Active editable source is `projects/gridforge-spreadsheet-v3/`; v2 is preserved
+  separately in `projects/gridforge-spreadsheet-v2/` at the repo root.
   The older `projects/gridforge-spreadsheet/` is a legacy project, not another copy
   of the latest ZIP.
 
 The upload ZIP must unpack like this:
 
 ```text
-gridforge-spreadsheet-v2/
+gridforge-spreadsheet-v3/
   task.toml
   instruction.md
   environment/
@@ -66,8 +90,8 @@ entire release collection, and do not flatten the task files into the ZIP root.
 From the repository root, package the current GridForge source with:
 
 ```powershell
-python deliverables/editor-v2-validation/check-and-package.py --task gridforge-spreadsheet-v2
+python deliverables/gridforge/gridforge-v3-3.0.0-validation/check-package.py
 ```
 
-This defaults to the corresponding version folder here and creates one canonical
-ZIP. Do not regenerate an older release using newer source code.
+This validates the v3 fork (3.0.0) and creates its one canonical ZIP.
+Do not regenerate an older release using newer source code.

@@ -43,7 +43,8 @@ for slug in SLUGS:
     check("JSON and TOML parse", True)
     check("canonical three-part slug", len(slug.split("-")) == 3 and task["task"]["name"] == "turing/" + slug)
     check("version matches package", version == json.loads((root / "solution/app/package.json").read_text(encoding="utf-8"))["version"])
-    check("target GPT-5.4-mini", task["metadata"]["active_target_model"] == "openrouter/openai/gpt-5.4-mini")
+    if slug != "gridforge-spreadsheet-v2":
+        check("target GPT-5.4-mini", task["metadata"]["active_target_model"] == "openrouter/openai/gpt-5.4-mini")
     expected_agent_network = "public"
     check("intended agent network and separate verifier", task["environment"]["network_mode"] == expected_agent_network and task["verifier"]["environment_mode"] == "separate")
     brief_paths = [root / "instruction.md", *(root / "environment/assets/instructions").glob("*.md")]

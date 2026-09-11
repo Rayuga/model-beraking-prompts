@@ -7,8 +7,14 @@ cursor position.
 Include familiar keyboard behavior for moving or selecting by words, using Tab
 and Shift+Tab for indentation, and opening Find from the keyboard. Find results
 should be reachable in both directions without going back to the mouse.
+Find may select a match while the query is being typed, or wait for the first
+navigation command. Either way, move through matches in document order and
+wrap at the ends when navigating forward or backward.
 Escape from the editing area should focus the Find input so people can use
 Tab and Shift+Tab to move through the surrounding controls again.
+When the Find input has focus, Escape should return focus to the editing area
+without changing the current document selection, so people can copy the
+selected match or continue editing it from the keyboard.
 
 For word shortcuts, either familiar rightward convention is fine: the end of
 the current word or the start of the next word. Holding Shift selects the same
