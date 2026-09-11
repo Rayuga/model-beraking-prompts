@@ -10,12 +10,13 @@ chmod -R go-rwx /tests 2>/dev/null || true
 
 write_zero_reward() {
   printf '0.0\n' > "$LOG_DIR/reward.txt"
-  printf '{"reward":0.0,"render":0.0,"constraints":0.0,"functional":0.0,"polish":0.0,"graded":0,"no_op":1}\n' > "$LOG_DIR/reward.json"
+  printf '{"reward":0.0,"render":0.0,"constraints":0.0,"functional":0.0,"polish":0.0,"visual":0.0,"graded":0,"no_op":1}\n' > "$LOG_DIR/reward.json"
+  printf '{"tests":[],"tool":{"name":"rewardkit"},"summary":{"passed":0,"failed":0,"skipped":0,"total":0}}\n' > "$LOG_DIR/ctrf.json"
 }
 
 ensure_reward() {
   test -s "$LOG_DIR/reward.txt" || printf '0.0\n' > "$LOG_DIR/reward.txt"
-  test -s "$LOG_DIR/reward.json" || printf '{"reward":0.0,"render":0.0,"constraints":0.0,"functional":0.0,"polish":0.0,"graded":0,"no_op":1}\n' > "$LOG_DIR/reward.json"
+  test -s "$LOG_DIR/reward.json" || printf '{"reward":0.0,"render":0.0,"constraints":0.0,"functional":0.0,"polish":0.0,"visual":0.0,"graded":0,"no_op":1}\n' > "$LOG_DIR/reward.json"
 }
 
 cleanup() {
@@ -40,7 +41,7 @@ for link in Path("/app").rglob("*"):
         target = link.resolve(strict=True)
     except (OSError, RuntimeError):
         raise SystemExit(1)
-    trusted_roots = [root, Path("/usr/local/lib/node_modules"), Path("/opt/patchpad-deps")]
+    trusted_roots = [root, Path("/usr/local/lib/node_modules")]
     if not any(target == base or base in target.parents for base in trusted_roots):
         raise SystemExit(1)
 PY
@@ -48,7 +49,6 @@ then
   exit 0
 fi
 
-# The manifest locates the submission's database; its claims are not score evidence.
 if ! python3 - <<'PY'
 import json
 import re
@@ -79,8 +79,6 @@ if ! bash /tests/app-lifecycle.sh start; then
   exit 0
 fi
 
-# Explicit readiness probe before grading. The lifecycle helper also waits on
-# restarts; here require the browser entry itself, not just a healthy API.
 if ! python3 - <<'PY' >>"$LOG_DIR/readiness.log" 2>&1
 import time
 import urllib.request
@@ -103,13 +101,12 @@ then
   exit 0
 fi
 
-if ! timeout --signal=TERM --kill-after=30s 12000 \
-  rewardkit --max-concurrent-agent 1 /tests >"$LOG_DIR/rewardkit.log" 2>&1; then
-  write_zero_reward
+if ! timeout 12600 rewardkit --max-concurrent-agent 1 /tests >"$LOG_DIR/rewardkit.log" 2>&1; then
+  ensure_reward
   exit 0
 fi
 
-if ! python3 - "$LOG_DIR/reward.json" "$LOG_DIR/reward.txt" <<'PY'
+if ! python3 - "$LOG_DIR/reward.json" "$LOG_DIR/reward.txt" "$LOG_DIR/ctrf.json" <<'PY'
 import json
 import math
 import sys
@@ -117,9 +114,10 @@ from pathlib import Path
 
 json_path = Path(sys.argv[1])
 txt_path = Path(sys.argv[2])
+ctrf_path = Path(sys.argv[3])
 data = json.loads(json_path.read_text())
 
-for key in ("render", "constraints", "functional", "polish"):
+for key in ("render", "constraints", "functional", "polish", "visual"):
     value = data.get(key)
     if not isinstance(value, (int, float)) or isinstance(value, bool):
         raise ValueError(f"missing or non-numeric RewardKit dimension: {key}")
@@ -128,15 +126,26 @@ for key in ("render", "constraints", "functional", "polish"):
         raise ValueError(f"invalid RewardKit dimension {key}={value!r}")
     data[key] = value
 
-# Constraints includes the required custom-document-surface prerequisite.
-# No presentation or partial behavior credit survives a prohibited editor.
-reward = 0.0 if data["render"] < 1.0 or data["constraints"] < 1.0 else 0.9 * data["functional"] + 0.1 * data["polish"]
+if data["render"] <= 0.0 or data["constraints"] <= 0.0:
+    reward = 0.0
+else:
+    reward = 0.6 * data["functional"] + 0.2 * data["polish"] + 0.2 * data["visual"]
+
 reward = round(reward, 4)
 data["reward"] = reward
 data["graded"] = 1
 data["no_op"] = 0
 json_path.write_text(json.dumps(data, indent=2) + "\n")
 txt_path.write_text(f"{reward:.4f}\n")
+ctrf_path.write_text(json.dumps({
+  "tool": {"name": "rewardkit"},
+  "tests": [{"name": "render", "status": "passed" if data["render"] > 0 else "failed"},
+            {"name": "constraints", "status": "passed" if data["constraints"] > 0 else "failed"},
+            {"name": "functional", "status": "passed" if data["functional"] > 0.05 else "failed"},
+            {"name": "polish", "status": "passed" if data["polish"] > 0 else "failed"},
+            {"name": "visual", "status": "passed" if data["visual"] > 0 else "failed"}],
+  "summary": {"passed": (data["render"] > 0) + (data["constraints"] > 0) + (data["functional"] > 0.05) + (data["polish"] > 0) + (data["visual"] > 0), "failed": (data["render"] <= 0) + (data["constraints"] <= 0) + (data["functional"] <= 0.05) + (data["polish"] <= 0) + (data["visual"] <= 0), "skipped": 0, "total": 5}
+}, indent=2) + "\n")
 PY
 then
   write_zero_reward

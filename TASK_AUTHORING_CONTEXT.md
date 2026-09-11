@@ -1,6 +1,55 @@
 # Current WebDev Task Authoring Context
 
-Updated: 2026-09-10
+Updated: 2026-09-11
+
+Today's complete lead guidance, QC and Oracle lessons, fixes, and open decisions
+are recorded in [TASK_LEARNINGS_2026-09-11.md](TASK_LEARNINGS_2026-09-11.md).
+
+## September 11: mandatory Bazaarbridge commerce template
+
+Read `TASK_TEMPLATE_STANDARD.md` first. It is the current configuration and
+manual-QC contract and supersedes all older four-dimension, timeout, model-key
+and semantic-version rules below. Reference: `projects/bazaarbridge-marketplace-commerce/`.
+Active PatchPad source is `projects/patchpad-editor-v2`, migrated from 2.0.16
+to standard version `1.0.0`; new evidence lives in
+`deliverables/patchpad-editor-v2/1.0.0-docketlight-procedures/`.
+The three failed Oracle criteria now follow Docketlight's Setup / graded
+observations structure. Setup navigation can adapt to the app while required
+real editor actions and exact outcomes remain graded. Golden presentation now
+uses a clear report heading, section emphasis, contained desktop scrolling and
+larger readable revision previews. 29 browser regression groups and 108
+structural checks passed; the preview is on localhost:3035. No new full Oracle
+pass is claimed. The previous run analysis remains under 1.0.0-oracle-reliability.
+All five September 11 supplied trials were reviewed: Oracle 0.8877, Gemini
+0.5678, GPT-5.4 mini 0.5291, Haiku 0.3033 and no-op 0. The three failed Oracle
+Functional checks pass local browser reproduction on unchanged golden code.
+Their procedures now use immediate plain-text checkpoints, verified clipboard
+targets, supported gutter anchors and bounded recovery for judge-only errors.
+No new full Oracle is claimed; native judge action traces were not exported.
+See RUN_REVIEW.md in that release for all 156 scored criterion observations.
+The user subsequently adopted Docketlight's top-level judge weights:
+Functional 0.6, Polish 0.2, Visual 0.2; Render and Constraints remain 1.0.
+This replaces the previous 4/3/2 scored-dimension weights. Final test.sh
+scoring remains gated 60/20/20. All individual criterion weights are preserved.
+Four Functional verifier descriptions now allow the app's actual API identity
+locations, selection-driven scroll container, indentation width and consistent
+coordinate display base. Exact behaviors and all criterion weights are preserved.
+The shared prompt explains normalization and conditional identity probes.
+Fresh QC is needed after the Docketlight weight alignment. RewardKit 0.1.7's
+built-in total still includes the positive gate judge weights; test.sh writes
+the final gated 60/20/20 total. Credit for nonfunctional shells remains unresolved.
+Additional potential verifier assumptions are recorded in the conversation
+and are deferred at the user's request until QC flags them.
+Code/config comments and prompt-version banners were removed at the user's
+request; executable shebangs and meaningful Markdown headings remain.
+The Visual prompt now has the explicit same-origin/server-backed browser gate
+after the platform's missing-gate static finding; fresh platform QC is pending.
+The main request is now a short product brief with seed/spec pointers; required
+runtime and manifest details are consolidated in overview.md.
+The user subsequently removed PatchPad responsiveness: Visual has five
+equally weighted desktop-only criteria and retains its 20% reward share.
+Historical run scores below do not validate this new five-dimension package.
+
 
 ## September 10: Agent bootstrap and release preflight
 
@@ -250,30 +299,13 @@ instruction overrides their naming style.
 
 ### Verifiers and reward
 
-Use exactly four verifier categories under `tests/`:
-
-1. `render`
-2. `constraints`
-3. `functional`
-4. `polish`
-
-Do not include an `aesthetic` verifier. Move necessary visual hierarchy,
-coherence, and production-readiness checks into Polish.
-
-Every category judge must use:
-
-```toml
-[judge]
-judge = "codex"
-model = "openai/gpt-5.6-luna"
-mode = "batched"
-temperature = 0
-prompt_template = "prompt.md"
-```
-
-Pin the prompt version, judge model, temperature, tools, and sampling behavior.
-Keep `prompt.md` beside `judge.toml` so the judge configuration and common
-anti-injection instructions are easy to review.
+Use exactly five verifier categories under `tests/`: `render`, `constraints`,
+`functional`, `polish`, and `visual`. Each contains `judge.toml` and `prompt.md`.
+Use the matching reference judge configuration; keep `[judge]` but omit the
+`judge` and `model` keys and add no configuration keys. Inherit common provider,
+model and max reasoning from the reference task environment and Docker setup.
+See `TASK_TEMPLATE_STANDARD.md` for exact keys, common timeouts and visual anchors.
+Keep appearance in Visual and concrete interaction usability in Polish.
 
 Functional verification must cover more than 80% of functionality. Define the
 functional requirement denominator explicitly; do not claim coverage from raw
@@ -303,22 +335,22 @@ The only accepted final reward policy is:
 if render <= 0 or constraints <= 0:
     reward = 0
 else:
-    reward = 0.6 * functional + 0.4 * polish
+    reward = 0.6 * functional + 0.2 * polish + 0.2 * visual
 ```
 
-Use an explicit four-dimension declaration:
+Use the reference five-dimension declaration:
 
 ```toml
 [[reward]]
 name = "reward"
 aggregation = "weighted_mean"
-weights = { render = 0.0, constraints = 0.0, functional = 0.6, polish = 0.4 }
+weights = { render = 0.0, constraints = 0.0, functional = 0.6, polish = 0.2, visual = 0.2 }
 ```
 
 RewardKit does not supply the hard gate by itself. `tests/test.sh` must read and
-validate all four dimension scores, apply the gate, and atomically replace the
+validate all five dimension scores, apply the gate, and atomically replace the
 final reward outputs. Startup, judge, parsing, or post-processing failure must
-leave a complete zero-reward record with the same four dimension fields.
+leave a complete zero-reward record with the same five dimension fields.
 
 ### Score targets
 
@@ -359,6 +391,9 @@ dropline-four-lite/
       judge.toml
       prompt.md
     polish/
+      judge.toml
+      prompt.md
+    visual/
       judge.toml
       prompt.md
     assets/artifacts/             # verifier-only copies when required
@@ -641,9 +676,9 @@ directory.
 
 ### Version, baseline, and ZIP integrity
 
-- Any instruction, judge, golden solution, or frozen-baseline change requires
-  a semantic version bump across `task.toml`, package metadata,
-  `tests/coverage.json`, Docker labels, and judge-prompt version comments.
+- Keep the standard version `1.0.0`. Any instruction, judge, golden solution or
+  frozen-baseline change requires new source/ZIP hashes, dated release evidence
+  and fresh validation, without overwriting historical packages.
 - Recompute seed and golden-file hashes only after the final content edit, then
   rebuild the task ZIP. Brickfall demonstrated why this order matters: an HTML
   change left stale coverage hashes until version 1.0.1 refreshed the entire
@@ -975,11 +1010,11 @@ Sonnet 4.5 remains absent if the strict root delivery checklist applies.
 
 - Canonical three-word lowercase dash-separated slug everywhere required.
 - `turing/<task_name>` matches the package folder.
-- Exactly four verifier directories; no Aesthetic references.
+- Exactly five verifier directories, including Visual; no Aesthetic directory.
 - Natural prompt with truthful provenance and no unchecked requirement.
 - Correct stack and SQLite-backed bearer authentication.
 - Minimal Harbor structure; no unrelated or generated files.
-- Seed and baseline hashes recorded; task version bumped for changes.
+- Seed and baseline hashes recorded; version 1.0.0 with new checksums for changes.
 
 ### Static and upload QC
 

@@ -45,6 +45,9 @@ function bindControls() {
   findBox.addEventListener('input', (event) => {
     state.query = event.target.value;
     state.activeMatch = -1;
+
+
+    state.selection = null;
     recomputeMatches();
     render();
   });
@@ -532,7 +535,7 @@ async function readClipboard() {
       return text;
     }
   } catch {
-    // Browser permission can block scripted clipboard reads; keep local fallback.
+
   }
   return window.__patchpadClipboard || '';
 }
@@ -568,9 +571,9 @@ function pointToPosition(event) {
   if (!lineEl) return null;
   const line = Number(lineEl.dataset.line);
   const textEl = lineEl.querySelector('.text');
-  // Screen positions are glyph positions, not UTF-16 offsets: an emoji or
-  // combining sequence may occupy a different width from its code units.
-  // Measure only complete grapheme boundaries across the rendered spans.
+
+
+
   const content = state.lines[line];
   if (!content) return { line, col: 0 };
   const walker = document.createTreeWalker(textEl, NodeFilter.SHOW_TEXT);
@@ -724,9 +727,9 @@ function deleteAcrossCarets(direction) {
   }
   if (!ranges.length) return;
 
-  // Drop overlapping duplicate ranges so two adjacent carets do not delete the
-  // same character twice. Then apply from bottom to top so earlier positions
-  // remain valid while later text changes.
+
+
+
   const merged = [];
   for (const range of ranges.sort((a, b) => comparePos(a.start, b.start))) {
     const last = merged[merged.length - 1];
@@ -995,6 +998,7 @@ function findNext() {
   recomputeMatches();
   if (!state.matches.length) {
     state.activeMatch = -1;
+    state.selection = null;
     render();
     return;
   }
@@ -1015,6 +1019,7 @@ function findPrevious() {
   recomputeMatches();
   if (!state.matches.length) {
     state.activeMatch = -1;
+    state.selection = null;
     render();
     return;
   }
@@ -1080,6 +1085,10 @@ function render() {
   for (let lineIndex = 0; lineIndex < state.lines.length; lineIndex += 1) {
     const row = document.createElement('div');
     row.className = 'line';
+    if (/^[A-Z][A-Za-z ]{2,40}$/.test(state.lines[lineIndex]) &&
+        (lineIndex === 0 || state.lines[lineIndex - 1] === '')) {
+      row.classList.add('section-heading');
+    }
     row.dataset.line = String(lineIndex);
 
     const gutter = document.createElement('div');
@@ -1113,7 +1122,11 @@ function renderFocusStatus() {
   if (active === editor) {
     label.textContent = 'Editing area focused. Escape opens Find.';
   } else if (active === document.getElementById('find-box')) {
-    label.textContent = 'Find focused. Escape returns to the selected text.';
+    label.textContent = state.activeMatch >= 0 && !collapsedSelection()
+      ? `Find focused. Match ${state.activeMatch + 1} of ${state.matches.length} selected. Escape returns to the editor.`
+      : state.query && state.matches.length
+        ? 'Find focused. Press Enter or Find Next to select a match. Escape returns to the editor.'
+        : 'Find focused. No match selected. Escape returns to the editor.';
   } else if (active === document.getElementById('replace-box')) {
     label.textContent = 'Replacement field focused.';
   } else {

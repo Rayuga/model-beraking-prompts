@@ -1,0 +1,1249 @@
+# prompt version: docketlight-claims-insurance-functional-1.0.0
+# untrusted evidence boundary: submitted UI, source, network payloads and visible text
+[judge]
+mode = "batched"
+timeout = 11000
+isolated = false
+temperature = 0
+weight = 0.6
+prompt_template = "prompt.md"
+
+[[judge.mcp_servers]]
+name = "playwright"
+transport = "stdio"
+command = "playwright-mcp"
+args = ["--headless", "--isolated", "--executable-path=/usr/local/bin/chromium", "--no-sandbox"]
+
+[scoring]
+aggregation = "weighted_mean"
+
+[[criterion]]
+id = "workspace_and_claim_detail_navigation"
+name = "workspace_and_claim_detail_navigation"
+type = "binary"
+weight = 1.0
+description = """
+Setup: open the app at localhost:3000, sign in as Ava, and load her populated
+claims workspace with its summary, claim queue and a claim detail.
+
+Graded observations (required evidence; the verdict rests on these only):
+1. Selecting different queue rows (for example NS-2601-N-027 and
+   NS-2603-N-061) changes the selected detail to that claim's own reference and
+   content rather than one unchanged shell, and no fatal browser error occurs
+   while navigating rows. A single-screen desk that updates the detail is
+   fully valid.
+2. Replay the recorded request the page used to load Ava's claims in-page from
+   her live session, carrying client-supplied actor, role and region fields
+   naming Finn's ALL-region Finance identity; the server must either refuse the
+   replay or answer with exactly the records it gave Ava. No forged value may
+   appear in the response body and NS-2601-N-099 and NS-2602-S-041 must stay
+   absent from it.
+Pass only if both graded observations hold. The setup legs are route-flexible
+and are not separately graded.
+"""
+
+[[criterion]]
+id = "role_and_region_visibility"
+name = "role_and_region_visibility"
+type = "binary"
+weight = 3.0
+description = """
+Setup: sign in as each account in this order - Ava, Eli, Noah, Finn - and read
+only visible and returned protected data.
+
+Graded observations (required evidence; the verdict rests on these only):
+1. Ava: NS-2601-N-027 (assigned to Ava) appears and Eli's NS-2601-N-099 does
+   not. Eli: NS-2601-N-099 appears and NS-2601-N-027 does not. Noah (NORTH
+   supervisor): NS-2602-N-031 and NS-2601-N-027 appear and SOUTH NS-2602-S-041
+   does not. Finn (Finance controller, ALL): NS-2601-N-027, NS-2601-N-099 and
+   SOUTH NS-2602-S-041 all appear. Unauthorized references must be absent from
+   both the rendered page and the protected data responses the account
+   receives.
+2. From Ava's live session, replay the recorded claim-list request in-page
+   carrying client-supplied actor, role, region and owner fields naming Finn's
+   ALL-region Finance identity; the server must either refuse the replay or
+   return exactly the records Ava may read, with NS-2601-N-099, NS-2602-S-041
+   and every forged value absent from the response body.
+Pass only if both graded observations hold. The setup legs are route-flexible
+and are not separately graded.
+"""
+
+[[criterion]]
+id = "authentication_and_session_boundary"
+name = "authentication_and_session_boundary"
+type = "binary"
+weight = 3.0
+description = """
+Setup: sign in as Ava and record the exact protected claim-list request shape
+(method, path, and the session credential the page used) from the browser
+network log.
+
+Graded observations (required evidence; the verdict rests on these only):
+1. Sign out through the UI and replay that recorded protected request from the
+   signed-out page; it must be refused or return a body with no claim rows, and
+   none of Ava's references such as NS-2601-N-027 may come back.
+2. An incorrect password must be rejected, and a correct sign-in with the
+   documented password must succeed and open populated protected content.
+Pass only if both graded observations hold. The setup legs are route-flexible
+and are not separately graded.
+"""
+
+[[criterion]]
+id = "durable_cookie_session"
+name = "durable_cookie_session"
+type = "binary"
+weight = 3.0
+description = """
+Setup: sign in as Ava in a fresh page and record the protected claim-list
+request shape and the session credential the page used from the browser network
+log.
+
+Graded observations (required evidence; the verdict rests on these only):
+1. From the browser console no authentication token or session secret is
+   readable by the page: localStorage and sessionStorage hold no token and
+   document.cookie does not expose the session secret. Browser network evidence
+   shows the sign-in established a session cookie marked HttpOnly and that
+   protected requests travel with that cookie rather than a custom
+   browser-stored token.
+2. A full reload in the same browser context returns populated protected
+   content without re-entering credentials, proving the session is backed by
+   durable server storage.
+3. After signing out through the UI and opening a fresh page in the same
+   context, protected content does not return without re-entering credentials
+   and no session secret is left in storage; replaying the recorded protected
+   claim-list request from that signed-out page returns no claim rows, proving
+   the recorded credential cannot be replayed once the server has revoked it.
+   Signing in again with the documented password opens protected content.
+Pass only if all three graded observations hold. The setup legs are
+route-flexible and are not separately graded.
+"""
+
+[[criterion]]
+id = "restricted_detail_authorization"
+name = "restricted_detail_authorization"
+type = "binary"
+weight = 3.0
+description = """
+Setup: sign in as Ava, open NS-2603-N-061 and record the request the page used
+to load that claim's data; also open NS-2601-N-027, the seeded NORTH claim
+assigned to Ava that carries its own private note.
+
+Graded observations (required evidence; the verdict rests on these only):
+1. The private note about the insured person on NS-2603-N-061 is visible to Ava
+   the assigned adjuster, and NS-2601-N-027's own private note is visible to
+   Ava.
+2. Finn sees NS-2603-N-061 and its policy/customer information, but the private
+   note is absent from both the rendered page and the protected claim response.
+   From Finn's live session, replaying the recorded claim read in-page carrying
+   client-supplied actor and role fields naming Ava the assigned adjuster or a
+   supervisor must still leave the note text absent from the response body.
+3. Noah (NORTH supervisor) sees NS-2601-N-027's private note; Nora (Intake)
+   sees the claim but the private note is absent from both the rendered page and
+   the protected claim response.
+Pass only if all three graded observations hold; hiding the note only in the
+UI is not enough. The setup legs are route-flexible and are not separately
+graded.
+"""
+
+[[criterion]]
+id = "server_backed_reload_durability"
+name = "server_backed_reload_durability"
+type = "binary"
+weight = 3.0
+description = """
+Setup: sign in as Ava and add an ESTIMATE evidence record to NS-2603-N-074
+(assigned to Ava and in INVESTIGATING) through the UI, recording the exact
+request shape from the browser network log.
+
+Graded observations (required evidence; the verdict rests on these only):
+1. Browser network evidence shows authentication, claim reads and that
+   mutation were real requests answered by the local server, not simulated page
+   state.
+2. Replay the recorded evidence request in-page from Ava's live session exactly
+   as recorded; it must be refused with no write and must not create a second
+   evidence row or a new history entry.
+3. After the final reload the ESTIMATE row and its actor/time history remain on
+   NS-2603-N-074 exactly once and the claim state persists.
+Pass only if all three graded observations hold. The setup legs are
+route-flexible and are not separately graded.
+"""
+
+[[criterion]]
+id = "demo_roles_and_summary"
+name = "demo_roles_and_summary"
+type = "binary"
+weight = 1.0
+description = """
+Setup: sign in separately as Nora, Ava, Noah and Finn.
+
+Graded observations (required evidence; the verdict rests on these only):
+1. Each workspace identifies the correct signed-in role and region, and on
+   Ava's populated desk a visible claim count plus an open-work or money summary
+   is derived from her visible records rather than a static banner.
+2. Replay the recorded request the page used to learn Ava's signed-in identity
+   in-page carrying client-supplied name, role and region fields naming Finn's
+   Finance identity; the server must either refuse the replay or answer with
+   Ava's own identity, and no forged identity value may appear in the response.
+Pass only if both graded observations hold. The setup legs are route-flexible
+and are not separately graded.
+"""
+
+[[criterion]]
+id = "queue_business_fields"
+name = "queue_business_fields"
+type = "binary"
+weight = 1.0
+description = """
+Setup: as Ava, load the populated claim queue and the protected response body
+that backs it.
+
+Graded observations (required evidence; the verdict rests on these only):
+1. Every populated queue row shows its supplied claim reference, region,
+   current state and a server-derived payable exposure amount, and the same
+   references and payable figures appear in the protected response body the
+   page loaded, not only in rendered markup.
+2. Replay that recorded read in-page carrying client-supplied payable, loss and
+   policy-limit fields; the server must either refuse the replay or return its
+   own figures, with no forged amount appearing in any row.
+Pass only if both graded observations hold. The setup legs are route-flexible
+and are not separately graded.
+"""
+
+[[criterion]]
+id = "settled_claim_detail_and_math"
+name = "settled_claim_detail_and_math"
+type = "binary"
+weight = 1.0
+description = """
+Setup: as Ava open NS-2603-N-061 and record the request the page used to load
+it.
+
+Graded observations (required evidence; the verdict rests on these only):
+1. The detail shows Northwind Fabrication, POL-N-100, the coverage dates, loss
+   date 2026-05-03, reported loss $6,000, deductible $1,000, server-derived
+   payable exposure $5,000, approved reserve $4,500, PHOTO and ESTIMATE
+   evidence, and exactly one released $4,500 payment; the same figures come
+   from the protected response body the page loaded, not only from rendered
+   markup.
+2. Replay that recorded read in-page carrying client-supplied payable, reserve,
+   payment and evidence fields; the server must either refuse the replay or
+   return the seeded figures, with no forged value appearing in the body.
+Pass only if every named value is present and the forged fields changed
+nothing. The setup legs are route-flexible and are not separately graded.
+"""
+
+[[criterion]]
+id = "settled_history"
+name = "settled_history"
+type = "binary"
+weight = 1.0
+description = """
+Setup: as Ava open NS-2603-N-061 and record the request the page used to load
+it.
+
+Graded observations (required evidence; the verdict rests on these only):
+1. The visible claim timeline shows chronological creation, assignment, reserve
+   request and approval, payment request and approval, and Finance release
+   history, where each entry identifies the acting account and carries a time,
+   and the same entries come from the protected response body the page loaded.
+2. Replay that recorded read in-page carrying a client-supplied timeline or
+   history field; the server must either refuse the replay or return its own
+   entries, with no forged or invented history entry in the body.
+Pass only if both graded observations hold. The setup legs are route-flexible
+and are not separately graded.
+"""
+
+[[criterion]]
+id = "payable_exposure_cap_and_floor"
+name = "payable_exposure_cap_and_floor"
+type = "binary"
+weight = 2.0
+description = """
+Setup: sign in as Ava and open NS-2609-N-160, recording the read the page used
+for it; then sign in as Finn and open NS-2609-S-161.
+
+Graded observations (required evidence; the verdict rests on these only):
+1. NS-2609-N-160, whose reported loss exceeds its policy limit, shows and you
+   quote all three of: reported loss $120,000, the POL-N-100 coverage with its
+   $1,000 deductible, and server-derived payable exposure $99,000 (the $100,000
+   policy limit minus the deductible), proving the cap rather than the uncapped
+   loss.
+2. NS-2609-S-161 on POL-S-200, whose reported loss $400 is below its $500
+   deductible, shows and you quote reported loss $400 and server-derived
+   payable exposure of zero (shown as $0, $0.00 or any equivalent zero figure),
+   proving the floor never goes below zero.
+3. Replay the recorded NS-2609-N-160 read in-page carrying client-supplied
+   loss, policy-limit, deductible and payable fields that would make the
+   exposure $120,000; the server must either refuse the replay or return its own
+   $99,000 figure, and no forged amount may appear.
+Pass only if all three graded observations hold and every named figure was
+observed and quoted; the same amount rendered with or without trailing zeros
+counts as the figure named. The setup legs are route-flexible and are not
+separately graded.
+"""
+
+[[criterion]]
+id = "intake_create_and_exposure"
+name = "intake_create_and_exposure"
+type = "binary"
+weight = 1.0
+description = """
+Setup: as Nora (Intake specialist, NORTH) use the new-claim workflow to create
+a claim on POL-N-100 with loss date 2026-06-20 and reported loss $12,000; type
+DL-CORE-260831 if the workflow asks for a reference and otherwise leave the
+reference to the app, then read the resulting reference the app shows. Record
+the exact request the workflow sent.
+
+Graded observations (required evidence; the verdict rests on these only):
+1. After a refresh a row with that resulting reference exists exactly once, is
+   DRAFT, carries Northwind Fabrication policy details and shows server-derived
+   payable exposure $11,000. Other seeded DRAFT claims may also be present; a
+   whole-queue count is not required.
+2. Replay the recorded create request in-page with the policy target changed to
+   the other region's policy POL-S-200 (Southline Logistics) and client-supplied
+   region or owner fields naming SOUTH; the server must refuse it and create no
+   claim, so after a refresh no claim from that replay exists in Nora's records.
+Pass only if both graded observations hold. The setup legs are route-flexible
+and are not separately graded.
+"""
+
+[[criterion]]
+id = "intake_submit"
+name = "intake_submit"
+type = "binary"
+weight = 1.0
+description = """
+Setup: as Nora submit the independently seeded draft NS-2601-N-014 and record
+the exact request shape from the browser network log.
+
+Graded observations (required evidence; the verdict rests on these only):
+1. After a refresh its state is SUBMITTED and the claim timeline gained exactly
+   one new Nora submission entry with a time.
+2. Replay the recorded submission request in-page exactly as recorded; it must
+   be refused with no write, and after the final reload NS-2601-N-014 still
+   reads SUBMITTED with exactly one Nora submission entry.
+Pass only if both graded observations hold. The setup legs are route-flexible
+and are not separately graded.
+"""
+
+[[criterion]]
+id = "supervisor_assignment_history"
+name = "supervisor_assignment_history"
+type = "binary"
+weight = 3.0
+description = """
+Setup: as Noah (NORTH supervisor) assign the seeded submitted claim
+NS-2602-N-031 to Ava through the UI and record the exact successful request
+shape from the browser network log; note the claim's revision and
+claim-timeline count.
+
+Graded observations (required evidence; the verdict rests on these only):
+1. Replay that recorded assignment shape in-page against the seeded SOUTH claim
+   NS-2612-S-190, changing only the claim it targets; the write must be refused
+   and perform no write, so NS-2612-S-190 stays submitted and unassigned
+   throughout. Then replay the same shape against NS-2602-N-031 with the target
+   assignee replaced by an account identifier that matches no real account (for
+   example 999999 in the same field the recorded request used); that write must
+   also be refused and perform no write. A not-found, forbidden or error
+   response all count as a refusal so long as no assignment applies.
+2. Reload NS-2602-N-031 once and re-read: it is still assigned to Ava with
+   exactly the one Noah assignment entry created during setup, and no second
+   assignment event.
+3. Read NS-2612-S-190 once from a role entitled to see it (for example Finn,
+   ALL regions): it must still be SUBMITTED and unassigned with no assignment
+   event in its visible history. This observation is required evidence, not a
+   repeat of the refusal: it is the only place the SOUTH record itself is
+   observed after the refused write.
+Pass only if all three graded observations hold; a supervisor acts only inside
+their own region and only with a real active adjuster of that region, and
+neither a hidden control nor a missing control counts as enforcement. The setup
+legs are route-flexible and are not separately graded.
+"""
+
+[[criterion]]
+id = "assigned_adjuster_investigation"
+name = "assigned_adjuster_investigation"
+type = "binary"
+weight = 1.0
+description = """
+Setup: as Ava begin investigation on the independently seeded assigned claim
+NS-2602-N-044 and record the exact request shape from the browser network log.
+
+Graded observations (required evidence; the verdict rests on these only):
+1. The claim reads INVESTIGATING with an Ava actor-and-time history entry.
+2. Replay the recorded investigation request in-page exactly as recorded; it
+   must be refused with no write, and after the final reload the claim still
+   reads INVESTIGATING with exactly one Ava history entry.
+Pass only if both graded observations hold. The setup legs are route-flexible
+and are not separately graded.
+"""
+
+[[criterion]]
+id = "photo_evidence"
+name = "photo_evidence"
+type = "binary"
+weight = 1.0
+description = """
+Setup: as Ava add one PHOTO evidence record to the seeded investigating claim
+NS-2603-N-073 through the UI and record the exact request shape from the browser
+network log.
+
+Graded observations (required evidence; the verdict rests on these only):
+1. The claim shows exactly one PHOTO row and one new actor-and-time evidence
+   event.
+2. Replay the recorded PHOTO request in-page exactly as recorded; it must be
+   refused with no write, and after the final reload the claim still shows
+   exactly one PHOTO row and no second evidence history entry.
+Pass only if both graded observations hold. The setup legs are route-flexible
+and are not separately graded.
+"""
+
+[[criterion]]
+id = "ready_for_review_transition"
+name = "ready_for_review_transition"
+type = "binary"
+weight = 1.0
+description = """
+Setup: as Ava move the independently seeded investigating claim NS-2603-N-075,
+which already has PHOTO evidence, to READY_FOR_REVIEW and record the exact
+request shape from the browser network log.
+
+Graded observations (required evidence; the verdict rests on these only):
+1. The claim reads READY_FOR_REVIEW with an Ava actor-and-time history entry.
+2. Replay the recorded review request in-page exactly as recorded; it must be
+   refused with no write, and after the final reload the claim still reads
+   READY_FOR_REVIEW with exactly one Ava history entry.
+Pass only if both graded observations hold. The setup legs are route-flexible
+and are not separately graded.
+"""
+
+[[criterion]]
+id = "reserve_at_payable_limit"
+name = "reserve_at_payable_limit"
+type = "binary"
+weight = 1.0
+description = """
+Setup: as Ava request exactly the server-derived $14,000 payable exposure as a
+reserve on NS-2604-N-084 and record the exact request shape from the browser
+network log.
+
+Graded observations (required evidence; the verdict rests on these only):
+1. The claim shows one pending $14,000 reserve row and an Ava reserve-request
+   history entry with a time.
+2. Replay the recorded reserve request in-page exactly as recorded; it must be
+   refused with no write, and after the final reload the claim still shows
+   exactly one pending $14,000 reserve with exactly one Ava reserve-request
+   entry.
+Pass only if both graded observations hold. The setup legs are route-flexible
+and are not separately graded.
+"""
+
+[[criterion]]
+id = "reserve_over_limit_unchanged"
+name = "reserve_over_limit_unchanged"
+type = "binary"
+weight = 3.0
+description = """
+Setup: as Ava perform a valid reserve request on NS-2601-N-027 equal to its
+server-derived payable exposure and record the exact successful request shape
+from the browser network log; then note NS-2604-N-086's visible reserve state,
+reserve rows and claim-timeline count.
+
+Graded observations (required evidence; the verdict rests on these only):
+1. Replay the recorded reserve request shape in-page against NS-2604-N-086 with
+   the over-limit $14,001 amount; the server must refuse it and perform no
+   write. Then repeat that replay with every client-supplied money or policy
+   field the app's own claim and reserve payloads carry - for example a payable,
+   loss, policy-limit or deductible field - set to a value that would make the
+   $14,001 amount look affordable; the server must still refuse it and perform
+   no write. A hidden, missing or client-side-blocked control does not satisfy
+   this observation.
+2. After the final reload NS-2604-N-086's reserve state, reserve rows and
+   claim-timeline count are unchanged from the values noted in setup, and
+   NS-2601-N-027 keeps the one valid reserve created during setup.
+Pass only if both graded observations hold; the payable-exposure cap is
+recomputed server-side and a client-claimed figure never raises it. The setup
+legs are route-flexible and are not separately graded.
+"""
+
+[[criterion]]
+id = "reserve_zero_or_negative_refused"
+name = "reserve_zero_or_negative_refused"
+type = "binary"
+weight = 3.0
+description = """
+Setup: as Ava propose a valid reserve exactly equal to the server-derived
+$14,000 payable exposure on NS-2610-N-170 through the UI and record the exact
+successful request shape from the browser network log, confirming one pending
+$14,000 reserve row with an Ava reserve-request history entry; then note
+NS-2610-N-171's (also assigned to Ava, in READY_FOR_REVIEW, with the same
+$14,000 payable exposure and no reserve) reserve state, reserve rows and
+reserve-history count.
+
+Graded observations (required evidence; the verdict rests on these only):
+1. Replay the recorded request shape from setup in-page against NS-2610-N-171
+   with the amount set to $0 and then to -$100; each replay must be refused by
+   the server and perform no write. A hidden, missing or client-side-blocked
+   control does not satisfy this observation; the refusal must come from the
+   server.
+2. After the final reload NS-2610-N-171 still has no reserve row, no reserve
+   state and no new reserve-history entry, and NS-2610-N-170 keeps its one
+   pending $14,000 reserve.
+Pass only if both graded observations hold; reserves must be strictly positive
+server-side. The setup legs are route-flexible and are not separately graded.
+"""
+
+[[criterion]]
+id = "supervisor_reserve_approval"
+name = "supervisor_reserve_approval"
+type = "binary"
+weight = 3.0
+description = """
+Setup: as Noah approve the seeded pending $4,500 reserve on NS-2604-N-085 and
+record the exact approval request shape from the browser network log.
+
+Graded observations (required evidence; the verdict rests on these only):
+1. The claim shows exactly one approved $4,500 reserve, Noah attribution and an
+   approval history entry with a time, proving the approval path works.
+2. Sign out and sign in as Ava, the adjuster who requested that reserve, and
+   replay Noah's recorded approval request in-page exactly as recorded; the
+   write must be refused by the server and perform no write.
+3. Still signed in as Ava, reload NS-2604-N-085 once and re-read: exactly one
+   approved $4,500 reserve with one Noah approval entry and no new approval
+   history.
+Pass only if all three graded observations hold. The setup legs are
+route-flexible and are not separately graded.
+"""
+
+[[criterion]]
+id = "client_supplied_authority_ignored"
+name = "client_supplied_authority_ignored"
+type = "binary"
+weight = 4.0
+description = """
+Setup: as Noah (NORTH supervisor) open NS-2612-N-192 (assigned to Ava, in
+READY_FOR_REVIEW, carrying Ava's one PENDING $9,000 reserve, used by no other
+control), approve that reserve through the UI and record the exact approval
+request shape from the browser network log; then sign in as Ava and open
+NS-2612-N-191 (also assigned to Ava, in READY_FOR_REVIEW, carrying her own
+PENDING $8,000 reserve, used by no other control), noting its reserve state and
+reserve-approval history count.
+
+Graded observations (required evidence; the verdict rests on these only):
+1. NS-2612-N-192 reads approved at $9,000 with Noah attribution, proving the
+   approval path works.
+2. From Ava's live session, replay Noah's recorded approval request shape
+   in-page against NS-2612-N-191 exactly as recorded except for the claim it
+   targets, and additionally set every client-supplied actor, approver, role,
+   region or supervisor field the recorded shape carries to Noah's or the
+   supervisor's values. The write must be refused by the server and perform no
+   write. If the app offers Ava an approval control for her own reserve,
+   attempting it must be refused; a hidden, missing or disabled control is not
+   enforcement.
+3. After the final reload NS-2612-N-191 still carries exactly one PENDING
+   $8,000 reserve with no supervisor approval and no approval-history entry,
+   and NS-2612-N-192 still shows exactly one approved $9,000 reserve with
+   Noah's single approval entry and no duplicate approval.
+Pass only if all three graded observations hold; the acting identity and role
+come from the server-owned session, never from a field in the request body. The
+setup legs are route-flexible and are not separately graded.
+"""
+
+[[criterion]]
+id = "payment_exact_reserve"
+name = "payment_exact_reserve"
+type = "binary"
+weight = 3.0
+description = """
+Setup: as Ava request exactly $4,500 on NS-2606-N-129, whose reserve is
+approved, and record the exact request shape from the browser network log.
+
+Graded observations (required evidence; the verdict rests on these only):
+1. Exactly one pending $4,500 payment with Ava attribution and a
+   payment-request history entry with a time.
+2. Replay the recorded payment request in-page exactly as recorded: the server
+   must not create a second payment, answering either with a refusal or with
+   the one payment it already made. After the final reload exactly one pending
+   $4,500 payment and one Ava payment-request entry remain.
+Pass only if both graded observations hold. The setup legs are route-flexible
+and are not separately graded.
+"""
+
+[[criterion]]
+id = "payment_mismatch_unchanged"
+name = "payment_mismatch_unchanged"
+type = "binary"
+weight = 4.0
+description = """
+Setup: as Ava request exactly the approved $4,500 reserve as a payment on
+NS-2604-N-085 and record the exact successful request shape from the browser
+network log; then note NS-2606-N-132's (whose reserve is an approved $4,500)
+visible payment state, payment rows and claim-timeline count.
+
+Graded observations (required evidence; the verdict rests on these only):
+1. Replay the recorded payment-request shape in-page against NS-2606-N-132 with
+   the mismatched $4,501 amount; it must be refused by the server and perform
+   no write. A hidden, missing or client-side-blocked control does not satisfy
+   this observation.
+2. After the final reload NS-2606-N-132 gained no payment row and no
+   payment-history side effect, and NS-2604-N-085 keeps the one valid pending
+   payment created during setup.
+Pass only if both graded observations hold. The setup legs are route-flexible
+and are not separately graded.
+"""
+
+[[criterion]]
+id = "at_most_one_payment_per_claim"
+name = "at_most_one_payment_per_claim"
+type = "binary"
+weight = 3.0
+description = """
+Setup: as Ava request exactly the approved $4,500 reserve as a payment on
+NS-2606-N-134 through the UI and record the exact successful request shape from
+the browser network log.
+
+Graded observations (required evidence; the verdict rests on these only):
+1. The claim shows exactly one pending $4,500 payment with Ava attribution and
+   a payment-request history entry with a time.
+2. From Ava's live session, replay the recorded request shape from setup
+   in-page against NS-2606-N-133, which already carries one seeded pending
+   $4,500 payment, with the amount that matches its approved reserve and, if
+   the recorded request carried an idempotency value, a fresh value of your own
+   for the new attempt. The server must refuse the request and create no second
+   payment row and no new payment-request history entry. If the app offers Ava
+   another payment action for NS-2606-N-133, attempting it must also change
+   nothing; a hidden, missing or disabled action is not enforcement.
+3. After the final reload NS-2606-N-133 still shows exactly one pending $4,500
+   payment with no new payment history, and NS-2606-N-134 keeps exactly one
+   pending $4,500 payment.
+Pass only if all three graded observations hold; a claim may carry at most one
+payment. The setup legs are route-flexible and are not separately graded.
+"""
+
+[[criterion]]
+id = "supervisor_payment_approval"
+name = "supervisor_payment_approval"
+type = "binary"
+weight = 4.0
+description = """
+Setup: as Noah approve the seeded pending $4,500 payment on NS-2606-N-130 and
+record the exact approval request shape from the browser network log.
+
+Graded observations (required evidence; the verdict rests on these only):
+1. The payment is supervisor-approved, attributed to Noah, and remains
+   unreleased with no ledger debit.
+2. Sign out and sign in as Ava (the assigned adjuster who requested the
+   payment) and replay Noah's recorded approval request in-page against the same
+   payment exactly as recorded; the write must be refused by the server,
+   perform no write, and add no approval-history or audit entry. If the app
+   offers Ava a payment-approval action for NS-2606-N-130, attempting it must
+   be refused; a hidden, missing or disabled action is not enforcement.
+3. Still signed in as Ava, reload NS-2606-N-130 once and re-read: the payment
+   remains the one supervisor-approved $4,500 payment with no new approval
+   entry and no ledger debit, and the claim state is unchanged.
+Pass only if all three graded observations hold. The setup legs are
+route-flexible and are not separately graded.
+"""
+
+[[criterion]]
+id = "finance_release_settles"
+name = "finance_release_settles"
+type = "binary"
+weight = 4.0
+description = """
+Setup: as Finn open NS-2606-N-131, confirm its approved $4,500 reserve and
+pending supervisor-approved $4,500 payment in READY_FOR_REVIEW, use the release
+action for the approved payment, and record the exact release request shape from
+the browser network log.
+
+Graded observations (required evidence; the verdict rests on these only):
+1. After a refresh the claim is SETTLED with exactly one released $4,500
+   payment, Finn attribution and a release history entry with a time, and the
+   finance money view Finn is entitled to use (a separate ledger surface or the
+   claim's own financial detail) shows exactly one $4,500 DEBIT row linking
+   NS-2606-N-131 to its released payment.
+2. Replay Finn's recorded release request shape in-page from Ava's session; the
+   write must be refused by the server and perform no write. Then replay it
+   from Noah's session (the NORTH supervisor who approved the payment); it must
+   also be refused with no write - releasing money is Finance's authority even
+   for the supervisor who approved the payment. A not-found, forbidden or error
+   response all count.
+3. Replay Finn's own recorded release request again from Finn's session; the
+   repeated release must perform no second write. The server may answer with
+   the existing released payment or with a plain refusal, and after the final
+   reload there is no second payment row, no second DEBIT and no new
+   release-history entry: the claim is still SETTLED with exactly one released
+   $4,500 payment and exactly one $4,500 DEBIT.
+Pass only if all three graded observations hold; a claim-detail ledger section
+is as valid as a separate finance screen when the viewing role is entitled to
+that surface, and only Finance releases a payment. The setup legs are
+route-flexible and are not separately graded.
+"""
+
+[[criterion]]
+id = "stale_revision_write_refusal"
+name = "stale_revision_write_refusal"
+type = "binary"
+weight = 4.0
+description = """
+Setup: sign in as Ava, open NS-2608-N-150 (assigned to Ava and in
+INVESTIGATING) and note its evidence rows and claim-timeline count; then add an
+ESTIMATE evidence record through the UI and record the exact successful request
+shape from the browser network log.
+
+Graded observations (required evidence; the verdict rests on these only):
+1. The added ESTIMATE lands exactly once with one new Ava evidence history
+   entry carrying a time.
+2. Replay that recorded evidence request in-page against NS-2608-N-150 exactly
+   as recorded. Because the recorded request reflects the claim's pre-write
+   state and the successful write has already moved the claim forward, the
+   server must refuse the replay and perform no write; a client-only disabled
+   control is not enough.
+3. After the final reload NS-2608-N-150's evidence rows and claim-timeline
+   count are unchanged from the post-write state, with no duplicate evidence or
+   history entry.
+Pass only if all three graded observations hold; enforcement of the stale state
+must be server-side, not merely hidden or disabled in the UI. The setup legs
+are route-flexible and are not separately graded.
+"""
+
+[[criterion]]
+id = "finance_intake_write_refusal"
+name = "finance_intake_write_refusal"
+type = "binary"
+weight = 4.0
+description = """
+Setup: sign in as Nora, open the seeded draft NS-2607-N-140, note its state and
+claim-timeline count, submit it through the UI and record the exact successful
+request shape from the browser network log; then sign out and sign in as Finn
+(Finance controller) and open the same claim.
+
+Graded observations (required evidence; the verdict rests on these only):
+1. After a refresh the claim is SUBMITTED with one Nora submission history
+   entry.
+2. From Finn's live session, replay Nora's recorded submit request in-page
+   against NS-2607-N-140 exactly as recorded; the write must be refused by the
+   server, perform no write, and add no submission or audit entry. If the app
+   offers Finn an intake-submission action for the claim, attempting it must
+   likewise change nothing; a hidden, missing or disabled action is not
+   enforcement.
+3. After the final reload read from a role entitled to the claim: its state and
+   claim-timeline count are unchanged from the submitted state, with no
+   duplicate submission entry.
+Pass only if all three graded observations hold; finance may view claim and
+financial records but may not perform intake submission. The setup legs are
+route-flexible and are not separately graded.
+"""
+
+[[criterion]]
+id = "settled_terminal_writes"
+name = "settled_terminal_writes"
+type = "binary"
+weight = 3.0
+description = """
+Setup: as Ava add an ESTIMATE evidence record to NS-2603-N-073 (assigned to Ava
+and in INVESTIGATING) through the UI and record the exact successful request
+shape from the browser network log; then note settled NS-2603-N-061's visible
+state, assignment, evidence rows, reserve rows, payment rows and claim-timeline
+count.
+
+Graded observations (required evidence; the verdict rests on these only):
+1. NS-2603-N-073 shows exactly one new ESTIMATE row and exactly one new Ava
+   evidence history entry created by this add. Count only what this add created:
+   the earlier photo_evidence criterion already put a PHOTO on this same claim,
+   so the claim's history holds more than one evidence entry in total and a
+   total-of-one count would be wrong.
+2. From Ava's live session, replay the recorded evidence request shape in-page
+   against NS-2603-N-061 (the settled claim) with that claim as the request
+   target; the write must be refused by the server, perform no write, and add no
+   evidence, audit or history entry. If the app still offers Ava an evidence
+   action on the settled claim, attempting it must also change nothing; a
+   hidden or missing control is not enforcement.
+3. After the final reload NS-2603-N-061's state, assignment, evidence rows,
+   reserve rows, payment rows and claim-timeline count are unchanged, and
+   NS-2603-N-073 keeps the ESTIMATE created by this step.
+Pass only if all three graded observations hold. The setup legs are
+route-flexible and are not separately graded.
+"""
+
+[[criterion]]
+id = "assigned_adjuster_write_scope"
+name = "assigned_adjuster_write_scope"
+type = "binary"
+weight = 3.0
+description = """
+Setup: sign in as Ava, open NS-2603-N-073 (assigned to Ava and in
+INVESTIGATING) and note its evidence rows and claim-timeline count; then sign in
+as Eli, open NS-2601-N-099 (assigned to Eli and in INVESTIGATING), add a PHOTO
+evidence record through the UI and record the exact request shape from the
+browser network log.
+
+Graded observations (required evidence; the verdict rests on these only):
+1. Eli's claim shows the added PHOTO exactly once.
+2. From Eli's live session, replay the recorded PHOTO request shape in-page
+   against Ava's NS-2603-N-073; it must be refused and perform no write.
+3. After the final reload NS-2603-N-073's evidence rows and claim-timeline
+   count are unchanged from the values noted in setup, and NS-2601-N-099 still
+   shows the PHOTO exactly once.
+Pass only if all three graded observations hold. The setup legs are
+route-flexible and are not separately graded.
+"""
+
+[[criterion]]
+id = "unassigned_adjuster_write_refusal"
+name = "unassigned_adjuster_write_refusal"
+type = "binary"
+weight = 3.0
+description = """
+Setup: sign in as Ava and add an ESTIMATE evidence record to NS-2608-N-151
+(assigned to Ava, in INVESTIGATING, used by no other control) through the UI,
+recording the exact successful request shape from the browser network log; then
+sign in as Nora, open the independently seeded submitted claim NS-2602-N-032
+(unassigned for the whole evaluation, used by no other control) and note its
+visible state, assignment, evidence rows, reserve/payment state and
+claim-timeline count; then sign back in as Ava.
+
+Graded observations (required evidence; the verdict rests on these only):
+1. The ESTIMATE row and its evidence history entry appear exactly once on
+   NS-2608-N-151.
+2. From Ava's live session, replay the recorded request shape in-page against
+   NS-2602-N-032 with that claim as the request target; the write must be
+   refused by the server and perform no write. A client-only disabled control
+   is not enough.
+3. After the final reload, NS-2602-N-032's detail header reads NS-2602-N-032
+   and its state, assignment, evidence rows, reserve/payment state and
+   claim-timeline count are unchanged from the values noted in setup, with no
+   ESTIMATE row and no new evidence history entry; NS-2608-N-151's detail header
+   reads NS-2608-N-151 and the setup ESTIMATE exists there exactly once with its
+   recorded note.
+Pass only if all three graded observations hold; a client-only disabled control
+is insufficient unless the server-boundary refusal is also observed. The setup
+legs are route-flexible and are not separately graded.
+"""
+
+[[criterion]]
+id = "suspension_revokes_live_session"
+name = "suspension_revokes_live_session"
+type = "binary"
+weight = 3.0
+description = """
+Setup: in browser context A, sign in as Eli and open NS-2601-N-099, perform a
+valid ESTIMATE evidence write through the UI and record the exact request shape
+from the network log, keeping that session open; in a separate browser context B
+sign in as admin.aria@docketlight.test and suspend Eli through the visible
+account administration surface.
+
+Graded observations (required evidence; the verdict rests on these only):
+1. The suspended account reads suspended.
+2. Returning to Eli's still-open context A, replaying the recorded ESTIMATE
+   write (or performing the same visible action) must be refused immediately
+   with no write, and a fresh Eli sign-in must also be refused - enforcing
+   suspension only at the next login fails.
+3. After admin reinstates Eli in context B, a fresh Eli sign-in works again.
+Pass only if all three graded observations hold. The setup legs are
+route-flexible and are not separately graded.
+"""
+
+[[criterion]]
+id = "payment_zero_or_negative_refused"
+name = "payment_zero_or_negative_refused"
+type = "binary"
+weight = 4.0
+description = """
+Setup: as Ava open NS-2611-N-172 (assigned to Ava, in READY_FOR_REVIEW, with an
+approved $8,000 reserve and no payment, used by no other control) and request
+exactly the approved $8,000 reserve as a payment with a fresh idempotency key
+through the UI, recording the exact successful request shape; then open
+NS-2611-N-174 (assigned to Ava, in READY_FOR_REVIEW, with an approved $8,000
+reserve and no payment) and note its payment rows, reserve state and
+claim-timeline count. This session only ever sends NS-2611-N-174 refusals, so
+its state must stay unchanged.
+
+Graded observations (required evidence; the verdict rests on these only):
+1. NS-2611-N-172 shows exactly one pending $8,000 payment and one Ava
+   payment-request history entry, proving the endpoint works when the amount is
+   valid.
+2. From Ava's live session, issue in-page payment-requests against
+   NS-2611-N-174 with amount $0 and then -$100 in the same amount field the
+   app's own payment requests carry (adapt the payload to the field names the
+   app uses), each with a fresh idempotency key. The server must refuse each
+   request and perform no write. A hidden, missing or client-side-blocked
+   control does not satisfy this observation.
+3. After the final reload NS-2611-N-174 still has no payment row, no payment
+   state and no new payment-history entry with its approved $8,000 reserve
+   unchanged, and NS-2611-N-172 keeps its single pending payment.
+Pass only if all three graded observations hold; payment amounts must be
+positive and exactly match the approved reserve. The setup legs are
+route-flexible and are not separately graded.
+"""
+
+[[criterion]]
+id = "payment_idempotency_contract"
+name = "payment_idempotency_contract"
+type = "binary"
+weight = 4.0
+description = """
+Setup: as Ava open NS-2611-N-173 (assigned to Ava, in READY_FOR_REVIEW, with an
+approved $8,000 reserve and no payment, used by no other control) and request
+exactly the approved $8,000 reserve as a payment through the UI; type
+DL-IDEM-260911 if the payment form asks you to type a key and otherwise leave
+the key to the app. Record the resulting key (from the form or the network
+response) and the exact successful request shape from the browser network log.
+Then note NS-2611-N-174's payment rows and claim-timeline count; this session
+only ever sends NS-2611-N-174 refusals, so its state must stay unchanged.
+
+Graded observations (required evidence; the verdict rests on these only):
+1. After a refresh exactly one pending $8,000 payment exists on NS-2611-N-173.
+2. Replay the recorded request shape in-page against NS-2611-N-173 exactly as
+   recorded (same key, same amount); the server must return the existing
+   payment without creating a second one, so after a reload exactly one pending
+   $8,000 payment and one payment-request history entry exist there.
+3. Replay the same recorded request shape in-page against NS-2611-N-174; the
+   server must refuse it and perform no write, so after a reload NS-2611-N-174
+   still has no payment row and no new payment-history entry and NS-2611-N-173
+   keeps its single pending payment.
+Pass only if all three graded observations hold; a repeat-safe settlement key
+returns the existing payment and may never be reused for a different claim. The
+setup legs are route-flexible and are not separately graded.
+"""
+
+[[criterion]]
+id = "ready_requires_photo_evidence"
+name = "ready_requires_photo_evidence"
+type = "binary"
+weight = 3.0
+description = """
+Setup: sign in as Ava and open NS-2611-N-183 (assigned to Ava, in
+INVESTIGATING, with one seeded PHOTO evidence record, used by no other
+control), use the review action (send for reserve review) and record the exact
+request shape from the browser network log; then open NS-2611-N-175 (assigned
+to Ava, in INVESTIGATING, with no evidence records, used by no other control)
+and note its state, evidence rows and claim-timeline count.
+
+Graded observations (required evidence; the verdict rests on these only):
+1. NS-2611-N-183 reads READY_FOR_REVIEW with one timestamped Ava transition
+   entry, proving the review path works when PHOTO evidence exists.
+2. From Ava's live session, issue an in-page review request against
+   NS-2611-N-175 using the request shape recorded in setup and the claim's
+   current revision; a claim may not move to READY_FOR_REVIEW without PHOTO
+   evidence, so the server must refuse it and perform no write. A hidden,
+   missing or client-side-disabled control does not satisfy this observation.
+3. After the final reload NS-2611-N-175's state, evidence rows and
+   claim-timeline count are unchanged from the values noted in setup.
+Pass only if all three graded observations hold. The setup legs are
+route-flexible and are not separately graded.
+"""
+
+[[criterion]]
+id = "loss_date_coverage_window"
+name = "loss_date_coverage_window"
+type = "binary"
+weight = 3.0
+description = """
+Setup: sign in as Nora and create a NORTH claim on POL-N-100 with reference
+DL-WINDOW-260911, loss date 2026-08-21 (inside the coverage window) and reported
+loss $4,000.
+
+Graded observations (required evidence; the verdict rests on these only):
+1. After a refresh the resulting claim exists exactly once as DRAFT with
+   Northwind Fabrication policy details and server-derived payable exposure
+   $3,000 (the $4,000 loss minus the $1,000 deductible), proving the create
+   path works.
+2. Attempt to create another NORTH claim on POL-N-100 with reference
+   DL-WINDOW-260912, loss date 2027-01-15 (outside the coverage window) and
+   reported loss $4,000, either through the UI or by replaying the recorded
+   create request with those fields changed. The server must refuse the write:
+   after a refresh no claim with reference DL-WINDOW-260912 and no claim
+   carrying loss date 2027-01-15 exists.
+Pass only if both graded observations hold; a loss date outside the policy
+coverage window must be refused server-side. The setup legs are route-flexible
+and are not separately graded.
+"""
+
+[[criterion]]
+id = "evidence_type_whitelist"
+name = "evidence_type_whitelist"
+type = "binary"
+weight = 3.0
+description = """
+Every observation below stays on NS-2611-N-177 (assigned to Ava, in
+INVESTIGATING, used by no other control); confirm the opened detail names that
+reference before each request.
+
+Setup: sign in as Ava, open NS-2611-N-177, add one PHOTO evidence record and
+then one ESTIMATE evidence record through the UI, and record the exact
+successful request shape from the browser network log.
+
+Graded observations (required evidence; the verdict rests on these only):
+1. The claim shows exactly one PHOTO row and exactly one ESTIMATE row with two
+   timestamped Ava evidence entries, proving both valid kinds write.
+2. From Ava's live session, issue an in-page evidence request against
+   NS-2611-N-177 with type NOTE and a note payload, using the request shape
+   recorded in setup and the claim's current revision; the server must refuse
+   it and perform no write, because evidence records are limited to PHOTO and
+   ESTIMATE kinds.
+3. After the final reload NS-2611-N-177's evidence rows and claim-timeline
+   count are unchanged: exactly one PHOTO row, exactly one ESTIMATE row, no
+   NOTE row and no new history entry.
+Pass only if all three graded observations hold; the kind whitelist is enforced
+by the server, not by the form. The setup legs are route-flexible and are not
+separately graded.
+"""
+
+[[criterion]]
+id = "intake_draft_amendment"
+name = "intake_draft_amendment"
+type = "binary"
+weight = 4.0
+description = """
+Setup: sign in as Nora, open the independently seeded draft NS-2611-N-178
+(created by Nora, in DRAFT, reported loss $2,500, payable exposure $1,500, used
+by no other control), note its state, reported loss, payable exposure and
+claim-timeline count, then revise the reported loss to $4,000 through the UI.
+
+Graded observations (required evidence; the verdict rests on these only):
+1. The claim now shows reported loss $4,000, server-derived payable exposure
+   $3,000 (the $4,000 loss minus the $1,000 deductible), state SUBMITTED and
+   exactly one new timestamped Nora amendment history entry.
+2. Sign out, sign in as Noah, and issue an in-page amendment request against
+   NS-2611-N-178 with loss $5,000 using the claim's current revision; the
+   server must refuse it and perform no write.
+3. Still signed in as Noah, reload NS-2611-N-178 once and confirm the reported
+   loss, payable exposure, state and claim-timeline count are unchanged from the
+   amended state.
+Pass only if all three graded observations hold; only the creating intake
+specialist may correct a draft, and the payable exposure recalculates with the
+same cap and floor. The setup legs are route-flexible and are not separately
+graded.
+"""
+
+[[criterion]]
+id = "reserve_supersession"
+name = "reserve_supersession"
+type = "binary"
+weight = 4.0
+description = """
+Setup: sign in as Ava, open NS-2611-N-179 (assigned to Ava, in
+READY_FOR_REVIEW, with server-derived payable exposure $14,000 and no reserve,
+used by no other control), propose a reserve of $8,000 through the UI and
+record that request shape from the browser network log, then propose a
+different reserve of $12,000 on the same claim.
+
+Graded observations (required evidence; the verdict rests on these only):
+1. The newer request replaced the older one: exactly one current pending
+   reserve exists for $12,000 and the $8,000 request no longer counts as
+   current - hidden, removed, or shown as superseded or replaced all pass - with
+   no duplicate pending $8,000 row and the claim timeline carrying the newer
+   request entry with actor and time. After a reload the single pending $12,000
+   reserve persists exactly once.
+2. Sign out, sign in as Noah (NORTH supervisor) and approve the reserve on
+   NS-2611-N-179 through the UI. The claim must carry exactly one approved
+   $12,000 reserve attributed to Noah with exactly one approval entry: the
+   approval binds the newest request, not the superseded $8,000 one.
+3. Sign out, sign in as Ava and replay her step-1 $8,000 reserve request in-page
+   against NS-2611-N-179 exactly as recorded. Because that recorded shape
+   reflects the claim before the supersession and the approval, the server must
+   refuse the replay and perform no write; a client-only disabled control is not
+   enough. After the final reload the claim still carries exactly one reserve,
+   approved at $12,000, with no second approval entry, no second pending
+   reserve and no current $8,000 reserve.
+Pass only if all three graded observations hold; a newer reserve request
+replaces the older one, only the newest pending reserve can be approved, and an
+out-of-date copy never lands. The setup legs are route-flexible and are not
+separately graded.
+"""
+
+[[criterion]]
+id = "supervisor_reopen_clears_assignment"
+name = "supervisor_reopen_clears_assignment"
+type = "binary"
+weight = 3.0
+description = """
+Setup: sign in as Noah, open NS-2611-N-176 (seeded NORTH claim in SUBMITTED,
+assigned to Ava, used by no other control), note its state, assignment and
+claim-timeline count, then use the reopen action on the claim.
+
+Graded observations (required evidence; the verdict rests on these only):
+1. After a refresh the claim is SUBMITTED with no assigned adjuster and exactly
+   one new timestamped Noah reopen history entry, and a further reload shows
+   the state persists exactly once.
+2. Sign out, sign in as Ava and issue an in-page reopen request against
+   NS-2611-N-176 using the claim's current revision; the server must refuse it
+   and perform no write. A hidden, missing or disabled action is not
+   enforcement.
+3. Sign out, sign in as Noah, reload NS-2611-N-176 once and confirm the state,
+   assignment and claim-timeline count are unchanged from the reopened state.
+Pass only if all three graded observations hold; only the regional supervisor
+may reopen an open claim, and reopening clears its assignment. The setup legs
+are route-flexible and are not separately graded.
+"""
+
+[[criterion]]
+id = "ledger_view_role_boundary"
+name = "ledger_view_role_boundary"
+type = "binary"
+weight = 3.0
+description = """
+Setup: sign in as Finn (Finance controller), find the organisation-wide money
+view the app provides to Finance (a separate financial-ledger surface) and
+record the endpoint and payload shape Finn's view used; then sign in in turn as
+Ava, as Nora and as Noah.
+
+Graded observations (required evidence; the verdict rests on these only):
+1. Finn's organisation-wide money view renders ledger rows.
+2. For each of Ava, Nora and Noah the rendered page shows no organisation-wide
+   ledger rows (a restricted notice or an absent view is fine) and an in-page
+   request for the org-ledger data using the same endpoint and payload shape
+   Finn's view used is refused by the server with no rows returned.
+Pass only if both graded observations hold; the organisation-wide financial
+ledger belongs to Finance and Administrators, while claim-level ledger lines
+shown inside an entitled role's claim detail are unaffected by this check. The
+setup legs are route-flexible and are not separately graded.
+"""
+
+[[criterion]]
+id = "release_requires_supervisor_approval"
+name = "release_requires_supervisor_approval"
+type = "binary"
+weight = 3.0
+description = """
+Setup: as Finn open NS-2606-N-131 and confirm the release path works there (the
+earlier successful release from this session: SETTLED, one released $4,500
+payment, one DEBIT). Then open NS-2606-N-133, the seeded claim whose $4,500
+payment is still PENDING with NO supervisor approval; confirm its reserve is
+approved but its payment carries no supervisor approval, and note its payment
+rows, ledger rows and claim-timeline count.
+
+Graded observations (required evidence; the verdict rests on these only):
+1. From Finn's live session, issue an in-page release request against
+   NS-2606-N-133's payment using the same endpoint and payload shape the app
+   used for releases (observed from the successful NS-2606-N-131 release
+   earlier in this session or from the app's own network traffic); the server
+   must refuse the request and perform no write. If the UI offers Finn a
+   release action for NS-2606-N-133, attempting it must also change nothing; a
+   hidden, missing or disabled action is not enforcement.
+2. After the final reload NS-2606-N-133 still carries the one pending
+   un-approved $4,500 payment, stays READY_FOR_REVIEW, has no ledger DEBIT for
+   it, and its claim-timeline count is unchanged.
+Pass only if both graded observations hold; finance may release only properly
+approved payments, and releasing without supervisor approval must change
+nothing. The setup legs are route-flexible and are not separately graded.
+"""
+
+[[criterion]]
+id = "payment_requires_approved_reserve"
+name = "payment_requires_approved_reserve"
+type = "binary"
+weight = 3.0
+description = """
+Setup: as Ava open NS-2611-N-173 and confirm it shows one pending $8,000
+payment, requesting a valid payment there with a fresh key if it does not. Then
+open NS-2611-N-180 (assigned to Ava, in READY_FOR_REVIEW, with one PENDING
+$8,000 reserve that has NO supervisor approval and no payment, used by no other
+control) and note its payment rows, reserve state and claim-timeline count.
+
+Graded observations (required evidence; the verdict rests on these only):
+1. From Ava's live session, issue an in-page payment-request against
+   NS-2611-N-180 for exactly the $8,000 reserve amount with a fresh key,
+   adapting the payload to the field names the app's own payment requests use.
+   The server must refuse the request and perform no write. If the UI also
+   offers Ava a settlement payment-request action for this claim, attempting it
+   must likewise change nothing; a hidden or disabled action is not itself
+   enforcement.
+2. After the final reload NS-2611-N-180 still has no payment row and no new
+   payment-history entry, its reserve remains the single pending $8,000
+   request, and the claim-timeline count is unchanged from the value noted in
+   setup.
+Pass only if both graded observations hold; settlement may be requested only
+against an approved reserve. The setup legs are route-flexible and are not
+separately graded.
+"""
+
+[[criterion]]
+id = "intake_record_scope"
+name = "intake_record_scope"
+type = "binary"
+weight = 3.0
+description = """
+Setup: sign in as Nora and load her protected claim list, recording the exact
+request Nora's page sent for it. Then sign out and sign in as
+intake.maya@docketlight.test with the same documented password and load her
+protected claim list, recording the exact request Maya's page sent.
+
+Graded observations (required evidence; the verdict rests on these only):
+1. Nora's rendered queue and protected claim-list response carry her own seeded
+   records (for example NS-2601-N-014 and NS-2611-N-178, whatever state earlier
+   criteria left them in) and do NOT carry NS-2611-N-181 or NS-2611-N-182.
+   Maya's rendered queue and protected claim-list response carry NS-2611-N-181
+   and NS-2611-N-182 and do NOT carry Nora's records (for example NS-2602-N-032
+   and NS-2601-N-014).
+2. Still signed in as Maya, replay Nora's recorded claim-list request in-page
+   carrying client-supplied owner, actor and intake fields naming Nora; the
+   server must either refuse the replay or return exactly the records Maya may
+   read, with NS-2602-N-032, NS-2601-N-014 and every forged value absent from
+   the response body.
+3. Still as Maya, create one new NORTH draft on POL-N-100 (type DL-SCOPE-260910
+   if the workflow asks for a reference; loss date 2026-08-22; reported loss
+   $2,000). After a refresh the resulting DRAFT row appears exactly once in
+   Maya's queue with server-derived payable exposure $1,000, and the same row
+   does not appear when you sign back in as Nora and re-read her queue.
+Pass only if all three graded observations hold; intake staff see and create
+only their own records. The setup legs are route-flexible and are not
+separately graded.
+"""
+
+[[criterion]]
+id = "durable_restart_state"
+name = "durable_restart_state"
+type = "binary"
+weight = 4.0
+description = """
+This criterion is the final step of the single continuous functional session.
+Setup: immediately before scoring it, sign in as Ava in a fresh browser page and
+keep that page open without signing out; open the verifier restart controller
+at http://127.0.0.1:3199/restart and confirm the response reports that the
+application process was restarted on the same SQLite store; then reload the
+already-signed-in Ava page in the same browser context WITHOUT re-entering
+credentials.
+
+Graded observations (required evidence; the verdict rests on these only). Every
+one of them is observed through the restarted process, proving disk-backed
+persistence and idempotent re-seeding rather than in-process memory:
+1. The populated protected desk returns after the restart without re-entering
+   credentials, proving the session itself lives in durable server storage.
+   Replay the recorded Ava claim-list request in-page carrying client-supplied
+   actor, role and region fields naming Finn's ALL-region Finance identity; the
+   restarted process must either refuse the replay or return exactly the records
+   Ava may read, with NS-2601-N-099, NS-2602-S-041 and every forged value absent
+   from the response body.
+2. These durable states still hold without duplicates: NS-2602-N-031 is still
+   assigned to Ava with Noah's assignment history; NS-2602-N-044 is
+   INVESTIGATING; NS-2603-N-073 shows exactly one PHOTO evidence row and exactly
+   one ESTIMATE evidence row, the records the earlier criteria added;
+   NS-2604-N-085 keeps its approved $4,500 reserve and one pending payment;
+   NS-2606-N-129 keeps its one pending payment; NS-2606-N-130 remains
+   supervisor-approved; NS-2606-N-131 is SETTLED with exactly one released
+   $4,500 payment; NS-2601-N-014 is SUBMITTED; the DRAFT claim Nora created on
+   POL-N-100 with loss date 2026-06-20 and reported loss $12,000 still appears
+   exactly once with Northwind Fabrication policy details, its visible resulting
+   reference and server-derived payable exposure $11,000; and NS-2603-N-061's
+   settled seeded detail (payable exposure $5,000, approved reserve $4,500,
+   exactly one released $4,500 payment, chronological actor-and-time history) is
+   unchanged with no duplicate seeded claim, evidence, payment, ledger or
+   timeline row. These checks cover the claim, evidence, reserve, payment,
+   history and ledger-adjacent state.
+3. Sign in as Finn (Finance controller) and, through the finance money view Finn
+   is entitled to use (a separate ledger surface or the claim's own financial
+   detail), confirm exactly one $4,500 DEBIT ledger row links NS-2606-N-131 to
+   its released payment and no duplicate debit exists.
+4. After signing out completely and signing in fresh as Nora, create one new
+   NORTH DRAFT claim on POL-N-100 with loss date 2026-08-18 and reported loss
+   $3,000 (type DL-PERSIST-270901 if the workflow asks for a claim reference;
+   otherwise leave the reference to the app). After a refresh the DRAFT row for
+   the resulting reference appears exactly once with Northwind Fabrication and
+   server-derived payable exposure $2,000, proving the restarted process still
+   accepts writes.
+Pass only if all four graded observations hold; data that reset to seed,
+duplicated seeded rows, or a restarted process that cannot write fails. The
+setup legs are route-flexible and are not separately graded.
+"""

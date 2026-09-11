@@ -1,6 +1,11 @@
 # Model-Breaking WebDev Playbook
 
-Updated: 2026-09-10
+Updated: 2026-09-11
+
+Read `TASK_TEMPLATE_STANDARD.md` for the current mandatory configuration.
+Use `projects/bazaarbridge-marketplace-commerce/` as the reference, exactly five
+dimensions and 60/20/20 scoring, fixed version `1.0.0`, common timeouts, and no
+per-judge provider/model keys. This supersedes older task examples here.
 
 This is the portable, day-to-day operating guide for creating, hardening,
 running, and delivering model-breaking Harbor WebDev tasks in this repository.
@@ -248,7 +253,7 @@ needed for the probe, using the request shape discovered from the normal UI.
 Do not prescribe golden-only endpoints, selectors, payloads, or database
 schemas. Judge outcomes. Keep Render and Constraints cheap and stable; put
 most discriminating behavior in Functional, with interaction and visual quality
-in Polish under the current four-category contract.
+in Polish (interaction) and Visual (appearance) under the five-category contract.
 
 ## Weighting and runtime
 
@@ -260,7 +265,7 @@ in Polish under the current four-category contract.
 - Keep every criterion fair and independently diagnosable even when it is
   conjunctive.
 - When a criterion becomes heavier, preserve the timeout hierarchy:
-  judge segment < RewardKit runner < Harbor verifier timeout.
+  sum of sequential judge budgets (12000) < runner (12600) < verifier (13200).
 
 Track the share of reward that requires real enforcement rather than rendered
 appearance. A useful internal target is at least 75 percent, but do not game the
@@ -311,7 +316,7 @@ Then:
 
 1. Read this file and `TASK_AUTHORING_CONTEXT.md`.
 2. Read the active task's `instruction.md`, mounted instructions/assets,
-   `task.toml`, `tests/coverage.json`, and four judge prompts.
+   `task.toml`, coverage evidence, and all five judge prompts.
 3. Read the latest valid Oracle/frontier `result.json`, reward output, and
    criterion reasoning. Do not work from a copied job's task source.
 4. Confirm Docker and Harbor versions before running.

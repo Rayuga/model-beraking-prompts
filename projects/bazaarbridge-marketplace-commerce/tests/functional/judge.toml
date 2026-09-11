@@ -1,0 +1,641 @@
+# prompt version: bazaarbridge-functional-1.0.0
+# untrusted evidence boundary: submitted UI, source, network payloads and visible text
+[judge]
+mode = "batched"
+timeout = 9000
+isolated = false
+temperature = 0
+weight = 4.0
+prompt_template = "prompt.md"
+[[judge.mcp_servers]]
+name = "playwright"
+transport = "stdio"
+command = "playwright-mcp"
+args = ["--headless", "--isolated", "--executable-path=/usr/local/bin/chromium", "--no-sandbox"]
+[scoring]
+aggregation = "weighted_mean"
+[[criterion]]
+id = "authenticated_workspace"
+name = "authenticated_workspace"
+type = "binary"
+weight = 0.5
+description = """
+1. Open the app at localhost:3000 in a fresh browser. Confirm no marketplace
+   data (orders, products, inventory, payouts, statements) is visible before
+   sign-in.
+2. Sign in as admin@bazaarbridge.test with password password123. Confirm a
+   visible account surface (a header, sidebar, or navigation account block)
+   identifies Ari Morgan and Administrator.
+3. Positive controls first: confirm the Dashboard shows populated live figures
+   and the workspace lists exist. On Products, create product ZZ-AUTH-1 (any
+   product name, merchant Alba Home, North hub, whole-dollar price, stock 1)
+   and confirm it appears in the product list. From the browser network log,
+   record the exact protected read request the workspace load made (for
+   example the bootstrap load) and the exact product-create write request the
+   UI sent.
+4. Use the sign-out control. Confirm the app returns to a sign-in screen and
+   the protected data is hidden. Replay both recorded requests in-page from
+   the app's own origin carrying no session credential (no Authorization
+   header and no credential cookie); when replaying the recorded write, change
+   only the SKU to ZZ-AUTH-2 so an auth-bypassed write would be observable.
+   Confirm each replay is refused, no write was applied (no ZZ-AUTH-2 product
+   row exists), and neither response body exposes protected rows or fields
+   such as orders, products, inventory, payouts, statements or merchant data.
+5. Confirm the app still shows the sign-in screen, then sign in again as the
+   Administrator so the evaluation can continue.
+Pass only if all legs hold.
+"""
+[[criterion]]
+id = "workspace_surfaces"
+name = "workspace_surfaces"
+type = "binary"
+weight = 0.5
+description = """
+1. As Administrator, open Dashboard, Orders, Products, Inventory, Warehouse,
+   Finance, Compliance and Admin.
+2. Each destination must visibly activate with its own meaningful heading and
+   populated content; multiple labels pointing to one unchanged screen do not
+   pass.
+3. Confirm the signed-in identity, role and (where relevant) merchant scope
+   are visible throughout.
+4. Administrative authority positive control and refusal: as Administrator in
+   Admin, suspend merchant.brook@bazaarbridge.test (Liam Voss), record the
+   exact suspend-request shape and confirm the suspended state; then reactivate
+   him and confirm Active. Sign out and sign in as the Operations lead
+   (operator@bazaarbridge.test). Confirm the Admin desk is present and renders
+   people, roles and suspension state read-only with no administrative write
+   controls. Replay the recorded suspend request in-page with the Operations
+   lead's live session credential. Confirm the server refuses the write: Liam
+   still reads Active, the Admin people directory re-reads unchanged, no new
+   activity entry records the replay as applied, and the response exposes no
+   protected rows or fields.
+Pass only if all legs hold.
+"""
+[[criterion]]
+id = "order_search_and_filter"
+name = "order_search_and_filter"
+type = "binary"
+weight = 0.5
+description = """
+1. On Orders as Administrator, search "Nora Ellis" and require every visible
+   result to show Nora Ellis.
+2. Clear the search, filter to Shipped, and require every visible row to show
+   Shipped (seeded Shipped rows include BB-1044, BB-1001 and BB-1052;
+   BB-1045 starts On hold and BB-1047 starts Packed).
+3. Restore the empty search and filter and confirm the full collection is
+   visible again.
+Pass only if all legs hold.
+"""
+[[criterion]]
+id = "live_figures_seed"
+name = "live_figures_seed"
+type = "binary"
+weight = 1.0
+description = """
+1. As Administrator, before any order or payout in this evaluation has been
+   changed, read the Dashboard.
+2. Confirm the exact monetary values: gross sales 16,596 (the 13
+   non-cancelled booked orders in the seed, returned orders included), order
+   count 13, ready payout 81.40 (only PAY-301 is Approved at seed), and owed
+   to merchants 14,018.92. Judge the value, not the rendering: any currency
+   presentation that denotes the same exact amount passes, so $16,596 and
+   $16,596.00 both pass for gross sales and cents may be shown or omitted
+   for every figure.
+3. Open the per-merchant statements and confirm Alba Home 183.22, Brook
+   Outdoor 13,784.94 and Cinder Living 50.76 under the same exact-value rule.
+4. Hard-reload the page and confirm the same figures return, then quote the
+   exact amounts you observed in your reasoning.
+5. Apply a real filter on the Orders desk that leaves a strict subset of the
+   collection visible (for example search "Nora Ellis" or filter the status
+   list to Shipped). Keep the filter active, open the Dashboard, and re-read
+   the headline gross sales and order count. They must still be the global
+   seeded figures 16,596 and 13 — never the filtered subset's total and
+   count. Return to Orders, clear the filter, and confirm the full
+   collection is visible again.
+Pass only if all legs hold.
+"""
+[[criterion]]
+id = "low_stock_flagging"
+name = "low_stock_flagging"
+type = "binary"
+weight = 0.5
+description = """
+1. On Inventory, confirm AL-THROW-4 (stock 7, reorder 8) and BR-PACK-2 (stock
+   4, reorder 7) are visibly flagged low stock, and AL-LAMP-1 (stock 30, reorder
+   8) is not flagged.
+2. Set AL-THROW-4 stock to 20 through the stock control with a reason. Confirm
+   the low-stock flag clears after a refresh.
+3. Set CI-STONE-3 stock to 5 with the reason "demand dip". Confirm it becomes
+   flagged low stock.
+Pass only if all legs hold.
+"""
+[[criterion]]
+id = "settlement_tier_boundary"
+name = "settlement_tier_boundary"
+type = "binary"
+weight = 1.0
+description = """
+1. As Operations lead (operator@bazaarbridge.test), move BB-1047 (Brook
+   Outdoor, total 300, seed status Packed) to Shipped through the order
+   control. Confirm success.
+2. Open the Brook Outdoor statement. Net payable must read $14,057.94 (seed
+   current $13,784.94 plus $273.00; the $300 order must be charged 6%
+   commission, not 9%).
+3. Confirm the BB-1047 working line shows commission $18.00, processing $9.00
+   and net $273.00.
+Pass only if all legs hold.
+"""
+[[criterion]]
+id = "settlement_live_recalculation"
+name = "settlement_live_recalculation"
+type = "binary"
+weight = 1.0
+description = """
+1. As Operations lead, move BB-1048 (Alba Home, total 240, seed status New)
+   first to Packed and then to Shipped; the order control does not allow
+   skipping the packed step.
+2. Confirm Alba Home net payable becomes $394.36: seed current $183.22 plus
+   order net $211.14 (240 minus $21.60 commission at 9% minus $7.26
+   processing).
+3. Hard-reload and confirm the figure is still derived from current data
+   rather than a stored constant; quote both figures.
+Pass only if all legs hold.
+"""
+[[criterion]]
+id = "settlement_excludes_unfulfilled"
+name = "settlement_excludes_unfulfilled"
+type = "binary"
+weight = 1.0
+description = """
+1. Confirm non-Shipped orders never contribute to a settlement: BB-1045
+   (Cinder, On hold, total 128), BB-1053 (Cinder, Packed, total 30) and
+   BB-1043 (Alba, Returned, total 310) must not appear in any merchant's
+   settlement lines; BB-1048, BB-1046 (Alba) and BB-1050 (Alba) are currently
+   Shipped.
+2. As Operations lead, open a return for BB-1046 (Alba, total 96) with a
+   reason. Confirm the return is Requested and the order still reads Shipped.
+   As Warehouse lead, record the receipt. Confirm BB-1046 now reads Returned,
+   Alba net payable drops by exactly $81.40 to $312.96, and the BB-1046 line
+   disappears from the statement.
+Pass only if all legs hold.
+"""
+[[criterion]]
+id = "product_create_chain"
+name = "product_create_chain"
+type = "binary"
+weight = 4.5
+description = """
+1. As Administrator, create product SKU AL-TRAY-2, name Planter, merchant
+   Alba Home, hub North hub, price 45, stock 8, reorder level 5. Confirm it
+   appears in Products.
+2. Attempt to create the same SKU again as "al-tray-2" (letter case differs)
+   through the product form. Confirm a visible refusal and that the original
+   product is unchanged after a reload.
+3. Record the exact create-request shape. Replay it in-page with the
+   lower-case SKU "al-tray-2". Verify the write is refused: on re-read no
+   second product row exists, AL-TRAY-2 still reads price 45, stock 8, Alba
+   Home, North hub, and no new activity entry was added for the duplicate.
+4. Positive control: confirm AL-TRAY-2 remains visible and editable after
+   reload.
+Pass only if all legs hold.
+"""
+[[criterion]]
+id = "product_value_boundaries"
+name = "product_value_boundaries"
+type = "binary"
+weight = 4.5
+description = """
+1. As Administrator, on AL-TRAY-1 (seed stock 10, price 40) attempt to save
+   stock -1 through the product's own control with any reason. Confirm a
+   visible refusal, reload, and confirm the stored stock is unchanged.
+2. Record the exact stock-save request shape. Replay it in-page four times:
+   stock -1, stock 12.5, an empty stock value, and stock 8 with no reason.
+   Every replay must be refused: on re-read AL-TRAY-1 stock is still 10, no
+   new activity entry was added for any refusal, and a client-side min or
+   disabled input alone is not a pass.
+3. Save stock 8 with a visible reason. Confirm it succeeds and persists after
+   reload.
+4. Attempt to create a new product priced 12.50 (SKU AL-TRAY-3, any name)
+   through the product form. Confirm refusal and no new product row.
+Pass only if all legs hold.
+"""
+[[criterion]]
+id = "stock_adjustment_conservation"
+name = "stock_adjustment_conservation"
+type = "binary"
+weight = 4.5
+description = """
+1. On BR-HAMMOCK-1 (seed stock 6, reorder 3), attempt a stock save with no
+   reason. Confirm a visible refusal and stock unchanged.
+2. Attempt stock -1 with a reason. Confirm refusal and stock unchanged after
+   reload.
+3. Record the successful save shape (stock 0, reason "discontinued"). Replay
+   the exact request in-page. Confirm the first save applied exactly once and
+   stock re-reads 0 with no duplicate activity entry.
+4. Replay the same request a third time and confirm the same: exactly one
+   effect and one activity entry.
+Pass only if all legs hold.
+"""
+[[criterion]]
+id = "final_unit_reservation"
+name = "final_unit_reservation"
+type = "binary"
+weight = 4.5
+description = """
+1. CI-VASE-1 starts with stock 1 and zero reserved units. As Operations lead,
+   create an order for CI-VASE-1 quantity 1, customer "Race One", through the
+   Orders form. Confirm success.
+2. On the product or inventory view, confirm CI-VASE-1's displayed state
+   makes it unambiguous that the only unit is spoken for: either an available
+   count of 0 is shown, or stock 1 and reserved 1 are shown so available 0 is
+   directly derivable from the displayed values.
+3. Attempt to create a second order for CI-VASE-1 quantity 1, customer "Race
+   Two". Confirm a visible refusal.
+4. Record the exact order-create request shape and replay it in-page. Verify
+   the write is refused: only the first order exists, stock/reserved are
+   unchanged, and no new activity entry was added.
+5. Cancel the first order through its control. Confirm reserved returns to 0.
+   Replay the exact cancel request twice. Confirm no double compensation and
+   exactly one cancellation activity entry.
+Pass only if all legs hold.
+"""
+[[criterion]]
+id = "order_create_cancel_chain"
+name = "order_create_cancel_chain"
+type = "binary"
+weight = 4.5
+description = """
+1. As Operations lead, create an order for BR-ROPE-1 quantity 2, customer
+   "Decoy Buyer", through the Orders form. Before submitting, add extra
+   payload fields total=9999, unit_price=999, merchant_id=M-CINDER and
+   owner=intruder to the request the page would send (or replay the recorded
+   shape with those fields added). Extra fields must never by themselves make
+   the write fail.
+2. Confirm the request succeeds and the saved order shows unit price $25.00,
+   total $50.00, merchant Brook Outdoor, hub South hub, status New and
+   quantity 2; fields the server does not own or derive were ignored, and the
+   stored values come from the stored product and the signed-in user.
+3. Cancel the newly created order. Confirm it shows Cancelled and the
+   BR-ROPE-1 reserved count reflects the cancellation exactly once.
+4. Replay the exact cancel request twice. Confirm no second effect and
+   exactly one cancellation activity entry for that order.
+Pass only if all legs hold.
+"""
+[[criterion]]
+id = "order_status_guards"
+name = "order_status_guards"
+type = "binary"
+weight = 4.5
+description = """
+1. Positive control: as Operations lead, open Orders and move BB-1045 (On
+   hold) to Packed through the order control. Confirm the move succeeds,
+   record the exact request shape, and confirm BB-1045 reads Packed with
+   exactly one activity entry. Replay that exact request twice more. Each
+   replay must not create a second effect: BB-1045 stays Packed, no duplicate
+   row, and no extra activity entry.
+2. Reuse the recorded status-change shape against BB-1043 (Returned, Alba,
+   total 310) with status Packed and then with status Shipped, changing only
+   the status value between attempts. The app may omit the status control on
+   terminal Returned rows, so do not require a visible control; the refusal
+   must come from the server when the recorded/replayed request is sent. Each
+   attempt must be refused, BB-1043 must re-read Returned, and no new activity
+   entry may be added.
+3. Keep the extra-fields success leg: replay the recorded status-change shape
+   against BB-1051 (Packed, Alba, total 120) with status Shipped while adding
+   fields total=9999, merchant_id=M-CINDER, customer=Hacker, quantity=99 and
+   owner=intruder. The status change must succeed — extra fields alone must
+   not cause a rejection — but the stored order must still read total
+   $120.00, merchant Alba Home, customer Kai Sims, quantity 1, and the Alba
+   statement must be computed from stored data.
+Pass only if all legs hold.
+"""
+[[criterion]]
+id = "fulfillment_chain"
+name = "fulfillment_chain"
+type = "binary"
+weight = 4.5
+description = """
+1. BB-1053 (Cinder, total 30, Packed, East hub) is waiting for fulfilment. As
+   Warehouse lead, attempt to create a shipment for it from North hub using
+   the shipment form. Confirm refusal and no shipment row.
+2. Create the shipment for BB-1053 from East hub. Confirm it appears CREATED.
+3. Record the step request shape. Attempt IN_TRANSIT directly (skipping
+   PICKED). Confirm refusal and the shipment still CREATED.
+4. Drive PICKED, then IN_TRANSIT, then DELIVERED in order. Confirm each
+   succeeds. Per the operating policy, delivering a shipment completes its
+   order, so confirm the order reads Shipped and its reserved stock was
+   consumed exactly once.
+5. After DELIVERED, replay an earlier step request. Confirm refusal, the
+   shipment stays DELIVERED (terminal), the order is not shipped or
+   stock-consumed a second time, and the Cinder statement is derived from the
+   stored Shipped orders and reads $75.99.
+Pass only if all legs hold.
+"""
+[[criterion]]
+id = "payout_composition"
+name = "payout_composition"
+type = "binary"
+weight = 3.0
+description = """
+1. Open the seeded payout PAY-301 (Alba Home) and confirm its row shows a
+   breakdown whose working sums to its stored amount; quote that amount. By
+   this point PAY-301 may be Approved or Stale because Alba orders were
+   shipped earlier in the evaluation; either visible state passes as long as
+   the row and its working are present.
+2. As Finance manager, request a payout for Brook Outdoor through the payout
+   form with a reference you type (for example audit-1). Per the brief the
+   server works the amount out from the merchant's current statement and shows
+   that working; confirm the payout amount equals the working shown and that
+   an amount field injected into the request is ignored.
+3. Replay the exact request with the SAME reference and an injected amount
+   of 99999. Confirm the same payout id returns and no second payout row or
+   activity entry was created.
+4. Request another Brook payout with a different reference. Confirm a
+   separate payout row appears with a new payout id whose amount again equals
+   its own current-statement working; the first reference still returns only
+   its own row.
+Pass only if all legs hold.
+"""
+[[criterion]]
+id = "payout_approval_chain"
+name = "payout_approval_chain"
+type = "binary"
+weight = 5.0
+description = """
+1. As Finance manager, request a new payout for Brook Outdoor with a fresh
+   reference. Quote the amount and confirm it equals the current-statement
+   working the app shows; the $10,000 two-person rule applies because the
+   amount is at or above that threshold.
+2. As the same Finance manager, attempt to approve it. Confirm refusal.
+3. As Finance checker, approve it. Confirm it shows Approved.
+4. As Operations lead, move BB-1054 (Brook, total 50, Packed) to Shipped.
+   Quote the updated Brook statement and working.
+5. Re-read the payout that step 3 approved. Because a new Shipped order
+   landed for Brook Outdoor, that payout must now be Stale/voided immediately
+   and must not count toward ready payout; if the app records the
+   invalidation as its own transition, exactly one such entry exists and no
+   second approval entry was added. As Finance checker, replay the exact
+   approval request for the payout. Confirm an ordinary refusal and that the
+   payout re-reads Stale/voided unchanged. Hard-reload the page, then re-read
+   the payout and Dashboard; the Stale/voided state and the reduced ready
+   payout must still be visible immediately.
+6. Request a fresh Brook payout (new reference) and approve it as Finance
+   checker. Confirm it succeeds and its amount equals the current-statement
+   working shown — this is the positive control.
+Pass only if all legs hold.
+"""
+[[criterion]]
+id = "payout_terminal_freeze_chain"
+name = "payout_terminal_freeze_chain"
+type = "binary"
+weight = 5.0
+description = """
+1. Alba orders were shipped in earlier criteria, so any Alba payout approved
+   before those shipments is Stale. Before freezing, create a payout that
+   stays valid: as Finance manager, request an Alba payout with a fresh
+   reference you type and confirm the amount equals the current-statement
+   working shown; as Finance checker, approve it and confirm Approved. Record
+   both request shapes.
+2. As Compliance officer, attempt to freeze M-ALBA with an empty reason.
+   Confirm refusal. Freeze it with reason "audit hold". Confirm success and a
+   visible frozen state.
+3. BEFORE step 4, while M-ALBA remains frozen, as Finance checker attempt to
+   release the payout approved in step 1 using the visible Release control or
+   a recorded replay. Confirm refusal and the payout stays Approved. As
+   Finance manager attempt a new Alba payout using the visible Request payout
+   form or a recorded replay. Confirm refusal. These refusals must happen
+   before any unfreeze; replaying them after step 4 does not satisfy this leg.
+4. As Compliance officer, unfreeze with an empty reason (refused), then with
+   reason "cleared". Confirm success.
+5. Read and quote the Dashboard ready payout immediately before release. As
+   Finance checker, release the payout approved in step 1. Immediately re-read
+   and quote the Dashboard ready payout; the drop must equal that payout's
+   amount.
+6. Replay the release request again. Confirm refusal; the payout stays Paid
+   and ready payout unchanged.
+7. Positive control: after the payout is Paid and M-ALBA is active, as
+   Finance manager request a new Alba payout with a fresh reference you type
+   and, as Finance checker, approve it. Confirm the request and approval
+   succeed with the app's own current-statement working.
+Pass only if all legs hold.
+"""
+[[criterion]]
+id = "return_refund_chain"
+name = "return_refund_chain"
+type = "binary"
+weight = 5.0
+description = """
+1. BB-1050 (Alba, total 120) was delivered with its 30-day return window
+   already closed; BB-1049 (Brook, total 50) is still inside its window.
+2. As Operations lead, attempt to open a return for BB-1050 with reason
+   "defect". Confirm a visible refusal. After the refusal, re-read BB-1050
+   and confirm it still reads Shipped.
+3. As Operations lead, open a return for BB-1049 with reason "wrong size".
+   Confirm success and a visible return record in Requested status. Per the
+   operating policy, the order remains Shipped while the return is only
+   requested: re-read BB-1049 and confirm it still reads Shipped and the
+   Brook settlement still includes it as a Shipped order.
+4. As Finance manager, before the Warehouse lead records a receipt, submit a
+   refund request for the Requested return through the refund surface with a
+   reference you type and record the exact request shape. Confirm refusal,
+   then confirm the return record still reads Requested, BB-1049 still reads
+   Shipped, no refund row exists, and no activity entry was added. Replay
+   the recorded request in-page and confirm the same refusal and unchanged
+   state. This refusal must happen at this point; replaying it after a later
+   step, including after approval, does not satisfy this leg.
+5. As Warehouse lead, record the receipt for the return. Confirm success:
+   the return record reads Received and BB-1049 now reads Returned (the
+   policy's receipt-gated transition), its reservation was released, its
+   stock was restored exactly once, and the Brook settlement no longer pays
+   it.
+6. As Finance manager, request a refund with a fresh reference you type and
+   an injected amount of 1.00. Confirm the saved refund amount is $50.00
+   (from the stored order) and status Requested.
+7. As the same Finance manager attempt to approve BEFORE the Finance checker
+   approves (use the visible attempt control, or replay the approval request
+   shape with the manager's session; a missing Approve button is not an
+   excuse). Confirm the refusal. As Finance checker approve; confirm
+   Approved; replay the exact approval request and confirm no second
+   approval effect.
+8. As Finance checker mark the refund Paid. Confirm terminal; replay Paid —
+   refused. Replay the refund request with the same reference — same refund
+   id, no duplicate.
+Pass only if all legs hold.
+"""
+[[criterion]]
+id = "merchant_scope_isolation"
+name = "merchant_scope_isolation"
+type = "binary"
+weight = 5.0
+description = """
+1. Sign in as merchant.albahome@bazaarbridge.test (password password123).
+   Confirm a visible account surface (a header, sidebar, or navigation
+   account block) identifies Dana Holm, Merchant and Alba Home.
+2. Confirm his Orders, Products, Inventory and Finance worklists contain only
+   Alba Home rows; no row names Brook Outdoor or Cinder Living, and searching
+   "Trail Tent" or "Field Pack" returns nothing. Record the exact request
+   shape the Alba page used to load its workspace.
+3. Sign out. Sign in as merchant.brook@bazaarbridge.test. Positive control:
+   confirm he sees his own Trail Tent row (BR-TENT-1) and Expedition Tent row
+   (BR-MEGA-1), and that his Brook settlement is readable.
+4. Replay the recorded Alba request in-page without changes while signed in as
+   Brook. Confirm the response body contains Brook Outdoor records only: no
+   Alba customer, SKU, settlement or payout string is present in the body,
+   even if the UI would hide it.
+5. Re-read the Brook settlement after the replay and confirm he can still read
+   it.
+6. Merchant write authority. Positive controls first, each through the UI of
+    an authorized role, recording the exact request shape the page sent:
+    (a) as Operations lead, open a return for BB-1052 (Cinder, Shipped) with
+    a reason and, as Warehouse lead, record its receipt; confirm BB-1052
+    reads Returned and record both request shapes; (b) as Operations lead,
+    save AL-TRAY-1's stock to a new whole value through the stock control
+    with a visible reason and confirm success; (c) as Finance manager,
+    request a Cinder payout with a fresh reference you type and confirm
+    success; (d) as Compliance officer, freeze M-BROOK with a stated reason
+    and unfreeze it with a stated reason and confirm both succeed.
+7. Sign in as merchant.albahome@bazaarbridge.test. Replay each recorded write
+    request in-page from the app's own origin with Dana Holm's live session
+    credential, changing only what the probe needs so a bypassed write would be
+    observable: the recorded return-request shape targets BB-1054 (Brook,
+    currently Shipped, still inside its return window) with a fresh reason;
+    the stock-save request targets AL-TRAY-1 with a stock value different from
+    its stored value and the recorded reason; the payout request targets
+    M-ALBA with a fresh reference you type; and the freeze and unfreeze
+    requests target M-ALBA with the recorded reasons. Confirm every replay is
+    refused: no write applies, no protected row or field is exposed in the
+    response body, and no new activity entry records any refused change.
+8. As Administrator (or another authorized platform role), re-read the
+    affected records once: BB-1054 still reads Shipped with no return row,
+    AL-TRAY-1's stock is unchanged at the value saved in leg 6b, M-ALBA is
+    active, and no payout row or activity entry exists for Dana's replayed
+    requests. Confirm Dana can still sign in and read her own Alba rows after
+    the refusals.
+Pass only if all legs hold.
+"""
+[[criterion]]
+id = "bank_token_privacy"
+name = "bank_token_privacy"
+type = "binary"
+weight = 4.0
+description = """
+1. As Alba merchant, open the merchant/Finance surfaces and confirm the
+   Payment account area visibly shows only the last four digits 4242 and
+   never a full token string; inspect the workspace network response body as
+   well.
+2. As Operations lead or Administrator, open the Compliance surface (audit
+   trail and merchant freeze state). Confirm the screen and the workspace
+   response that populates it expose no unmasked payment data for any
+   merchant: no full bank token string and no raw payment-account credential
+   may appear. The screen may show a masked suffix (such as •••• 4242) or no
+   payment detail at all — either passes.
+3. As Finance checker (the Finance role that owns the reveal), use the Finance
+   desk's bank-token control. Confirm a full token reference is visible (it
+   begins with tok_live_) — this is the only positive control.
+4. Record that request shape. Sign in as Alba merchant and replay it.
+   Confirm refusal and that no token string comes back in the response body.
+5. Freeze/unfreeze response safety: as Compliance officer, freeze M-CINDER
+   with a stated reason using the Compliance control, then unfreeze it with a
+   stated reason. From the browser network log, inspect both response bodies
+   and confirm neither contains a full bank token string (nothing beginning
+   tok_live_) or a raw payment-account credential; a masked suffix such as
+   •••• 4242 is fine, and additional non-sensitive fields in the returned
+   merchant object do not fail this leg. Re-read once and confirm M-CINDER is
+   active again.
+Pass only if all legs hold.
+"""
+[[criterion]]
+id = "identity_immediate_control"
+name = "identity_immediate_control"
+type = "binary"
+weight = 5.0
+description = """
+1. As the Operations lead, sign in and record one protected write request
+   shape (for example a status change) and the exact session credential his
+   page used. Sign out.
+2. As Administrator, open Admin and find Owen Rivera. Suspend him. Confirm
+   success and an audit entry.
+3. Replay Owen's recorded write with his pre-suspension credential. It must
+   be refused (the session is revoked), no status changes, and no audit entry
+   is added. Attempt a new Owen sign-in — refused.
+4. As Administrator, activate Owen. Confirm Owen can sign in. As Operations
+   lead, open a return for BB-1044 (seed Shipped, Brook Outdoor) with a
+   reason and, as Warehouse lead, record its receipt; confirm BB-1044 now
+   reads Returned. Saving the same status is not a positive control.
+5. As Finance manager, sign in as Faye Chen and confirm a visible account
+   surface identifies Faye Chen and Finance manager. Record one
+   payout-request write shape her Finance desk sends and the exact session
+   credential the page used, and keep that session active (do not sign out).
+   As Administrator, change Faye Chen's role to Viewer and record the change.
+6. With Faye's active session still valid, reload or re-enter the workspace
+   without signing out and confirm the account surface identifies Faye Chen
+   and Viewer. Every desk the application presents for the Viewer role must
+   open and render readable allowed data; at least one of those desks must be
+   populated. A sign-out, lockout, blank presented desk, or completely empty
+   Viewer workspace is not retention.
+7. Replay Faye's recorded payout request with that same live Viewer session
+   credential (or the same recorded shape with a fresh reference). It must be
+   refused because the Viewer role no longer grants request authority: no
+   payout row is created, no protected data is exposed, and no activity entry
+   is added. A 401 caused by a prior sign-out does not satisfy this leg; the
+   active credential must be refused for authority rather than authentication.
+8. As Administrator, restore Faye Chen to Finance manager. With the active
+   session (or after a fresh sign-in), request a fresh payout through the
+   Finance surface with a new reference and confirm it succeeds — the
+   positive control.
+Pass only if all legs hold.
+"""
+[[criterion]]
+id = "mutation_activity_trail"
+name = "mutation_activity_trail"
+type = "binary"
+weight = 2.0
+description = """
+1. Open Dashboard recent activity / Compliance audit. Confirm entries exist
+   for the actions performed earlier in this evaluation: at least one order
+   created, order shipped, order cancelled, stock updated, product created,
+   payout requested, payout approved, payout paid, merchant frozen, merchant
+   unfrozen, user suspended, user activated, user role changed, refund
+   requested, refund approved and refund paid. Match entries by the records,
+   actors and previous/new states you observed, not by exact label wording.
+2. For at least six such entries confirm actor, record id, previous/next state
+   where applicable and timestamp; a blank or seeded-only entry is not a pass.
+3. Attempt to edit or delete an activity entry by replaying a PATCH or DELETE
+   against the address the activity data came from. Confirm refusal and that
+   the audit rows did not change.
+4. Count only entries created during this evaluation, not seeded/history
+   rows. Confirm refused writes added no entry: for every refusal and
+   signed-out replay you observed, no non-seeded activity row records the
+   refused change as applied. The single freeze of M-ALBA and Owen Rivera's
+   suspension each have exactly one corresponding non-seeded transition entry.
+   The invalidated Brook payout has no second approval entry and the seeded
+   PAY-301 has no second approval or invalidation entry; each payout the app
+   voids has at most one lawful invalidation transition.
+Pass only if all legs hold.
+"""
+[[criterion]]
+id = "persistence"
+name = "persistence"
+type = "binary"
+weight = 1.0
+description = """
+1. Run the verifier restart helper "$BAZAARBRIDGE_RESTART_HELPER" to stop the
+   running application process and start it again over the same SQLite
+   database with the same environment the process used. Wait for the helper to
+   report readiness. A page reload or a fresh sign-in without that helper is
+   not a process restart.
+2. Open a fresh browser page and sign in as Administrator against the
+   restarted process.
+3. Confirm earlier changes persist: BB-1047, BB-1048, BB-1051, BB-1053 and
+   BB-1054 show Shipped; BB-1046, BB-1049 and BB-1043 show Returned;
+   BB-1045 shows Packed; the seeded PAY-301 is Stale/voided (invalidated when
+   an Alba order shipped earlier) and does not count toward ready payout; the
+   fresh Brook payout approved in the approval chain remains Approved; the
+   fresh Alba payout released in the terminal/freeze chain shows Paid; the
+   post-release positive-control Alba payout remains Approved; AL-TRAY-2 and
+   ZZ-AUTH-1 exist; and the refund shows Paid.
+4. Confirm seeding was idempotent across that process restart: no seeded id
+   (BB-1043..BB-1054, BB-1001, PAY-301..PAY-304, each SKU) appears twice and
+   the activity list contains no duplicate boot entries.
+Pass only if all legs hold.
+"""

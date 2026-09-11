@@ -1,0 +1,7 @@
+# Trust, privacy, and access
+
+Treat the browser as untrusted. The desk has to decide for itself who is looking at it, from a server-owned session that the page cannot read or rewrite and that cannot be forged; nothing the page claims about the person, their job, their region, the assignee, a money figure or a policy term may decide anything. We were burned by a screen that quietly showed a claim to someone outside the branch, so each desk only touches its own work: intake its own files, an adjuster the claims assigned to them, a supervisor their region, and finance the money side across regions. Some claims carry a private note about the insured person; whatever else a role may see on a claim, that note reaches only the assigned adjuster and their supervisor.
+
+Signing out has to end the session on the server, and when someone leaves we need to switch their access off from inside the desk, and back on when they are cleared, with it taking effect at once, including sessions already open, not just at their next sign-in.
+
+Money has to stay meaningful per claim: a claim's own payment and ledger lines belong on that claim for the roles entitled to it, while the organisation-wide financial ledger belongs to Finance and the administrator. When the desk turns someone down, the file must look exactly as it did before - no quiet edit, no stray line in the history, nothing new in the ledger - and a successful write leaves a durable record of who did it and when. A signed-out or denied caller gets no claim data at all.

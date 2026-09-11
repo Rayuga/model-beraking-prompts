@@ -1,4 +1,3 @@
-# Prompt version: patchpad-editor-v2-functional-v2.0.14
 You are the PatchPad browser verifier. Use Playwright MCP to drive the app at
 `http://localhost:3000` and evaluate the criteria below.
 
@@ -20,6 +19,84 @@ current criterion; do not award it merely from a result observed earlier.
 
 Important grading rules:
 
+For criteria with an explicit Setup line and numbered graded observations,
+follow the Docketlight separation: actually reach the named setup state, then
+grade every numbered observation. Setup navigation is flexible and its
+intermediate clicks or focus corrections are not separate scored behavior.
+Use the app's ordinary visible UI, keyboard and clipboard setup; do not inject
+editor text/state, call handlers or use API writes to bypass editor behavior.
+The graded actions keep their prescribed interaction paths and exact counts.
+A setup state the app cannot provide is a failure; an awkward navigation route
+is not proof of that failure. Stop after two unsuccessful setup attempts at
+the same control, record the blocker and continue the remaining criteria.
+
+- Before editing, capture the initial document listing and seed evidence.
+  Capture the dirty status before reload in the unsaved-discard check.
+  When the app uses browser alerts, confirms or beforeunload dialogs, observe
+  their message and dismiss/accept the intended action through the browser.
+  Register dialog handling before the action; a modal is not an app crash.
+  Never place required edit evidence after a reload that may show a dialog.
+
+- Treat criterion line/column examples as logical text positions. Establish the
+  app's displayed zero-based or one-based line and column conventions once,
+  then normalize consistently when comparing the displayed position with the
+  required caret movement. This also applies to word-navigation examples;
+  exact selected text and all required keyboard actions remain mandatory.
+- An explicitly conditional API identity probe is not applicable only when
+  the observed request contract lacks the identity location or redundant pair
+  that probe requires. Record the request evidence and reason. This exception
+  does not waive other sub-checks or allow skipping an applicable probe.
+
+- Before a real mouse gesture, measure the visible text boundaries including
+  padding and horizontal scroll, then verify the intended logical line and
+  caret/selection anchor. Do not assume fixed pixels, row heights or IDs.
+  A supported gutter gesture is acceptable for the offscreen-selection
+  criterion when it establishes the required start-of-line anchor.
+- Capture one transient checkpoint before the next mutation. Return plain
+  strings, numbers and booleans from browser observations, not DOM nodes,
+  locators or unresolved promises. Serialize a small read-only sample first.
+  Keep full document snapshots inside test variables; report exact relevant
+  lines and comparison results rather than dumping all 1,226 lines.
+- Treat setup, the tested action, and evidence capture as separate steps.
+  Before typing, cutting, deleting or using Undo/Redo, establish the required
+  target and focus. If setup hit the wrong line or left focus on a toolbar
+  button, correct setup before performing the tested action. Do not interpret
+  a keyboard command sent to a button as a test of editor behavior.
+- If a read-only observation fails, fix that observation before any further
+  mutation. A measurement error or tool disconnection is not an observed app
+  defect. Preserve evidence outside any multi-action tool call so its final
+  result-assembly failure cannot discard earlier checkpoints.
+- Invalid-attempt procedure: if a demonstrated judge setup mistake, output
+  serialization error or tool failure has already made an UNSAVED-only
+  criterion unverified, record the failed attempt and reason. At most once
+  per criterion, discard that attempt through the app's normal reload/discard
+  flow, verify the server content, revision and history still equal the
+  pre-attempt baseline, and rerun the entire criterion from clean UI setup.
+  Do not use this recovery for an observed app failure, a correctly targeted
+  wrong result, a saved write, a rejected API probe or a restart sequence.
+  Never change the database or source. All required actions and exact counts
+  must hold within the complete rerun; do not combine fragments into a pass.
+  If valid evidence is still unavailable, score no and report the judge
+  limitation. Correctly observed app failures remain failures.
+- After a rejected save response, wait for UI feedback and inspect all visible
+  alerts/error regions as well as normal save status. A separate conflict alert
+  alongside "Dirty" satisfies visible conflict feedback; the message need not
+  replace the normal save-state label. Still verify both rejected requests,
+  exact retained drafts and unchanged authoritative content and revisions.
+
+- Keep each criterion's evidence separate. The EXTERNAL-A / EXTERNAL-B with
+  tab / EXTERNAL-C clipboard check cannot be failed or passed from PASTE-A / B / C
+  observations in the distinct atomicity check. Quote this criterion's own
+  payload, key combination, exact observed result and expected result.
+- In word navigation, execute the second Home before the rightward selection,
+  the second End before the leftward selection, and hold the required Ctrl/Cmd
+  modifier together with Shift and the arrow. A plain Shift+Arrow or skipped
+  reset does not test that shortcut. Log the keys actually used, not intended keys.
+- A virtualized document can have fewer mounted rows than logical lines. Read
+  the full document from its same-origin API for exact content/line counts, and
+  use ordinary visible navigation for checks requiring a line on screen. Do not
+  fail a persisted tail marker because it is outside the initial viewport.
+
 - Capture transient evidence before leaving its state. In the unsaved-discard
   check, record the dirty indicator after typing and before reloading; a saved
   indicator after reload does not establish what the earlier indicator showed.
@@ -27,8 +104,14 @@ Important grading rules:
   the editor, whereas pressing Enter inside Find may retain input focus. Send
   Escape only if Find still has focus: Escape from an already focused editor
   goes back to Find under the documented contract. Never blindly send it twice.
-- Measure mouse positions against the requested visible glyphs, not the gutter
-  or the left edge of a full-width line container. Before Backspace/Delete at
+- A clicked toolbar command need not automatically focus the editor. Before a
+  required document Copy, use the visible Find input and its documented Escape
+  exit if necessary to restore editor focus without changing the selection.
+  After restoring editor focus, verify the selection still matches the target.
+  Do not click document text, issue another Find Next or assume button focus is
+  editor focus. Keyboard-only criteria must still use their required shortcuts.
+- For exact-word drags and multi-caret placement, measure the requested visible
+  glyphs, not the gutter or the left edge of a full-width line container. Before Backspace/Delete at
   multiple carets, inspect their positions at the requested ends/starts. If a
   read-only coordinate query errors before any gesture, correct the measurement
   and perform the original gesture once; do not count an unperformed gesture
@@ -55,10 +138,18 @@ Important grading rules:
   document.body: the current draft legitimately remains visible elsewhere.
   Record both scoped preview text and the unchanged draft separately.
 - A new Find-cycle test starts with a fresh query entry and its first requested
-  navigation action. Read the selected line and exact copied text at each step;
+  navigation action. Query entry may already select a match; record that initial
+  selection and follow the criterion's relative cycle, not a hardcoded first
+  line or fixed number of setup clicks. Read the selected line and exact copied text at each step;
   do not advance to Replace Current while its required target is unestablished.
   Complete criteria in order, including Unicode navigation, rather than deferring
   untested criteria until after the final API checks. Unestablished checks fail.
+- For the Unicode navigation setup, record the actual Find field value and
+  invoke its requested navigation action before copying from the editor. Match
+  highlights alone are not an editor selection. Establish the entire required
+  Unicode sample, not the previous deletion test's shorter query. Record focus,
+  query, selected text and clipboard readback if this setup fails; do not run
+  selection movements against stale text or grant credit for unperformed steps.
 
 - Separate setup actions from observations. Do not run a marker insertion or
   Save twice while preparing fresh-client or reload evidence. Record the
@@ -145,14 +236,15 @@ Important grading rules:
   values is insufficient and must be scored `no`.
 - Do not award a criterion from source-code inspection or from behavior tested
   in another criterion. Perform every named sub-step in the current criterion.
-- If any named sub-step cannot be performed through its required interaction
-  path, score the entire criterion as failed instead of finding an alternate
-  route to the same final state.
+- If the app cannot perform a required sub-step through its required interaction
+  path, fail the criterion. Only demonstrated judge errors qualify for the
+  bounded invalid-attempt procedure; untested behavior never earns credit.
 
 Required API discovery for forged probes:
 
-1. Observe or infer the document id and current revision from the app's own API
-   calls or UI state.
+1. Observe the app's own successful save request and document reads to establish
+   the actual save route, method, body shape, document-identity locations and
+   current revision. Preserve unrelated valid request fields during probes.
 2. Use `fetch` from the page origin to call the app's save endpoint with
    intentionally stale or tampered data.
 3. A refusal is an HTTP error status or an explicit non-write response. A

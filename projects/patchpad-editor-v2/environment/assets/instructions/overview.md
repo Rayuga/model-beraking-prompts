@@ -15,23 +15,23 @@ particular route name or document-list sidebar is required. A fresh workspace
 should list only the supplied report, and restarting the app must not add
 another copy or lose its saved content and revision history.
 
-Use one Node.js application listening on `0.0.0.0:${PORT:-3000}`, with SQLite as
-the source of truth. The application should run with `npm start` and must not
-depend on hosted databases or editor services.
+Put the finished app in `/app`. Use one Node.js application listening on
+`0.0.0.0:${PORT:-3000}`, with SQLite as the source of truth. Start it with
+`npm start` and open the editor at `/`. It must not depend on hosted databases
+or editor services.
 
-Express 5.2.1 is already available under `/opt/patchpad-deps`. You may use these
-modules or install dependencies during development. Include installed runtime
-dependencies with the delivered app so npm start needs no package download.
+Express 5.1.0 is available under `/usr/local/lib/node_modules`. You can use
+the network and install dependencies during development. Include the runtime
+dependencies with the delivered app so starting it or opening the editor
+doesn't download packages, fonts, scripts or other network assets.
 
 Build the editing area yourself with DOM, canvas, or SVG. Do not use a textarea,
 contenteditable, Monaco, CodeMirror, ProseMirror, TipTap, Quill, Slate, Draft.js,
 or another ready-made editor for the document surface.
 
-Keep an `APP_MANIFEST.md` beside `package.json` with the start command, SQLite
-path, and main API routes.
-
-Keep package.json and APP_MANIFEST.md in /app. Include one line in the manifest
-labelled `SQLite path:` followed by the absolute database file path under /app,
-optionally enclosed in backticks. The filename can have any extension or none.
+Leave an `APP_MANIFEST.md` beside `/app/package.json` with the start command,
+SQLite path and main API routes. Write the database location on one line as
+`SQLite path: /app/your-file.db`, using your actual absolute path under `/app`.
+The path may be enclosed in backticks; the filename can have any extension or none.
 A fresh database must recreate the seed;
 normal restarts must keep existing saved data. Serve runtime resources locally.

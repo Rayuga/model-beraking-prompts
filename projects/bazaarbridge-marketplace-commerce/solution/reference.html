@@ -1,0 +1,570 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BazaarBridge</title>
+<link rel="icon" href="data:,">
+<style>
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --ink:#18202b; --muted:#5d6b7c; --line:#d8dee6;
+  --brand:#1f6f8b; --brand-ink:#ffffff; --ok:#176b4a; --warn:#a05a00; --bad:#a33;
+  --shadow-sm:0 1px 2px rgba(15,23,42,.05),0 1px 3px rgba(15,23,42,.06);
+  --shadow-md:0 2px 4px rgba(15,23,42,.06),0 4px 12px rgba(15,23,42,.08);
+  --arrow-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath fill='%235d6b7c' d='M4.6 6.3a.7.7 0 0 1 .99 0L8 8.7l2.41-2.4a.7.7 0 1 1 .99.99L8.5 10.2a.7.7 0 0 1-.99 0L4.6 7.3a.7.7 0 0 1 0-1Z'/%3E%3C/svg%3E");
+}
+html[data-theme="dark"]{
+  --bg:#11161d; --panel:#1a222d; --ink:#e7edf5; --muted:#a7b4c2; --line:#2d3a4a;
+  --brand:#5ab0d0; --brand-ink:#0c141b; --ok:#6fd2a4; --warn:#e0a33e; --bad:#ff8a8a;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.24),0 1px 3px rgba(0,0,0,.26);
+  --shadow-md:0 2px 4px rgba(0,0,0,.28),0 6px 16px rgba(0,0,0,.30);
+  --arrow-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath fill='%23a7b4c2' d='M4.6 6.3a.7.7 0 0 1 .99 0L8 8.7l2.41-2.4a.7.7 0 1 1 .99.99L8.5 10.2a.7.7 0 0 1-.99 0L4.6 7.3a.7.7 0 0 1 0-1Z'/%3E%3C/svg%3E");
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,Segoe UI,Roboto,sans-serif;overflow-x:hidden}
+body{min-height:100vh}
+button,input,select,textarea{font:inherit;color:inherit}
+button{
+  cursor:pointer;border:1px solid var(--line);background:var(--panel);border-radius:9px;
+  padding:.5rem .8rem;font-weight:600;box-shadow:var(--shadow-sm);
+  transition:border-color .15s ease,box-shadow .15s ease,background-color .15s ease,transform .1s ease;
+}
+button:hover{border-color:var(--brand);background:color-mix(in srgb,var(--panel) 96%,var(--brand) 6%)}
+button:active{transform:translateY(1px)}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{
+  outline:2px solid color-mix(in srgb,var(--brand) 55%,transparent);
+  outline-offset:2px;box-shadow:0 0 0 2px color-mix(in srgb,var(--brand) 18%,transparent);
+}
+input,select,textarea{
+  width:100%;padding:.55rem .7rem;border:1px solid var(--line);border-radius:9px;
+  background:var(--panel);box-shadow:inset 0 1px 2px rgba(15,23,42,.04);
+  transition:border-color .15s ease,box-shadow .15s ease;
+}
+select{
+  appearance:none;-webkit-appearance:none;-moz-appearance:none;
+  padding-right:2.1rem;background-image:var(--arrow-icon);
+  background-repeat:no-repeat;background-position:right .65rem center;background-size:.85rem;
+}
+input[type="number"]::-webkit-outer-spin-button,input[type="number"]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+input[type="number"]{-moz-appearance:textfield;appearance:textfield}
+input:hover,select:hover,textarea:hover{border-color:color-mix(in srgb,var(--line) 55%,var(--muted) 45%)}
+label{font-weight:600;font-size:.9rem;display:block;margin-bottom:.25rem}
+.shell{padding:1.1rem;max-width:1280px;margin:0 auto}
+.brand-row{display:flex;align-items:center;gap:1rem;flex-wrap:wrap;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:.75rem}
+.brand{font-size:1.25rem;font-weight:800}
+.userchip{color:var(--muted);font-size:.9rem}
+nav[aria-label="Workspaces"]{
+  display:flex;gap:.35rem;flex-wrap:wrap;padding:.9rem 0;border-bottom:1px solid var(--line);
+  scrollbar-width:thin;
+}
+nav button{border-radius:999px;padding:.5rem .9rem;border-color:transparent;background:transparent;box-shadow:none;font-weight:600}
+nav button:hover{background:color-mix(in srgb,var(--ink) 6%,transparent);border-color:transparent}
+nav button.active{background:var(--brand);color:var(--brand-ink);border-color:var(--brand)}
+#banner{min-height:1.4em;margin:.6rem 0;padding:.6rem .8rem;border-radius:8px;font-weight:600}
+#banner.ok{background:color-mix(in srgb,var(--ok) 16%,transparent);color:var(--ok)}
+#banner.err{background:color-mix(in srgb,var(--bad) 14%,transparent);color:var(--bad)}
+h1{font-size:1.5rem;margin:.5rem 0 .75rem}
+h2{font-size:1.08rem;margin:1.4rem 0 .55rem;letter-spacing:.01em}
+.grid{display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:1.05rem 1.1rem;box-shadow:var(--shadow-sm)}
+.card h3{margin:0 0 .4rem;font-size:.95rem}
+.metric{font-size:1.65rem;font-weight:800;letter-spacing:-.015em;font-variant-numeric:tabular-nums}
+.table-wrap{
+  width:100%;max-width:100%;overflow-x:auto;background:var(--panel);
+  border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow-sm);
+  scrollbar-width:thin;scrollbar-color:var(--line) transparent;
+}
+table{border-collapse:collapse;width:100%;min-width:0}
+th,td{text-align:left;padding:.62rem .75rem;border-bottom:1px solid var(--line);vertical-align:middle}
+th{
+  font-size:.78rem;font-weight:700;color:var(--muted);letter-spacing:.035em;text-transform:uppercase;
+  background:color-mix(in srgb,var(--panel) 94%,var(--line) 6%);
+}
+tbody tr{transition:background-color .12s ease}
+tbody tr:hover{background:color-mix(in srgb,var(--ink) 2.5%,transparent)}
+tbody tr:last-child td{border-bottom:none}
+.badge{
+  display:inline-flex;align-items:center;gap:.28rem;padding:.16rem .55rem;border-radius:999px;
+  border:1px solid var(--line);font-size:.78rem;font-weight:600;letter-spacing:.01em;white-space:nowrap;
+}
+.badge.low{background:color-mix(in srgb,var(--warn) 18%,transparent);border-color:var(--warn);color:var(--warn)}
+.badge.ok{background:color-mix(in srgb,var(--ok) 16%,transparent);border-color:var(--ok);color:var(--ok)}
+.badge.bad{background:color-mix(in srgb,var(--bad) 16%,transparent);border-color:var(--bad);color:var(--bad)}
+.form-grid{display:grid;gap:.7rem;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));align-items:end}
+.actions{display:flex;gap:.5rem;flex-wrap:wrap;margin:.5rem 0}
+.row-actions,.cell-controls{display:flex;gap:.4rem;align-items:center;flex-wrap:wrap}
+.cell-controls input,.cell-controls select{width:auto}
+.cell-controls button,.cell-controls select{min-height:2.45rem}
+.muted{color:var(--muted)}
+.money{font-variant-numeric:tabular-nums}
+.login-card{max-width:430px;margin:10vh auto;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:1.7rem;box-shadow:var(--shadow-md)}
+.login-card h1{text-align:center}
+.hidden{display:none!important}
+.detail{
+  margin:.5rem 0;padding:.85rem .9rem;border:1px solid var(--line);border-left:3px solid var(--brand);
+  background:color-mix(in srgb,var(--panel) 97%,var(--brand) 5%);border-radius:0 10px 10px 0;
+  box-shadow:var(--shadow-sm);
+}
+.detail-title{font-size:.72rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.55rem}
+.work-lines{display:grid;gap:.35rem}
+.work-line{
+  display:flex;flex-wrap:wrap;column-gap:.35rem;align-items:baseline;
+  font-size:.82rem;line-height:1.5;padding:.42rem .55rem;border:1px solid var(--line);
+  border-radius:8px;background:var(--panel);font-variant-numeric:tabular-nums;
+}
+.work-line:first-letter{text-transform:uppercase}
+.work-total{margin-top:.2rem;font-weight:700;font-variant-numeric:tabular-nums}
+tbody tr:not([data-detail]) td[colspan]:only-child{padding:2.2rem 1rem;text-align:center;font-style:italic;color:var(--muted)}
+.table-wrap tr[data-detail] td{background:color-mix(in srgb,var(--panel) 98%,var(--brand) 7%)}
+.table-wrap tr.detail-row td{background:color-mix(in srgb,var(--panel) 97%,var(--brand) 6%)}
+.table-wrap tr.merchant-summary td{
+  background:color-mix(in srgb,var(--brand) 8%,var(--panel));
+  font-weight:700;border-top:1px solid var(--line);letter-spacing:.01em;
+}
+.table-wrap tr.merchant-summary:first-child td{border-top:none}
+.table-wrap tr.merchant-summary td:first-child{border-top-left-radius:4px}
+.table-wrap tr.merchant-summary td:last-child{border-top-right-radius:4px}
+@media(max-width:600px){
+  html,body{overflow-x:hidden}
+  .shell{padding:.7rem .55rem 1.2rem}
+  .brand-row{padding-bottom:.55rem}
+  nav[aria-label="Workspaces"]{
+    overflow-x:auto;flex-wrap:nowrap;margin:0 -.35rem;padding:.55rem .35rem;
+    -webkit-overflow-scrolling:touch;
+  }
+  nav button{white-space:nowrap;flex:0 0 auto}
+  .grid{gap:.65rem;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+  .card{padding:.8rem .85rem}
+  .metric{font-size:1.4rem}
+  h1{font-size:1.32rem}
+  .form-grid{grid-template-columns:1fr;gap:.55rem}
+  .table-wrap{
+    max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-inline:contain;
+  }
+  .table-wrap table{min-width:720px;width:max-content}
+  .table-wrap th,.table-wrap td{padding:.55rem .6rem;white-space:nowrap}
+  .login-card{margin:6vh auto;padding:1.3rem}
+}
+</style>
+</head>
+<body>
+<div id="login" class="login-card hidden">
+  <h1>BazaarBridge</h1>
+  <div id="login-banner" class="hidden" role="status" aria-live="polite"></div>
+  <form id="loginForm">
+    <label for="email">Email</label>
+    <input id="email" type="email" autocomplete="username" required>
+    <label for="password">Password</label>
+    <input id="password" type="password" autocomplete="current-password" required>
+    <div class="actions"><button type="submit">Sign in</button></div>
+  </form>
+</div>
+<div id="shell" class="shell hidden">
+  <header class="brand-row">
+    <div class="brand">BazaarBridge</div>
+    <div class="userchip" id="userchip"></div>
+    <div><button id="themeToggle" type="button">Theme</button> <button id="logout" type="button">Sign out</button></div>
+  </header>
+  <nav id="nav" aria-label="Workspaces"></nav>
+  <div id="banner" role="status" aria-live="polite"></div>
+  <main id="app"></main>
+</div>
+<script>
+(() => {
+  const state = {token: localStorage.getItem("bb-token") || "", user: null, data: null, workspace: "dashboard", search: "", status: "", banner: ""};
+  const $ = (id) => document.getElementById(id);
+  const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (ch) => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[ch]));
+  const fmt = (value) => Number(value).toLocaleString("en-US", {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+  document.documentElement.dataset.theme = localStorage.getItem("bb-theme") === "dark" ? "dark" : "light";
+  $("themeToggle")?.addEventListener("click", () => {
+    const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+    document.documentElement.dataset.theme = next;
+    localStorage.setItem("bb-theme", next);
+  });
+
+  async function api(path, options = {}) {
+    const headers = {"Content-Type": "application/json", ...(options.headers || {})};
+    if (state.token) headers.Authorization = "Bearer " + state.token;
+    const response = await fetch(path, {...options, headers});
+    let payload = null;
+    try { payload = await response.json(); } catch (_) {}
+    if (!response.ok) {
+      if (state.token && response.status >= 400 && response.status < 500) {
+        try { await load(); } catch (_) { /* preserve the original error */ }
+      }
+      throw new Error(payload?.error || `Request failed (${response.status})`);
+    }
+    return payload;
+  }
+
+  function setBanner(text, ok) { state.banner = text ? {text, ok} : null; }
+  function renderBanner() {
+    const node = $("banner");
+    if (!state.banner) { node.className = ""; node.textContent = ""; return; }
+    node.className = state.banner.ok ? "ok" : "err";
+    node.textContent = state.banner.text;
+  }
+  function showLogin() {
+    $("shell").classList.add("hidden");
+    $("login").classList.remove("hidden");
+    const node = $("login-banner");
+    node.className = state.banner ? (state.banner.ok ? "ok" : "err") : "hidden";
+    node.textContent = state.banner ? state.banner.text : "";
+  }
+  function showShell() {
+    $("login").classList.add("hidden");
+    $("shell").classList.remove("hidden");
+    $("login-banner").className = "hidden";
+    $("userchip").textContent = `${state.user.name} · ${state.user.role}${state.user.merchant_id ? ` · ${merchantName(state.user.merchant_id)}` : ""}`;
+  }
+
+  function navItems() {
+    const p = state.data?.permissions || {};
+    const items = [["dashboard", "Dashboard"], ["orders", "Orders"], ["products", "Products"], ["inventory", "Inventory"]];
+    if (!p.is_merchant) {
+      items.push(["warehouse", "Warehouse"], ["finance", "Finance"], ["compliance", "Compliance"], ["admin", "Admin"]);
+    } else {
+      items.push(["finance", "Finance"]);
+    }
+    return items;
+  }
+
+  function renderNav() {
+    $("nav").innerHTML = navItems().map(([id, label]) => `<button type="button" data-nav="${id}" class="${state.workspace === id ? "active" : ""}">${esc(label)}</button>`).join("");
+  }
+
+  function lowStock(sku) {
+    const product = state.data.products.find((row) => row.sku === sku);
+    return product && Number(product.stock) <= Number(product.reorder_level);
+  }
+
+  function renderDashboard() {
+    const m = state.data.metrics;
+    const rows = state.data.activity.map((row) => `<tr><td>${esc(row.created_at)}</td><td>${esc(row.action)}</td><td>${esc(row.detail)}</td><td>${esc(row.actor)}</td></tr>`).join("");
+    return `<h1>Dashboard</h1>
+      <div class="grid">
+        <div class="card"><h3>Gross sales</h3><div class="metric money">$${fmt(m.gross_sales)}</div></div>
+        <div class="card"><h3>Order count</h3><div class="metric">${m.order_count}</div></div>
+        <div class="card"><h3>Ready payout</h3><div class="metric money">$${fmt(m.ready_payout)}</div></div>
+        <div class="card"><h3>Owed to merchants</h3><div class="metric money">$${fmt(m.owed_to_merchants)}</div></div>
+      </div>
+      <h2>Recent activity</h2>
+      <div class="table-wrap"><table><thead><tr><th>When</th><th>Action</th><th>Record</th><th>Person</th></tr></thead><tbody>${rows || `<tr><td colspan="4" class="muted">Nothing yet.</td></tr>`}</tbody></table></div>`;
+  }
+
+  function ordersVisible() {
+    const query = state.search.toLowerCase();
+    return state.data.orders.filter((row) => {
+      const matchesSearch = !query || String(row.customer).toLowerCase().includes(query) || String(row.id).toLowerCase().includes(query);
+      const matchesStatus = !state.status || row.status === state.status;
+      return matchesSearch && matchesStatus;
+    });
+  }
+
+  function renderOrders() {
+    const p = state.data.permissions;
+    const rows = ordersVisible().map((row) => {
+      const options = ["New", "Packed", "Shipped", "On hold", "Cancelled"].map((status) => `<option value="${status}" ${row.status === status ? "selected" : ""}>${status}</option>`).join("");
+      const editable = p.can_orders && ["New", "Packed", "Shipped", "On hold"].includes(row.status);
+      const control = editable
+        ? `<span class="cell-controls"><select aria-label="Status for ${esc(row.id)}" data-order-status="${esc(row.id)}">${options}</select><button type="button" data-action="order-status" data-id="${esc(row.id)}">Save</button></span>`
+        : `<span class="badge ${row.status === "Returned" || row.status === "Cancelled" ? "bad" : "ok"}">${esc(row.status)}</span>`;
+      return `<tr><td>${esc(row.id)}</td><td>${esc(row.customer)}</td><td>${esc(merchantName(row.merchant_id))}</td><td>${esc(row.sku)}</td><td>${row.quantity}</td><td class="money">$${fmt(row.unit_price)}</td><td class="money">$${fmt(row.total)}</td><td>${control}</td></tr>`;
+    }).join("");
+    const skuOptions = state.data.products.map((product) => `<option value="${esc(product.sku)}">${esc(product.sku)} · ${esc(product.product)} ($${fmt(product.price)})</option>`).join("");
+    const form = p.can_orders ? `
+      <h2>Create order</h2>
+      <div class="card"><div class="form-grid">
+        <div><label for="order-customer">Customer</label><input id="order-customer"></div>
+        <div><label for="order-sku">Product</label><select id="order-sku">${skuOptions}</select></div>
+        <div><label for="order-qty">Quantity</label><input id="order-qty" type="number" min="1" step="1" value="1"></div>
+        <div><button type="button" data-action="create-order">Create order</button></div>
+      </div></div>` : "";
+    return `<h1>Orders</h1>
+      <div class="form-grid">
+        <div><label for="order-search">Search customer or order</label><input id="order-search" value="${esc(state.search)}"></div>
+        <div><label for="order-status-filter">Status</label><select id="order-status-filter" name="order-status-filter" aria-label="Order status filter"><option value="">All</option>${["New","Packed","Shipped","On hold","Returned","Cancelled"].map((s) => `<option value="${s}" ${state.status === s ? "selected" : ""}>${s}</option>`).join("")}</select></div>
+      </div>
+      <h2>Visible orders</h2>
+      <div class="table-wrap"><table><thead><tr><th>ID</th><th>Customer</th><th>Merchant</th><th>SKU</th><th>Qty</th><th>Unit</th><th>Total</th><th>Status</th></tr></thead><tbody>${rows || `<tr><td colspan="8" class="muted">No matching orders.</td></tr>`}</tbody></table></div>
+      ${form}`;
+  }
+
+  function renderProducts() {
+    const p = state.data.permissions;
+    const rows = state.data.products.map((product) => `<tr><td>${esc(product.sku)}</td><td>${esc(product.product)}</td><td>${esc(merchantName(product.merchant_id))}</td><td>${esc(hubName(product.hub_id))}</td><td class="money">$${fmt(product.price)}</td><td>${product.stock}</td><td>${product.reserved}</td><td><span class="badge ${product.stock <= product.reorder_level ? "low" : "ok"}">${product.stock <= product.reorder_level ? "Low stock" : "Healthy"}</span></td></tr>`).join("");
+    const merchants = state.data.merchants.map((m) => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join("");
+    const hubs = state.data.hubs.map((h) => `<option value="${esc(h.id)}">${esc(h.name)}</option>`).join("");
+    const form = p.can_products ? `
+      <h2>Create product</h2>
+      <div class="card"><div class="form-grid">
+        <div><label for="product-sku">SKU</label><input id="product-sku"></div>
+        <div><label for="product-name">Product name</label><input id="product-name"></div>
+        <div><label for="product-merchant">Merchant</label><select id="product-merchant">${merchants}</select></div>
+        <div><label for="product-hub">Hub</label><select id="product-hub">${hubs}</select></div>
+        <div><label for="product-price">Price</label><input id="product-price" type="number" min="0" step="1" value="25"></div>
+        <div><label for="product-stock">Stock</label><input id="product-stock" type="number" min="0" step="1" value="10"></div>
+        <div><label for="product-reorder">Reorder level</label><input id="product-reorder" type="number" min="0" step="1" value="5"></div>
+        <div><button type="button" data-action="create-product">Create product</button></div>
+      </div></div>` : "";
+    return `<h1>Products</h1>
+      <div class="table-wrap"><table><thead><tr><th>SKU</th><th>Product</th><th>Merchant</th><th>Hub</th><th>Price</th><th>Stock</th><th>Reserved</th><th>State</th></tr></thead><tbody>${rows || `<tr><td colspan="8" class="muted">No products.</td></tr>`}</tbody></table></div>
+      ${form}`;
+  }
+
+  function renderInventory() {
+    const p = state.data.permissions;
+    const rows = state.data.products.map((product) => {
+      const stateBadge = `<span class="badge ${product.stock <= product.reorder_level ? "low" : "ok"}">${product.stock <= product.reorder_level ? "Low stock" : "Healthy"}</span>`;
+      const editable = p.can_inventory
+        ? `<span class="cell-controls"><input aria-label="Stock for ${esc(product.sku)}" type="number" min="0" step="1" value="${product.stock}" data-stock="${esc(product.sku)}"><input aria-label="Reason for ${esc(product.sku)}" placeholder="Reason" data-reason="${esc(product.sku)}"><button type="button" data-action="save-stock" data-id="${esc(product.sku)}">Save</button></span>`
+        : `<span class="badge ${product.stock <= product.reorder_level ? "low" : "ok"}">${product.stock <= product.reorder_level ? "Low stock" : "Healthy"}</span>`;
+      return `<tr><td>${esc(product.sku)}</td><td>${esc(product.product)}</td><td>${esc(merchantName(product.merchant_id))}</td><td class="money">$${fmt(product.price)}</td><td>${product.stock}</td><td>${product.reserved}</td><td>${product.stock - product.reserved}</td><td>${stateBadge}</td><td>${editable}</td></tr>`;
+    }).join("");
+    return `<h1>Inventory</h1>
+      <div class="table-wrap"><table><thead><tr><th>SKU</th><th>Product</th><th>Merchant</th><th>Price</th><th>Stock</th><th>Reserved</th><th>Available</th><th>State</th><th>Manage</th></tr></thead><tbody>${rows || `<tr><td colspan="9" class="muted">No inventory.</td></tr>`}</tbody></table></div>`;
+  }
+
+  function renderWarehouse() {
+    const p = state.data.permissions;
+    const packed = state.data.orders.filter((order) => order.status === "Packed");
+    const orderOptions = packed.map((order) => `<option value="${esc(order.id)}">${esc(order.id)} · ${esc(order.sku)} · ${esc(hubName(order.hub_id))}</option>`).join("");
+    const shipForm = p.can_warehouse ? `
+      <h2>Create shipment</h2>
+      <div class="card"><div class="form-grid">
+        <div><label for="ship-order">Packed order</label><select id="ship-order">${orderOptions || `<option value="">No packed orders</option>`}</select></div>
+        <div><label for="ship-hub">Hub</label><select id="ship-hub">${state.data.hubs.map((h) => `<option value="${esc(h.id)}">${esc(h.name)}</option>`).join("")}</select></div>
+        <div><button type="button" data-action="create-shipment">Create shipment</button></div>
+      </div></div>` : "";
+    const shipmentRows = state.data.shipments.map((s) => {
+      const stepOptions = ["PICKED", "IN_TRANSIT", "DELIVERED"].map((step) => `<option value="${step}">${step}</option>`).join("");
+      const control = p.can_warehouse && s.status !== "DELIVERED"
+        ? `<span class="cell-controls"><select aria-label="Step for ${esc(s.id)}" data-shipment-step="${esc(s.id)}">${stepOptions}</select><button type="button" data-action="shipment-step" data-id="${esc(s.id)}">Advance</button></span>`
+        : (s.status === "DELIVERED" ? `<span class="badge ok">Complete</span>` : `<span class="badge">${esc(s.status)}</span>`);
+      return `<tr><td>${esc(s.id)}</td><td>${esc(s.order_id)}</td><td>${esc(hubName(s.hub_id))}</td><td>${esc(s.status)}</td><td>${control}</td></tr>`;
+    }).join("");
+    const returnRows = state.data.returns.map((r) => {
+      const control = p.can_warehouse && r.status === "Requested" ? `<button type="button" data-action="return-receipt" data-id="${esc(r.id)}">Record receipt</button>` : `<span class="badge">${esc(r.status)}</span>`;
+      return `<tr><td>${esc(r.id)}</td><td>${esc(r.order_id)}</td><td>${esc(r.reason)}</td><td>${esc(r.status)}</td><td>${control}</td></tr>`;
+    }).join("");
+    const returnForm = p.can_orders ? `
+      <h2>Request return</h2>
+      <div class="card"><div class="form-grid">
+        <div><label for="return-order">Shipped order</label><select id="return-order">${state.data.orders.filter((o) => o.status === "Shipped").map((o) => `<option value="${esc(o.id)}">${esc(o.id)} · ${esc(o.customer)}</option>`).join("") || `<option value="">No shipped orders</option>`}</select></div>
+        <div><label for="return-reason">Reason</label><input id="return-reason"></div>
+        <div><button type="button" data-action="create-return">Request return</button></div>
+      </div></div>` : "";
+    return `<h1>Warehouse</h1>
+      ${shipForm}
+      <h2>Shipments</h2>
+      <div class="table-wrap"><table><thead><tr><th>ID</th><th>Order</th><th>Hub</th><th>Status</th><th>Manage</th></tr></thead><tbody>${shipmentRows || `<tr><td colspan="5" class="muted">No shipments.</td></tr>`}</tbody></table></div>
+      ${returnForm}
+      <h2>Returns</h2>
+      <div class="table-wrap"><table><thead><tr><th>ID</th><th>Order</th><th>Reason</th><th>Status</th><th>Manage</th></tr></thead><tbody>${returnRows || `<tr><td colspan="5" class="muted">No returns.</td></tr>`}</tbody></table></div>`;
+  }
+
+  function breakdown(payout) {
+    try { return JSON.parse(payout.breakdown); } catch (_) { return payout.breakdown; }
+  }
+
+  function renderFinance() {
+    const p = state.data.permissions;
+    const payoutRows = state.data.payouts.map((payout) => {
+      const parts = breakdown(payout);
+      const workLines = parts.orders
+        ? parts.orders.map((line) =>
+            `<span class="work-line"><strong>${esc(line.id)}</strong> gross $${fmt(line.total)} − commission $${fmt(line.commission)} − processing $${fmt(line.processing)} = net $${fmt(line.net)}</span>`
+          ).join("") +
+          `<span class="work-total">Total gross $${fmt(parts.gross)} · commission $${fmt(parts.commission)} · processing $${fmt(parts.processing)}</span>`
+        : `<span class="work-line"><strong>Breakdown</strong> gross $${fmt(parts.gross)} · commission $${fmt(parts.commission)} · processing $${fmt(parts.processing)} · net $${fmt(parts.net)}</span>`;
+      const detail = `<div class="detail"><div class="detail-title">${parts.orders ? "Working" : "Breakdown"}</div><div class="work-lines">${workLines}</div></div>`;
+      const controls = [];
+      if (p.can_finance_check && payout.status === "Requested") controls.push(`<button type="button" data-action="payout-approve" data-id="${esc(payout.id)}">Approve</button>`);
+      else if (p.can_finance_request && payout.status === "Requested") controls.push(`<button type="button" data-action="payout-approve" data-id="${esc(payout.id)}">Approve</button>`);
+      if (p.can_finance_check && payout.status === "Approved") controls.push(`<button type="button" data-action="payout-release" data-id="${esc(payout.id)}">Release</button>`);
+      return `<tr><td>${esc(payout.id)}</td><td>${esc(merchantName(payout.merchant_id))}</td><td class="money">$${fmt(payout.amount)}</td><td><span class="badge ${payout.status === "Paid" ? "ok" : payout.status === "Stale" ? "bad" : ""}">${esc(payout.status)}</span></td><td>${esc(payout.maker_email)}</td><td>${esc(payout.checker_email || "—")}</td><td><span class="cell-controls"><button type="button" data-action="payout-detail" data-id="${esc(payout.id)}">Working</button>${controls.join("")}</span></td></tr><tr class="detail-row" data-detail="${esc(payout.id)}"><td colspan="7">${detail}</td></tr>`;
+    }).join("");
+    const requestForm = p.can_finance_request ? `
+      <h2>Request payout</h2>
+      <div class="card"><div class="form-grid">
+        <div><label for="payout-merchant">Merchant</label><select id="payout-merchant">${state.data.merchants.map((m) => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join("")}</select></div>
+        <div><label for="payout-key">Reference</label><input id="payout-key" placeholder="req-123"></div>
+        <div><button type="button" data-action="payout-request">Request payout</button></div>
+      </div></div>` : "";
+    const bank = p.can_bank_tokens ? `<div class="actions"><button type="button" data-action="bank-tokens">Show merchant bank tokens</button><div id="bank-results" class="hidden"></div></div>` : "";
+    const settlementRows = state.data.settlements.map((s) => {
+      const summary = `<tr class="merchant-summary"><td><strong>${esc(s.merchant)}</strong></td><td class="money">$${fmt(s.gross)}</td><td class="money">$${fmt(s.commission)}</td><td class="money">$${fmt(s.processing)}</td><td class="money">$${fmt(s.net_payable)}</td></tr>`;
+      const lines = (s.orders || []).map((line) => `<tr class="detail-row"><td>${esc(line.id)}</td><td class="money">$${fmt(line.total)}</td><td class="money">$${fmt(line.commission)}</td><td class="money">$${fmt(line.processing)}</td><td class="money">$${fmt(line.net)}</td></tr>`).join("");
+      return summary + lines;
+    }).join("");
+    const refundRows = state.data.refunds.map((r) => {
+      const controls = [];
+      if (p.can_finance_check && r.status === "Requested") controls.push(`<button type="button" data-action="refund-approve" data-id="${esc(r.id)}">Approve</button>`);
+      else if (p.can_finance_request && r.status === "Requested") controls.push(`<button type="button" data-action="refund-approve" data-id="${esc(r.id)}">Approve</button>`);
+      if (p.can_finance_check && r.status === "Approved") controls.push(`<button type="button" data-action="refund-paid" data-id="${esc(r.id)}">Pay</button>`);
+      return `<tr><td>${esc(r.id)}</td><td>${esc(r.return_id)}</td><td class="money">$${fmt(r.amount)}</td><td>${esc(r.status)}</td><td>${esc(r.maker_email)}</td><td>${esc(r.checker_email || "—")}</td><td><span class="cell-controls">${controls.join("")}</span></td></tr>`;
+    }).join("");
+    const refundForm = p.can_finance_request ? `
+      <h2>Request refund</h2>
+      <div class="card"><div class="form-grid">
+        <div><label for="refund-return">Return</label><select id="refund-return">${state.data.returns.map((r) => `<option value="${esc(r.id)}">${esc(r.id)} · ${esc(r.order_id)} · ${esc(r.status)}</option>`).join("") || `<option value="">No returns</option>`}</select></div>
+        <div><label for="refund-key">Reference</label><input id="refund-key" placeholder="ref-123"></div>
+        <div><label for="refund-reason">Reason</label><input id="refund-reason" placeholder="Reason"></div>
+        <div><button type="button" data-action="refund-request">Request refund</button></div>
+      </div></div>` : "";
+    const merchantAccount = p.is_merchant ? state.data.merchants.find((m) => m.id === state.data.user.merchant_id) : null;
+    const bankCard = merchantAccount ? `
+      <h2>Payment account</h2>
+      <div class="card"><div class="muted">Payment method ending in ${esc(merchantAccount.bank_last4)}</div></div>` : "";
+    return `<h1>Finance</h1>
+      <h2>Payouts</h2>
+      <div class="table-wrap"><table><thead><tr><th>ID</th><th>Merchant</th><th>Amount</th><th>Status</th><th>Requested by</th><th>Approved by</th><th>Manage</th></tr></thead><tbody>${payoutRows || `<tr><td colspan="7" class="muted">No payouts.</td></tr>`}</tbody></table></div>
+      ${requestForm}
+      <h2>Settlements</h2>
+      <div class="table-wrap"><table><thead><tr><th>Merchant</th><th>Gross</th><th>Commission</th><th>Processing</th><th>Net payable</th></tr></thead><tbody>${settlementRows || `<tr><td colspan="5" class="muted">No settlements.</td></tr>`}</tbody></table></div>
+      <h2>Refunds</h2>
+      <div class="table-wrap"><table><thead><tr><th>ID</th><th>Return</th><th>Amount</th><th>Status</th><th>Requested by</th><th>Approved by</th><th>Manage</th></tr></thead><tbody>${refundRows || `<tr><td colspan="7" class="muted">No refunds.</td></tr>`}</tbody></table></div>
+      ${refundForm}
+      ${bankCard}
+      ${bank}`;
+  }
+
+  function renderCompliance() {
+    const p = state.data.permissions;
+    const rows = state.data.merchants.map((m) => {
+      const control = p.can_freeze
+        ? `<span class="cell-controls"><input aria-label="Reason for ${esc(m.name)}" placeholder="Reason" data-freeze-reason="${esc(m.id)}"><button type="button" data-action="${m.status === "frozen" ? "merchant-unfreeze" : "merchant-freeze"}" data-id="${esc(m.id)}">${m.status === "frozen" ? "Unfreeze" : "Freeze"}</button></span>`
+        : `<span class="badge ${m.status === "frozen" ? "bad" : "ok"}">${esc(m.status)}</span>`;
+      return `<tr><td>${esc(m.id)}</td><td>${esc(m.name)}</td><td>${esc(m.status)}</td><td><span class="muted">•••• ${esc(m.bank_last4)}</span></td><td>${control}</td></tr>`;
+    }).join("");
+    const auditRows = state.data.activity.map((row) => `<tr><td>${esc(row.created_at)}</td><td>${esc(row.action)}</td><td>${esc(row.detail)}</td><td>${esc(row.actor)}</td><td>${esc(row.previous_state || "—")}</td><td>${esc(row.new_state || "—")}</td></tr>`).join("");
+    return `<h1>Compliance</h1>
+      <h2>Merchants</h2>
+      <div class="table-wrap"><table><thead><tr><th>ID</th><th>Name</th><th>Status</th><th>Bank card</th><th>Manage</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <h2>Audit trail</h2>
+      <div class="table-wrap"><table><thead><tr><th>When</th><th>Action</th><th>Detail</th><th>Person</th><th>Before</th><th>After</th></tr></thead><tbody>${auditRows || `<tr><td colspan="6" class="muted">No activity.</td></tr>`}</tbody></table></div>`;
+  }
+
+  function renderAdmin() {
+    const p = state.data.permissions;
+    const readOnly = !p.can_admin;
+    const rows = state.data.adminUsers?.map((user) => {
+      const options = ["Administrator","Operations lead","Warehouse lead","Finance manager","Finance checker","Compliance officer","Merchant","Viewer"].map((role) => `<option ${user.role === role ? "selected" : ""}>${role}</option>`).join("");
+      const manage = readOnly
+        ? `<span class="muted">Read-only</span>`
+        : `<span class="cell-controls"><select aria-label="Role for ${esc(user.email)}" data-role-user="${esc(user.id)}">${options}</select><button type="button" data-action="${user.active ? "suspend-user" : "activate-user"}" data-id="${esc(user.id)}">${user.active ? "Suspend" : "Activate"}</button><button type="button" data-action="set-role" data-id="${esc(user.id)}">Save role</button></span>`;
+      return `<tr><td>${esc(user.email)}</td><td>${esc(user.name)}</td><td><span class="badge">${esc(user.role)}</span></td><td><span class="badge ${user.active ? "ok" : "bad"}">${user.active ? "Active" : "Suspended"}</span></td><td>${manage}</td></tr>`;
+    }).join("");
+    return `<h1>Admin</h1>
+      <div class="table-wrap"><table><thead><tr><th>Email</th><th>Name</th><th>Role</th><th>Status</th><th>${readOnly ? "Access" : "Manage"}</th></tr></thead><tbody>${rows || `<tr><td colspan="5" class="muted">No users.</td></tr>`}</tbody></table></div>`;
+  }
+
+  function render() {
+    if (!state.token || !state.data) return;
+    renderNav();
+    const views = {dashboard: renderDashboard, orders: renderOrders, products: renderProducts, inventory: renderInventory, warehouse: renderWarehouse, finance: renderFinance, compliance: renderCompliance, admin: renderAdmin};
+    $("app").innerHTML = (views[state.workspace] || renderDashboard)();
+    renderBanner();
+    if (state.workspace === "orders") {
+      const search = $("order-search");
+      if (search) search.addEventListener("input", (event) => { state.search = event.target.value; render(); });
+      const filter = $("order-status-filter");
+      if (filter) filter.addEventListener("change", (event) => { state.status = event.target.value; render(); });
+    }
+  }
+
+  async function load() {
+    if (!state.token) { showLogin(); return; }
+    try {
+      state.data = await api("/api/bootstrap");
+      state.user = state.data.user;
+      if (!navItems().some(([id]) => id === state.workspace)) state.workspace = "dashboard";
+      if (!state.user.merchant_id) {
+        state.data.adminUsers = await api("/api/admin/users");
+      }
+      showShell();
+      render();
+    } catch (error) {
+      setBanner(error.message, false);
+      logout();
+    }
+  }
+
+  async function login(event) {
+    event.preventDefault();
+    try {
+      const payload = await api("/api/login", {method: "POST", body: JSON.stringify({email: $("email").value, password: $("password").value})});
+      state.token = payload.token;
+      state.user = payload.user;
+      localStorage.setItem("bb-token", state.token);
+      setBanner("Signed in.", true);
+      await load();
+    } catch (error) {
+      setBanner(error.message, false);
+      showLogin();
+    }
+  }
+
+  async function logout() {
+    try { if (state.token) await api("/api/logout", {method: "POST"}); } catch (_) {}
+    state.token = ""; state.user = null; state.data = null;
+    localStorage.removeItem("bb-token");
+    showLogin();
+  }
+
+  function merchantName(id) { return state.data?.merchants?.find((m) => m.id === id)?.name || id; }
+  function hubName(id) { return state.data?.hubs?.find((h) => h.id === id)?.name || id; }
+
+  async function act(action, id, payload = {}) {
+    try {
+      let result = null;
+      switch (action) {
+        case "order-status": result = await api(`/api/orders/${id}`, {method: "PATCH", body: JSON.stringify({status: document.querySelector(`[data-order-status="${CSS.escape(id)}"]`).value, ...payload})}); break;
+        case "create-order": result = await api("/api/orders", {method: "POST", body: JSON.stringify({customer: $("order-customer").value, sku: $("order-sku").value, quantity: Number($("order-qty").value), ...payload})}); break;
+        case "create-product": result = await api("/api/products", {method: "POST", body: JSON.stringify({sku: $("product-sku").value, product: $("product-name").value, merchant_id: $("product-merchant").value, hub_id: $("product-hub").value, price: Number($("product-price").value), stock: Number($("product-stock").value), reorder_level: Number($("product-reorder").value), ...payload})}); break;
+        case "save-stock": result = await api(`/api/inventory/${encodeURIComponent(id)}`, {method: "PATCH", body: JSON.stringify({stock: Number(document.querySelector(`[data-stock="${CSS.escape(id)}"]`).value), reason: document.querySelector(`[data-reason="${CSS.escape(id)}"]`).value, ...payload})}); break;
+        case "create-shipment": result = await api("/api/shipments", {method: "POST", body: JSON.stringify({order_id: $("ship-order").value, hub_id: $("ship-hub").value, ...payload})}); break;
+        case "shipment-step": { const selected = document.querySelector(`[data-shipment-step="${CSS.escape(id)}"]`)?.value || payload.step; result = await api(`/api/shipments/${id}/step`, {method: "PATCH", body: JSON.stringify({step: selected, ...payload})}); break; }
+        case "create-return": result = await api("/api/returns", {method: "POST", body: JSON.stringify({order_id: $("return-order").value, reason: $("return-reason").value, ...payload})}); break;
+        case "return-receipt": result = await api(`/api/returns/${id}/receipt`, {method: "POST", body: JSON.stringify({...payload})}); break;
+        case "refund-request": result = await api("/api/refunds", {method: "POST", body: JSON.stringify({return_id: $("refund-return").value, retry_key: $("refund-key").value || undefined, reason: $("refund-reason").value, ...payload})}); break;
+        case "refund-approve": result = await api(`/api/refunds/${id}/approve`, {method: "PATCH", body: JSON.stringify({...payload})}); break;
+        case "refund-paid": result = await api(`/api/refunds/${id}/paid`, {method: "PATCH", body: JSON.stringify({...payload})}); break;
+        case "payout-request": result = await api("/api/payouts/request", {method: "POST", body: JSON.stringify({merchant_id: $("payout-merchant").value, retry_key: $("payout-key").value || undefined, ...payload})}); break;
+        case "payout-approve": result = await api(`/api/payouts/${id}/approve`, {method: "PATCH", body: JSON.stringify({...payload})}); break;
+        case "payout-release": result = await api(`/api/payouts/${id}/release`, {method: "PATCH", body: JSON.stringify({...payload})}); break;
+        case "merchant-freeze": result = await api(`/api/merchants/${id}/freeze`, {method: "POST", body: JSON.stringify({reason: document.querySelector(`[data-freeze-reason="${CSS.escape(id)}"]`).value, ...payload})}); break;
+        case "merchant-unfreeze": result = await api(`/api/merchants/${id}/unfreeze`, {method: "POST", body: JSON.stringify({reason: document.querySelector(`[data-freeze-reason="${CSS.escape(id)}"]`).value, ...payload})}); break;
+        case "suspend-user": result = await api(`/api/admin/users/${id}/suspend`, {method: "PATCH", body: JSON.stringify({...payload})}); break;
+        case "activate-user": result = await api(`/api/admin/users/${id}/activate`, {method: "PATCH", body: JSON.stringify({...payload})}); break;
+        case "set-role": result = await api(`/api/admin/users/${id}/role`, {method: "PATCH", body: JSON.stringify({role: document.querySelector(`[data-role-user="${CSS.escape(id)}"]`).value, ...payload})}); break;
+        case "payout-detail": { const row = document.querySelector(`[data-detail="${CSS.escape(id)}"]`); if (row) row.classList.toggle("hidden"); return; }
+        case "bank-tokens": { const data = await api("/api/finance/bank-tokens"); const box = $("bank-results"); box.classList.remove("hidden"); box.innerHTML = "<div class=\"detail\">" + data.map((m) => `${esc(m.name)} · card •••• ${esc(m.bank_last4)} · token ${esc(m.bank_token)}`).join("<br>") + "</div>"; return; }
+        default: return;
+      }
+      setBanner(`${action} succeeded.`, true);
+      await load();
+    } catch (error) {
+      setBanner(error.message, false);
+      renderBanner();
+    }
+  }
+
+  document.addEventListener("click", (event) => {
+    const nav = event.target.closest("[data-nav]");
+    if (nav) { state.workspace = nav.dataset.nav; render(); return; }
+    const button = event.target.closest("[data-action]");
+    if (button) {
+      const payload = button.dataset.step ? {step: button.dataset.step} : {};
+      act(button.dataset.action, button.dataset.id, payload);
+    }
+  });
+  $("loginForm").addEventListener("submit", login);
+  $("logout")?.addEventListener("click", logout);
+
+  if (state.token) load(); else showLogin();
+})();
+</script>
+</body>
+</html>
