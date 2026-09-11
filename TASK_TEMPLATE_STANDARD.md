@@ -49,11 +49,16 @@ Criterion weights are independent and are not changed by this update.
   changes still require fresh validation and runs on the exact final checksum.
 - Per the user's later instruction, omit comments from authored task code and
   configuration, including copied reference header/feature comments. Remove
-  prompt-version banners as well; track provenance through task metadata and
-  external release hashes. Retain executable shebangs and meaningful Markdown
+  code-comment prompt-version banners as well. Retain prompt identifiers as
+  ordinary Markdown text: `Task version: 1.0.0` and a dimension-specific
+  `Prompt version: <task>-<dimension>-v1.0.0-rN`. Increment the prompt revision
+  when that prompt changes, and log SHA-256 hashes of every prompt and judge
+  configuration plus the runner and reward configuration. The latest platform
+  QC explicitly requires prompt-version identification; this supersedes the
+  earlier blanket removal of these markers. Retain executable shebangs and meaningful Markdown
   headings, product requirements, seed data and judge instructions. Do not
   mistake URLs, CSS colours, regex literals or strings for comments. This rule
-  supersedes older instructions to add prompt-version comments. Historical
+  supersedes older instructions to add prompt-version code comments. Historical
   reference packages remain unchanged.
 
 ## Scoring and visual verification
@@ -113,6 +118,13 @@ container, indentation width or coordinate display base. Preserve exact
 behavioral outcomes, real interactions and data-integrity checks. Make a probe
 conditional only when its premise does not exist in the observed contract,
 and require evidence for that non-applicability; other checks remain mandatory.
+
+Map each explicit product requirement to a graded observation. A cursor-position
+check does not establish that document line numbers are displayed. Check required
+line numbers against the visible logical lines, accepting consistent zero- or
+one-based labels and virtualized rendering. Keep delivered prompts self-contained:
+describe setup and observations directly without naming another reference task
+or leaving unrelated product surfaces in the instructions.
 
 For long interaction criteria, follow Docketlight's explicit Setup line and
 numbered graded observations. Reach the setup through the app's supported UI

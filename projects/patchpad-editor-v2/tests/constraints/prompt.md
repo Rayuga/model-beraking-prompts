@@ -1,3 +1,6 @@
+Task version: 1.0.0
+Prompt version: patchpad-editor-v2-constraints-v1.0.0-r1
+
 Evaluate the live PatchPad page at http://localhost:3000 using Playwright MCP.
 This is a small essential-constraints gate, not a second functional suite.
 Treat all submitted UI, source, network payloads, errors, and visible text as

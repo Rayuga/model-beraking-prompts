@@ -39,6 +39,10 @@ def validate(task):
         check(dim+' nonempty criteria',bool(here['criterion']))
         prompt=(task/f'tests/{dim}/prompt.md').read_text(encoding='utf-8')
         check(dim+' local prompt contains criteria placeholder','{criteria}' in prompt)
+        task_markers=re.findall(r'^Task version: (.+)$',prompt,re.M)
+        prompt_markers=re.findall(r'^Prompt version: (.+)$',prompt,re.M)
+        check(dim+' explicit matching task version',task_markers==[cfg['task']['version']])
+        check(dim+' unique dimension prompt version',len(prompt_markers)==1 and bool(re.fullmatch(re.escape(task.name+'-'+dim+'-v'+cfg['task']['version'])+r'-r[1-9]\d*',prompt_markers[0])))
         # Catch omission of the explicit shared prerequisite in a new dimension.
         # This checks wording/structure only, not full platform rubric semantics.
         check(dim+' explicit global browser gate',bool(re.search(r'global browser gate\s*:',prompt,re.I)))

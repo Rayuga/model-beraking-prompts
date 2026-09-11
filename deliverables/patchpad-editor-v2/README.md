@@ -1,9 +1,12 @@
 # PatchPad delivery
 
-Current prepared package: [1.0.0 Docketlight procedures and golden presentation](1.0.0-docketlight-procedures/README.md).
-Upload: [patchpad-editor-v2.zip](1.0.0-qc-checked-20260911-224216/patchpad-editor-v2.zip).
-This fresh archive contains the same 32 audited task files; its integrity and
-source equality are recorded in the adjacent archive-check.json.
+Current prepared package: [1.0.0 line-number coverage and prompt provenance](1.0.0-rubric-coverage-provenance/README.md).
+Upload: [patchpad-editor-v2.zip](1.0.0-rubric-coverage-provenance/patchpad-editor-v2.zip).
+The new package explicitly grades document line numbers, restores plain-text
+prompt version identifiers, logs verifier hashes and removes reference-product
+wording. All 32 task files and 39 criteria are retained; weights and golden code
+are unchanged. It passes 118 local standard checks and focused browser/runtime
+validation. Fresh platform rubric QC and a full Oracle remain necessary.
 Today's guidance and decisions: [task lessons](../../TASK_LEARNINGS_2026-09-11.md).
 Local golden preview: http://localhost:3035/.
 

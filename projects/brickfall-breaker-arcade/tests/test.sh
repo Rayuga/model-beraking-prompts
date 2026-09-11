@@ -13,12 +13,13 @@ chmod -R go-rwx /tests 2>/dev/null || true
 
 write_zero_reward() {
   printf '0.0\n' > "$LOG_DIR/reward.txt"
-  printf '{"reward":0.0,"render":0.0,"constraints":0.0,"functional":0.0,"polish":0.0,"graded":0,"no_op":1}\n' > "$LOG_DIR/reward.json"
+  printf '{"tests":[],"tool":{"name":"rewardkit"},"summary":{"passed":0,"failed":0,"skipped":0,"total":0}}\n' > "$LOG_DIR/ctrf.json"
+  printf '{"reward":0.0,"render":0.0,"constraints":0.0,"functional":0.0,"polish":0.0,"visual":0.0,"graded":0,"no_op":1}\n' > "$LOG_DIR/reward.json"
 }
 
 ensure_reward() {
   test -s "$LOG_DIR/reward.txt" || printf '0.0\n' > "$LOG_DIR/reward.txt"
-  test -s "$LOG_DIR/reward.json" || printf '{"reward":0.0,"render":0.0,"constraints":0.0,"functional":0.0,"polish":0.0,"graded":0,"no_op":1}\n' > "$LOG_DIR/reward.json"
+  test -s "$LOG_DIR/reward.json" || printf '{"reward":0.0,"render":0.0,"constraints":0.0,"functional":0.0,"polish":0.0,"visual":0.0,"graded":0,"no_op":1}\n' > "$LOG_DIR/reward.json"
 }
 
 cleanup() {
@@ -57,7 +58,6 @@ then
   exit 0
 fi
 
-# Normalize the submitted tree before booting it as an unprivileged user.
 rm -f /app/brickfall.db /app/brickfall.db-shm /app/brickfall.db-wal
 chmod -R a+rX /app 2>/dev/null || true
 find /app -type f -exec chmod a+r {} + 2>/dev/null || true
@@ -70,8 +70,6 @@ rm -f "$APP_COPY/brickfall.db" "$APP_COPY/brickfall.db-shm" "$APP_COPY/brickfall
 chown -R 65534:65534 "$APP_COPY"
 chmod -R a+rX "$APP_COPY"
 
-# Prefer /app because submissions often hardcode it; use the staged copy when
-# /app is not writable to the unprivileged process.
 APP_ENTRY="/app/server.js"
 APP_DB="/app/brickfall.db"
 if ! setpriv --reuid=65534 --regid=65534 --clear-groups test -w /app 2>/dev/null; then
@@ -89,8 +87,6 @@ setsid env -i \
   node "$APP_ENTRY" >"$LOG_DIR/app.log" 2>&1 &
 APP_PID="$!"
 
-# Any HTTP response is enough to hand control to the browser judges; a booted
-# but visibly broken application must be graded instead of treated as a no-op.
 cat > "$PROBE" <<'PY'
 import sys
 import urllib.error
@@ -119,17 +115,12 @@ if [[ "$READY" != "1" ]]; then
   exit 0
 fi
 
-# The browser dimensions share one persisted app. Serialize their agents so a
-# Polish mutation cannot disturb Functional checkpoints or concurrency checks.
-if ! timeout --signal=TERM --kill-after=30s 11400 \
-  rewardkit --max-concurrent-agent 1 /tests >"$LOG_DIR/rewardkit.log" 2>&1; then
+if ! timeout 12600 rewardkit --max-concurrent-agent 1 /tests >"$LOG_DIR/rewardkit.log" 2>&1; then
   write_zero_reward
   exit 0
 fi
 
-# Render and constraints are gates. Only functional and polish contribute once
-# both gates have non-zero scores. Invalid or missing dimensions restore zero.
-if ! python3 - "$LOG_DIR/reward.json" "$LOG_DIR/reward.txt" <<'PY'
+if ! python3 - "$LOG_DIR/reward.json" "$LOG_DIR/reward.txt" "$LOG_DIR/ctrf.json" <<'PY'
 import json
 import math
 import sys
@@ -137,9 +128,10 @@ from pathlib import Path
 
 json_path = Path(sys.argv[1])
 txt_path = Path(sys.argv[2])
+ctrf_path = Path(sys.argv[3])
 data = json.loads(json_path.read_text())
 
-for key in ("render", "constraints", "functional", "polish"):
+for key in ("render", "constraints", "functional", "polish", "visual"):
     value = data.get(key)
     if not isinstance(value, (int, float)) or isinstance(value, bool):
         raise ValueError(f"missing or non-numeric RewardKit dimension: {key}")
@@ -151,7 +143,7 @@ for key in ("render", "constraints", "functional", "polish"):
 if data["render"] <= 0.0 or data["constraints"] <= 0.0:
     reward = 0.0
 else:
-    reward = 0.6 * data["functional"] + 0.4 * data["polish"]
+    reward = 0.6 * data["functional"] + 0.2 * data["polish"] + 0.2 * data["visual"]
 
 reward = round(reward, 4)
 data["reward"] = reward
@@ -159,6 +151,15 @@ data["graded"] = 1
 data["no_op"] = 0
 json_path.write_text(json.dumps(data, indent=2) + "\n")
 txt_path.write_text(f"{reward:.4f}\n")
+ctrf_path.write_text(json.dumps({
+  "tool": {"name": "rewardkit"},
+  "tests": [{"name": "render", "status": "passed" if data["render"] > 0 else "failed"},
+            {"name": "constraints", "status": "passed" if data["constraints"] > 0 else "failed"},
+            {"name": "functional", "status": "passed" if data["functional"] > 0.05 else "failed"},
+            {"name": "polish", "status": "passed" if data["polish"] > 0 else "failed"},
+            {"name": "visual", "status": "passed" if data["visual"] > 0 else "failed"}],
+  "summary": {"passed": (data["render"] > 0) + (data["constraints"] > 0) + (data["functional"] > 0.05) + (data["polish"] > 0) + (data["visual"] > 0), "failed": (data["render"] <= 0) + (data["constraints"] <= 0) + (data["functional"] <= 0.05) + (data["polish"] <= 0) + (data["visual"] <= 0), "skipped": 0, "total": 5}
+}, indent=2) + "\n")
 PY
 then
   write_zero_reward

@@ -1,3 +1,6 @@
+Task version: 1.0.0
+Prompt version: patchpad-editor-v2-functional-v1.0.0-r1
+
 You are the PatchPad browser verifier. Use Playwright MCP to drive the app at
 `http://localhost:3000` and evaluate the criteria below.
 
@@ -20,8 +23,7 @@ current criterion; do not award it merely from a result observed earlier.
 Important grading rules:
 
 For criteria with an explicit Setup line and numbered graded observations,
-follow the Docketlight separation: actually reach the named setup state, then
-grade every numbered observation. Setup navigation is flexible and its
+first reach the named setup state, then grade every numbered observation. Setup navigation is flexible and its
 intermediate clicks or focus corrections are not separate scored behavior.
 Use the app's ordinary visible UI, keyboard and clipboard setup; do not inject
 editor text/state, call handlers or use API writes to bypass editor behavior.

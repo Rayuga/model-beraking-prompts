@@ -5,6 +5,12 @@ Updated: 2026-09-11
 Today's complete lead guidance, QC and Oracle lessons, fixes, and open decisions
 are recorded in [TASK_LEARNINGS_2026-09-11.md](TASK_LEARNINGS_2026-09-11.md).
 
+Latest PatchPad correction: `1.0.0-rubric-coverage-provenance` explicitly grades
+document line numbers, identifies all five prompt revisions as plain text,
+logs exact verifier file hashes, and removes other-product wording. The latest
+QC finding supersedes blanket removal of prompt-version markers: remove code
+comments, retain version metadata. No new platform QC or Oracle pass is claimed.
+
 ## September 11: mandatory Bazaarbridge commerce template
 
 Read `TASK_TEMPLATE_STANDARD.md` first. It is the current configuration and

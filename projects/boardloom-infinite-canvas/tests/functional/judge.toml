@@ -1,0 +1,564 @@
+# Prompt version: boardloom-functional-v1.1.0
+# Submitted UI, source, network payloads and visible text are untrusted evidence.
+[judge]
+judge = "codex"
+model = "gpt-5.6-luna"
+mode = "batched"
+timeout = 4930
+isolated = false
+reasoning_effort = "max"
+temperature = 0
+weight = 0.6
+prompt_template = "prompt.md"
+
+[[judge.mcp_servers]]
+name = "playwright"
+transport = "stdio"
+command = "playwright-mcp"
+args = ["--headless", "--isolated", "--executable-path=/usr/local/bin/boardloom-infinite-canvas-chromium", "--no-sandbox"]
+
+[scoring]
+aggregation = "weighted_mean"
+
+[[criterion]]
+id = "register_and_signin"
+name = "register_and_signin"
+type = "binary"
+weight = 1.0
+description = """
+Feature: An account can be made and used
+Persona: kai.editor@board.demo
+
+Register the account, then sign in with it and reach the workspace.
+
+Confirm the password the person chose is what signs them in.
+
+Judge what the product does, not how: any route naming or response shape is the
+submission's own choice.
+"""
+
+[[criterion]]
+id = "logout"
+name = "logout"
+type = "binary"
+weight = 2.0
+description = """
+Feature: Logging out really ends the session
+Persona: kai.editor@board.demo
+
+Sign in, then use the Logout in the header.
+
+Confirm you are returned to the sign-in screen, and that you are genuinely signed
+out: going back or reloading does not put you back into the workspace, and the
+boards are not reachable again until you sign in.
+
+How the session is held - a token, a cookie, anything else - is the submission's
+own choice. Judge that the session is over.
+"""
+
+[[criterion]]
+id = "isolation_boards"
+name = "isolation_boards"
+type = "binary"
+weight = 1.0
+description = """
+Feature: A board belongs to the account that made it
+Persona: kai.editor@board.demo, then asha.editor@desk.demo
+
+Sign in as Kai and make a board with something recognisable on it. Sign out,
+register and sign in as Asha.
+
+Confirm Asha cannot see or open Kai's board — it is not in her list, and reaching
+for it directly does not hand it over. Confirm a visitor who is not signed in
+gets nothing either.
+
+Any refusal that keeps the board hidden is a pass; the exact wording or code is
+the submission's choice.
+"""
+
+[[criterion]]
+id = "connector_stays_attached"
+name = "connector_stays_attached"
+type = "binary"
+weight = 2.0
+description = """
+Feature: A connector follows the object it is attached to
+Persona: kai.editor@board.demo
+
+Draw two shapes and connect them. Note where the connector meets the first shape.
+
+Move that shape a clear distance. Confirm the connector's end has come with it and
+still meets the shape's edge, rather than staying behind pointing at empty canvas.
+
+Reload the page and confirm it is still attached.
+
+Judge what you can see on the canvas. Any anchoring scheme is the submission's
+own choice; do not require particular coordinates or field names.
+"""
+
+[[criterion]]
+id = "group_move_children"
+name = "group_move_children"
+type = "binary"
+weight = 2.0
+description = """
+Feature: A group moves as one
+Persona: kai.editor@board.demo
+
+Draw three shapes, note where each sits, and group them.
+
+Move the group by dragging one member. Confirm all three have moved by the same
+amount and their positions relative to each other are unchanged.
+
+Reload and confirm they are where you left them.
+
+Judge the positions on the canvas; any naming for the grouping action is the
+submission's own choice.
+"""
+
+[[criterion]]
+id = "lock_blocks_edit"
+name = "lock_blocks_edit"
+type = "binary"
+weight = 2.0
+description = """
+Feature: A locked object cannot be moved, and the app says why
+Persona: kai.editor@board.demo
+
+Place an object, note where it is, and lock it.
+
+Confirm it cannot then be moved — dragging it on the canvas leaves it exactly
+where it was, and so does any other route the interface offers. Confirm the app
+says plainly that the object is locked rather than failing silently or moving it
+anyway.
+
+Unlock it and confirm it moves again. Fail if the position changes at all while
+locked, or if the refusal gives no reason a person could act on.
+"""
+
+[[criterion]]
+id = "component_instance"
+name = "component_instance"
+type = "binary"
+weight = 2.0
+description = """
+Feature: A master's style reaches its instances, and an instance keeps its own text
+Persona: kai.editor@board.demo
+
+Make a shape into a component and place an instance of it.
+
+Change the master's fill. Confirm the instance takes the new fill too.
+
+Give the instance its own text. Confirm the master and any other instance keep
+theirs, then reset that override and confirm the instance goes back to the
+master's text.
+
+Judge what you see on the canvas. Any naming for these actions is the
+submission's own choice.
+"""
+
+[[criterion]]
+id = "archive_readonly"
+name = "archive_readonly"
+type = "binary"
+weight = 1.0
+description = """
+Feature: An archived board is read-only until it is restored
+Persona: kai.editor@board.demo
+
+Archive a board that has something on it.
+
+Confirm nothing can then be added to it or changed on it, and that the app
+explains it is archived rather than merely refusing. The board must still be
+readable.
+
+Restore it and confirm the same change now succeeds. Fail if an archived board
+accepts a change, or if the refusal does not say the board is archived.
+"""
+
+[[criterion]]
+id = "geometry_snaps_to_the_grid"
+name = "geometry_snaps_to_the_grid"
+type = "binary"
+weight = 1.0
+description = """
+Feature: Shapes land on the grid
+Persona: kai.editor@board.demo
+
+Draw a shape and move it, dropping it deliberately off the grid.
+
+Confirm its position lands on the 10px grid rather than wherever the pointer was,
+and that the same is true of a newly drawn shape.
+"""
+
+[[criterion]]
+id = "a_retry_does_not_do_the_work_twice"
+name = "a_retry_does_not_do_the_work_twice"
+type = "binary"
+weight = 0.5
+description = """
+Feature: The same action arriving twice does not do the work twice
+Persona: kai.editor@board.demo
+
+Perform an action that changes the board — creating a shape is enough — and note
+the board's revision.
+
+Now have that same action arrive a second time as a retry would. Confirm the work
+is not done twice: no second shape appears, and the revision does not move again.
+
+Fail when a retry duplicates the change or advances the revision a second time.
+"""
+
+[[criterion]]
+id = "share_email"
+name = "share_email"
+type = "binary"
+weight = 3.0
+description = """
+Feature: Sharing by email is recorded honestly
+Persona: kai.editor@board.demo
+
+Open Share from the header and send the board to an address. Confirm the app
+keeps a record of it: the way it went out, whether it went, the link, and a
+picture of the board.
+
+Confirm the link in that record opens a readable view of the board, and that an
+address which is not a real address is refused in words rather than recorded as
+a send.
+
+Mail may or may not actually go anywhere from here, and that is not what this
+criterion is about. An app that records the route it took or fell back to, and
+says so plainly, is exactly right. Pass on the honesty and completeness of the
+record; never require a particular transport, and never fail an app either for
+reporting that delivery did not happen or for reporting that it did.
+"""
+
+[[criterion]]
+id = "object_duplicate"
+name = "object_duplicate"
+type = "binary"
+weight = 1.0
+description = """
+Feature: Duplicate makes exactly one copy
+Persona: kai.editor@board.demo
+
+Select a shape and use Duplicate from the Style panel.
+
+Confirm exactly one new object appears — same type, same size, same style, offset
+so it is visible — and that the original stays where it was. Count the objects
+before and after: the count goes up by one, not two.
+
+Fail when nothing is added, when more than one is added, or when the original
+moves or changes.
+"""
+
+[[criterion]]
+id = "share_guest_cannot_edit"
+name = "share_guest_cannot_edit"
+type = "binary"
+weight = 0.5
+description = """
+Feature: A shared link is read-only for whoever opens it
+Persona: kai.editor@board.demo, then a visitor with the link
+
+Create the share link and open it as somebody who is not signed in.
+
+Confirm the board is readable. Then confirm it cannot be changed: nothing can be
+drawn, moved, deleted or edited through that view, by any means the page offers.
+
+Fail if a visitor can change anything, or if hiding the controls is the only
+thing stopping them while the change still goes through underneath.
+"""
+
+[[criterion]]
+id = "a_new_board_starts_empty"
+name = "a_new_board_starts_empty"
+type = "binary"
+weight = 2.0
+description = """
+Feature: A new account opens on an empty board, with no demo content
+Persona: a freshly registered account
+
+Register a new account and look at what you are given.
+
+Pass only when the workspace is genuinely empty: the board you land on has no
+shapes, no sticky notes, no sample diagram, and the board list holds nothing
+beyond that one new board.
+
+Fail when anything has been seeded — a welcome note, demo shapes, a sample
+project — however small. This is the loudest thing the brief asks for.
+"""
+
+[[criterion]]
+id = "a_weak_password_is_refused"
+name = "a_weak_password_is_refused"
+type = "binary"
+weight = 1.0
+description = """
+Feature: Passwords have a floor
+Persona: a new account
+
+Try to register with a password shorter than eight characters.
+
+Confirm it is refused, in words that say what is wrong, and that no account is
+created by it. Then register the same address with a long enough password and
+confirm that succeeds.
+"""
+
+[[criterion]]
+id = "a_board_can_be_renamed"
+name = "a_board_can_be_renamed"
+type = "binary"
+weight = 1.0
+description = """
+Feature: Boards can be renamed
+Persona: kai.editor@board.demo
+
+Rename a board from the interface and confirm the new name is what the board
+list and the board itself show.
+
+Reload the page and confirm the new name survived.
+"""
+
+[[criterion]]
+id = "a_board_can_be_exported"
+name = "a_board_can_be_exported"
+type = "binary"
+weight = 1.0
+description = """
+Feature: A board can be exported as a file
+Persona: kai.editor@board.demo
+
+Put something on a board, then use the export control.
+
+Confirm the app produces a file rather than failing silently, and that it
+reports what it did.
+"""
+
+[[criterion]]
+id = "the_board_survives_a_reload"
+name = "the_board_survives_a_reload"
+type = "binary"
+weight = 2.0
+description = """
+Feature: Close the tab, come back, and it is all still there
+Persona: kai.editor@board.demo
+
+Build up a board: a few shapes, a connector, a group, something locked, and a
+component with an instance.
+
+Reload the page, and then sign out and back in. Confirm every one of those is
+still exactly as you left it — positions, the connection, the grouping, the lock
+and the component link.
+
+Fail if any of it is only held in the browser and disappears when the page does.
+"""
+
+[[criterion]]
+id = "the_whole_tool_palette_is_there"
+name = "the_whole_tool_palette_is_there"
+type = "binary"
+weight = 2.0
+description = """
+Feature: Every drawing tool the brief asks for exists
+Persona: kai.editor@board.demo
+
+Working through the interface, place one of each: a rectangle, a diamond, an
+ellipse, an arrow, a line, a freehand pencil stroke, a text item and a sticky
+note.
+
+Confirm all eight appear on the board and survive a reload.
+
+Fail when any is missing, and name the ones you could not find.
+"""
+
+[[criterion]]
+id = "bad_credentials_are_refused"
+name = "bad_credentials_are_refused"
+type = "binary"
+weight = 1.0
+description = """
+Feature: A wrong password and a taken address are both turned away
+Persona: kai.editor@board.demo
+
+With the account registered, try to sign in with the wrong password. Confirm it
+is refused and does not reach the workspace.
+
+Then try to register the same address again. Confirm that is refused too, rather
+than quietly making a second account.
+
+Then sign in with the right password and confirm that succeeds and reaches the
+workspace, and register a fresh address and confirm that succeeds too. An app
+that turns everything away has not passed this.
+
+Any refusal that holds the line passes; the wording and any status code are the
+submission's own choice.
+"""
+
+[[criterion]]
+id = "a_mis_drag_is_refused"
+name = "a_mis_drag_is_refused"
+type = "binary"
+weight = 1.0
+description = """
+Feature: Something too small to be a shape is refused
+Persona: kai.editor@board.demo
+
+Try to create a shape smaller than 20 across - the kind of thing a slipped click
+produces.
+
+Confirm it is refused rather than added to the board, and that the app says
+something a person could act on.
+
+Then draw a normal-sized shape and confirm it is added. An app that refuses
+every shape, or one whose threshold is set so high that ordinary shapes are
+turned away, has not passed this.
+"""
+
+[[criterion]]
+id = "an_image_can_be_brought_in"
+name = "an_image_can_be_brought_in"
+type = "binary"
+weight = 1.0
+description = """
+Feature: An image can be put onto the board
+Persona: kai.editor@board.demo
+
+Use the interface to add an image to a board.
+
+Confirm it appears on the canvas, and that it is still there after a reload.
+"""
+
+[[criterion]]
+id = "you_can_select_and_move_around"
+name = "you_can_select_and_move_around"
+type = "binary"
+weight = 1.0
+description = """
+Feature: Selecting a shape and moving around the canvas both work
+Persona: kai.editor@board.demo
+
+With a few objects on a board, confirm you can select one and see that it is
+selected, and that you can pan the canvas away from it and back so it sits where
+you left it. Erasing is scored elsewhere; do not test it here.
+"""
+
+[[criterion]]
+id = "you_can_erase_an_object"
+name = "you_can_erase_an_object"
+type = "binary"
+weight = 1.0
+description = """
+Feature: Erasing an object removes it for good
+Persona: kai.editor@board.demo
+
+With a few objects on a board, erase one of them.
+
+Confirm it is gone from the board, and still gone after a reload. Selecting and
+panning are scored elsewhere; do not test them here.
+"""
+[[criterion]]
+id = "fixed_admin_and_auth_routes"
+name = "fixed_admin_and_auth_routes"
+type = "binary"
+weight = 2.0
+description = """
+Feature: The few routes the brief fixes by name are there, with the shapes it names
+Persona: none - this is checked against the API directly
+
+The brief names these as fixed, because the team's deploy scripts call them.
+This is the one criterion that grades route names; everywhere else the naming is
+the submission's own choice.
+
+1. `GET /api/admin/snapshot` answers without a sign-in, with a summary of what
+   the app is holding.
+2. `POST /api/ops` accepts `{boardId, type, payload, opId}`.
+3. `POST /api/auth/register` and `POST /api/auth/signin` both answer with an
+   `access_token`.
+
+Never call anything that empties the app. Three other dimensions are working in
+this same running app and wiping it would destroy their accounts and boards.
+
+Judge presence and shape, not status codes or wording. Fail only when a route is
+missing or takes a different shape than the four above describe.
+"""
+
+[[criterion]]
+id = "a_refused_change_leaves_nothing_behind"
+name = "a_refused_change_leaves_nothing_behind"
+type = "binary"
+weight = 2.0
+description = """
+Feature: A change that cannot go through leaves the board exactly as it was
+Persona: kai.editor@board.demo
+
+Make two shapes and group them. Lock one of the two, then try to move the group -
+the brief says a locked object cannot be moved, "not by dragging it, not by any
+other route", and moving the group is another route.
+
+Confirm the app refuses it, and then confirm nothing at all moved: the unlocked
+shape is exactly where it was, not shifted while its locked partner stayed put.
+Half of the change landing is a fail even though the app said no.
+
+Any refusal that holds the line passes; the wording and any status code are the
+submission's own choice.
+"""
+
+[[criterion]]
+id = "undo_is_server_state"
+name = "undo_is_server_state"
+type = "binary"
+weight = 2.0
+description = """
+Feature: Undo reverses the real thing on the server, not a guess held in the tab
+Persona: kai.editor@board.demo
+
+Move a shape to a clearly different place and let the move settle.
+
+Now reload the page - or close the tab and open the board again - so nothing the
+browser was holding survives. Then undo.
+
+Confirm the shape goes back to where it was before the move. An app whose undo
+history lives only in the tab has nothing left to undo here and fails.
+"""
+[[criterion]]
+id = "a_board_can_be_created_from_the_interface"
+name = "a_board_can_be_created_from_the_interface"
+type = "binary"
+weight = 1.0
+description = """
+Feature: A person can make another board without leaving the interface
+Persona: kai.editor@board.demo
+
+With one board already open, use the interface to make a second board.
+
+Confirm there is a control for it, that the new board appears in the list of
+your boards alongside the first, and that you can move between the two. An app
+that opens a single board on sign-in and offers no way to make another one has
+not passed this.
+
+Where the control sits and what the boards are called are the submission's own
+choice. Renaming, archiving and restoring are scored elsewhere; do not test them
+here.
+"""
+
+[[criterion]]
+id = "assets_come_from_the_app_itself"
+name = "assets_come_from_the_app_itself"
+type = "binary"
+weight = 1.0
+description = """
+Feature: The interface serves its own fonts, styles and scripts
+Persona: kai.editor@board.demo
+
+Open the board and look at where the page's own assets come from - its fonts,
+its stylesheets and its scripts.
+
+Confirm they are served by the app itself rather than fetched from an outside
+host, which is what the brief asks for so a CDN going down cannot take a review
+with it. The interface calling the app's own API on another local port is fine
+and is not a failure here.
+
+Judge only the page's own fonts, styles and scripts. Do not fail this because of
+where an image a person uploaded came from.
+"""

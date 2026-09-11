@@ -27,6 +27,40 @@ cleanup() {
 write_zero_reward
 trap cleanup EXIT
 
+
+if ! python3 - "$LOG_DIR/prompt-provenance.json" <<'PY'
+import hashlib
+import json
+import re
+import sys
+from pathlib import Path
+
+root = Path('/tests')
+sha256 = lambda path: hashlib.sha256(path.read_bytes()).hexdigest()
+record = {"task": "patchpad-editor-v2", "task_version": "1.0.0", "judges": {}}
+for dimension in ("render", "constraints", "functional", "polish", "visual"):
+    prompt = root / dimension / 'prompt.md'
+    text = prompt.read_text(encoding='utf-8')
+    task_version = re.search(r'^Task version: (.+)$', text, re.MULTILINE)
+    prompt_version = re.search(r'^Prompt version: (.+)$', text, re.MULTILINE)
+    if not task_version or task_version.group(1).strip() != record['task_version'] or not prompt_version:
+        raise ValueError(f'Missing or inconsistent prompt version: {dimension}')
+    record['judges'][dimension] = {
+        'task_version': task_version.group(1).strip(),
+        'prompt_version': prompt_version.group(1).strip(),
+        'prompt_sha256': sha256(prompt),
+        'judge_sha256': sha256(root / dimension / 'judge.toml'),
+    }
+record['runner_sha256'] = sha256(root / 'test.sh')
+record['reward_config_sha256'] = sha256(root / 'reward.toml')
+Path(sys.argv[1]).write_text(json.dumps(record, indent=2) + '\n')
+print('Prompt provenance: ' + json.dumps(record, sort_keys=True), flush=True)
+PY
+then
+  write_zero_reward
+  exit 0
+fi
+
 if [[ ! -s /app/package.json || ! -s /app/APP_MANIFEST.md ]]; then
   exit 0
 fi

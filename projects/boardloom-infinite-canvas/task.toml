@@ -1,0 +1,103 @@
+schema_version = "1.4"
+artifacts = [
+  { source = "/app", exclude = ["node_modules", "dist"] },
+  { source = "/logs/verifier" }
+]
+
+[task]
+name = "turing/boardloom-infinite-canvas"
+version = "1.1.0"
+description = "Full-stack React, TypeScript, Express and SQLite infinite canvas for diagrams, wireframes and sticky notes - sign-in with per-user board isolation, an empty workspace with no dummy boards, server-enforced geometry and snapping, connectors that stay attached, groups, components with per-instance overrides, locking and archiving that fail closed, revisions that refuse a replayed operation, share links that cannot be edited by guests, share by real mail transport and PNG export - judged only in a browser across four dimensions (two hard gates plus weighted functional and polish)"
+authors = [{ name = "Turing WebDev", email = "webdev@turing.com" }]
+keywords = ["webdev", "codearena", "full-stack", "react", "typescript", "express", "sqlite", "canvas", "collaboration", "browser-judge", "rewardkit"]
+
+[metadata]
+active_target_model = "openrouter/openai/gpt-5.4-mini"
+active_target_reasoning_effort = "high"
+difficulty = "hard"
+category = "Design & Creative Tools"
+subcategory = "web-development"
+tags = ["full-stack", "browser", "arena", "rl-training"]
+provenance = "Authored 2026-09-07 from a requester brief for an infinite canvas workspace; converted to the v2 four-dimension browser-judged format"
+arena_slice = "full-stack-react-typescript-express-sqlite-infinite-canvas"
+arena_domain = "Productivity"
+arena_intent = "greenfield"
+arena_tech_slices = "react, typescript, canvas, sqlite"
+task_id = "WEBDEV-BOARDLOOM-001"
+capabilities = ["backend-api", "frontend-ui", "persistence", "authentication"]
+difficulty_explanation = """
+/app starts empty: the model writes the Express backend, the React client, the
+SQLite persistence and the start.sh entrypoint from a six-file brief under
+/instructions - overview, behaviour, security, integration, ui and policy.
+
+The product looks like a drawing tool and is really a server-authority problem.
+An ordinary submission gets a canvas you can draw on. The rest is where
+implementations separate: boards that belong to one account and answer 401, 403
+or 404 to anybody else; geometry snapped and validated on the server rather than
+in the client; a connector whose endpoint follows the object it is attached to;
+a group whose children move with it; a component master whose fill propagates
+while each instance keeps its own text; a lock that refuses an edit with
+OBJECT_LOCKED and an archived board that refuses a write with BOARD_ARCHIVED,
+both fail-closed rather than a generic 400; a board revision that increments per
+operation and refuses a replayed opId as a duplicate instead of applying it
+twice; a share link a guest can open but not edit; and a Share that leaves
+through a real mail transport rather than a local outbox.
+
+Four browser-judge dimensions. render (1 criterion) and constraints (1) are hard
+gates carrying no reward mass: the workspace draws and /health answers, so any
+working submission clears them and the discrimination happens in the scored
+dimensions. Otherwise the reward is 0.6 * functional + 0.4 * polish, where
+functional (29 criteria, total weight 41) covers registration and sign-in, per-user
+isolation, snapping and invalid geometry, connectors, groups, components,
+duplicate, the lock and archive guards, revisions and duplicate operations, the
+few routes the brief fixes by name, a refused change leaving nothing behind,
+undo surviving a reload, and sharing by mail and by read-only link; and polish (18 criteria, total weight 19)
+covers the freehand pencil path, arrows being distinct from lines, the board
+following the active theme with a working export in both, sharing being findable
+in either theme, an arrow head holding its colour across a theme toggle, undo and
+redo on the toolbar, the style panel's fill and delete, and the
+board lifecycle, layer and version controls being reachable from the interface
+rather than only from the API.
+
+Golden oracle should score 1.0.
+"""
+
+[agent]
+timeout_sec = 7200.0
+network_mode = "public"
+
+[environment]
+build_timeout_sec = 1800.0
+os = "linux"
+cpus = 4
+memory_mb = 8192
+storage_mb = 10240
+network_mode = "public"
+
+[environment.healthcheck]
+command = "curl -fsS --max-time 2 http://127.0.0.1:4000/health || test -d /app"
+interval_sec = 5.0
+timeout_sec = 8.0
+retries = 24
+start_period_sec = 15.0
+
+[verifier]
+timeout_sec = 10800.0
+environment_mode = "separate"
+
+[verifier.env]
+OPENAI_API_KEY = "${OPENAI_API_KEY}"
+REWARDKIT_JUDGE = "codex"
+REWARDKIT_MODEL = "gpt-5.6-luna"
+REWARDKIT_REASONING_EFFORT = "max"
+
+[verifier.environment]
+os = "linux"
+cpus = 4
+memory_mb = 8192
+storage_mb = 10240
+network_mode = "public"
+
+[profile.webdev_agentic]
+app_port = 4000
+default_start_command = "cd /app && bash start.sh"

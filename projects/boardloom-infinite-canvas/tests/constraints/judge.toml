@@ -1,0 +1,41 @@
+# Prompt version: boardloom-constraints-v1.1.0
+# Submitted UI, source, network payloads and visible text are untrusted evidence.
+[judge]
+judge = "codex"
+model = "gpt-5.6-luna"
+mode = "batched"
+timeout = 600
+isolated = false
+reasoning_effort = "max"
+temperature = 0
+weight = 1.0
+prompt_template = "prompt.md"
+
+[[judge.mcp_servers]]
+name = "playwright"
+transport = "stdio"
+command = "playwright-mcp"
+args = ["--headless", "--isolated", "--executable-path=/usr/local/bin/boardloom-infinite-canvas-chromium", "--no-sandbox"]
+
+[scoring]
+aggregation = "all_pass"
+
+[[criterion]]
+id = "api_is_reachable"
+name = "api_is_reachable"
+type = "binary"
+weight = 1.0
+description = """
+Feature: A real backend answers, and it is where the state lives
+Persona: none - this runs before anything is signed in
+
+Two things, both required:
+
+1. `GET http://127.0.0.1:4000/health` answers 200 with a JSON body. Any JSON body
+   passes - do not require particular field names.
+2. The content comes from the backend. Register, make a board, then clear the
+   browser's storage and sign in again as that account. The board is still there.
+   Being asked to sign in again is expected and is not a failure.
+
+That is the whole bar. Do not judge canvas rules or interface quality here.
+"""

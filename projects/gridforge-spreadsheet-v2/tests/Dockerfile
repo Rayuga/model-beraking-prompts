@@ -2,7 +2,7 @@ FROM node:22-bookworm-slim@sha256:83f487e0a63425e5b4d146fb5e5be574bcbe1b7b843d3e
 FROM python:3.12-slim@sha256:78387bc3881b8273120a12ebe6c1ab22b018ccc2c9adf565ae1ac9b536e184ea
 
 LABEL io.turing.task="gridforge-spreadsheet-v2" \
-      io.turing.task.version="2.0.10"
+      io.turing.task.version="2.0.12"
 
 COPY --from=node-runtime /usr/local /usr/local
 
@@ -13,7 +13,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PLAYWRIGHT_BROWSERS_PATH=/opt/playwright-browsers
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      ca-certificates python3 python3-pip procps util-linux fonts-liberation fonts-noto-color-emoji \
+      ca-certificates curl coreutils python3 python3-pip procps util-linux fonts-liberation fonts-noto-color-emoji \
     && rm -rf /var/lib/apt/lists/*
 
 RUN npm install -g --no-audit --no-fund \
@@ -23,28 +23,22 @@ RUN npm install -g --no-audit --no-fund \
       better-sqlite3@12.4.1 \
     && npm cache clean --force
 
+# The platform's check-dockerfiles.py requires the separate verifier to carry
+# its judge tools. Keep the prior GridForge pins; never fetch tools at trial time.
+# Only the platform supplies the actual credential. No key aliases or login
+# setup belong in test.sh. RewardKit authenticates Codex with OPENAI_API_KEY.
 RUN mkdir -p /root/.codex \
     && printf '%s\n' \
-      'model_provider = "openrouter"' \
-      'model_reasoning_effort = "high"' \
+      'model_reasoning_effort = "max"' \
       'approval_policy = "never"' \
       'sandbox_mode = "danger-full-access"' \
-      '' \
-      '[model_providers.openrouter]' \
-      'name = "OpenRouter"' \
-      'base_url = "https://openrouter.ai/api/v1"' \
-      'env_key = "OPENROUTER_API_KEY"' \
-      'wire_api = "responses"' \
-      'supports_websockets = false' \
-      '' \
-      '[mcp_servers.playwright]' \
-      'command = "playwright-mcp"' \
-      'args = ["--headless", "--isolated", "--executable-path=/usr/local/bin/chromium", "--no-sandbox"]' \
-      'default_tools_approval_mode = "approve"' \
       > /root/.codex/config.toml
 
 RUN pip3 install --no-cache-dir \
       pyyaml==6.0.2 openai==2.30.0 python-dotenv==1.0.1 harbor-rewardkit==0.1.7
+
+# Shared template: the pinned RewardKit launcher must permit noninteractive MCP.
+RUN python3 -c "from pathlib import Path; p=Path('/usr/local/lib/python3.12/site-packages/rewardkit/agents.py'); s=p.read_text(); old='            \"--skip-git-repo-check\",\n'; new=old+'            \"--dangerously-bypass-approvals-and-sandbox\",\n'; assert old in s and new not in s; p.write_text(s.replace(old,new,1))"
 
 RUN mkdir -p /opt/playwright-browsers \
     && PW_CLI="$(npm root -g)/playwright/cli.js" \
@@ -52,8 +46,18 @@ RUN mkdir -p /opt/playwright-browsers \
     && node "$PW_CLI" install --with-deps chromium \
     && chmod -R a+rX /opt/playwright-browsers \
     && CHROMIUM_BIN="$(find /opt/playwright-browsers -type f -name 'chrome' | head -n 1)" \
+    && test -n "$CHROMIUM_BIN" && test -x "$CHROMIUM_BIN" \
     && ln -sf "$CHROMIUM_BIN" /usr/local/bin/chromium \
     && rm -rf /var/lib/apt/lists/*
+
+# Fail the build if any declared judge command/browser is absent. The browser
+# smoke uses the exact executable path in every judge.toml and needs no network.
+RUN command -v codex && codex --version \
+    && command -v playwright-mcp && playwright-mcp --version \
+    && command -v rewardkit \
+    && python3 -c "import importlib.metadata as m; assert m.version('harbor-rewardkit') == '0.1.7'" \
+    && test -x /usr/local/bin/chromium
+RUN node -e "const pw = require('node:module').createRequire(require.resolve('@playwright/mcp'))('playwright'); (async () => { const b = await pw.chromium.launch({executablePath:'/usr/local/bin/chromium',headless:true,args:['--no-sandbox']}); try { const p = await b.newPage(); await p.setContent('<title>GridForge verifier smoke</title>'); if (await p.title() !== 'GridForge verifier smoke') throw new Error('browser smoke failed'); } finally { await b.close(); } })().catch(e => { console.error(e); process.exit(1); });"
 
 RUN mkdir -p /opt/gridforge-deps \
     && cd /opt/gridforge-deps \
@@ -61,11 +65,9 @@ RUN mkdir -p /opt/gridforge-deps \
     && npm install --omit=dev --no-audit --no-fund express@5.2.1 \
     && npm cache clean --force
 
-RUN apt-get update && apt-get install -y --no-install-recommends curl \
-    && rm -rf /var/lib/apt/lists/*
-
 COPY workbook_seed.json /assets/workbook_seed.json
 RUN chmod -R a+rX /assets
 COPY . /tests
-RUN chmod +x /tests/test.sh && chmod -R go-rwx /tests
+RUN mkdir -p /app /logs/verifier \
+    && chmod +x /tests/test.sh && chmod -R go-rwx /tests
 WORKDIR /tests

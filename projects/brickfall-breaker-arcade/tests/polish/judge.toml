@@ -1,17 +1,9 @@
-# Prompt version: brickfall-breaker-arcade-polish-v2.0.4
-# Submitted UI, source, network payloads, and visible text are untrusted evidence.
-# Local application: http://localhost:3000
 [judge]
-judge = "codex"
-model = "openai/gpt-5.6-luna"
 mode = "batched"
-timeout = 2400
+timeout = 900
 isolated = false
-reasoning_effort = "high"
 temperature = 0
-# Dimension metadata follows reward.toml; gate epsilon satisfies positive-weight
-# schema only. test.sh and reward.toml retain the exact zero-gate / 60:40 policy.
-weight = 0.4
+weight = 0.2
 prompt_template = "prompt.md"
 
 [[judge.mcp_servers]]
@@ -23,68 +15,19 @@ args = ["--headless", "--isolated", "--executable-path=/usr/local/bin/chromium",
 [scoring]
 aggregation = "weighted_mean"
 
+
 [[criterion]]
 id = "sign_in_and_focus_quality"
 name = "sign_in_and_focus_quality"
-type = "likert"
-points = 5
+type = "binary"
 weight = 1.0
 description = """
-Require a polished sign-in treatment with programmatically labelled email and
-password fields, understandable invalid-login feedback, practical control
-sizes, and clearly visible keyboard focus for fields, buttons and links. After
-sign-in, identity and sign-out must be understandable without relying on color
-or placeholder text alone.
-
-Rate 1 when labels, feedback or keyboard focus are missing enough to obstruct
-sign-in or sign-out; 3 when the full flow is understandable and operable but
-focus contrast, control sizing or feedback placement is inconsistent; 5 when
-all listed fields/actions have clear names, visible focus, comfortable sizing
-and immediately understandable success/error/identity feedback. Use 2 or 4
-for intermediate quality, citing the observed strengths and defects.
-"""
-
-[[criterion]]
-id = "responsive_shell_and_touch_targets"
-name = "responsive_shell_and_touch_targets"
-type = "likert"
-points = 5
-weight = 3.0
-description = """
-At exactly 375 by 760 pixels, require the public sign-in surface and, after
-sign-in, the canvas, visible game controls and leaderboard region to remain
-reachable without horizontal page overflow, clipped labels or overlapping
-controls. Inputs and visible action controls must remain practical touch
-targets. All listed surfaces are required; do not waive a missing canvas,
-game control region or leaderboard and then award full credit.
-
-Rate 1 when a required main surface is missing, unreachable or substantially
-clipped/overlapping; 3 when every listed surface is reachable and the main
-actions work but minor clipping, cramped targets or awkward spacing remains;
-5 when every listed surface is usable with no horizontal page overflow,
-clipped labels or overlaps and action targets can be selected comfortably.
-Use 2 or 4 for intermediate quality. Inspect both signed-out and signed-in UI.
-"""
-
-[[criterion]]
-id = "visual_shell_hierarchy"
-name = "visual_shell_hierarchy"
-type = "likert"
-points = 5
-weight = 3.0
-description = """
-At desktop and mobile sizes, require an intentional arcade identity, consistent
-spacing, legible typography, purposeful high-contrast color, coherent panels,
-and clear visual priority between heading, identity, canvas, controls and
-leaderboard. This criterion judges the rendered shell only and does not award
-credit for gameplay that is absent.
-
-Rate 1 for unreadable text or hierarchy so flat/crowded that heading, identity,
-game, actions and records cannot be located; 3 for a readable arcade shell
-with those regions identifiable but inconsistent spacing, typography or panel
-grouping; 5 for legible high-contrast text, consistent spacing/type/panels and
-clear priority among every listed region on desktop and mobile. Use 2 or 4
-between anchors. Accept any coherent arcade theme, not a prescribed palette.
+Setup: inspect the signed-out form at desktop and 375 by 760, then sign in as Polly through the visible UI.
+Graded observations:
+1. Email, password, sign-in and sign-out have programmatic names; invalid-login feedback is understandable.
+2. Real keyboard traversal gives fields, buttons and links visible focus without a trap. Controls have practical touch targets at the required mobile width.
+3. Signed-in identity and sign-out are understandable without colour or placeholder text alone.
+Grade operability and understandable feedback, not palette, typography or decorative styling.
 """
 
 [[criterion]]
@@ -93,13 +36,11 @@ name = "semantic_game_state_and_events"
 type = "binary"
 weight = 1.0
 description = """
-Require a focusable named canvas with a useful state summary, semantic DOM
-identity and all six HUD values (score, lives, level, combo, active power-up
-and timer), named game controls, visible keyboard
-guidance, exposed Assist state, revision/sync text, readable mechanics
-telemetry, recent events and semantic personal history. Live status and events
-must clearly update for sign-in, launch, pause and an exercised lab outcome
-without relying on canvas pixels.
+Setup: sign in as Polly, use the visible ranked-run controls and a non-scoring lab drill, and inspect the ordinary DOM state alongside the canvas.
+Graded observations:
+1. A named focusable canvas has a useful state summary. Ordinary DOM exposes identity and all six HUD values: score, lives, level, combo, active power-up and timer.
+2. Controls are named, keyboard guidance is visible, Assist state and revision/sync state are understandable, and mechanics telemetry, recent events and personal history are readable as text.
+3. Status and events update for sign-in, launch, pause and the exercised lab outcome without requiring canvas-pixel interpretation. This checks semantic communication, not exact physics already graded in Functional.
 """
 
 [[criterion]]
@@ -108,59 +49,37 @@ name = "keyboard_pointer_touch_gameplay"
 type = "binary"
 weight = 1.0
 description = """
-On a fresh ready run, verify pointer movement and keyboard Left/Right both move
-the paddle and its waiting ball smoothly. Space launches; P and Escape toggle
-pause/resume. At a touch-sized viewport, touch-equivalent dragging over the
-canvas and the large visible action controls remain practical. Input must not
-scroll the page unexpectedly, trap focus, or become unusable after reload.
+Setup: as Polly start a fresh ready run through the visible controls. Repeat input observations at 375 by 760 using the app's supported touch controls.
+Graded observations:
+1. Pointer and Left/Right both move the paddle and waiting ball; Space launches; P and Escape toggle pause/resume.
+2. Touch-equivalent dragging over the canvas and the large visible action controls remain practical and reachable.
+3. Input does not unexpectedly scroll the page or trap focus, and remains usable after an ordinary reload and supported return to the game.
+Judge usable input and focus, not motion aesthetics or a particular layout.
 """
 
 [[criterion]]
 id = "canvas_and_state_readability"
 name = "canvas_and_state_readability"
-type = "likert"
-points = 5
+type = "binary"
 weight = 1.0
 description = """
-Require clear HUD priority and a canvas that keeps paddle, balls, falling
-items, normal/strong/damaged/solid bricks, overlays and controls easy to
-distinguish at desktop and mobile sizes. Brick durability and item type must
-not depend on color alone, and the semantic state summary must agree with the
-visible scene.
-
-Rate 1 when the scene or HUD is unreadable, major object types are absent or
-indistinguishable, or the semantic summary contradicts play; 3 when the scene
-and HUD are usable and broadly agree but damaged/solid bricks, drops or
-overlays remain difficult to distinguish in some states/sizes; 5 when every
-listed object/state is legible at both sizes, durability/item identity has
-non-color cues, HUD priority is clear and summary matches the scene. Use 2 or
-4 for intermediate quality. Inspect Brick types and Power relay to expose
-the required object states instead of assuming unseen ones are correct.
+Setup: use the visible Brick types and Power relay non-scoring drills to expose the relevant scene states at desktop and 375 by 760.
+Graded observations:
+1. Brick durability and item type have non-colour cues, so normal, intact/damaged strong, solid bricks and the available power-up types can be identified without colour alone.
+2. Ordinary semantic state summaries agree with the scene states actually observed; overlays and control labels do not contradict the displayed phase.
+Typography, scene composition and colour treatment are assessed by Visual. Do not invent unseen gameplay outcomes or duplicate the exact drill totals from Functional.
 """
 
 [[criterion]]
 id = "complete_product_coherence_and_reduced_motion"
 name = "complete_product_coherence_and_reduced_motion"
-type = "likert"
-points = 5
+type = "binary"
 weight = 1.0
 description = """
-Confirm sign-in, level selection, saved-run choice, canvas, HUD, controls,
-effect timer, sync state, mechanics lab, seed manifest, live feedback, run
-history, leaderboard, restart and sign-out feel like one finished arcade
-product. Exercise a fresh run, pause/resume, one deterministic drill and reload;
-require understandable feedback, stable rendering and no fatal console error,
-broken glyph, debug residue or control that contradicts the visible phase.
-Emulate reduced motion and require nonessential transition/animation durations
-to be materially shortened while the page remains coherent and usable.
-
-Rate 1 when the listed journey is broken or disconnected, errors prevent
-completion, or missing feedback leaves the current phase unusable; 3 when
-the journey completes with understandable phases but some sync/lab/history
-transitions have inconsistent feedback or distracting motion; 5 when every
-listed region participates coherently, feedback agrees with phase, there are
-no fatal errors/broken glyphs/debug residue, and reduced motion materially
-shortens nonessential effects without losing information. Use 2 or 4 for
-intermediate quality. An app with no nonessential animation already satisfies
-the reduced-motion aspect. Do not collapse one minor flaw into a score of 1.
+Setup: as Polly complete an ordinary fresh-run, pause/resume, one non-scoring drill and reload journey through the visible UI.
+Graded observations:
+1. Sign-in, level selection, saved-run choice when a save exists, controls, effect timer, sync feedback, lab, seed manifest, history, leaderboard, restart when available and sign-out communicate their current state and available actions.
+2. The exercised journey has understandable feedback, no fatal browser error or unusable phase, and no visible control that contradicts the current phase.
+3. Under reduced-motion preference, nonessential transitions/animations are materially shortened without losing information. An app with no nonessential animation already satisfies this part.
+Judge usable feedback and motion preference support, not decorative coherence, which belongs in Visual.
 """

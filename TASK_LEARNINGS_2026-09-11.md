@@ -5,6 +5,28 @@ PatchPad QC failures, Oracle/model analysis, fixes, and decisions left open.
 Use [TASK_TEMPLATE_STANDARD.md](TASK_TEMPLATE_STANDARD.md) for the current
 authoring contract. Earlier examples in this repository can be obsolete.
 
+## Later PatchPad QC correction: coverage and prompt provenance
+
+The subsequent platform run raised three findings: ungraded document line
+numbers, absent prompt-version markers, and prompt consistency/residue. Two
+findings shared the missing-marker cause. The removal of every prompt banner
+had gone too far: keep version identification as ordinary prompt text while
+removing code comments. Every prompt now identifies task version 1.0.0 and its
+own revision; the runner records prompt/judge, runner and reward hashes in
+`prompt-provenance.json` and its stdout. Hashes establish traceability, not a
+claim of deterministic LLM verdicts.
+
+The existing Functional navigation criterion now explicitly checks document
+line numbers at the top and after scrolling, alongside their corresponding
+logical lines. Cursor status alone is insufficient. Both consistent numbering
+bases and virtualized line rendering remain valid. No criterion or weight was
+added. Reference-product names and template explanations were removed from the
+delivered prompts. Historical statements below about removing prompt-version
+banners describe the earlier decision and are superseded by this correction.
+
+Current corrective release: `deliverables/patchpad-editor-v2/1.0.0-rubric-coverage-provenance/`.
+Its changes still require a fresh platform semantic QC and Oracle run.
+
 ## Reference authority and lead requirements
 
 The lead's manual checklist names

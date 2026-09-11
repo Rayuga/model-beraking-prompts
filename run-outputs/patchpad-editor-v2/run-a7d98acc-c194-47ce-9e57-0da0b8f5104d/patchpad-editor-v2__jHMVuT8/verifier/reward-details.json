@@ -1,0 +1,508 @@
+{
+  "constraints": {
+    "score": 1.0,
+    "criteria": [
+      {
+        "id": "same_origin_application_shell",
+        "name": "same_origin_application_shell",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Require the root document and every script, style, font, image, and application\nrequest needed for the visible editor shell to come from localhost on the\napplication origin. Incidental browser-internal URLs are irrelevant. Fail for\na required public-internet runtime asset or cross-origin application API.\n",
+        "reasoning": "The root loaded at http://localhost:3000 with PatchPad and a visible incident editor. Required resources and the successful /api/bootstrap response all came from localhost; the response supplied the shown Northwind API Incident Report. No fatal runtime error blocked the shell; the only console error was a non-fatal same-origin favicon 404."
+      },
+      {
+        "id": "self_contained_entry_and_reload",
+        "name": "self_contained_entry_and_reload",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Open the root entry and require rendered HTML with a usable editor\nsurface. Fully reload and require that surface to return through the app's\nordinary entry point without a build, install, or external navigation.\n",
+        "reasoning": "The root rendered a usable custom DOM editor, and a full reload through / returned it with the report still visible. The surface contained 1,226 rendered editor lines and no textarea, contenteditable, canvas, SVG, or prohibited editor-library surface."
+      }
+    ],
+    "kind": "agent",
+    "judge": {
+      "agent": "codex",
+      "model": "gpt-5.6-luna",
+      "timeout": 600,
+      "cwd": null,
+      "isolated": false,
+      "atif_trajectory": null,
+      "mode": "batched",
+      "mcp_servers": [
+        {
+          "name": "playwright",
+          "transport": "stdio",
+          "url": null,
+          "command": "playwright-mcp",
+          "args": [
+            "--headless",
+            "--isolated",
+            "--executable-path=/usr/local/bin/chromium",
+            "--no-sandbox"
+          ],
+          "allowed_tools": []
+        }
+      ]
+    },
+    "judge_output": "{\"same_origin_application_shell\":{\"score\":\"yes\",\"reasoning\":\"The root loaded at http://localhost:3000 with PatchPad and a visible incident editor. Required resources and the successful /api/bootstrap response all came from localhost; the response supplied the shown Northwind API Incident Report. No fatal runtime error blocked the shell; the only console error was a non-fatal same-origin favicon 404.\"},\"self_contained_entry_and_reload\":{\"score\":\"yes\",\"reasoning\":\"The root rendered a usable custom DOM editor, and a full reload through / returned it with the report still visible. The surface contained 1,226 rendered editor lines and no textarea, contenteditable, canvas, SVG, or prohibited editor-library surface.\"}}\n"
+  },
+  "functional": {
+    "score": 0.2651,
+    "criteria": [
+      {
+        "id": "seed_document_integrity",
+        "name": "seed_document_integrity",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 0.25,
+        "description": "Feature metadata: feature=seed_bootstrap; sub_feature=exact_seed_document; kind=graded; depends_on=render_and_constraints. This criterion is all-or-nothing and is evaluated before criteria that save edits. Open the normal app without a login step. Through the visible UI and a same-origin GET of the document API, verify exactly one document titled \"Northwind API Incident Report\" exists at saved revision 1 and contains exactly 1,226 logical lines before any edit. Verify line 1 is exactly \"Incident: Northwind API latency event\", line 18 is exactly \"NEXT: Replace temporary dashboard link before publishing.\", line 24 is exactly \"Log line 0001: region=us-east service=checkout marker=ALPHA-0001 status=observed note=repeatable text for editor offset validation.\", line 623 contains both \"Log line 0600:\" and \"marker=ALPHA-0600\", line 1223 contains both \"Log line 1200:\" and \"marker=ALPHA-1200\", line 1225 is exactly \"Reviewer notes\", and line 1226 is exactly \"The editor must preserve this tail sentinel: OMEGA-END-ANCHOR.\". Any missing, unpadded, duplicated, reordered, or extra generated line fails.\n",
+        "reasoning": "Required padded markers were absent: line 24 had ALPHA-1 and line 623 had ALPHA-600."
+      },
+      {
+        "id": "custom_editor_surface_real_input",
+        "name": "custom_editor_surface_real_input",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 0.125,
+        "description": "Feature metadata: feature=custom_editor; sub_feature=real_keyboard_input; kind=graded; depends_on=render_and_constraints. This criterion is all-or-nothing and scores real keyboard input only. The prohibition on native or ready-made document editors is enforced by the Constraints hard prerequisite, not by this criterion's small weight. Click the visible editor with the real mouse, type the exact marker CUSTOM-SURFACE-PROOF with normal keyboard input, and require that exact marker once in the document. Do not dispatch synthetic events, invoke application handlers, or mutate the DOM. After recording the result, reload without saving only to prepare a clean state for the next criterion; cleanup is not evidence for this criterion.\n",
+        "reasoning": "Real edit was attempted, but transient evidence was lost at the unload dialog."
+      },
+      {
+        "id": "unsaved_edit_discard_on_reload",
+        "name": "unsaved_edit_discard_on_reload",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 0.125,
+        "description": "Feature metadata: feature=persistence; sub_feature=unsaved_reload_discard; kind=graded; depends_on=none. This criterion is all-or-nothing. Record the exact saved content and revision through a same-origin GET. Through the visible editor append \" UNSAVED-SHOULD-DISAPPEAR\" to logical line 1 without saving and require the UI to become dirty. Reload while accepting any unload confirmation. Require the suffix to be absent from the visible line and a fresh document GET, and require the complete server content and revision to remain byte-for-byte unchanged from the recorded baseline.\n",
+        "reasoning": "Dirty-state evidence was not preserved before reload."
+      },
+      {
+        "id": "noop_save_revision_invariant",
+        "name": "noop_save_revision_invariant",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 0.5,
+        "description": "Feature metadata: feature=persistence; sub_feature=no_op_save; kind=graded; depends_on=none. This criterion is all-or-nothing. With the document visibly saved and unchanged, record its current revision, exact content, and exact revision-list count through same-origin GET requests. Attempt the visible Save command if enabled, then press Ctrl/Cmd+S three times without editing. Re-read all three values and require the revision number, byte-for-byte content, and revision-list count to remain exactly unchanged. The UI must remain saved rather than dirty and must disable Save or visibly report that there are no changes.\n",
+        "reasoning": "Revision, content, and one-entry history remained unchanged after no-op Save and three Ctrl+S presses; UI reported no changes."
+      },
+      {
+        "id": "edit_save_reload_and_fresh_client",
+        "name": "edit_save_reload_and_fresh_client",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 0.25,
+        "description": "Feature metadata: feature=persistence; sub_feature=save_and_fresh_client; kind=graded; depends_on=none. This criterion is all-or-nothing. Use only the visible editor and keyboard to append \" BASIC-SAVE-CHECK\" to logical line 1. Verify line 1 becomes exactly \"Incident: Northwind API latency event BASIC-SAVE-CHECK\", the UI becomes dirty, and one visible Save advances the revision by exactly one. Record the exact saved content and revision, then clear localStorage, sessionStorage, IndexedDB, cache storage, and cookies and open a fresh ordinary page. Require that fresh client to load the same byte-for-byte server content and revision with BASIC-SAVE-CHECK exactly once. Before this setup, record the saved baseline and verify BASIC-SAVE-CHECK is absent. Insert the suffix once only; do not retype or resave it in the fresh client. The fresh-client leg is observation only. Verify exactly one suffix in the live draft before the one Save, then compare the persisted content with that recorded draft.\n",
+        "reasoning": "BASIC-SAVE-CHECK landed on line 2, not required line 1."
+      },
+      {
+        "id": "keyboard_navigation_exact_coordinates",
+        "name": "keyboard_navigation_exact_coordinates",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 1.0,
+        "description": "Feature metadata: feature=cursor_navigation; sub_feature=exact_logical_coordinates; kind=graded; depends_on=render_and_constraints. This criterion is all-or-nothing. Use the real mouse to place the caret in the first logical line and press Home to establish its start. Observe whether the displayed line and column counters each start at zero or one, and use those same bases consistently throughout. The line ordinals below identify document content, not mandatory display labels; character offsets count characters before the caret, starting at zero. Use real key presses only for the following sequence. Four ArrowDown presses must reach the fifth logical line at offset 0. End must reach the end of Timeline at offset 8. ArrowDown must reach the sixth logical line at offset 8; Home must reach its offset 0; ArrowLeft must cross the newline to the end of Timeline; ArrowRight must return to the start of the sixth logical line. Press End on the sixth logical line and require its actual end, then ArrowUp must clamp to the end of the shorter Timeline line and ArrowDown must restore the intended position at the end of the sixth logical line. Finally use the real mouse to place the caret inside the final logical line, press End, and require the caret after its complete tail-sentinel text. At every checkpoint, require the visible caret and displayed cursor position, normalized using the established bases, to agree with the exact content-derived position. Record the observed labels and normalized positions. A consistent zero-based or one-based display is acceptable; incorrect movement, inconsistent counters, document changes, or loss of editor focus fails.\n",
+        "reasoning": "A coordinate-query failure lost required intermediate checkpoint evidence."
+      },
+      {
+        "id": "word_navigation_and_selection_shortcuts",
+        "name": "word_navigation_and_selection_shortcuts",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 0.5,
+        "description": "Feature metadata: feature=cursor_navigation; sub_feature=word_navigation_and_selection_shortcuts; kind=graded; depends_on=seed_document_integrity. This criterion is all-or-nothing. Use the visible editor and real keyboard to append a new final line containing exactly \"NORTH WIND\" without saving. Use Home to reach column 1 of this line. Press the platform Ctrl/Cmd+ArrowRight shortcut once: accept column 6 (end of NORTH) or column 7 (start of WIND), since both are familiar word-navigation conventions. Press Home again, then modifier+Shift+ArrowRight and copy with Ctrl/Cmd+C. Require column 6 with clipboard exactly \"NORTH\", or column 7 with clipboard exactly \"NORTH \" including its trailing space, consistent with the earlier motion. Press End to reach column 11 and clear the selection. Press modifier+ArrowLeft once and require column 7. Press End again, then modifier+Shift+ArrowLeft and copy: require column 7 and clipboard exactly \"WIND\". No shortcut may change the document or lose editor focus. Do not dispatch events, set selection state, or invoke application handlers. Quote all measured coordinates and copied strings. Reload without saving and verify the added line is absent.\n",
+        "reasoning": "Shortcut and clipboard evidence was lost at the unload dialog."
+      },
+      {
+        "id": "backspace_delete_exact_line_join",
+        "name": "backspace_delete_exact_line_join",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 0.5,
+        "description": "Feature metadata: feature=deletion; sub_feature=newline_boundary_join; kind=graded; depends_on=seed_document_integrity. This criterion is all-or-nothing. At the document end create exactly three adjacent logical lines JOIN-LEFT, JOIN-RIGHT, and JOIN-TAIL through normal paste or keyboard input. Put the caret at the start of JOIN-RIGHT and press Backspace once; require the two lines to become exactly JOIN-LEFTJOIN-RIGHT followed by unchanged JOIN-TAIL, with the document line count reduced by one and no duplicated characters. Undo once and require all three original lines. Put the caret at the end of JOIN-LEFT and press Delete once; require exactly the same joined result and line count. Reload without saving and verify none of the JOIN markers persisted.\n",
+        "reasoning": "Backspace/Undo passed, but Delete did nothing because focus remained on findNextButton."
+      },
+      {
+        "id": "tab_indentation_and_reversal",
+        "name": "tab_indentation_and_reversal",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 0.5,
+        "description": "Feature metadata: feature=editing; sub_feature=tab_and_shift_tab_indentation; kind=graded; depends_on=seed_document_integrity. This criterion is all-or-nothing. Use the real mouse and keyboard to focus seeded logical line 5, whose exact value is Timeline, and press Home. Press Tab exactly once. Require focus to remain in the custom editor and line 5 to gain a nonempty leading indentation made only of spaces or tabs, with Timeline itself byte-for-byte unchanged. Accept the app's indentation width without imposing a fixed character count. Record that exact indented line. Press Shift+Tab exactly once and require line 5 to return exactly to Timeline. Press Undo exactly once and require the exact recorded indented line to return; press Redo exactly once and require exactly Timeline again. Adjacent lines must remain unchanged throughout. Reload without saving and require line 5 to remain Timeline. Browser focus traversal, insertion away from the line start, non-whitespace content changes, or multiple Tab/Shift+Tab presses fail.\n",
+        "reasoning": "Visible Timeline click placed the caret on line 6; Tab/Shift+Tab did not indent line 5."
+      },
+      {
+        "id": "unicode_grapheme_backspace_delete",
+        "name": "unicode_grapheme_backspace_delete",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 0.5,
+        "description": "Feature metadata: feature=unicode_editing; sub_feature=grapheme_backspace_and_delete; kind=graded; depends_on=seed_document_integrity. This criterion is all-or-nothing. Using the real clipboard and visible editor, append the exact lines \"UNICODE-BACKSPACE:A\ud83d\ude42B\" and \"UNICODE-DELETE:Ae\u0301B\", where the second marker contains a decomposed e followed by U+0301 COMBINING ACUTE ACCENT. Use the visible Find control to locate the emoji, collapse the live editor selection immediately after it with a real ArrowRight press, and press Backspace exactly once. Require the first line to become exactly \"UNICODE-BACKSPACE:AB\"; one Undo must restore the exact original line including the complete emoji. Next use visible Find to locate the decomposed e\u0301 grapheme, collapse the live editor selection immediately before it with a real ArrowLeft press, and press Delete exactly once. Require the second line to become exactly \"UNICODE-DELETE:AB\"; one Undo must restore the exact decomposed original. Read editor content only for verification; do not set selection state, inject text, dispatch keyboard events, mutate DOM, or call editor handlers from JavaScript. Reload without saving and require both UNICODE markers to be absent. After each Find action, verify the intended full grapheme is the selected document text. If the Find input still has focus, press its documented Escape exit once to return to the editor without changing that selection. Confirm the custom editor has focus before ArrowLeft/ArrowRight, Backspace/Delete, and the one Undo. Await the visible result after each command; never apply an extra Undo or Delete to repair it.\n",
+        "reasoning": "Find left focus on findNextButton; clipboard contained the full payload and grapheme deletion did not occur."
+      },
+      {
+        "id": "unicode_grapheme_navigation_selection",
+        "name": "unicode_grapheme_navigation_selection",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 0.5,
+        "description": "Feature metadata: feature=unicode_editing; sub_feature=grapheme_navigation_and_selection; kind=graded; depends_on=seed_document_integrity. This criterion is all-or-nothing. Using the real clipboard and visible editor, append the exact line \"UNICODE-NAV:A\ud83d\ude42e\u0301B\", where e\u0301 is a decomposed e followed by U+0301 COMBINING ACUTE ACCENT. Use the visible Find control to select exactly \"A\ud83d\ude42e\u0301B\", then press ArrowLeft once to collapse the live selection at its start. Hold Shift and press ArrowRight exactly once, copy with Ctrl/Cmd+C, and require the real clipboard to equal exactly \"A\". Press ArrowRight once to collapse after A; then Shift+ArrowRight exactly once must copy exactly the complete emoji \"\ud83d\ude42\". Press ArrowRight once to collapse after the emoji; then Shift+ArrowRight exactly once must copy exactly the complete decomposed grapheme \"e\u0301\". Each visible character must therefore be crossed and selected in one real keyboard step, without exposing a surrogate half or a detached combining mark. Do not set selection state, inject text, dispatch keyboard events, mutate DOM, or call editor handlers from JavaScript. Reload without saving and require the UNICODE-NAV marker to be absent. After Find selects the full sample, exit the Find input with its documented Escape action if needed and confirm editor focus without clicking document text. Keep focus in the editor throughout the exact Arrow/Shift+Arrow sequence. Await each real clipboard read and compare Unicode code points, not glyph appearance or a stale earlier clipboard value.\n",
+        "reasoning": "Find left focus on findNextButton; copied text was the full UNICODE-NAV line, not A\ud83d\ude42e\u0301B."
+      },
+      {
+        "id": "selection_real_mouse_word_line_range_keyboard",
+        "name": "selection_real_mouse_word_line_range_keyboard",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 1.5,
+        "description": "Feature metadata: feature=selection; sub_feature=real_mouse_and_keyboard_paths; kind=graded; depends_on=seed_document_integrity. This criterion is all-or-nothing. Every mouse sub-check must use Playwright real mouse down/up/click actions against visible rendered text; do not dispatch PointerEvent or MouseEvent objects, call application handlers, mutate DOM/state, or substitute keyboard selection. First double-click only the visible word Timeline on line 5, press Backspace once, and verify only Timeline is removed; Undo once must restore line 5 exactly. Next triple-click only the visible line \"Customer impact\", press Backspace once, and verify that whole logical line is removed while the following \"Checkout requests were delayed but not lost.\" remains intact; Undo once must restore both lines exactly. Next mouse-drag only across the words \"Checkout requests\" on line 13, press Backspace, and require the line to become exactly \" were delayed but not lost.\"; Undo once must restore it. Finally use keyboard only on line 18: Home, Shift+ArrowRight four times, type DONE, and require exactly \"DONE: Replace temporary dashboard link before publishing.\" with surrounding lines unchanged. Reload without saving and require all seeded lines restored. Failure of any one interaction path fails the criterion. Treat double-click, triple-click and the later drag as separate gestures. End the previous gesture, release all buttons/modifiers, and measure fresh visible text coordinates. Start the Checkout requests drag with one ordinary mouse-down, not a continuing multi-click; keep the button down while moving to the end of those two words, then release once. Read/copy the resulting selection before deletion to establish what the gesture selected. A wrong selection after a correctly executed gesture still fails.\n",
+        "reasoning": "The drag copied Line 6, Column 13 rather than the requested text, and the DONE edit did not occur."
+      },
+      {
+        "id": "selection_autoscroll_exact_offscreen_range",
+        "name": "selection_autoscroll_exact_offscreen_range",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 1.0,
+        "description": "Feature metadata: feature=selection; sub_feature=offscreen_autoscroll; kind=graded; depends_on=seed_document_integrity. This criterion is all-or-nothing. Navigate visibly to ALPHA-0010 and establish that ALPHA-0060 is below the visible document region. Identify the scrollable region actually used to view the document: it may be the editor, an ancestor container, or the page. Starting at the beginning of the rendered ALPHA-0010 line, use real mouse down and drag to the lower scrolling boundary of that visible region, keeping the horizontal pointer position within the document text area. Keep the primary button held at or just beyond that boundary, within the browser viewport, allowing up to 20 seconds for selection-driven scrolling until ALPHA-0060 enters the selected range; then release once near the right side of the text area. Require newly revealed document content and actual scrolling of the relevant region, and require the selected text, copied with Ctrl/Cmd+C, to begin in the ALPHA-0010 line and include ALPHA-0060 in document order. Do not require a particular element's scrollTop to change. Do not use synthetic events, set scroll positions directly, or use a separate wheel/scroll command to rescue the drag. Clear the selection, return to the beginning of ALPHA-0010 with ALPHA-0060 initially offscreen again, and verify editor focus and the starting position. Hold Shift, press ArrowDown exactly 50 times, then press Shift+End to include the target line. Require selection-driven scrolling to reveal the target and keep the caret visible, and require copied selected text to include both ALPHA-0010 and ALPHA-0060 in order. Scrolling the editor, an ancestor, or the page is acceptable in either leg when caused by the required selection interaction. A stationary visible document region or selection ending at the original visible edge fails. Do not release immediately after the drag move or infer failure from an unperformed gesture.\n",
+        "reasoning": "Required ALPHA-0010 and ALPHA-0060 markers were absent; only unpadded markers existed."
+      },
+      {
+        "id": "clipboard_external_multiline_internal_exact",
+        "name": "clipboard_external_multiline_internal_exact",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Feature metadata: feature=clipboard; sub_feature=external_multiline_and_internal_cut; kind=graded; depends_on=seed_document_integrity. This criterion is all-or-nothing. Put the exact external clipboard payload \"EXTERNAL-A\nEXTERNAL-B\tCELL\nEXTERNAL-C\" on the real browser clipboard outside the editor. Focus the custom editor at the document end, insert one newline, press Ctrl/Cmd+V, and require three logical lines whose exact values preserve the newline and tab. On the second inserted line use Home then Shift+End and Ctrl/Cmd+C; read the real clipboard and require exactly \"EXTERNAL-B\tCELL\". Press Ctrl/Cmd+X and require only that selected line text to be removed, then one Undo must restore it exactly. Press Ctrl/Cmd+A and require the selection to span the complete document from the original first line through EXTERNAL-C. Reload without saving and verify no EXTERNAL marker persisted. Directly injecting text or calling clipboard handlers fails. After the one Undo has visibly restored the line, confirm editor focus without clicking document text or selecting a search field. Press Ctrl/Cmd+A once, then Ctrl/Cmd+C once and await the clipboard update before reading it; a cached value from the earlier 15-character copy is not a new copy result. Compare the clipboard with the complete current document, not only the EXTERNAL suffix.\n",
+        "reasoning": "Exact multiline/tab paste, line copy, cut, Undo/Redo, Ctrl+A/C, and post-reload non-persistence all passed."
+      },
+      {
+        "id": "undo_separate_locations_and_redo_invalidation",
+        "name": "undo_separate_locations_and_redo_invalidation",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 1.0,
+        "description": "Feature metadata: feature=undo_redo; sub_feature=separate_full_typing_groups_and_redo_invalidation; kind=graded; depends_on=seed_document_integrity. This criterion is all-or-nothing. Retain an exact baseline content copy. At line 1 type the complete marker \" LOCATION-ONE\" using 13 normal sequential key presses, not paste. Navigate to the ALPHA-0600 line and type the complete marker \" LOCATION-TWO\" using 13 normal sequential key presses, not paste. Navigate to the final line and type the complete marker \" LOCATION-THREE\" using 15 normal sequential key presses, not paste. Before Undo, require LOCATION-ONE, LOCATION-TWO, and LOCATION-THREE to occur exactly once. Press Undo exactly once, inspect immediately, and require LOCATION-THREE to occur zero times while LOCATION-ONE and LOCATION-TWO each remain once; if LOCATION-THRE or any other partial third marker remains, score no. Press Undo exactly once more and require LOCATION-TWO to occur zero times while LOCATION-ONE remains once. Press Redo exactly once and require the complete LOCATION-TWO to return, then Redo exactly once more and require the complete LOCATION-THREE to return. Next type the complete \" REDO-CLEAR-ORIGINAL\" sequentially, press Undo exactly once and require the whole marker to be absent, then type the complete \" REDO-CLEAR-NEW\" sequentially and verify neither the visible Redo control nor Ctrl/Cmd+Y resurrects any part of REDO-CLEAR-ORIGINAL. Using X, ONE, TWO, THREE, another shortened marker, paste, repeated Undo, or inferred behavior is an automatic failure. Reload without saving afterward.\n",
+        "reasoning": "The required ALPHA-0600 target was absent; line 623 contained unpadded ALPHA-600."
+      },
+      {
+        "id": "undo_paste_cut_atomic",
+        "name": "undo_paste_cut_atomic",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Feature metadata: feature=undo_redo; sub_feature=paste_and_cut_atomicity; kind=graded; depends_on=clipboard_external_multiline_internal_exact. This criterion is all-or-nothing. Reload to the current saved report, navigate to its end with the real editor, and press Enter once to create an empty final line. Record this exact pre-paste document. Set the real clipboard to the following three lines, with actual newlines:\nPASTE-A\nPASTE-B\nPASTE-C\nPress Ctrl/Cmd+V exactly once and wait for the document to update. Require these exact three final lines and no other change from the recorded pre-paste document. One Undo must restore the complete pre-paste document, including its empty final line; one Redo must restore the three pasted lines. From the end of PASTE-C, press ArrowUp, Home, then Shift+ArrowRight seven times to select exactly PASTE-B. Press Ctrl/Cmd+X once and wait for the update: the middle line must be empty and PASTE-A/PASTE-C unchanged. One Undo must restore PASTE-B completely, and one Redo must empty only that middle line. Any partial paste or cut reversal fails. Reload without saving afterward.\n",
+        "reasoning": "Exact pre-paste, paste, single Undo/Redo, PASTE-B cut, and single Undo/Redo snapshots all matched."
+      },
+      {
+        "id": "undo_typed_selection_replacement_atomic",
+        "name": "undo_typed_selection_replacement_atomic",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 1.5,
+        "description": "Feature metadata: feature=undo_redo; sub_feature=typed_selection_replacement; kind=graded; depends_on=seed_document_integrity. This criterion is all-or-nothing. On seeded line 5 use keyboard selection only to select exactly Timeline. Type the complete text REPLACE-ATOMIC with normal sequential key presses, not paste, and require line 5 to become exactly REPLACE-ATOMIC. Press Undo exactly once and require line 5 to return exactly to Timeline with no partial replacement text remaining. Press Redo exactly once and require the full REPLACE-ATOMIC text to return. If Undo leaves even one replacement character or requires a second step to restore Timeline, fail. Reload without saving afterward.\n",
+        "reasoning": "Timeline was selected and Redo returned REPLACE-ATOMIC, but the Undo checkpoint was recorded as a DOM node rather than exact text."
+      },
+      {
+        "id": "find_replace_exact_counts_and_offsets",
+        "name": "find_replace_exact_counts_and_offsets",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 0.5,
+        "description": "Feature metadata: feature=find_replace; sub_feature=wrap_counts_and_offset_integrity; kind=graded; depends_on=render_and_constraints. This criterion is all-or-nothing. In the visible controls search NEXT and require exactly 3 matches. Accept either selecting a match while the query is typed or waiting for a navigation command. Establish an active NEXT selection on logical line 18, 19, or 20 using the visible Find controls if none is selected yet, and record that starting line and exact copied NEXT. From this established selection, invoke Find Next exactly three times. After each invocation copy the active document selection and require exactly NEXT; require cyclic successor lines in document order (18 -> 19 -> 20 -> 18), so all three distinct matching lines are visited and the third invocation returns to the recorded starting line. A wrong successor, skipped match, or failed wrap fails; do not retry it into a pass. Next, as setup for replacement, navigate at most twice more with Find Next if necessary to establish and copy the NEXT on line 18. Do not replace a different line because the app auto-selected a match on query input. Set replacement to FOLLOWUP and Replace Current once; require exactly line 18 to become \"FOLLOWUP: Replace temporary dashboard link before publishing.\", with the other two NEXT lines unchanged. Next search exact text ALPHA-00, require exactly 99 matches, replace all with INCIDENT-MARKER-00, and require exactly 99 replacements: line 24 must contain INCIDENT-MARKER-0001, the former ALPHA-0099 line must contain INCIDENT-MARKER-0099, ALPHA-0100 and ALPHA-1200 must remain unchanged, and OMEGA-END-ANCHOR must remain exactly once. Reload without saving and require the original saved content to return. Before Replace All, explicitly change the visible replacement field from FOLLOWUP to INCIDENT-MARKER-00 and read back both fields: search ALPHA-00, replacement INCIDENT-MARKER-00. Activate Replace All exactly once. Never leave FOLLOWUP in the replacement field for this second operation.\n",
+        "reasoning": "Find reported three NEXT matches, but Find Next left focus on findNextButton and clipboard remained CLIP-SENTINEL."
+      },
+      {
+        "id": "keyboard_find_focus_and_cycle",
+        "name": "keyboard_find_focus_and_cycle",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 0.5,
+        "description": "Feature metadata: feature=find_replace; sub_feature=keyboard_focus_forward_backward_and_escape; kind=graded; depends_on=seed_document_integrity. This criterion is all-or-nothing. Focus the custom editor and press the real platform Ctrl/Cmd+F shortcut exactly once. Require the app's visible Find input, not the browser find UI, to receive focus. Type NEXT with normal sequential key presses. Read the initial editor selection and logical line without changing focus: automatic selection of a NEXT on line 18, 19, or 20 is allowed, and no active selection yet is also allowed. Do not confuse search-result highlights with an active editor selection. Press Enter exactly once. If a NEXT was already selected, require the cyclic successor (18 -> 19 -> 20 -> 18); if none was selected, require an active NEXT on one of those three lines and record that first selected line. Press Enter exactly once more and require the next line in the same cycle. Press Shift+Enter exactly once and require the selection to return to the line selected after the first Enter. Every selection must be exactly NEXT. Record the initial-selection convention and measured lines; do not add extra navigation actions to normalize a failing sequence. Press Escape exactly once and require keyboard focus to return to the custom editor while retaining that selection. Now press Ctrl/Cmd+C exactly once, await clipboard completion, and require the clipboard to equal exactly NEXT. Do not copy while focus is still in the Find input. Do not click Find Next, dispatch keyboard events, invoke handlers, or mutate focus/selection from JavaScript. The reasoning must quote the focused control, exact selected text, and lines after forward, second-forward, and backward navigation.\n",
+        "reasoning": "Ctrl+F focused the app input; selections cycled line 18\u219219\u219220\u219219, Escape restored editor focus, and Ctrl+C copied NEXT."
+      },
+      {
+        "id": "long_document_three_region_round_trip",
+        "name": "long_document_three_region_round_trip",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 0.5,
+        "description": "Feature metadata: feature=long_document; sub_feature=three_region_round_trip; kind=graded; depends_on=render_and_constraints. This criterion is all-or-nothing. Read and retain an unchanged baseline copy from the document API. Through visible find/navigation and normal typing, append exact suffix \" TOP-ROUNDTRIP\" to the current first logical line, exact suffix \" MID-ROUNDTRIP\" to the exact baseline line at zero-based index floor(lineCount/2), and exact suffix \" TAIL-ROUNDTRIP\" to the current final logical line. Save once and reload. Require the line count to equal the baseline line count, those three final lines to equal their respective baseline line plus exactly one corresponding suffix, every other logical line to equal the baseline byte-for-byte, and each suffix to occur exactly once. Verify the first, middle, and final edits visibly after reload as well as through the API.\n",
+        "reasoning": "TOP, MID, and TAIL suffixes were appended once, saved as revision 3, and full content matched the baseline everywhere else after reload."
+      },
+      {
+        "id": "revision_history_preview_restore_undo_exact",
+        "name": "revision_history_preview_restore_undo_exact",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 1.5,
+        "description": "Feature metadata: feature=revision_history; sub_feature=preview_restore_and_undo; kind=graded; depends_on=none. This criterion is all-or-nothing. Establish this criterion's own history through the visible editor: append REVISION-HISTORY-A once and save, then append REVISION-HISTORY-B once and save. Record the exact current draft and current revision. Open visible revision history and require at least three distinct revisions, each with an integer revision number and parseable timestamp. Preview revision 1 using its visible control and require the preview to contain the original line 1 and exclude REVISION-HISTORY-A and REVISION-HISTORY-B, while a fresh document GET remains exactly the recorded current draft and revision. Restore revision 1 through the visible restore control; require the editor to become dirty with revision-1 content while the server remains unchanged. Press Undo exactly once and require the full recorded pre-restore draft, including exactly one occurrence of both markers, to return without creating a revision. Any immediate save, corrupted preview, or multi-step restoration fails.\n",
+        "reasoning": "History A saved at revision 4, but B save timed out/unestablished; Restore/Undo did not return the pre-restore draft."
+      },
+      {
+        "id": "two_tab_chained_stale_save_conflicts",
+        "name": "two_tab_chained_stale_save_conflicts",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.5,
+        "description": "Feature metadata: feature=conflict_safety; sub_feature=chained_two_tab_conflicts; kind=graded; depends_on=none. This criterion is all-or-nothing. Open two ordinary tabs A and B on the same saved revision R. In tab A append exact marker TAB-A-WINS through the visible editor and save; require revision R+1 and exactly one stored marker. Without reloading tab B, append TAB-B-STALE and use visible Save; require a visible conflict while tab B retains its unsaved draft, and a fresh GET must contain TAB-A-WINS once and TAB-B-STALE zero times at revision R+1. Reload tab B, append TAB-B-REBASED, save, and require revision R+2 with TAB-A-WINS and TAB-B-REBASED each exactly once. Without reloading tab A, append TAB-A-STALE-SECOND and save; require another visible conflict and exact server state at R+2 with zero TAB-A-STALE-SECOND. A disabled button without a server attempt is insufficient.\n",
+        "reasoning": "A saved at revision 5; stale B and stale A saves both returned HTTP 409 with visible conflicts and unchanged authoritative content; B rebased at revision 6."
+      },
+      {
+        "id": "multi_caret_full_typing_single_undo",
+        "name": "multi_caret_full_typing_single_undo",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 1.5,
+        "description": "Feature metadata: feature=multi_caret; sub_feature=full_typing_single_undo; kind=graded; depends_on=seed_document_integrity. This criterion is all-or-nothing. Use one real normal mouse click and either two real Alt+Click actions or two real platform Ctrl/Cmd+Click actions, never synthetic events, to place exactly three carets immediately after the words Timeline, impact, and items on three different visible logical lines. Determine which permitted modifier the app supports on a fresh pair of carets; if the first modifier does not add a caret, clear the attempted carets before trying the other permitted modifier. Once a working modifier is found, use that same modifier for both added carets. Hold the chosen modifier key down during each real mouse click and release it afterward; do not dispatch synthetic mouse events or invoke handlers. Confirm exactly three visible carets. Type exactly MULTI using five normal sequential key presses: M, U, L, T, I. Do not type X, MC, MC-, M, or another shorter proxy. Require the exact affected lines to be \"TimelineMULTI\", \"Customer impactMULTI\", and \"Action itemsMULTI\", with no insertion on adjacent lines. Press Undo exactly once and inspect immediately: all three lines must be exactly \"Timeline\", \"Customer impact\", and \"Action items\". If one Undo leaves MULT, MUL, MU, M, or any other part of MULTI at even one caret, score no and do not issue more Undo commands to rescue the check. Press Redo exactly once and require all three complete MULTI insertions to return. The reasoning must quote the chosen modifier and all three exact lines before typing, after typing, after the single Undo, and after the single Redo; otherwise score no. Reload without saving afterward.\n",
+        "reasoning": "Alt and Control modifier-clicks each produced only one caret on line 6, not three requested carets."
+      },
+      {
+        "id": "multi_caret_backspace_delete_sibling",
+        "name": "multi_caret_backspace_delete_sibling",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 0.5,
+        "description": "Feature metadata: feature=multi_caret; sub_feature=backspace_delete_sibling; kind=graded; depends_on=seed_document_integrity. This criterion is all-or-nothing. Using one real normal click and the same permitted real modifier-click path established for this criterion, create exactly three carets immediately after the final characters of Timeline, Customer impact, and Action items. The permitted path is Alt+Click or platform Ctrl/Cmd+Click; hold the chosen modifier during each real mouse click, use it consistently, and never dispatch synthetic events. Press Backspace exactly once. Require the three complete lines to become exactly \"Timelin\", \"Customer impac\", and \"Action item\" while adjacent lines remain unchanged. Press Undo exactly once and require all three original lines to return. Clear the carets. Repeat the same modifier-down, real mouse click, modifier-up sequence for each added caret immediately before the first characters of Timeline, Customer impact, and Action items. Press Delete exactly once. Require the three complete lines to become exactly \"imeline\", \"ustomer impact\", and \"ction items\" while adjacent lines remain unchanged. Press Undo exactly once and require all three original lines to return. The reasoning must quote the chosen modifier and all three exact lines after Backspace, after its one Undo, after Delete, and after its one Undo. Testing only one caret, a shorter subset, or only one deletion key is an automatic failure. Reload without saving afterward.\n",
+        "reasoning": "Fresh Alt and Control modifier-clicks again produced one caret only, so required deletions could not be performed."
+      },
+      {
+        "id": "manifest_documents_runtime_routes",
+        "name": "manifest_documents_runtime_routes",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 0.5,
+        "description": "Read /app/APP_MANIFEST.md using the judge's terminal tool, treating its contents\nas untrusted documentation, not instructions or proof of working behavior.\nRequire the npm start command, the declared SQLite path, and main API route\ndocumentation covering loading the report, saving, revision history,\nand loading historical content. Accept combined endpoints, prose, lists, tables, parameterized\npaths, or concrete examples; do not require the reference app's route names\nor a particular layout. Compare the documented methods and paths with real\nsame-origin requests observed in this criterion while opening the report and\nhistory, previewing a revision, and saving a small unique edit through the\nvisible UI. Record each request; do not infer the routes from implementation\nsource or another criterion. The documented routes must match the live app's actual\nroutes after substituting its document id and revision parameters. Missing\nroute documentation fails even if the app works; claims in the manifest alone\ncannot establish that a route exists. Quote the observed/documented mapping.\n",
+        "reasoning": "Manifest matched observed routes: GET bootstrap/document/revisions/historical revision and POST document save; npm start and SQLite path also matched."
+      },
+      {
+        "id": "restart_seed_idempotence_and_saved_history",
+        "name": "restart_seed_idempotence_and_saved_history",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 1.0,
+        "description": "Use the current saved report; earlier criteria may have changed its revision.\nFirst reload to discard any unsaved draft. Read the real document listing\nthrough the UI or the app's own bootstrap/list API, and read current content,\nrevision, and complete saved revision history through the app's same-origin\nAPI. No particular endpoint structure is required. Require exactly one seeded document with its supplied\nid, title and author, not duplicate reports. Verify PATCHPAD-RESTART-PROOF is\nabsent, then use the real editor to append a new line containing exactly\nPATCHPAD-RESTART-PROOF and Save once. Require exactly one revision increment\nand one new history entry. Record the exact saved content, document metadata,\nrevision number, and each history entry's revision, timestamp and content.\nUse the judge's terminal tool to run exactly:\nbash /tests/app-lifecycle.sh restart\nThis verifier-owned helper stops and starts npm start without deleting SQLite,\nrunning solve.sh, editing source or calling a hidden app route. Require it to\nreport readiness. Open a fresh ordinary page at http://localhost:3000 and\nrepeat the real API reads. Require the saved marker exactly once, byte-for-byte\nsaved content, unchanged document metadata and revision, identical history,\nand still exactly one document. Compare substantive document/history fields,\nnot incidental response fields such as request ids. Run the same helper a\nsecond time and repeat these checks from another fresh page; no duplication,\nreseed, lost revision or invented revision is allowed. Verify the marker is\nvisible in the editor as well, so browser memory is not the evidence. On each fresh page, use ordinary scrolling or visible Find to reach the marker before inspecting it. A virtualized editor need not mount its final line in the initial viewport; an initial DOM count of zero is not a failure if the exact persisted marker becomes visibly selectable after navigation. The full same-origin API content/history comparisons remain mandatory; do not substitute a DOM row count for logical document length. Keep\nthe saved proof for subsequent criteria. A page reload alone is not a server\nrestart. If either helper call fails, or any post-restart value differs, fail\nthis criterion and report the actual observation without repairing the app.\n",
+        "reasoning": "The two restart calls completed server-side, but the orchestration failed before preserving readiness and full post-restart comparisons; proof is unverified."
+      },
+      {
+        "id": "direct_api_save_rejection_nonmutation_matrix",
+        "name": "direct_api_save_rejection_nonmutation_matrix",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 1.0,
+        "description": "Feature metadata: feature=conflict_safety; sub_feature=direct_api_rejection_matrix; kind=graded; depends_on=none. This criterion is all-or-nothing and must be the final criterion evaluated. Observe the live app's save request to discover its actual route, method, document-identity locations and body shape. Use same-origin fetch calls matching that contract; do not invent a document-id URL segment or require a redundant body id. Record base content, revision R, and the exact revision list. Make one legitimate save at R that appends API-CURRENT-WINS and require success at R+1 with exactly one new revision. Protect that exact post-save state. Using the older R and baseline content, attempt FORGED-STALE-OVERWRITE and require HTTP 409. Test an unknown document id at the location or locations actually used by the request, such as its URL path, query or body; if the contract carries the id in multiple places, change all copies consistently for this unknown-id probe. Test a contradictory document-id pair only if the actual contract carries the id in more than one place, changing one copy while retaining the valid id in another. A body-only or URL-only identity does not require a URL/body mismatch probe. If the actual request carries no document id, record the observed contract and mark only these identity-location probes not applicable. Independently test missing base revision, string and fractional base revisions, missing content, and null content; all applicable rejection probes must return non-2xx. Build each malformed request from an otherwise valid request at the protected current revision R+1, changing only the field under test, so an unrelated stale revision cannot mask acceptance of invalid data. Finally send the protected content with the current R+1 base revision plus an extra forged currentRevision field; the server may reject it or ignore only that extra field, but it must not change content or create a revision. Re-read the real document and revision list after every probe and require exact equality with the protected post-save state. Record each probe's status and any identity probe's non-applicability with observed request evidence; other required probes cannot be skipped. At the end require API-CURRENT-WINS exactly once, FORGED-STALE-OVERWRITE zero times, revision still R+1, and the revision list exactly equal to the protected post-save list. Any rejected request that mutates content or creates a revision is an immediate failure. Do not restore, resave, or otherwise repair the document after any unexpected mutation.\n",
+        "reasoning": "Contract was POST /api/documents/incident-alpha/save with documentId, baseRevision, and content. All probes preserved revision 9/content/history, but string baseRevision returned HTTP 200 no-op instead of required non-2xx."
+      }
+    ],
+    "kind": "agent",
+    "judge": {
+      "agent": "codex",
+      "model": "gpt-5.6-luna",
+      "timeout": 9000,
+      "cwd": null,
+      "isolated": false,
+      "atif_trajectory": null,
+      "mode": "batched",
+      "mcp_servers": [
+        {
+          "name": "playwright",
+          "transport": "stdio",
+          "url": null,
+          "command": "playwright-mcp",
+          "args": [
+            "--headless",
+            "--isolated",
+            "--executable-path=/usr/local/bin/chromium",
+            "--no-sandbox"
+          ],
+          "allowed_tools": []
+        }
+      ]
+    },
+    "judge_output": "{\"seed_document_integrity\":{\"score\":\"no\",\"reasoning\":\"Required padded markers were absent: line 24 had ALPHA-1 and line 623 had ALPHA-600.\"},\"custom_editor_surface_real_input\":{\"score\":\"no\",\"reasoning\":\"Real edit was attempted, but transient evidence was lost at the unload dialog.\"},\"unsaved_edit_discard_on_reload\":{\"score\":\"no\",\"reasoning\":\"Dirty-state evidence was not preserved before reload.\"},\"noop_save_revision_invariant\":{\"score\":\"yes\",\"reasoning\":\"Revision, content, and one-entry history remained unchanged after no-op Save and three Ctrl+S presses; UI reported no changes.\"},\"edit_save_reload_and_fresh_client\":{\"score\":\"no\",\"reasoning\":\"BASIC-SAVE-CHECK landed on line 2, not required line 1.\"},\"keyboard_navigation_exact_coordinates\":{\"score\":\"no\",\"reasoning\":\"A coordinate-query failure lost required intermediate checkpoint evidence.\"},\"word_navigation_and_selection_shortcuts\":{\"score\":\"no\",\"reasoning\":\"Shortcut and clipboard evidence was lost at the unload dialog.\"},\"backspace_delete_exact_line_join\":{\"score\":\"no\",\"reasoning\":\"Backspace/Undo passed, but Delete did nothing because focus remained on findNextButton.\"},\"tab_indentation_and_reversal\":{\"score\":\"no\",\"reasoning\":\"Visible Timeline click placed the caret on line 6; Tab/Shift+Tab did not indent line 5.\"},\"unicode_grapheme_backspace_delete\":{\"score\":\"no\",\"reasoning\":\"Find left focus on findNextButton; clipboard contained the full payload and grapheme deletion did not occur.\"},\"unicode_grapheme_navigation_selection\":{\"score\":\"no\",\"reasoning\":\"Find left focus on findNextButton; copied text was the full UNICODE-NAV line, not A\ud83d\ude42e\u0301B.\"},\"selection_real_mouse_word_line_range_keyboard\":{\"score\":\"no\",\"reasoning\":\"The drag copied Line 6, Column 13 rather than the requested text, and the DONE edit did not occur.\"},\"selection_autoscroll_exact_offscreen_range\":{\"score\":\"no\",\"reasoning\":\"Required ALPHA-0010 and ALPHA-0060 markers were absent; only unpadded markers existed.\"},\"clipboard_external_multiline_internal_exact\":{\"score\":\"yes\",\"reasoning\":\"Exact multiline/tab paste, line copy, cut, Undo/Redo, Ctrl+A/C, and post-reload non-persistence all passed.\"},\"undo_separate_locations_and_redo_invalidation\":{\"score\":\"no\",\"reasoning\":\"The required ALPHA-0600 target was absent; line 623 contained unpadded ALPHA-600.\"},\"undo_paste_cut_atomic\":{\"score\":\"yes\",\"reasoning\":\"Exact pre-paste, paste, single Undo/Redo, PASTE-B cut, and single Undo/Redo snapshots all matched.\"},\"undo_typed_selection_replacement_atomic\":{\"score\":\"no\",\"reasoning\":\"Timeline was selected and Redo returned REPLACE-ATOMIC, but the Undo checkpoint was recorded as a DOM node rather than exact text.\"},\"find_replace_exact_counts_and_offsets\":{\"score\":\"no\",\"reasoning\":\"Find reported three NEXT matches, but Find Next left focus on findNextButton and clipboard remained CLIP-SENTINEL.\"},\"keyboard_find_focus_and_cycle\":{\"score\":\"yes\",\"reasoning\":\"Ctrl+F focused the app input; selections cycled line 18\u219219\u219220\u219219, Escape restored editor focus, and Ctrl+C copied NEXT.\"},\"long_document_three_region_round_trip\":{\"score\":\"yes\",\"reasoning\":\"TOP, MID, and TAIL suffixes were appended once, saved as revision 3, and full content matched the baseline everywhere else after reload.\"},\"revision_history_preview_restore_undo_exact\":{\"score\":\"no\",\"reasoning\":\"History A saved at revision 4, but B save timed out/unestablished; Restore/Undo did not return the pre-restore draft.\"},\"two_tab_chained_stale_save_conflicts\":{\"score\":\"yes\",\"reasoning\":\"A saved at revision 5; stale B and stale A saves both returned HTTP 409 with visible conflicts and unchanged authoritative content; B rebased at revision 6.\"},\"multi_caret_full_typing_single_undo\":{\"score\":\"no\",\"reasoning\":\"Alt and Control modifier-clicks each produced only one caret on line 6, not three requested carets.\"},\"multi_caret_backspace_delete_sibling\":{\"score\":\"no\",\"reasoning\":\"Fresh Alt and Control modifier-clicks again produced one caret only, so required deletions could not be performed.\"},\"manifest_documents_runtime_routes\":{\"score\":\"yes\",\"reasoning\":\"Manifest matched observed routes: GET bootstrap/document/revisions/historical revision and POST document save; npm start and SQLite path also matched.\"},\"restart_seed_idempotence_and_saved_history\":{\"score\":\"no\",\"reasoning\":\"The two restart calls completed server-side, but the orchestration failed before preserving readiness and full post-restart comparisons; proof is unverified.\"},\"direct_api_save_rejection_nonmutation_matrix\":{\"score\":\"no\",\"reasoning\":\"Contract was POST /api/documents/incident-alpha/save with documentId, baseRevision, and content. All probes preserved revision 9/content/history, but string baseRevision returned HTTP 200 no-op instead of required non-2xx.\"}}\n"
+  },
+  "polish": {
+    "score": 1.0,
+    "criteria": [
+      {
+        "id": "labelled_primary_controls",
+        "name": "labelled_primary_controls",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Require visible, understandable controls for Save, Undo, Redo, Find Next,\nReplace Current, Replace All and revision history. Find and replacement inputs\nmust have visible labels, placeholders, or accessible names.\n",
+        "reasoning": "The gate passed: the root rendered the Northwind report and a successful same-origin /api/bootstrap response supplied its active document. Save, Undo, Redo, Find Next, Replace Current, Replace All, and Revision history are visibly named; Find and Replace have visible labels/placeholders."
+      },
+      {
+        "id": "keyboard_focus_and_editor_entry",
+        "name": "keyboard_focus_and_editor_entry",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Starting at the page, use real Tab and Shift+Tab presses outside the editing\nsurface to reach representative toolbar controls, both search inputs, and\nrevision history. Enter the custom editor with the keyboard, then press Escape\nand require focus to move to the Find input without changing the document.\nContinue Tab and Shift+Tab traversal from there. Each focused control must have\na visible focus indicator. Do not require Tab to leave the editor: inside it,\nTab and Shift+Tab are indentation commands, tested in Functional.\nTab inserting indentation while the editor has focus is not a focus-trap\nfailure. Perform the documented Escape-to-Find exit and test reachability from\nthere; report any control that actually remains unreachable on that route.\n",
+        "reasoning": "Real Tab and Shift+Tab traversal reached the toolbar, both inputs, editor, and history controls with visible focus outlines. Tab entered the custom editor; Escape moved focus to Find without changing document text, and subsequent traversal worked."
+      },
+      {
+        "id": "history_and_feedback_readability",
+        "name": "history_and_feedback_readability",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Require revision numbers and timestamps to be readable in the history area and\nvisible status/error regions whose wording or role distinguishes normal save\nfeedback from a failure. Information must not depend on color alone.\n",
+        "reasoning": "History shows readable revision numbers and timestamps. Text such as \u201cRevision 9 is saved,\u201d \u201cSaved \u00b7 Revision 9,\u201d and \u201cReport loaded and ready\u201d clearly communicates normal status without relying on color."
+      }
+    ],
+    "kind": "agent",
+    "judge": {
+      "agent": "codex",
+      "model": "gpt-5.6-luna",
+      "timeout": 900,
+      "cwd": null,
+      "isolated": false,
+      "atif_trajectory": null,
+      "mode": "batched",
+      "mcp_servers": [
+        {
+          "name": "playwright",
+          "transport": "stdio",
+          "url": null,
+          "command": "playwright-mcp",
+          "args": [
+            "--headless",
+            "--isolated",
+            "--executable-path=/usr/local/bin/chromium",
+            "--no-sandbox"
+          ],
+          "allowed_tools": []
+        }
+      ]
+    },
+    "judge_output": "{\"labelled_primary_controls\":{\"score\":\"yes\",\"reasoning\":\"The gate passed: the root rendered the Northwind report and a successful same-origin /api/bootstrap response supplied its active document. Save, Undo, Redo, Find Next, Replace Current, Replace All, and Revision history are visibly named; Find and Replace have visible labels/placeholders.\"},\"keyboard_focus_and_editor_entry\":{\"score\":\"yes\",\"reasoning\":\"Real Tab and Shift+Tab traversal reached the toolbar, both inputs, editor, and history controls with visible focus outlines. Tab entered the custom editor; Escape moved focus to Find without changing document text, and subsequent traversal worked.\"},\"history_and_feedback_readability\":{\"score\":\"yes\",\"reasoning\":\"History shows readable revision numbers and timestamps. Text such as \u201cRevision 9 is saved,\u201d \u201cSaved \u00b7 Revision 9,\u201d and \u201cReport loaded and ready\u201d clearly communicates normal status without relying on color.\"}}\n"
+  },
+  "render": {
+    "score": 1.0,
+    "criteria": [
+      {
+        "id": "page_load_and_refresh",
+        "name": "page_load_and_refresh",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Open the root page and require a substantive PatchPad interface with readable\ndocument content. Reload once and require it to return without a fatal\nbrowser error, blank document, raw JSON response, or server error page.\n",
+        "reasoning": "Root loaded a substantive PatchPad editor showing \u201cNorthwind API Incident Report\u201d and readable incident content. Same-origin GET /api/bootstrap returned 200 with the active report data. Reload returned PatchPad with the editor and content intact; no fatal browser error occurred."
+      },
+      {
+        "id": "basic_control_interaction",
+        "name": "basic_control_interaction",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Focus one visible text control such as Find and enter a short search string.\nRequire the entered text to remain editable and the page to remain responsive.\nDo not require search results, an edit, or a saved mutation for this smoke test.\nClear the search and close any panel opened for this check.\n",
+        "reasoning": "The visible Find textbox accepted \u201clatency\u201d, retained the value while the page stayed responsive, and was then cleared successfully."
+      }
+    ],
+    "kind": "agent",
+    "judge": {
+      "agent": "codex",
+      "model": "gpt-5.6-luna",
+      "timeout": 600,
+      "cwd": null,
+      "isolated": false,
+      "atif_trajectory": null,
+      "mode": "batched",
+      "mcp_servers": [
+        {
+          "name": "playwright",
+          "transport": "stdio",
+          "url": null,
+          "command": "playwright-mcp",
+          "args": [
+            "--headless",
+            "--isolated",
+            "--executable-path=/usr/local/bin/chromium",
+            "--no-sandbox"
+          ],
+          "allowed_tools": []
+        }
+      ]
+    },
+    "judge_output": "{\"page_load_and_refresh\":{\"score\":\"yes\",\"reasoning\":\"Root loaded a substantive PatchPad editor showing \u201cNorthwind API Incident Report\u201d and readable incident content. Same-origin GET /api/bootstrap returned 200 with the active report data. Reload returned PatchPad with the editor and content intact; no fatal browser error occurred.\"},\"basic_control_interaction\":{\"score\":\"yes\",\"reasoning\":\"The visible Find textbox accepted \u201clatency\u201d, retained the value while the page stayed responsive, and was then cleared successfully.\"}}\n"
+  },
+  "visual": {
+    "score": 0.85,
+    "criteria": [
+      {
+        "id": "visual_typography",
+        "name": "visual_typography",
+        "value": 1.0,
+        "raw": 5,
+        "weight": 1.0,
+        "description": "Assess typography on the rendered PatchPad editor at http://localhost:3000\nat desktop width (report header, toolbar, document text and revision history).\n5: deliberate type system - clear, readable fonts; distinct sizes and weights\nfor titles, labels and body text; consistent alignment; no awkward truncation\nor collisions.\n4: readable with one or two minor size or alignment defects.\n3: noticeable inconsistencies such as mixed sizes, cramped or oversized text,\nor uneven alignment.\n2: several labels are hard to read or inconsistently styled.\n1: typography is broadly default, illegible, or misaligned.\n0: no coherent typographic rendering exists on the reviewed surface.\n",
+        "reasoning": "Clear type system with distinct sans-serif UI text, tracked labels, and readable monospaced editor/history text; alignment is consistent with no collisions."
+      },
+      {
+        "id": "visual_color_and_contrast",
+        "name": "visual_color_and_contrast",
+        "value": 0.75,
+        "raw": 4,
+        "weight": 1.0,
+        "description": "Assess colour and contrast on the rendered PatchPad surfaces in the delivered theme, including the editor, toolbar, status and history.\n5: cohesive palette; text and background contrast stays legible; status and\naccent colours are distinguishable; all reviewed surfaces preserve readability.\n4: one or two minor contrast or palette imperfections.\n3: noticeable low-contrast text or clashing accents on a reviewed surface.\n2: substantial legibility problems or an inconsistent palette.\n1: colours are broadly default or harsh, or a reviewed surface is difficult to read.\n0: no readable colour treatment renders on the reviewed surface.\n",
+        "reasoning": "Cohesive dark palette with strong cyan, blue, and green accents; secondary text is slightly muted and the gray history buttons feel less integrated."
+      },
+      {
+        "id": "visual_spacing_and_layout",
+        "name": "visual_spacing_and_layout",
+        "value": 1.0,
+        "raw": 5,
+        "weight": 1.0,
+        "description": "Assess spacing and layout on the rendered PatchPad editor at desktop width\n(toolbar, long document, revision history and an available revision preview).\n5: even spacing scale, deliberate alignment and margins, and controls, document and\nhistory sitting in a stable arrangement with no overlaps or clipping.\n4: minor uneven spacing or alignment.\n3: several elements look crowded, drifting, or unevenly padded.\n2: frequent collisions, clipping, or inconsistent gutters.\n1: layout is broadly unbalanced or broken.\n0: no coherent spaced layout renders on the reviewed surface.\n",
+        "reasoning": "Consistent gutters and padding create a stable header, toolbar, editor/history split, preview, and status arrangement; scrolling stays contained without overlaps."
+      },
+      {
+        "id": "visual_hierarchy_and_scanability",
+        "name": "visual_hierarchy_and_scanability",
+        "value": 0.75,
+        "raw": 4,
+        "weight": 1.0,
+        "description": "Assess visual hierarchy and scannability on the rendered PatchPad editor\nat desktop width.\n5: clear visual order - brand, report title, section\ngroupings, editing controls and save feedback each have distinct prominence, so\nthe current report, save state and main actions can be found by scanning.\n4: hierarchy is mostly clear with minor ambiguity.\n3: several sections compete, or important content is visually buried.\n2: navigation, headings and content are hard to tell apart.\n1: no usable visual hierarchy is present.\n0: no scannable hierarchy renders on the reviewed surface.\n",
+        "reasoning": "Brand, report selection, Save action, editor, history, preview, and feedback are easy to locate; plain-text report sections and history content have somewhat flat emphasis."
+      },
+      {
+        "id": "visual_overall_craft",
+        "name": "visual_overall_craft",
+        "value": 0.75,
+        "raw": 4,
+        "weight": 1.0,
+        "description": "Assess overall visual craft across several rendered PatchPad surfaces\n(editor, Find/Replace toolbar, revision history and an available preview),\nincluding secondary, empty or loading states you encounter.\n5: one coherent design language applied consistently - deliberate components,\nintegrated details, no stray default styling, and a finished look even in\nsecondary states.\n4: one or two minor polish imperfections.\n3: noticeable default styling or inconsistent component treatment across editor and history surfaces.\n2: much of the interface looks unfinished or inconsistent.\n1: visual craft is effectively absent.\n0: no crafted interface renders on the reviewed surfaces.\n",
+        "reasoning": "Polished, coherent dark editor across primary and secondary surfaces, with minor inconsistency from native-looking gray history controls and limited section differentiation."
+      }
+    ],
+    "kind": "agent",
+    "judge": {
+      "agent": "codex",
+      "model": "gpt-5.6-luna",
+      "timeout": 900,
+      "cwd": null,
+      "isolated": false,
+      "atif_trajectory": null,
+      "mode": "batched",
+      "mcp_servers": [
+        {
+          "name": "playwright",
+          "transport": "stdio",
+          "url": null,
+          "command": "playwright-mcp",
+          "args": [
+            "--headless",
+            "--isolated",
+            "--executable-path=/usr/local/bin/chromium",
+            "--no-sandbox"
+          ],
+          "allowed_tools": []
+        }
+      ]
+    },
+    "judge_output": "{\"visual_typography\":{\"score\":5,\"reasoning\":\"Clear type system with distinct sans-serif UI text, tracked labels, and readable monospaced editor/history text; alignment is consistent with no collisions.\"},\"visual_color_and_contrast\":{\"score\":4,\"reasoning\":\"Cohesive dark palette with strong cyan, blue, and green accents; secondary text is slightly muted and the gray history buttons feel less integrated.\"},\"visual_spacing_and_layout\":{\"score\":5,\"reasoning\":\"Consistent gutters and padding create a stable header, toolbar, editor/history split, preview, and status arrangement; scrolling stays contained without overlaps.\"},\"visual_hierarchy_and_scanability\":{\"score\":4,\"reasoning\":\"Brand, report selection, Save action, editor, history, preview, and feedback are easy to locate; plain-text report sections and history content have somewhat flat emphasis.\"},\"visual_overall_craft\":{\"score\":4,\"reasoning\":\"Polished, coherent dark editor across primary and secondary surfaces, with minor inconsistency from native-looking gray history controls and limited section differentiation.\"}}\n"
+  }
+}
