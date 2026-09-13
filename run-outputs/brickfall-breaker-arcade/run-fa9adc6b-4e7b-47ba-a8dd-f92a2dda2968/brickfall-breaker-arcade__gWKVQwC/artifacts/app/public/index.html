@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Brickfall</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="background"></div>
+    <header class="topbar card">
+      <div>
+        <p class="eyebrow">Brickfall</p>
+        <h1>Predictable brick-breaker with signed-in saves</h1>
+        <p class="muted">Real profiles, revision-safe saves, seeded levels and a signed-in mechanics lab.</p>
+      </div>
+      <div class="identity card subtle" id="identityCard" hidden>
+        <div class="identity-row">
+          <div>
+            <div class="label">Signed in as</div>
+            <strong id="identityName">—</strong>
+          </div>
+          <div class="initials" id="identityInitials">---</div>
+        </div>
+        <div class="muted" id="identityEmail">—</div>
+        <div class="pill-row">
+          <span class="pill" id="revisionBadge">Revision 0</span>
+          <span class="pill" id="syncState">Offline</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="shell">
+      <section class="card auth-panel" id="authPanel">
+        <div class="section-heading">
+          <div>
+            <h2>Sign in</h2>
+            <p class="muted">Use one of the seeded demo profiles.</p>
+          </div>
+          <div class="pill">No registration</div>
+        </div>
+        <form id="signInForm" class="stacked-form">
+          <label>
+            <span>Email</span>
+            <input id="emailInput" type="email" autocomplete="username" required placeholder="mira@brickfall.test" />
+          </label>
+          <label>
+            <span>Password</span>
+            <input id="passwordInput" type="password" autocomplete="current-password" required placeholder="password123" />
+          </label>
+          <div class="button-row">
+            <button class="primary" type="submit">Sign in</button>
+            <button type="button" class="ghost" id="demoMira">Mira</button>
+            <button type="button" class="ghost" id="demoDev">Dev</button>
+            <button type="button" class="ghost" id="demoPolly">Polly</button>
+          </div>
+        </form>
+        <p class="message" id="authMessage" aria-live="polite"></p>
+      </section>
+
+      <section class="hidden" id="appPanel">
+        <div class="toolbar card">
+          <div class="toolbar-left">
+            <div class="field">
+              <label for="levelSelect">Unlocked level</label>
+              <select id="levelSelect"></select>
+            </div>
+            <div class="button-row compact">
+              <button class="primary" id="startButton" type="button">Start / restart</button>
+              <button id="launchButton" type="button">Launch</button>
+              <button id="pauseButton" type="button">Pause</button>
+              <button id="restartButton" type="button">Restart after game over</button>
+              <button id="assistToggle" type="button" aria-pressed="false">Assist paddle: off</button>
+              <button class="ghost" id="signOutButton" type="button">Sign out</button>
+            </div>
+          </div>
+          <div class="toolbar-right">
+            <div class="pill-row wrap">
+              <span class="pill" id="runStateValue">Menu</span>
+              <span class="pill" id="canvasStatus">Ready to sign in</span>
+            </div>
+            <p class="muted controls-note">Keys: ← → or pointer move, Space launch, P/Esc pause, R restart, Enter continue.</p>
+          </div>
+        </div>
+
+        <div class="grid-layout">
+          <section class="card game-card">
+            <div class="section-heading">
+              <div>
+                <h2>Arcade field</h2>
+                <p class="muted">Canvas state updates are mirrored in the HUD and event log.</p>
+              </div>
+              <div class="pill-row wrap">
+                <span class="pill">Canvas 900 × 600</span>
+                <span class="pill" id="workbookDigest">Digest pending</span>
+              </div>
+            </div>
+            <canvas id="gameCanvas" width="900" height="600" tabindex="0" aria-label="Brickfall game canvas"></canvas>
+            <p class="message" id="stateBanner" aria-live="polite"></p>
+          </section>
+
+          <aside class="card hud-card">
+            <div class="section-heading">
+              <div>
+                <h2>HUD</h2>
+                <p class="muted">Player state stays outside the canvas.</p>
+              </div>
+            </div>
+            <div class="hud-grid">
+              <div><span class="label">Score</span><strong id="scoreValue">0</strong></div>
+              <div><span class="label">Lives</span><strong id="livesValue">0</strong></div>
+              <div><span class="label">Level</span><strong id="levelValue">1</strong></div>
+              <div><span class="label">Combo</span><strong id="comboValue">x1</strong></div>
+              <div><span class="label">Power-up</span><strong id="powerValue">None</strong></div>
+              <div><span class="label">Timer</span><strong id="timerValue">0</strong></div>
+              <div><span class="label">Steps</span><strong id="stepsValue">0</strong></div>
+              <div><span class="label">Best</span><strong id="bestScoreValue">0</strong></div>
+            </div>
+            <div class="stack">
+              <h3>Session details</h3>
+              <div class="details-grid">
+                <div><span class="label">Unlocked</span><strong id="unlockedValue">1</strong></div>
+                <div><span class="label">Revision</span><strong id="revisionValue">0</strong></div>
+              </div>
+              <div>
+                <span class="label">Latest event</span>
+                <p class="event-text" id="eventLatest">Sign in to begin.</p>
+              </div>
+              <div>
+                <span class="label">Recent events</span>
+                <ul class="event-list" id="eventList"></ul>
+              </div>
+            </div>
+          </aside>
+        </div>
+
+        <section class="card data-grid">
+          <div class="stack">
+            <div class="section-heading">
+              <div>
+                <h2>Leaderboard</h2>
+                <p class="muted">Top ten global results.</p>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>Initials</th><th>Score</th><th>Level</th><th>Achieved</th></tr>
+                </thead>
+                <tbody id="leaderboardBody"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="stack">
+            <div class="section-heading">
+              <div>
+                <h2>Recent runs</h2>
+                <p class="muted">Latest ten terminal runs for this account.</p>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>Outcome</th><th>Level</th><th>Score</th><th>Finished</th></tr>
+                </thead>
+                <tbody id="historyBody"></tbody>
+              </table>
+            </div>
+            <div class="record-panel">
+              <div class="label">Record inspector</div>
+              <pre id="recordDetail">Select a run to inspect its terminal snapshot.</pre>
+            </div>
+          </div>
+        </section>
+
+        <section class="card lab-card">
+          <div class="section-heading">
+            <div>
+              <h2>Signed-in mechanics lab</h2>
+              <p class="muted">These drills use the real engine but never touch the save data.</p>
+            </div>
+            <div class="pill">No scores or saves</div>
+          </div>
+          <div class="lab-controls">
+            <label>
+              <span>Drill</span>
+              <select id="labPresetSelect"></select>
+            </label>
+            <div class="button-row compact">
+              <button id="labLoadButton" type="button" class="primary">Load drill</button>
+              <button id="labAdvanceButton" type="button">Advance 1 second</button>
+            </div>
+          </div>
+          <div class="lab-layout">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>Phase</th><th>Score</th><th>Lives</th><th>Combo</th><th>Power</th><th>Timer</th><th>Steps</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td id="labPhase">—</td>
+                    <td id="labScore">—</td>
+                    <td id="labLives">—</td>
+                    <td id="labCombo">—</td>
+                    <td id="labPower">—</td>
+                    <td id="labTimer">—</td>
+                    <td id="labSteps">—</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="stack">
+              <h3>Telemetry</h3>
+              <pre id="labTelemetry">Load a drill to inspect the exact engine state.</pre>
+            </div>
+          </div>
+
+          <div class="grid-two">
+            <div class="stack">
+              <div class="section-heading">
+                <div>
+                  <h3>Seeded checkpoints</h3>
+                  <p class="muted">Mira and Dev resume exactly from the imported paused states.</p>
+                </div>
+              </div>
+              <div id="checkpointButtons" class="button-row compact"></div>
+            </div>
+            <div class="stack">
+              <div class="section-heading">
+                <div>
+                  <h3>Workbook levels</h3>
+                  <p class="muted">Base speed, cap, accent, and brick totals.</p>
+                </div>
+              </div>
+              <div class="table-wrap small-table">
+                <table>
+                  <thead>
+                    <tr><th>#</th><th>Name</th><th>Base</th><th>Cap</th><th>Accent</th><th>Bricks</th></tr>
+                  </thead>
+                  <tbody id="levelsBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid-two">
+            <div class="stack">
+              <div class="section-heading">
+                <div>
+                  <h3>Workbook constants</h3>
+                  <p class="muted">The exact key/value rows from the seed file.</p>
+                </div>
+              </div>
+              <div class="table-wrap small-table">
+                <table>
+                  <thead>
+                    <tr><th>Key</th><th>Value</th></tr>
+                  </thead>
+                  <tbody id="constantsBody"></tbody>
+                </table>
+              </div>
+            </div>
+            <div class="stack">
+              <div class="section-heading">
+                <div>
+                  <h3>Controls & accessibility</h3>
+                  <p class="muted">Focusable canvas, strong focus states, and touch-friendly actions.</p>
+                </div>
+              </div>
+              <ul class="shortcut-list">
+                <li>Pointer, touch, or ← → moves the paddle.</li>
+                <li>Space launches a waiting or sticky-held ball.</li>
+                <li>P or Esc toggles pause.</li>
+                <li>R restarts after game over.</li>
+                <li>Enter continues after level complete.</li>
+              </ul>
+              <p class="muted">At 375px wide the sign-in, canvas, HUD, controls, leaderboard, and lab remain usable without horizontal scrolling.</p>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <script src="/engine.js"></script>
+    <script src="/app.js"></script>
+  </body>
+</html>

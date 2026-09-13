@@ -1,0 +1,517 @@
+{
+  "constraints": {
+    "score": 1.0,
+    "criteria": [
+      {
+        "id": "same_origin_application_shell",
+        "name": "same_origin_application_shell",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Load the application over HTTP and require a substantive Brickfall page from\n`localhost:3000`. Browser network evidence must show a successful same-origin\ndocument response and successful same-origin delivery of every stylesheet and\nscript required by the rendered page. After the mandatory global gate, do not\nadd detailed protected-game behavior to this delivery constraint.\n",
+        "reasoning": "Fresh localhost:3000 page rendered a substantive Brickfall shell. Network showed same-origin 200 responses for the document, styles.css, engine.js, and app.js."
+      },
+      {
+        "id": "self_contained_runtime_and_reload",
+        "name": "self_contained_runtime_and_reload",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Fully reload and require a substantive usable Brickfall page to render again.\nIt may return signed in or signed out. Browser network evidence must show the\nvisible page works from the same origin without a required public-origin script,\nstylesheet, font, image, API, or runtime package install. Beyond the mandatory\nglobal gate, detailed session and saved-game restoration belong to Functional.\n",
+        "reasoning": "A full reload rendered the usable Brickfall sign-in page again. Reload network showed only same-origin document/CSS/JS responses, with no external runtime resources required."
+      }
+    ],
+    "kind": "agent",
+    "judge": {
+      "agent": "codex",
+      "model": "gpt-5.6-luna",
+      "timeout": 600,
+      "cwd": null,
+      "isolated": false,
+      "atif_trajectory": null,
+      "mode": "batched",
+      "mcp_servers": [
+        {
+          "name": "playwright",
+          "transport": "stdio",
+          "url": null,
+          "command": "playwright-mcp",
+          "args": [
+            "--headless",
+            "--isolated",
+            "--executable-path=/usr/local/bin/chromium",
+            "--no-sandbox"
+          ],
+          "allowed_tools": []
+        }
+      ]
+    },
+    "judge_output": "{\"same_origin_application_shell\":{\"score\":\"yes\",\"reasoning\":\"Fresh localhost:3000 page rendered a substantive Brickfall shell. Network showed same-origin 200 responses for the document, styles.css, engine.js, and app.js.\"},\"self_contained_runtime_and_reload\":{\"score\":\"yes\",\"reasoning\":\"A full reload rendered the usable Brickfall sign-in page again. Reload network showed only same-origin document/CSS/JS responses, with no external runtime resources required.\"}}\n"
+  },
+  "functional": {
+    "score": 0.3768,
+    "criteria": [
+      {
+        "id": "seeded_sign_in_and_token_basics",
+        "name": "seeded_sign_in_and_token_basics",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 2.0,
+        "description": "Before any game-state mutation, begin signed out and submit Mira's address\n`mira@brickfall.test` with `wrong-pass-47`. Require visible rejection without\nprotected identity. Then use `password123`; require a successful same-origin\nsign-in request, visible identity Mira Chen/MRC, and an unpredictable issued\n64-hex token subsequently used as a same-origin Bearer credential. Do not\nrequire the full game workspace or mutate a run in this criterion.\n",
+        "reasoning": "Mira's wrong password was rejected without protected content; correct sign-in issued a 64-hex token subsequently used as a same-origin Bearer credential."
+      },
+      {
+        "id": "initial_global_leaderboard_core",
+        "name": "initial_global_leaderboard_core",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 2.0,
+        "description": "Before any terminal mutation, require this exact initial global top ten by\ninitials and score, in order: ARC 42000, PLY 31800, NOV 28000, MRC 24500,\nBOP 23000, LUX 21000, ZEN 19850, PIX 18000, KAI 15400, RAY 12000. DVP 6200\nmust be omitted. Visible leaderboard content and its successful same-origin\napplication response are valid evidence. Level-specific terminal metadata and\nlater insertion behavior are scored in the terminal criteria.\n",
+        "reasoning": "The initial visible leaderboard matched the required ten rows and omitted DVP."
+      },
+      {
+        "id": "level_manifest_and_constants",
+        "name": "level_manifest_and_constants",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 2.0,
+        "description": "Open the read-only ten-level seed manifest. Require, in order, the following\nname, base/cap, accent, normal/strong/solid totals, and lowercase SHA-256 digest:\n1 Foundation 300/520 #56c7ff 30/10/0 59cbe927b787caedc01c047da8bed15ec859ff86b80993d6dc26e65dbd419ac1;\n2 Twin towers 320/545 #7ee787 27/9/0 145d56bd6d89001e43f406c995918b71351f2d8d33b518d3456004a292cf015b;\n3 Chevron 338/570 #ffd166 22/8/0 86180dbd83076fa17b51bfc7d495dadfbf6a8115fdc5f83bef03eef9c836a490;\n4 Switchback 356/595 #ff8fab 12/22/1 9b731396e43851d21f594f5748e6044c8fe97806f3550f545672f1c97ba9b5ce;\n5 Crown 374/620 #c4a7ff 15/15/0 1eb0bb8c81f7e674e7a5a45433ef226d04e602e17db8f4554deb09974d4da2d2;\n6 Corridors 392/645 #67e8f9 32/17/2 7f9970069ef95e3acab409747019238606e165b63cb9058bb1472f53f0f4df51;\n7 Pulse 410/670 #fda4af 36/18/4 be08bf293a470b4cf3e303b80c7307cbb413f2fe65846d15d664dcf5bfd1fec6;\n8 Orbit 428/695 #fde047 23/19/0 729fe557a865f600e63cb1f3003c1f3b671c305bdfacee4336782a83be5fc162;\n9 Gauntlet 446/720 #86efac 32/21/3 e74c90325fa31771b4140e1d8f8f9b509ddcb13c3f0dc1e53e9c7a3a46ce7bb1;\n10 Brickfall 464/745 #fb7185 39/22/6 dcb43e12e54ccf57c8e4802a9f1501540937a691ecb715e2707885aa24359ec4.\nThe same manifest must visibly contain these exact eleven workbook constants:\npassword_for_all_accounts=password123, initial_lives=3,\nextra_life_step=20000, powerup_duration_seconds=20, physics_step_hz=120,\ncanvas_width=900, canvas_height=600, leaderboard_limit=10, paddle_width=118,\npaddle_height=18, and ball_radius=9.\n",
+        "reasoning": "Level metadata and constants matched, but the required full SHA-256 digests were not visibly present."
+      },
+      {
+        "id": "mira_checkpoint_freeze_and_restore",
+        "name": "mira_checkpoint_freeze_and_restore",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 2.0,
+        "description": "Before terminal mutations, sign in as Mira. Require identity Mira Chen/MRC,\nrevision 1, best 24,500, ten unlocked choices and no personal terminal runs.\nChoose Resume saved run without resuming simulation. Require a frozen paused\nlevel-8 Orbit checkpoint at score 24,500, one life, combo x4, next life 40,000,\ntwo balls, one drop, 23 normal/18 intact strong/1 damaged strong/0 solid,\npaddle width 177, and wide showing 13 whole seconds for its exact 12.5 seconds.\nWait two real seconds, fully reload, sign in again if necessary and resume the\nsaved checkpoint; every value, revision, phase, ball/drop count, damage state,\nwidth and timer remains unchanged. Do not launch, start or clear this run.\n",
+        "reasoning": "The seeded values survived reload, but Resume entered play and triggered a non-finite canvas-gradient error instead of clean frozen-resume evidence."
+      },
+      {
+        "id": "terminal_finish_and_records",
+        "name": "terminal_finish_and_records",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 0.75,
+        "description": "Continue from Mira's exact paused checkpoint and capture the app's terminal\nfinish request. Resume simulation. The already-lost secondary ball must not\ncost a life while the primary remains; losing the final ball must clear the\ndrop and wide effect, reach Game over at level 8 with score 24,500 and zero\nlives, remove the resumable save, and advance its immediately preceding synced\nrevision exactly once. Require one newest personal game-over run at level\n8/24,500 whose dialog shows game-over, zero lives, zero balls, zero drops and\nno effect. Mira's best remains 24,500.\n\nThe global top ten must now contain exactly two MRC 24,500 level-8 rows after\nARC/PLY/NOV and before BOP; RAY is displaced. Retain the captured finish request\nand observed post-finish state for the following independent checks.\n",
+        "reasoning": "Mira's run did not progress to game over; no finish request or required terminal records were observed."
+      },
+      {
+        "id": "terminal_receipt_retry",
+        "name": "terminal_receipt_retry",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 0.5,
+        "description": "Using the finish request captured in Mira's preceding terminal journey, record\nthe actual post-finish revision, history, best, save and leaderboard. Replay it\nbyte-for-byte and require its original status/body with no revision, history,\nbest, save or leaderboard change. Grade retry stability against the observed\nbaseline, not whether that preceding criterion's exact game outcome passed.\n",
+        "reasoning": "No terminal finish request was captured for replay."
+      },
+      {
+        "id": "terminal_refresh_durability",
+        "name": "terminal_refresh_durability",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 0.25,
+        "description": "After Mira's terminal journey, record the current terminal record and global\nrows. Refresh, sign in if necessary, and require no Resume action and the same\npersonal/global records with unchanged values and counts. For a correct\npreceding outcome this is one personal record and two MRC global records.\nScore durability independently against the actual pre-refresh terminal state;\ndo not repeat the earlier exact-outcome grade. No terminal record means there\nis no evidence of terminal durability, not a vacuous pass on empty state.\n",
+        "reasoning": "No terminal record was produced, so durability was not established."
+      },
+      {
+        "id": "terminal_keyboard_restart",
+        "name": "terminal_keyboard_restart",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 0.5,
+        "description": "From Mira's game-over state, press R and require a fresh ready run\nat score 0, three lives, combo x1, next life 20,000, one waiting ball, no drop\nor effect, with the observed terminal history retained. This checks keyboard\nrestart only, independently of receipt replay and refresh. A reloaded menu\nwhose latest personal record is game-over must support that same R restart.\n",
+        "reasoning": "The required game-over state was never reached."
+      },
+      {
+        "id": "dev_checkpoint_threshold_and_progression",
+        "name": "dev_checkpoint_threshold_and_progression",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 2.0,
+        "description": "Sign out and sign in as Dev. Require Dev Patel/DVP, best 6,200, revision 1,\nonly levels 1-3 unlocked, and an exact paused level-3 Chevron checkpoint:\nscore 19,950, three lives, combo x1, next life 20,000, one moving ball,\none normal brick, no other active brick, no drop and no effect. Capture the\napp's resulting progress request while resuming it. The real engine must\ndestroy the last normal brick for +100 at combo x1, raise combo to x2, cross\n20,000 exactly once for a fourth life and next threshold 40,000, then add the\nexact 3,000 level bonus for score 23,050.\n\nRequire Level complete, level 4 unlocked for Dev, best still 6,200 and one\nprogress revision. Replay the captured progress request byte-for-byte before\ncontinuing and require its original status/body with no second revision,\nunlock, score, life or save change. Continue visibly into level 4 Switchback\nin ready state with the same run id, score 23,050, four lives, combo x2 and\nthreshold 40,000; after its save is synced, reload that frozen level-4 state.\n",
+        "reasoning": "Dev's checkpoint was visible, but resumption stalled with the same canvas error and produced no progression request."
+      },
+      {
+        "id": "polly_personal_history_and_snapshots",
+        "name": "polly_personal_history_and_snapshots",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 1.5,
+        "description": "Sign in as Polly and require exactly ten personal records newest first:\ncompleted L10/5900, game-over L9/5800, game-over L8/5700, completed L10/5600,\ngame-over L7/5500, game-over L6/5400, completed L10/5300, game-over L5/5200,\ngame-over L4/5100, completed L10/5000. The older game-over L3/4900 fixture is\nomitted. Open the newest completed record and one game-over record; each dialog\nmust show its distinct run id and matching terminal snapshot, including phase,\nlevel, score, lives, balls, drops and brick state.\n",
+        "reasoning": "The ten records were correct, but dialogs exposed only metadata rather than complete terminal snapshots."
+      },
+      {
+        "id": "all_seeded_walls_and_fresh_runs",
+        "name": "all_seeded_walls_and_fresh_runs",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 2.0,
+        "description": "Return to Mira after her seeded terminal leg. Through the visible level chooser,\nstart every level 1 through 10 once. Each start must create a visibly distinct\nwall named exactly as the seed manifest, and its semantic brick totals must\nmatch that manifest exactly. Each new wall is ranked, ready and fresh with\nscore 0, three lives, combo x1, next life 20,000, one held waiting ball,\nzero drops, no active effect and ordinary paddle width 118. Require every\nsuccessful start to advance the displayed revision exactly once with a newly\ncaptured opaque operation id. The visible level base speeds increase\n300,320,338,356,374,392,410,428,446,464 while caps increase\n520,545,570,595,620,645,670,695,720,745; no level is skipped or duplicated.\n",
+        "reasoning": "Levels 1\u201310 were started once each with correct names, totals, speeds, fresh state, revisions, and distinct operation ids."
+      },
+      {
+        "id": "ranked_controls_pause_save_restore",
+        "name": "ranked_controls_pause_save_restore",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 2.0,
+        "description": "As Polly, start a fresh level-1 ranked run. Before launch, require pointer input\nand Left/Right to move both paddle and held ball. Launch with Space, then pause\nwith P after visible movement. Capture the resulting save request and wait for\na synced revision. Replay it byte-for-byte and require the original status/body\nwith no second revision or state change. Record phase, score, lives, combo,\nthreshold, ticks, bricks, paddle, every ball and drop, and effect/timer. Wait at\nleast two real seconds: nothing advances. Fully reload, sign in if necessary,\nchoose Resume saved run, and require the complete exact snapshot at the same\nrevision in a frozen phase; resume and require ticks/motion to continue rather\nthan restart.\n",
+        "reasoning": "Pointer/keyboard control, launch, pause, save capture and exact replay, frozen reload, and continued motion after Resume were all observed."
+      },
+      {
+        "id": "assist_and_manual_takeover",
+        "name": "assist_and_manual_takeover",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "In a Polly ranked run, enable Assist paddle and require a visible and accessible\nOn state plus ordinary-speed movement toward an incoming ball or reachable\nitem. Pause and record score, lives, combo, bricks, balls, drops, effect/timer\nand unlocks, then press an arrow key. Assist must turn Off immediately; apart\nfrom allowed paddle movement, all recorded gameplay and progression values\nremain unchanged.\n",
+        "reasoning": "Assist visibly moved the paddle, and an arrow key immediately disabled it while gameplay values remained unchanged."
+      },
+      {
+        "id": "brick_types_fixed_step_and_combo",
+        "name": "brick_types_fixed_step_and_combo",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 2.0,
+        "description": "Record Polly's ranked revision, save summary, best, run-history count and\nleaderboard, then load Brick types. Require paused practice mode at score 0,\nthree lives, combo x1, six balls, two normal, one intact strong, one already\ndamaged strong and one solid. Semantic ball data must show ball 3 aimed\ndiagonally at the damaged brick's lower-right corner, ball 4 approaching a\nnormal brick from well below at speed 1,000, and ball 6 descending toward the\npaddle off-center. Activate Advance 1 second once. It must run exactly 120\nfixed engine steps and return paused with all six balls, score 1,400, combo x1,\nnormal 0, intact strong 0, damaged strong 1 and solid 1.\n\nRecent events must show normal destruction +100 at x1, strong damage +150 at\nx2, pre-damaged strong destruction +750 at x3, normal destruction +400 at x4,\na solid deflection with no score, combo reaching x5, then a paddle return\nresetting it to x1. Ball 3 must reflect both components at the corner; ball 4\nmust not tunnel; the off-center paddle return must steer ball 6. Every remaining\nball must show useful nonzero horizontal/vertical components and speed at most\ncap 520. No brick may take two hits in one physics step. Ranked revision, save,\nbest, history, unlocks and leaderboard remain exactly unchanged.\n",
+        "reasoning": "Advance produced one step and five balls rather than the required 120 steps and six-ball outcome."
+      },
+      {
+        "id": "power_relay_exclusivity_and_timer",
+        "name": "power_relay_exclusivity_and_timer",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 2.0,
+        "description": "Load Power relay. Require paused practice mode with one moving ball at speed\n300 and six ordered drops: wide, wide, slow, multiball, multiball, sticky.\nAdvance once. Require exactly 120 ticks, zero drops, ordinary paddle width 118,\nexactly one primary ball, and only sticky active showing 20 whole seconds.\nRecent events must prove that collection order: the second wide reset without\nstacking, slow visibly reduced speed from 300 to 210, the second multiball reset\nits timer while retaining two balls and never created a third, and each\ndifferent effect removed the old one. Temporary width, speed and extra ball\nmust all be restored by replacement.\n\nWait two real seconds while paused and require timer/ticks/state unchanged.\nAdvance once more and require exactly 240 total ticks with sticky showing 19\nwhole seconds. Loading or advancing the drill must not alter any ranked\nrevision, save, best, unlock, personal history or global leaderboard value.\n",
+        "reasoning": "The setup was correct, but Advance produced one step and incorrect score/timing instead of 120/240 ticks."
+      },
+      {
+        "id": "multiball_secondary_loss",
+        "name": "multiball_secondary_loss",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 0.5,
+        "description": "Load Multiball: require two balls, three lives and multiball, then Advance. The\npre-positioned secondary ball is lost while the primary remains, so the result\nis paused with one primary ball, three lives and the effect still active; no\nwaiting serve or life loss occurs. Record ranked state before loading and\nrequire its revision, save, best, unlocks, history and leaderboard unchanged.\n",
+        "reasoning": "The secondary disappeared without life loss, but the drill advanced one step with the wrong scoring/timer result."
+      },
+      {
+        "id": "sticky_capture_launch_and_expiry",
+        "name": "sticky_capture_launch_and_expiry",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 1.0,
+        "description": "Load Sticky catch and Advance. Require the\nsame primary ball held on the paddle with sticky showing one whole second. Use\nvisible Launch, then pause immediately; its id must be unchanged and it must be\nreleased in play. Reload Sticky catch, Advance once to capture, then Advance\nagain without Launch. At 240 total ticks require no effect and the same\nautomatically released ball still in play, proving simulation-time expiry.\nRecord ranked state before loading and require its revision, save, best,\nunlocks, history and leaderboard unchanged. Score this drill independently\nof Multiball and Last ball.\n",
+        "reasoning": "Capture/release behavior was partly visible, but the drill advanced one or two steps rather than 120/240 with incorrect scoring."
+      },
+      {
+        "id": "last_ball_life_loss_cleanup",
+        "name": "last_ball_life_loss_cleanup",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 0.5,
+        "description": "Load Last ball: require two lives, one ball, one drop, wide and paddle width\n177. Advance once. Stop early at exactly one fixed tick in life-lost, with one\nlife, one held waiting ball, zero drops, no effect and paddle width 118. All\ndrill actions remain practice-only: record and require ranked revision, save,\nbest, unlocks, history and leaderboard unchanged. Other drills do not affect\nthis criterion's score.\n",
+        "reasoning": "Life loss cleared the effect, but no held waiting ball appeared and the step/result evidence was incorrect."
+      },
+      {
+        "id": "extra_life_threshold_once",
+        "name": "extra_life_threshold_once",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Load Extra life: require paused score 19,950, three lives, combo x1, next life\n20,000 and two normal bricks. Advance once. Exactly one normal hit must yield\nscore 20,050, four lives, combo x2, threshold 40,000 and one remaining normal\nbrick; no duplicate life is awarded. The lab explains that it is non-scoring;\nrecord and require ranked revision, save, best, unlocks, history and leaderboard\nordering/count unchanged. Score independently of Final wall.\n",
+        "reasoning": "The drill produced score 20,050, four lives, combo x2, threshold 40,000, and one remaining normal brick after one Advance."
+      },
+      {
+        "id": "final_wall_completion_bonus",
+        "name": "final_wall_completion_bonus",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Load Final wall: require level 10, score\n5,000 and one normal brick. Advance once. The hit gives 100 at x1 and the\nlevel-10 bonus gives exactly 10,000, producing completed, score 15,100, combo\nx2 and zero breakable bricks. The lab explains that it is non-scoring; ranked\nrevision, saved run, best, unlocks, history and both leaderboard ordering and\ncount remain unchanged from the baseline recorded before loading this drill.\nScore independently of Extra life.\n",
+        "reasoning": "The drill produced completed, score 15,100, combo x2, zero breakable bricks, and retained the intact solid brick."
+      },
+      {
+        "id": "two_tab_revisions_receipts_and_duplicate_guard",
+        "name": "two_tab_revisions_receipts_and_duplicate_guard",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 3.0,
+        "description": "In tab A sign in as Polly, capture and clear the ranked run, then replay that\nclear request byte-for-byte. Require the original status/body with only one\nrevision increment and no save. Independently sign in as Polly in tab B so both\nshow the same empty baseline and revision. In tab A capture a successful Start\nselected level request and its response. Replay it byte-for-byte with the same\nBearer credential: require the original status/body but no second revision or\nstate change. Without refreshing tab B, capture and attempt its Start request.\nRequire HTTP 409, visible stale/reconciled feedback, the winning revision and\nauthoritative tab-A saved state frozen in tab B, and no mutation. Retry through\nthe visible control with a fresh operation id and require exactly one accepted\nrevision.\n\nAfter that advance, replay the original stale request and require its exact\noriginal 409 body, even though that body carries the older conflict revision;\na fresh visible reload must still show the newer authoritative state. Reuse\ntab A's successful operation id with a different selected level and require\nrejection with no change. Every fresh mutation carries the displayed expected\nrevision and a distinct opaque high-entropy id. Reload tab A to current state,\nrapidly double-activate Start while its first request is pending, and require\nonly one accepted request, one revision increment and one saved run.\n",
+        "reasoning": "No visible clear control was available, so the required clear, stale-tab, receipt, reuse, and double-activation sequence was not established."
+      },
+      {
+        "id": "complete_session_security_and_isolation",
+        "name": "complete_session_security_and_isolation",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 2.0,
+        "description": "Submit Polly's login form independently in tabs A and B and use browser network\nevidence to require two distinct opaque 64-hex issued tokens used as same-origin\nBearer credentials. Record Polly's revision, saved run, best, unlocks, personal\nhistory and global leaderboard. Sign out all sessions in tab A. Attempt one\nvisible protected action in tab B and require rejection back to sign-in before\nany mutation. A Polly attempt with wrong-pass-47 must show visible rejection\nwithout protected state. Sign in again correctly and require every recorded\nvalue unchanged, proving account-wide revocation and rejected-write safety.\n\nFinally sign in as Dev and require only Dev's own best, unlock and saved run\n(either his seeded checkpoint or the exact level-4 progression state produced\nearlier), never Polly's run/history. Return to Polly and require Dev's state\nnever crossed into Polly's profile.\n",
+        "reasoning": "Distinct bearer tokens and account isolation were observed, but the required rejected protected action in tab B was not established; the visible sign-out returned 200 and the tab auto-reconciled."
+      },
+      {
+        "id": "solid_bricks_do_not_block_completion",
+        "name": "solid_bricks_do_not_block_completion",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Use Polly after all earlier ranked-state checks. Record her ranked baseline,\nthen load Final wall through the visible lab chooser. Confirm the scenario's\none normal and one intact solid brick. Advance once through the real engine.\nRequire completed with zero remaining breakable bricks while the same solid\nbrick remains intact. This criterion grades the completion predicate, not the\nexact bonus already graded separately. A removed/damaged solid, an unfinished\nlevel, or no surviving-solid evidence fails. Require ranked revision, save,\nbest, unlocks, personal history and leaderboard unchanged. Do not inject bricks\nor game state: the supplied scenario provides this setup.\n",
+        "reasoning": "Final wall completed with zero breakable bricks while the solid brick remained intact and ranked state stayed unchanged."
+      },
+      {
+        "id": "bearer_identity_overrides_client_claims",
+        "name": "bearer_identity_overrides_client_claims",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Independently sign in as Polly and Dev. Record each account's profile, revision,\nsave and personal history, plus the shared leaderboard. Observe an actual\nprotected profile/run read and a legitimate Polly level-1 Start request to\ndiscover the app's read/start routes, methods, identity fields, revision field\nand operation-id field. Refresh both baselines after that legitimate start.\nUsing Polly's real token, probe the observed protected read with Dev's email\nand initials as client identity claims; include Dev's user id only if exposed\nby ordinary app responses. Use any identity slots the app actually sends;\notherwise add email and initials query parameters for a GET, or body fields\nfor an existing body-bearing read. Do not invent endpoints or guess opaque ids.\nIt must reject the override or return only Polly's protected profile/run/history,\nnever Dev's. Shared leaderboard entries are not private-data leakage.\nThen send an otherwise valid level-1 Start matching the observed request, with\nPolly's current revision and a NEW unpredictable operation id, but Dev's email\nand initials (and observed id if available) as top-level client identity claims.\nDo not forge any game snapshot or substitute Dev's token. Either a non-2xx\nrejection with both accounts unchanged, or acceptance that starts exactly one\nPolly-owned run and leaves Dev unchanged, is correct. Verify both accounts by\nfresh authenticated reads without spoof fields. Unrelated stale-revision,\nduplicate-id or invalid-level failures are not evidence: establish the valid\nbaseline first. Record request/response and both before/after states. This\ncriterion is about resisting forged identity, not demanding a particular field\nname, route shape, or reject-versus-ignore policy.\n",
+        "reasoning": "A Polly-token read with Dev claims returned Polly data; a valid visible Start carrying Dev claims was accepted as Polly user_id 3, while Dev remained unchanged."
+      },
+      {
+        "id": "terminal_score_increases_best",
+        "name": "terminal_score_increases_best",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 1.0,
+        "description": "Evaluate last, after Dev isolation/checkpoint checks. Sign in as Dev and record\nhis current stored best (seeded 6,200). Resume the earlier real level-4 run at\n23,050 or, if still at his seeded level-3 checkpoint, use its normal progression\nand Continue controls to reach that higher-scoring run. Do not reset the run,\nforge state, use a practice score or modify the database. With Assist off,\nlaunch through the visible controls and allow misses, launching subsequent\nserves as needed, until this real ranked run ends. Keep the paddle away from\ndescending balls using ordinary pointer/arrow controls; do not change clocks.\nCapture the actual terminal score S and require S greater than the recorded\nbest. Require the profile's best to increase to S after finish, visible UI and\na fresh authenticated response to agree, and the same increased best after\nreload/sign-in. Other accounts' best scores remain unchanged. Compare against\nthe actual terminal score, not a hardcoded animation-dependent score. A run\nthat never exceeds the old best does not exercise this requirement and cannot\npass. This criterion grades upward best-score persistence only; do not rescore\nthe preceding exact terminal bonus or receipt criteria here.\n",
+        "reasoning": "Dev's real resumed run remained at score 19,950 with no steps after the observed rendering errors, so no terminal score above 6,200 was reached."
+      }
+    ],
+    "kind": "agent",
+    "judge": {
+      "agent": "codex",
+      "model": "gpt-5.6-luna",
+      "timeout": 9000,
+      "cwd": null,
+      "isolated": false,
+      "atif_trajectory": null,
+      "mode": "batched",
+      "mcp_servers": [
+        {
+          "name": "playwright",
+          "transport": "stdio",
+          "url": null,
+          "command": "playwright-mcp",
+          "args": [
+            "--headless",
+            "--isolated",
+            "--executable-path=/usr/local/bin/chromium",
+            "--no-sandbox"
+          ],
+          "allowed_tools": []
+        }
+      ]
+    },
+    "judge_output": "{\"seeded_sign_in_and_token_basics\":{\"score\":\"yes\",\"reasoning\":\"Mira's wrong password was rejected without protected content; correct sign-in issued a 64-hex token subsequently used as a same-origin Bearer credential.\"},\"initial_global_leaderboard_core\":{\"score\":\"yes\",\"reasoning\":\"The initial visible leaderboard matched the required ten rows and omitted DVP.\"},\"level_manifest_and_constants\":{\"score\":\"no\",\"reasoning\":\"Level metadata and constants matched, but the required full SHA-256 digests were not visibly present.\"},\"mira_checkpoint_freeze_and_restore\":{\"score\":\"no\",\"reasoning\":\"The seeded values survived reload, but Resume entered play and triggered a non-finite canvas-gradient error instead of clean frozen-resume evidence.\"},\"terminal_finish_and_records\":{\"score\":\"no\",\"reasoning\":\"Mira's run did not progress to game over; no finish request or required terminal records were observed.\"},\"terminal_receipt_retry\":{\"score\":\"no\",\"reasoning\":\"No terminal finish request was captured for replay.\"},\"terminal_refresh_durability\":{\"score\":\"no\",\"reasoning\":\"No terminal record was produced, so durability was not established.\"},\"terminal_keyboard_restart\":{\"score\":\"no\",\"reasoning\":\"The required game-over state was never reached.\"},\"dev_checkpoint_threshold_and_progression\":{\"score\":\"no\",\"reasoning\":\"Dev's checkpoint was visible, but resumption stalled with the same canvas error and produced no progression request.\"},\"polly_personal_history_and_snapshots\":{\"score\":\"no\",\"reasoning\":\"The ten records were correct, but dialogs exposed only metadata rather than complete terminal snapshots.\"},\"all_seeded_walls_and_fresh_runs\":{\"score\":\"yes\",\"reasoning\":\"Levels 1\u201310 were started once each with correct names, totals, speeds, fresh state, revisions, and distinct operation ids.\"},\"ranked_controls_pause_save_restore\":{\"score\":\"yes\",\"reasoning\":\"Pointer/keyboard control, launch, pause, save capture and exact replay, frozen reload, and continued motion after Resume were all observed.\"},\"assist_and_manual_takeover\":{\"score\":\"yes\",\"reasoning\":\"Assist visibly moved the paddle, and an arrow key immediately disabled it while gameplay values remained unchanged.\"},\"brick_types_fixed_step_and_combo\":{\"score\":\"no\",\"reasoning\":\"Advance produced one step and five balls rather than the required 120 steps and six-ball outcome.\"},\"power_relay_exclusivity_and_timer\":{\"score\":\"no\",\"reasoning\":\"The setup was correct, but Advance produced one step and incorrect score/timing instead of 120/240 ticks.\"},\"multiball_secondary_loss\":{\"score\":\"no\",\"reasoning\":\"The secondary disappeared without life loss, but the drill advanced one step with the wrong scoring/timer result.\"},\"sticky_capture_launch_and_expiry\":{\"score\":\"no\",\"reasoning\":\"Capture/release behavior was partly visible, but the drill advanced one or two steps rather than 120/240 with incorrect scoring.\"},\"last_ball_life_loss_cleanup\":{\"score\":\"no\",\"reasoning\":\"Life loss cleared the effect, but no held waiting ball appeared and the step/result evidence was incorrect.\"},\"extra_life_threshold_once\":{\"score\":\"yes\",\"reasoning\":\"The drill produced score 20,050, four lives, combo x2, threshold 40,000, and one remaining normal brick after one Advance.\"},\"final_wall_completion_bonus\":{\"score\":\"yes\",\"reasoning\":\"The drill produced completed, score 15,100, combo x2, zero breakable bricks, and retained the intact solid brick.\"},\"two_tab_revisions_receipts_and_duplicate_guard\":{\"score\":\"no\",\"reasoning\":\"No visible clear control was available, so the required clear, stale-tab, receipt, reuse, and double-activation sequence was not established.\"},\"complete_session_security_and_isolation\":{\"score\":\"no\",\"reasoning\":\"Distinct bearer tokens and account isolation were observed, but the required rejected protected action in tab B was not established; the visible sign-out returned 200 and the tab auto-reconciled.\"},\"solid_bricks_do_not_block_completion\":{\"score\":\"yes\",\"reasoning\":\"Final wall completed with zero breakable bricks while the solid brick remained intact and ranked state stayed unchanged.\"},\"bearer_identity_overrides_client_claims\":{\"score\":\"yes\",\"reasoning\":\"A Polly-token read with Dev claims returned Polly data; a valid visible Start carrying Dev claims was accepted as Polly user_id 3, while Dev remained unchanged.\"},\"terminal_score_increases_best\":{\"score\":\"no\",\"reasoning\":\"Dev's real resumed run remained at score 19,950 with no steps after the observed rendering errors, so no terminal score above 6,200 was reached.\"}}\n"
+  },
+  "polish": {
+    "score": 1.0,
+    "criteria": [
+      {
+        "id": "sign_in_and_focus_quality",
+        "name": "sign_in_and_focus_quality",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Setup: inspect the signed-out form at desktop and 375 by 760, then sign in as Polly through the visible UI.\nGraded observations:\n1. Email, password, sign-in and sign-out have programmatic names; invalid-login feedback is understandable.\n2. Real keyboard traversal gives fields, buttons and links visible focus without a trap. Controls have practical touch targets at the required mobile width.\n3. Signed-in identity and sign-out are understandable without colour or placeholder text alone.\nGrade operability and understandable feedback, not palette, typography or decorative styling.\n",
+        "reasoning": "Named form controls, understandable invalid-login feedback, visible keyboard focus through the full tab order, practical 375px targets, and explicit Polly identity/sign-out were observed."
+      },
+      {
+        "id": "semantic_game_state_and_events",
+        "name": "semantic_game_state_and_events",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Setup: sign in as Polly, use the visible ranked-run controls and a non-scoring lab drill, and inspect the ordinary DOM state alongside the canvas.\nGraded observations:\n1. A named focusable canvas has a useful state summary. Ordinary DOM exposes identity and all six HUD values: score, lives, level, combo, active power-up and timer.\n2. Controls are named, keyboard guidance is visible, Assist state and revision/sync state are understandable, and mechanics telemetry, recent events and personal history are readable as text.\n3. Status and events update for sign-in, launch, pause and the exercised lab outcome without requiring canvas-pixel interpretation. This checks semantic communication, not exact physics already graded in Functional.\n",
+        "reasoning": "The canvas was focusable with an aria state summary; all six HUD values, controls, sync/revision, telemetry, history, and events were readable. Launch, pause, and lab state changes updated ordinary text."
+      },
+      {
+        "id": "keyboard_pointer_touch_gameplay",
+        "name": "keyboard_pointer_touch_gameplay",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Setup: as Polly start a fresh ready run through the visible controls. Repeat input observations at 375 by 760 using the app's supported touch controls.\nGraded observations:\n1. Pointer and Left/Right both move the paddle and waiting ball; Space launches; P and Escape toggle pause/resume.\n2. Touch-equivalent dragging over the canvas and the large visible action controls remain practical and reachable.\n3. Input does not unexpectedly scroll the page or trap focus, and remains usable after an ordinary reload and supported return to the game.\nJudge usable input and focus, not motion aesthetics or a particular layout.\n",
+        "reasoning": "Held Left/Right and pointer dragging changed the canvas, Space launched, P paused, and Escape resumed. 375px controls were reachable, dragging did not change scroll position, and reload restored usable game controls."
+      },
+      {
+        "id": "canvas_and_state_readability",
+        "name": "canvas_and_state_readability",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Setup: use the visible Brick types and Power relay non-scoring drills to expose the relevant scene states at desktop and 375 by 760.\nGraded observations:\n1. Brick durability and item type have non-colour cues, so normal, intact/damaged strong, solid bricks and the available power-up types can be identified without colour alone.\n2. Ordinary semantic state summaries agree with the scene states actually observed; overlays and control labels do not contradict the displayed phase.\nTypography, scene composition and colour treatment are assessed by Visual. Do not invent unseen gameplay outcomes or duplicate the exact drill totals from Functional.\n",
+        "reasoning": "Brick telemetry identified normal, intact/damaged strong, solid, HP, and damage without color dependence; Power relay named wide, slow, multiball, and sticky. Semantic phase, timer, power, and overlay states agreed."
+      },
+      {
+        "id": "complete_product_coherence_and_reduced_motion",
+        "name": "complete_product_coherence_and_reduced_motion",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Setup: as Polly complete an ordinary fresh-run, pause/resume, one non-scoring drill and reload journey through the visible UI.\nGraded observations:\n1. Sign-in, level selection, saved-run choice when a save exists, controls, effect timer, sync feedback, lab, seed manifest, history, leaderboard, restart when available and sign-out communicate their current state and available actions.\n2. The exercised journey has understandable feedback, no fatal browser error or unusable phase, and no visible control that contradicts the current phase.\n3. Under reduced-motion preference, nonessential transitions/animations are materially shortened without losing information. An app with no nonessential animation already satisfies this part.\nJudge usable feedback and motion preference support, not decorative coherence, which belongs in Visual.\n",
+        "reasoning": "Level selection, fresh run, launch, pause/resume, sync, saved-run restoration, lab, manifest, history, leaderboard, restart, and sign-out were clear. Reduced motion shortened button transitions from 0.12s to approximately 0.00001s."
+      }
+    ],
+    "kind": "agent",
+    "judge": {
+      "agent": "codex",
+      "model": "gpt-5.6-luna",
+      "timeout": 900,
+      "cwd": null,
+      "isolated": false,
+      "atif_trajectory": null,
+      "mode": "batched",
+      "mcp_servers": [
+        {
+          "name": "playwright",
+          "transport": "stdio",
+          "url": null,
+          "command": "playwright-mcp",
+          "args": [
+            "--headless",
+            "--isolated",
+            "--executable-path=/usr/local/bin/chromium",
+            "--no-sandbox"
+          ],
+          "allowed_tools": []
+        }
+      ]
+    },
+    "judge_output": "{\"sign_in_and_focus_quality\":{\"score\":\"yes\",\"reasoning\":\"Named form controls, understandable invalid-login feedback, visible keyboard focus through the full tab order, practical 375px targets, and explicit Polly identity/sign-out were observed.\"},\"semantic_game_state_and_events\":{\"score\":\"yes\",\"reasoning\":\"The canvas was focusable with an aria state summary; all six HUD values, controls, sync/revision, telemetry, history, and events were readable. Launch, pause, and lab state changes updated ordinary text.\"},\"keyboard_pointer_touch_gameplay\":{\"score\":\"yes\",\"reasoning\":\"Held Left/Right and pointer dragging changed the canvas, Space launched, P paused, and Escape resumed. 375px controls were reachable, dragging did not change scroll position, and reload restored usable game controls.\"},\"canvas_and_state_readability\":{\"score\":\"yes\",\"reasoning\":\"Brick telemetry identified normal, intact/damaged strong, solid, HP, and damage without color dependence; Power relay named wide, slow, multiball, and sticky. Semantic phase, timer, power, and overlay states agreed.\"},\"complete_product_coherence_and_reduced_motion\":{\"score\":\"yes\",\"reasoning\":\"Level selection, fresh run, launch, pause/resume, sync, saved-run restoration, lab, manifest, history, leaderboard, restart, and sign-out were clear. Reduced motion shortened button transitions from 0.12s to approximately 0.00001s.\"}}\n"
+  },
+  "render": {
+    "score": 1.0,
+    "criteria": [
+      {
+        "id": "page_load_and_refresh",
+        "name": "page_load_and_refresh",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Open the same-origin page and require a substantive Brickfall sign-in screen\nwith a visible product heading, email and password fields, and a usable sign-in\ncontrol. Fully refresh once and require the same usable page to render again\nwithout a blank screen or fatal error.\n",
+        "reasoning": "Brickfall sign-in screen rendered substantively and survived a full refresh with heading, email/password fields, and usable control."
+      },
+      {
+        "id": "basic_control_interaction",
+        "name": "basic_control_interaction",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Enter text into the visible email and password fields, move focus through the\nsign-in control, and activate it once. Require the page to remain responsive and\nvisibly rendered rather than becoming blank, frozen, or fatally broken. This is\nonly an interaction/render smoke check after the mandatory global gate; do\nnot add further authentication or gameplay assertions to this criterion.\n",
+        "reasoning": "Entered text, tabbed to the sign-in control, activated it once, and the page remained rendered and responsive."
+      }
+    ],
+    "kind": "agent",
+    "judge": {
+      "agent": "codex",
+      "model": "gpt-5.6-luna",
+      "timeout": 600,
+      "cwd": null,
+      "isolated": false,
+      "atif_trajectory": null,
+      "mode": "batched",
+      "mcp_servers": [
+        {
+          "name": "playwright",
+          "transport": "stdio",
+          "url": null,
+          "command": "playwright-mcp",
+          "args": [
+            "--headless",
+            "--isolated",
+            "--executable-path=/usr/local/bin/chromium",
+            "--no-sandbox"
+          ],
+          "allowed_tools": []
+        }
+      ]
+    },
+    "judge_output": "{\"page_load_and_refresh\":{\"score\":\"yes\",\"reasoning\":\"Brickfall sign-in screen rendered substantively and survived a full refresh with heading, email/password fields, and usable control.\"},\"basic_control_interaction\":{\"score\":\"yes\",\"reasoning\":\"Entered text, tabbed to the sign-in control, activated it once, and the page remained rendered and responsive.\"}}\n"
+  },
+  "visual": {
+    "score": 0.9167,
+    "criteria": [
+      {
+        "id": "visual_typography",
+        "name": "visual_typography",
+        "value": 1.0,
+        "raw": 5,
+        "weight": 1.0,
+        "description": "Assess typography at 1280 by 800 across the signed-in arcade shell, canvas/HUD, leaderboard and an opened personal-history detail.\n5: deliberate type system - clear, readable fonts; distinct sizes and weights\nfor titles, labels and body text; consistent alignment; no awkward truncation\nor collisions.\n4: readable with one or two minor size or alignment defects.\n3: noticeable inconsistencies such as mixed sizes, cramped or oversized text,\nor uneven alignment.\n2: several labels are hard to read or inconsistently styled.\n1: typography is broadly default, illegible, or misaligned.\n0: no coherent typographic rendering exists on the reviewed surface.\n",
+        "reasoning": "Clear type scale and weights across headings, HUD labels, tables, canvas messaging, and the history detail; no desktop truncation or collisions."
+      },
+      {
+        "id": "visual_color_and_contrast",
+        "name": "visual_color_and_contrast",
+        "value": 1.0,
+        "raw": 5,
+        "weight": 1.0,
+        "description": "Assess colour and contrast across the signed-in arcade shell, canvas/HUD, leaderboard and an opened personal-history detail in the app's supplied theme. No theme toggle or additional theme is required.\n5: cohesive palette; text and background contrast stays legible; status and\naccent colours are distinguishable; scene and DOM surfaces preserve readability.\n4: one or two minor contrast or palette imperfections.\n3: noticeable low-contrast text or clashing accents on a reviewed surface.\n2: substantial legibility problems or an inconsistent palette.\n1: colours are broadly default or harsh, or a main surface is difficult to read.\n0: no readable colour treatment renders on the reviewed surface.\n",
+        "reasoning": "Cohesive dark navy palette with readable text, distinct blue controls, green/orange canvas accents, and strong separation between canvas and DOM surfaces."
+      },
+      {
+        "id": "visual_spacing_and_layout",
+        "name": "visual_spacing_and_layout",
+        "value": 0.75,
+        "raw": 4,
+        "weight": 1.0,
+        "description": "Assess desktop spacing and alignment across the signed-in arcade shell, canvas/HUD, leaderboard and an opened personal-history detail, including the dense history/leaderboard regions.\n5: even spacing scale, deliberate alignment and margins, and cards, tables and\nlists sitting in a stable arrangement with no overlaps or clipping.\n4: minor uneven spacing or alignment.\n3: several elements look crowded, drifting, or unevenly padded.\n2: frequent collisions, clipping, or inconsistent gutters.\n1: layout is broadly unbalanced or broken.\n0: no coherent spaced layout renders on the reviewed surface.\n",
+        "reasoning": "Stable cards, gutters, two-column desktop layout, and consistent table rows. The Leaderboard table sits noticeably lower than Recent runs, leaving a large blank band."
+      },
+      {
+        "id": "visual_hierarchy_and_scanability",
+        "name": "visual_hierarchy_and_scanability",
+        "value": 1.0,
+        "raw": 5,
+        "weight": 1.0,
+        "description": "Assess desktop visual priority among brand, identity, canvas, HUD, game actions, mechanics lab and records.\n5: clear visual order - brand and player identity, game title, section\ngroupings, and primary figures and actions each have distinct prominence, so\nthe current phase, HUD values and main actions can be found by scanning.\n4: hierarchy is mostly clear with minor ambiguity.\n3: several sections compete, or important content is visually buried.\n2: navigation, headings and content are hard to tell apart.\n1: no usable visual hierarchy is present.\n0: no scannable hierarchy renders on the reviewed surface.\n",
+        "reasoning": "Brand and player identity lead clearly, followed by controls/status, dominant canvas, HUD figures, records, and mechanics lab; primary actions and current state scan easily."
+      },
+      {
+        "id": "visual_overall_craft",
+        "name": "visual_overall_craft",
+        "value": 0.75,
+        "raw": 4,
+        "weight": 1.0,
+        "description": "Assess visual consistency across the signed-in arcade shell, canvas/HUD, leaderboard and an opened personal-history detail, including secondary states encountered through ordinary navigation.\n5: one coherent design language applied consistently - deliberate components,\nintegrated details, no stray default styling, and a finished look even in\nsecondary states.\n4: one or two minor polish imperfections.\n3: noticeable default styling or inconsistent component treatment across arcade surfaces.\n2: much of the interface looks unfinished or inconsistent.\n1: visual craft is effectively absent.\n0: no crafted interface renders on the reviewed surfaces.\n",
+        "reasoning": "Consistent cards, pills, borders, buttons, tables, and canvas styling feel deliberately designed. Minor polish issues include the visible \u201cSign in to begin\u201d text while signed in and dense raw telemetry/history presentation."
+      },
+      {
+        "id": "visual_responsive_consistency",
+        "name": "visual_responsive_consistency",
+        "value": 1.0,
+        "raw": 5,
+        "weight": 1.0,
+        "description": "Assess the signed-out form and signed-in canvas/HUD, controls and leaderboard at 1280 by 800 and 375 by 760. Judge visual reflow and proportions only; touch/input operability is graded in Polish.\n5: the same design language holds at both sizes - text, spacing, cards, tables\nand controls scale or reflow deliberately without squashing, stretching,\noverflow beyond intentional scroll areas, or visual breakage, and the canvas preserves its proportions.\n4: one or two minor responsive visual defects.\n3: noticeable squashing, cramped density, or misaligned components at mobile\nwidth.\n2: several components break or overflow badly on mobile.\n1: mobile rendering is visually inconsistent or mostly broken.\n0: no consistent responsive presentation renders on the reviewed surfaces.\n",
+        "reasoning": "At 375px the public form and controls stack cleanly, the canvas preserves its 3:2 proportion, HUD becomes one column, and leaderboard rows wrap dates without horizontal overflow."
+      }
+    ],
+    "kind": "agent",
+    "judge": {
+      "agent": "codex",
+      "model": "gpt-5.6-luna",
+      "timeout": 900,
+      "cwd": null,
+      "isolated": false,
+      "atif_trajectory": null,
+      "mode": "batched",
+      "mcp_servers": [
+        {
+          "name": "playwright",
+          "transport": "stdio",
+          "url": null,
+          "command": "playwright-mcp",
+          "args": [
+            "--headless",
+            "--isolated",
+            "--executable-path=/usr/local/bin/chromium",
+            "--no-sandbox"
+          ],
+          "allowed_tools": []
+        }
+      ]
+    },
+    "judge_output": "{\"visual_typography\":{\"score\":5,\"reasoning\":\"Clear type scale and weights across headings, HUD labels, tables, canvas messaging, and the history detail; no desktop truncation or collisions.\"},\"visual_color_and_contrast\":{\"score\":5,\"reasoning\":\"Cohesive dark navy palette with readable text, distinct blue controls, green/orange canvas accents, and strong separation between canvas and DOM surfaces.\"},\"visual_spacing_and_layout\":{\"score\":4,\"reasoning\":\"Stable cards, gutters, two-column desktop layout, and consistent table rows. The Leaderboard table sits noticeably lower than Recent runs, leaving a large blank band.\"},\"visual_hierarchy_and_scanability\":{\"score\":5,\"reasoning\":\"Brand and player identity lead clearly, followed by controls/status, dominant canvas, HUD figures, records, and mechanics lab; primary actions and current state scan easily.\"},\"visual_overall_craft\":{\"score\":4,\"reasoning\":\"Consistent cards, pills, borders, buttons, tables, and canvas styling feel deliberately designed. Minor polish issues include the visible \u201cSign in to begin\u201d text while signed in and dense raw telemetry/history presentation.\"},\"visual_responsive_consistency\":{\"score\":5,\"reasoning\":\"At 375px the public form and controls stack cleanly, the canvas preserves its 3:2 proportion, HUD becomes one column, and leaderboard rows wrap dates without horizontal overflow.\"}}\n"
+  }
+}

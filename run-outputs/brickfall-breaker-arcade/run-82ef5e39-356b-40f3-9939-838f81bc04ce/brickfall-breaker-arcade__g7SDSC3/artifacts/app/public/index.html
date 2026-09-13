@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Brickfall - Arcade Brick Breaker</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app" class="app-container">
+    <!-- Header -->
+    <header class="app-header" role="banner">
+      <div class="brand">
+        <h1 class="game-title">BRICKFALL</h1>
+        <span class="arcade-badge">ARCADE</span>
+      </div>
+
+      <div class="header-right">
+        <!-- Auth View Status -->
+        <div id="auth-status-bar" class="auth-bar hidden">
+          <div class="user-badge" id="user-badge" tabindex="0" aria-label="Signed in player info">
+            <span class="initials-avatar" id="user-initials">PLY</span>
+            <div class="user-meta">
+              <span class="user-name" id="user-name">Polly Reyes</span>
+              <span class="user-email" id="user-email">polly@brickfall.test</span>
+            </div>
+          </div>
+
+          <div class="sync-badge" id="sync-badge" aria-live="polite">
+            <span class="sync-dot" id="sync-dot"></span>
+            <span id="sync-text">Synced</span>
+            <span class="rev-tag" id="rev-tag">Rev #0</span>
+          </div>
+
+          <button type="button" id="btn-lab-toggle" class="btn btn-secondary btn-sm" aria-haspopup="dialog">Mechanics Lab</button>
+          <button type="button" id="btn-logout" class="btn btn-outline btn-sm">Sign Out</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Sign In Panel -->
+    <section id="auth-section" class="panel auth-panel" aria-labelledby="auth-title">
+      <h2 id="auth-title">Player Sign-In</h2>
+      <p class="auth-intro">Sign in to access your saved run, unlocked levels, and high scores.</p>
+      
+      <div class="demo-logins">
+        <h3>Quick Demo Profiles</h3>
+        <div class="demo-btn-group">
+          <button type="button" class="btn btn-demo" data-email="mira@brickfall.test">
+            <strong>Mira Chen</strong> (MRC)
+            <small>Checkpoint: Level 8 (Paused)</small>
+          </button>
+          <button type="button" class="btn btn-demo" data-email="dev@brickfall.test">
+            <strong>Dev Patel</strong> (DVP)
+            <small>Checkpoint: Level 3 (Paused)</small>
+          </button>
+          <button type="button" class="btn btn-demo" data-email="polly@brickfall.test">
+            <strong>Polly Reyes</strong> (PLY)
+            <small>Unlocked: Level 10 (Best: 31,800)</small>
+          </button>
+        </div>
+      </div>
+
+      <form id="login-form" class="login-form" novalidate>
+        <div class="form-group">
+          <label for="login-email">Email Address</label>
+          <input type="email" id="login-email" name="email" required autocomplete="username" placeholder="name@brickfall.test">
+        </div>
+        <div class="form-group">
+          <label for="login-password">Password</label>
+          <input type="password" id="login-password" name="password" required autocomplete="current-password" value="password123">
+        </div>
+        <div id="login-error" class="alert alert-error hidden" role="alert"></div>
+        <button type="submit" id="btn-login-submit" class="btn btn-primary btn-block">Sign In</button>
+      </form>
+    </section>
+
+    <!-- Main Game Section (Visible when logged in) -->
+    <main id="game-section" class="game-layout hidden">
+      <!-- Top HUD -->
+      <section class="hud-panel" aria-label="Game HUD">
+        <div class="hud-item">
+          <span class="hud-label">SCORE</span>
+          <span class="hud-value" id="hud-score">0</span>
+        </div>
+        <div class="hud-item">
+          <span class="hud-label">LIVES</span>
+          <span class="hud-value" id="hud-lives">3</span>
+        </div>
+        <div class="hud-item">
+          <span class="hud-label">LEVEL</span>
+          <span class="hud-value" id="hud-level">1 - Foundation</span>
+        </div>
+        <div class="hud-item">
+          <span class="hud-label">COMBO</span>
+          <span class="hud-value combo-pill" id="hud-combo">x1</span>
+        </div>
+        <div class="hud-item">
+          <span class="hud-label">POWER-UP</span>
+          <span class="hud-value power-pill" id="hud-power">None</span>
+        </div>
+        <div class="hud-item">
+          <span class="hud-label">STATUS</span>
+          <span class="hud-value status-pill" id="hud-status">READY</span>
+        </div>
+      </section>
+
+      <!-- Sync Notice Banner -->
+      <div id="sync-notice" class="alert alert-warning hidden" role="alert"></div>
+
+      <!-- Canvas Area -->
+      <div class="canvas-wrapper">
+        <canvas id="game-canvas" width="900" height="600" tabindex="0" role="img" aria-label="Brickfall Game Screen: Ready"></canvas>
+        <div id="canvas-overlay" class="canvas-overlay hidden">
+          <div class="overlay-content">
+            <h2 id="overlay-title">PAUSED</h2>
+            <p id="overlay-desc">Press P or Resume to continue</p>
+            <div class="overlay-buttons" id="overlay-buttons"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Controls Toolbar -->
+      <section class="controls-toolbar" aria-label="Game Controls">
+        <div class="control-group action-buttons">
+          <button type="button" id="btn-launch" class="btn btn-action btn-primary" title="Launch waiting ball (Space)">Launch [Space]</button>
+          <button type="button" id="btn-pause" class="btn btn-action btn-secondary" title="Pause or Resume game (P or Esc)">Pause [P]</button>
+          <button type="button" id="btn-restart" class="btn btn-action btn-danger" title="Restart game (R)">Restart [R]</button>
+          <button type="button" id="btn-assist" class="btn btn-action btn-toggle" role="switch" aria-checked="false" aria-label="Assist paddle toggle">
+            Assist: <span id="assist-state-text">OFF</span>
+          </button>
+        </div>
+
+        <div class="control-group level-select-group">
+          <label for="select-level">Play Level:</label>
+          <select id="select-level" class="form-select" aria-label="Select unlocked level to play"></select>
+          <button type="button" id="btn-new-run" class="btn btn-sm btn-outline">New Run</button>
+        </div>
+      </section>
+
+      <!-- Touch Controls for Mobile / Small Screens -->
+      <div class="touch-controls" aria-label="On-Screen Touch Controls">
+        <button type="button" id="touch-left" class="btn-touch" aria-label="Move Paddle Left">◀ LEFT</button>
+        <button type="button" id="touch-launch" class="btn-touch" aria-label="Launch Ball">🚀 LAUNCH</button>
+        <button type="button" id="touch-right" class="btn-touch" aria-label="Move Paddle Right">RIGHT ▶</button>
+      </div>
+
+      <!-- Events & Telemetry Bar -->
+      <section class="events-container" aria-label="Event Log">
+        <div class="event-header">
+          <h3>Recent Events</h3>
+          <span class="latest-event-pill" id="latest-event" aria-live="polite">Ready to launch</span>
+        </div>
+        <ul id="event-log-list" class="event-list" role="log" aria-atomic="false"></ul>
+      </section>
+
+      <!-- Keyboard Shortcuts Info -->
+      <section class="shortcuts-panel" aria-label="Keyboard Shortcuts">
+        <span class="shortcut-tag"><kbd>←</kbd> <kbd>→</kbd> or <kbd>A</kbd> <kbd>D</kbd> Move</span>
+        <span class="shortcut-tag"><kbd>Space</kbd> Launch</span>
+        <span class="shortcut-tag"><kbd>P</kbd> / <kbd>Esc</kbd> Pause</span>
+        <span class="shortcut-tag"><kbd>R</kbd> Restart</span>
+      </section>
+
+      <!-- Bottom Panels: Leaderboard and Run History -->
+      <div class="stats-grid">
+        <!-- Global Leaderboard -->
+        <section class="panel leaderboard-panel" aria-labelledby="lb-title">
+          <div class="panel-header">
+            <h3 id="lb-title">Top 10 Leaderboard</h3>
+            <button type="button" id="btn-refresh-lb" class="btn btn-xs btn-outline" aria-label="Refresh leaderboard">Refresh</button>
+          </div>
+          <div class="table-responsive">
+            <table class="data-table" id="leaderboard-table">
+              <thead>
+                <tr>
+                  <th scope="col">Rank</th>
+                  <th scope="col">Player</th>
+                  <th scope="col">Score</th>
+                  <th scope="col">Level</th>
+                  <th scope="col">Date</th>
+                </tr>
+              </thead>
+              <tbody id="leaderboard-tbody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Personal Runs -->
+        <section class="panel personal-runs-panel" aria-labelledby="runs-title">
+          <div class="panel-header">
+            <h3 id="runs-title">Your Recent Runs (Top 10)</h3>
+            <button type="button" id="btn-refresh-runs" class="btn btn-xs btn-outline" aria-label="Refresh personal runs">Refresh</button>
+          </div>
+          <div class="table-responsive">
+            <table class="data-table" id="runs-table">
+              <thead>
+                <tr>
+                  <th scope="col">Outcome</th>
+                  <th scope="col">Score</th>
+                  <th scope="col">Level</th>
+                  <th scope="col">Finished</th>
+                  <th scope="col">Action</th>
+                </tr>
+              </thead>
+              <tbody id="runs-tbody"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <!-- Mechanics Lab Modal / Drawer -->
+    <div id="lab-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="lab-modal-title">
+      <div class="modal-content lab-modal-content">
+        <div class="modal-header">
+          <h2 id="lab-modal-title">Mechanics Lab</h2>
+          <button type="button" id="btn-close-lab" class="btn-close" aria-label="Close Mechanics Lab">&times;</button>
+        </div>
+
+        <div class="modal-body lab-body">
+          <div class="lab-tabs" role="tablist">
+            <button type="button" class="tab-btn active" id="tab-drills-btn" role="tab" aria-selected="true" aria-controls="tab-drills">Practice Drills</button>
+            <button type="button" class="tab-btn" id="tab-levels-btn" role="tab" aria-selected="false" aria-controls="tab-levels">Levels &amp; Digests</button>
+            <button type="button" class="tab-btn" id="tab-constants-btn" role="tab" aria-selected="false" aria-controls="tab-constants">Constants</button>
+          </div>
+
+          <!-- Tab 1: Practice Drills -->
+          <div id="tab-drills" class="tab-pane active" role="tabpanel" aria-labelledby="tab-drills-btn">
+            <div class="drill-controls-bar">
+              <div class="drill-select-box">
+                <label for="select-drill">Choose Drill:</label>
+                <select id="select-drill" class="form-select"></select>
+              </div>
+              <div class="drill-actions">
+                <button type="button" id="btn-load-drill" class="btn btn-primary btn-sm">Load Drill</button>
+                <button type="button" id="btn-advance-drill" class="btn btn-warning btn-sm">Advance 1 second</button>
+                <button type="button" id="btn-drill-launch" class="btn btn-secondary btn-sm">Launch</button>
+              </div>
+            </div>
+
+            <div class="drill-desc-box" id="drill-desc-box">
+              <p id="drill-desc-text"></p>
+            </div>
+
+            <!-- Lab Telemetry Display -->
+            <div class="lab-telemetry-grid">
+              <div class="telemetry-card">
+                <h4>Engine Telemetry</h4>
+                <div class="telemetry-item">
+                  <span class="t-label">Simulation Steps:</span>
+                  <span class="t-val highlight" id="t-steps">0</span>
+                </div>
+                <div class="telemetry-item">
+                  <span class="t-label">Phase / Status:</span>
+                  <span class="t-val" id="t-status">paused</span>
+                </div>
+                <div class="telemetry-item">
+                  <span class="t-label">Score:</span>
+                  <span class="t-val" id="t-score">0</span>
+                </div>
+                <div class="telemetry-item">
+                  <span class="t-label">Lives:</span>
+                  <span class="t-val" id="t-lives">3</span>
+                </div>
+                <div class="telemetry-item">
+                  <span class="t-label">Combo:</span>
+                  <span class="t-val" id="t-combo">x1</span>
+                </div>
+                <div class="telemetry-item">
+                  <span class="t-label">Paddle Width:</span>
+                  <span class="t-val" id="t-paddle-width">118 px</span>
+                </div>
+                <div class="telemetry-item">
+                  <span class="t-label">Effect / Timer:</span>
+                  <span class="t-val" id="t-power">None (0s)</span>
+                </div>
+              </div>
+
+              <div class="telemetry-card">
+                <h4>Active Balls (<span id="t-balls-count">0</span>)</h4>
+                <ul id="t-balls-list" class="telemetry-list"></ul>
+              </div>
+
+              <div class="telemetry-card">
+                <h4>Ordered Drops (<span id="t-drops-count">0</span>)</h4>
+                <ul id="t-drops-list" class="telemetry-list"></ul>
+              </div>
+
+              <div class="telemetry-card">
+                <h4>Bricks State (<span id="t-bricks-count">0</span>)</h4>
+                <div id="t-bricks-list" class="telemetry-brick-tags"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab 2: Levels & Digests -->
+          <div id="tab-levels" class="tab-pane hidden" role="tabpanel" aria-labelledby="tab-levels-btn">
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Lvl</th>
+                    <th>Name</th>
+                    <th>Base / Cap Speed</th>
+                    <th>Accent</th>
+                    <th>Bricks (N / S / Sol / Total)</th>
+                    <th>SHA-256 Digest</th>
+                  </tr>
+                </thead>
+                <tbody id="levels-table-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Tab 3: Constants -->
+          <div id="tab-constants" class="tab-pane hidden" role="tabpanel" aria-labelledby="tab-constants-btn">
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Key</th>
+                    <th>Value</th>
+                  </tr>
+                </thead>
+                <tbody id="constants-table-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Snapshot Viewer Modal -->
+    <div id="snapshot-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="snapshot-modal-title">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 id="snapshot-modal-title">Terminal Run Record</h2>
+          <button type="button" id="btn-close-snapshot" class="btn-close" aria-label="Close Snapshot Viewer">&times;</button>
+        </div>
+        <div class="modal-body">
+          <pre id="snapshot-json" class="json-viewer"></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="physics.js"></script>
+  <script src="drills.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>

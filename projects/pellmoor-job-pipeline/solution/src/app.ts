@@ -11,6 +11,7 @@ type Rung = { stage: Stage; reached: number; still: number; left: number };
 type RoleView = {
   role: { code: string; title: string; team: string; openings: number };
   revision: number; funnel: Rung[]; candidates: Candidate[];
+  capacity: { reserved: number; filled: number; available: number };
 };
 
 const TOKEN_KEY = 'pellmoor_session_v2';
@@ -128,8 +129,13 @@ function drawBoard(snapshot: RoleView) {
 
 function applySnapshot(snapshot: RoleView) {
   view = snapshot;
+  const summary = document.querySelector<HTMLElement>(`#roles button[data-code="${snapshot.role.code}"] span`);
+  if (summary) {
+    const live = snapshot.candidates.filter((candidate) => !terminal.includes(candidate.stage)).length;
+    summary.textContent = `${live} live · ${snapshot.candidates.length} total · r${snapshot.revision}`;
+  }
   $('#role-title').textContent = `${snapshot.role.title} · ${snapshot.role.team}`;
-  $('#role-sub').textContent = `${snapshot.role.openings} opening${snapshot.role.openings === 1 ? '' : 's'} · ${snapshot.candidates.length} candidates · revision ${snapshot.revision}`;
+  $('#role-sub').textContent = `${snapshot.role.openings} opening${snapshot.role.openings === 1 ? '' : 's'} · ${snapshot.capacity.reserved} reserved · ${snapshot.capacity.filled} filled · ${snapshot.capacity.available} available · ${snapshot.candidates.length} candidates · revision ${snapshot.revision}`;
   $('#revision').textContent = `r${snapshot.revision}`;
   $('#addcandidate').hidden = !can('add');
   drawFunnel(snapshot.funnel);
@@ -186,13 +192,17 @@ function activityText(event: any) {
   if (event.kind === 'candidate_created') return `added ${details.name} at applied`;
   if (event.kind === 'stage_changed') return `moved ${details.from} → ${details.to}`;
   if (event.kind === 'panel_added') return `added ${details.member} to the panel`;
+  if (event.kind === 'panel_removed') return `removed ${details.member} from the panel`;
   if (event.kind === 'score_recorded') return `recorded score ${details.score}`;
   if (event.kind === 'note_added') return 'added a note';
   return event.kind.replaceAll('_', ' ');
 }
 
 async function refreshAfterMutation(result: any, candidateId?: string) {
-  if (result.data.snapshot) applySnapshot(result.data.snapshot);
+  if (view) {
+    const latest = await api('GET', `/api/roles/${encodeURIComponent(view.role.code)}`);
+    if (latest.ok) applySnapshot(latest.data);
+  }
   if (candidateId) await openCandidate(candidateId);
 }
 
@@ -202,8 +212,8 @@ async function mutate(endpoint: string, body: Record<string, unknown>, candidate
   const result = await api('POST', endpoint, {
     ...body, expected_revision: view.revision, operation_id: operationId(),
   });
-  setBusy(false);
   await refreshAfterMutation(result, candidateId);
+  setBusy(false);
   if (!result.ok) say(result.data.error || 'That change was refused.');
   return result;
 }
@@ -214,38 +224,46 @@ async function openCandidate(id: string) {
     closeCandidate(); say(result.data.error || 'Candidate not found.'); return;
   }
   openId = id;
-  const { candidate, panel, scores, notes, activity, people, revision } = result.data;
+  const { candidate, panel, scores, historical_scores, offer_readiness, notes, activity, people, revision } = result.data;
   if (view) view.revision = revision;
   const next = stages[stages.indexOf(candidate.stage) + 1];
   const previous = stages[stages.indexOf(candidate.stage) - 1];
   const finished = terminal.includes(candidate.stage);
   const score = scores.find((item: Score) => item.panel_member === me?.email)?.score;
-  const canScore = can('score') && panel.includes(me?.email);
+  const panelEditable = ['applied', 'screening', 'interview'].includes(candidate.stage);
+  const canScore = can('score') && panel.includes(me?.email) && candidate.stage === 'interview';
 
   $('#panel').innerHTML = `<header><div><p class="eyebrow">${candidate.id}</p>
       <h2>${esc(candidate.name)}</h2></div><button id="close" aria-label="Close candidate">×</button></header>
     <p class="sub">${esc(candidate.stage)}${finished ? ' · terminal' : ''} · applied ${candidate.applied_days} days ago</p>
-    <div class="history" aria-label="Stage history">${candidate.history.map((stage: string) =>
-      `<span${stage === candidate.stage ? ' aria-current="step"' : ''}>${esc(stage)}</span>`).join('')}</div>
+    <div class="history" aria-label="Stage history">${candidate.history.map((stage: string, index: number) =>
+      `<span${stage === candidate.stage && index === candidate.history.length - 1 ? ' aria-current="step"' : ''}>${esc(stage)}</span>`).join('')}</div>
     ${can('move') && !finished ? `<div class="moves">
       ${previous ? `<button data-to="${previous}">Back to ${previous}</button>` : ''}
       ${next ? `<button class="primary" data-to="${next}">Move to ${next}</button>` : ''}
       <button data-to="rejected">Reject</button><button data-to="withdrawn">Withdraw</button></div>` : ''}
     <h3>Panel and scores</h3>
+    <p id="assessment-status">Assessment version ${candidate.assessment_version} · ${esc(offer_readiness.reason)}</p>
+    ${!panelEditable ? '<p class="empty">Panel and scores are frozen at this stage. Reopen an offered interview to reassess.</p>' : ''}
     ${panel.length ? `<ul class="panel-list">${panel.map((email: string) => {
       const person = people.find((item: Person) => item.email === email);
       const item = scores.find((value: Score) => value.panel_member === email);
       return `<li><span><b>${esc(person?.name || email)}</b><small>${esc(email)}</small></span>
-        <strong>${item ? `${item.score}/5` : 'waiting'}</strong></li>`;
+        <strong>${item ? `${item.score}/5` : 'waiting'}</strong>
+        ${can('panel') && panelEditable ? `<button class="remove-member" data-member="${esc(email)}" aria-label="Remove ${esc(person?.name || email)} from panel">Remove</button>` : ''}</li>`;
     }).join('')}</ul>` : '<p class="empty">No panel yet.</p>'}
-    ${can('panel') ? `<form id="panelform" class="addrow"><label><span>Panel member</span>
-      <select id="member">${people.filter((person: Person) => !panel.includes(person.email))
+    ${can('panel') && panelEditable && people.some((person: Person) => person.role !== 'coordinator' && !panel.includes(person.email)) ? `<form id="panelform" class="addrow"><label><span>Panel member</span>
+      <select id="member">${people.filter((person: Person) => person.role !== 'coordinator' && !panel.includes(person.email))
         .map((person: Person) => `<option value="${esc(person.email)}">${esc(person.name)}</option>`).join('')}</select></label>
       <button>Add to panel</button></form>` : ''}
     ${canScore ? `<form id="scoreform" class="addrow"><label><span>My score</span>
       <select id="score">${[1, 2, 3, 4, 5].map((value) =>
         `<option${score === value ? ' selected' : ''}>${value}</option>`).join('')}</select></label>
       <button>Record score</button></form>` : ''}
+    <h3>Historical scores</h3>
+    ${historical_scores.length ? `<ul id="historical-scores" class="notes">${historical_scores.map((item: any) =>
+      `<li>Version ${item.assessment_version} · ${esc(item.scorer_name)} · ${item.score}/5 · historical</li>`).join('')}</ul>`
+      : '<p class="empty">No historical scores. Only the current assessment can authorize an offer.</p>'}
     <h3>Notes</h3>
     ${notes.length ? `<ol class="notes">${notes.map((note: any) =>
       `<li><b>${esc(note.author_name)}</b><time>${esc(note.at)}</time><p>${esc(note.body)}</p></li>`).join('')}</ol>`
@@ -254,7 +272,7 @@ async function openCandidate(id: string) {
       <input id="note" maxlength="1000" placeholder="Add a note; corrections stay in the trail"></label><button>Add note</button></form>
     <h3>Activity</h3>
     ${activity.length ? `<ol class="activity">${activity.map((event: any) =>
-      `<li><b>${esc(event.actor_name)}</b> ${esc(activityText(event))}<time>${esc(event.at)}</time></li>`).join('')}</ol>`
+      `<li><b>${esc(event.actor_name)}</b> ${esc(activityText(event))}${event.details.assessment_reason ? ` · v${event.details.assessment_version}: ${esc(event.details.assessment_reason)}` : ''}<time>${esc(event.at)}</time></li>`).join('')}</ol>`
       : '<p class="empty">No changes recorded since import.</p>'}`;
 
   $('#app').setAttribute('inert', '');
@@ -275,6 +293,12 @@ async function openCandidate(id: string) {
     if (result.ok) say('Panel updated.', true);
   };
   const scoreForm = document.querySelector<HTMLFormElement>('#scoreform');
+  $('#panel').querySelectorAll<HTMLButtonElement>('.remove-member').forEach((button) => {
+    button.onclick = async () => {
+      const result = await mutate(`/api/candidates/${id}/panel`, { member: button.dataset.member, action: 'remove' }, id);
+      if (result.ok) say('Panel member removed. Fresh scores are required.', true);
+    };
+  });
   if (scoreForm) scoreForm.onsubmit = async (event) => {
     event.preventDefault();
     const input = $('#score') as HTMLSelectElement;
@@ -354,8 +378,7 @@ async function boot() {
 
 $('#theme').onclick = () => {
   const root = document.documentElement;
-  const dark = root.dataset.theme === 'dark'
-    || (!root.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches);
+  const dark = root.dataset.theme === 'dark';
   root.dataset.theme = dark ? 'light' : 'dark';
   if (view) drawFunnel(view.funnel);
 };

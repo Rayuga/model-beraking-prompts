@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PatchPad - Incident Report Editor</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="app-root" class="app-layout">
+    
+    <!-- Top Navigation Bar -->
+    <header class="app-header">
+      <div class="header-left">
+        <div class="brand">
+          <svg class="brand-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+            <polyline points="10 9 9 9 8 9"></polyline>
+          </svg>
+          <span class="brand-name">PatchPad</span>
+        </div>
+        <div class="divider-v"></div>
+        <div class="doc-info">
+          <h1 id="doc-title" class="doc-title">Northwind API Incident Report</h1>
+          <span id="doc-author" class="doc-author">Author: Riley Stone</span>
+        </div>
+      </div>
+
+      <div class="header-center">
+        <div class="report-switcher">
+          <label for="report-select" class="switcher-label">Report:</label>
+          <select id="report-select" class="report-select" aria-label="Available reports">
+            <option value="incident-alpha">Northwind API Incident Report</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="header-right toolbar">
+        <span id="save-badge" class="status-badge badge-saved">Saved</span>
+        <button id="btn-save" class="btn btn-primary" title="Save Report (Ctrl+S)">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+            <polyline points="17 21 17 13 7 13 7 21"></polyline>
+            <polyline points="7 3 7 8 15 8"></polyline>
+          </svg>
+          <span>Save</span>
+        </button>
+
+        <div class="btn-group">
+          <button id="btn-undo" class="btn btn-icon" title="Undo (Ctrl+Z)" disabled>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 7v6h6"></path>
+              <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path>
+            </svg>
+            <span class="sr-only">Undo</span>
+          </button>
+          <button id="btn-redo" class="btn btn-icon" title="Redo (Ctrl+Y)" disabled>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 7v6h-6"></path>
+              <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"></path>
+            </svg>
+            <span class="sr-only">Redo</span>
+          </button>
+        </div>
+
+        <button id="btn-find" class="btn btn-secondary" title="Find and Replace (Ctrl+F)">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <span>Find</span>
+        </button>
+
+        <button id="btn-history" class="btn btn-secondary" title="Revision History">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+          <span>History</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Find & Replace Floating Panel -->
+    <div id="find-panel" class="find-panel hidden" role="region" aria-label="Find and Replace">
+      <div class="find-row">
+        <div class="input-with-icon">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="input-icon">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" id="find-input" placeholder="Find in report..." aria-label="Find text">
+        </div>
+        <span id="match-count" class="match-count">0 of 0</span>
+        <button id="btn-find-prev" class="btn btn-sm btn-icon" title="Previous match (Shift+Enter)">▲</button>
+        <button id="btn-find-next" class="btn btn-sm btn-icon" title="Next match (Enter)">▼</button>
+        <label class="case-sensitive-toggle" title="Match case">
+          <input type="checkbox" id="find-case-sensitive">
+          <span>Aa</span>
+        </label>
+        <button id="btn-close-find" class="btn btn-sm btn-icon close-btn" title="Close (Escape)">✕</button>
+      </div>
+      <div class="replace-row">
+        <div class="input-with-icon">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="input-icon">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+          </svg>
+          <input type="text" id="replace-input" placeholder="Replace with..." aria-label="Replace text">
+        </div>
+        <button id="btn-replace-current" class="btn btn-sm btn-secondary" title="Replace current match">Replace</button>
+        <button id="btn-replace-all" class="btn btn-sm btn-secondary" title="Replace all occurrences">Replace All</button>
+      </div>
+    </div>
+
+    <!-- Main Workspace -->
+    <main class="main-workspace">
+      <!-- Editor Container (Custom DOM Editing Surface) -->
+      <div id="editor-container" class="editor-viewport" tabindex="-1"></div>
+
+      <!-- Revision History Sidebar -->
+      <aside id="history-sidebar" class="history-sidebar hidden" aria-label="Revision History">
+        <div class="sidebar-header">
+          <h3>Revision History</h3>
+          <button id="btn-close-history" class="btn btn-icon btn-sm" title="Close history">✕</button>
+        </div>
+        <div class="sidebar-description">
+          Review previous saved versions, preview them read-only, or restore them as an unsaved edit.
+        </div>
+        <div id="history-list" class="history-list"></div>
+      </aside>
+    </main>
+
+    <!-- Status Bar -->
+    <footer class="app-statusbar">
+      <div class="statusbar-left">
+        <span id="status-cursor" class="status-item">Ln 1, Col 1</span>
+        <div class="divider-v small"></div>
+        <span id="status-stats" class="status-item">0 lines, 0 characters</span>
+      </div>
+      <div class="statusbar-center">
+        <span class="statusbar-shortcut-hint">
+          <kbd>Ctrl+S</kbd> Save &bull; <kbd>Ctrl+F</kbd> Find &bull; <kbd>Ctrl+Z</kbd>/<kbd>Ctrl+Y</kbd> Undo/Redo &bull; <kbd>Alt+Click</kbd> Multi-Caret &bull; <kbd>Tab</kbd> Indent
+        </span>
+      </div>
+      <div class="statusbar-right">
+        <span id="status-revision" class="status-item rev-tag">Revision 1</span>
+        <div class="divider-v small"></div>
+        <span id="status-save-state" class="status-item status-saved">✓ Saved</span>
+      </div>
+    </footer>
+
+    <!-- Revision Preview Modal -->
+    <div id="preview-modal" class="modal-backdrop hidden">
+      <div class="modal-dialog preview-dialog">
+        <div class="modal-header">
+          <div>
+            <h2 id="preview-title" class="modal-title">Revision Preview</h2>
+            <div id="preview-meta" class="modal-meta">Saved timestamp</div>
+          </div>
+          <button id="btn-close-preview" class="btn btn-icon" title="Close Preview">✕</button>
+        </div>
+        <div class="modal-body preview-body">
+          <div id="preview-content" class="preview-scroll-area"></div>
+        </div>
+        <div class="modal-footer">
+          <span class="preview-hint">Previewing does not modify your current document.</span>
+          <div class="btn-group">
+            <button id="btn-restore-preview" class="btn btn-primary">Restore this Revision</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Conflict Warning Modal -->
+    <div id="conflict-modal" class="modal-backdrop hidden">
+      <div class="modal-dialog conflict-dialog">
+        <div class="modal-header conflict-header">
+          <div class="conflict-title-row">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#ef4444" stroke-width="2">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+              <line x1="12" y1="9" x2="12" y2="13"></line>
+              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+            <h2 class="modal-title text-conflict">Save Conflict Detected</h2>
+          </div>
+        </div>
+        <div class="modal-body">
+          <p id="conflict-message" class="conflict-msg-text">
+            Another user or browser tab saved a newer version of this report.
+          </p>
+        </div>
+        <div class="modal-footer">
+          <button id="btn-conflict-keep" class="btn btn-secondary">Keep Editing Local Draft</button>
+          <button id="btn-conflict-preview" class="btn btn-secondary">Preview Server Revision</button>
+          <button id="btn-conflict-reload" class="btn btn-danger">Reload Server Version (Discard Draft)</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Notifications Container -->
+    <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+  </div>
+
+  <!-- Scripts -->
+  <script src="/js/graphemes.js"></script>
+  <script src="/js/document-model.js"></script>
+  <script src="/js/undo-manager.js"></script>
+  <script src="/js/find-replace.js"></script>
+  <script src="/js/editor-view.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>
