@@ -1,0 +1,427 @@
+{
+  "constraints": {
+    "score": 1.0,
+    "criteria": [
+      {
+        "id": "required_server_backed_workspace",
+        "name": "required_server_backed_workspace",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "From a signed-out page, sign in as `avery@dropline.test` with `password123`.\nRequire successful same-origin application requests and a protected workspace\nthat visibly identifies Avery and contains a game board, status, totals,\nhistory, and game controls. A static imitation with no successful application\nrequest does not pass. Do not start, reset, or play a game.\n",
+        "reasoning": "Signed-out view exposed no board or totals; incorrect password was rejected. Correct sign-in returned a server-issued token, and GET /api/game returned 200 with that Bearer token. The workspace visibly showed Avery Morgan, a populated Connect Four board, active status, totals, move history, Undo/Redo, New Game, and Archive controls."
+      },
+      {
+        "id": "local_refresh_and_health",
+        "name": "local_refresh_and_health",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "While Avery's workspace is visible, fully reload the page and require the\nauthenticated workspace to render again and remain usable. Browser network\nevidence must show game state being delivered by the local application;\npublic browser assets are permitted. A same-origin `GET /api/health` request\nmust also succeed. Do\nnot require any particular saved board, history, or totals.\n",
+        "reasoning": "After a full reload, Avery\u2019s workspace rendered again and remained usable. Reload network evidence showed GET /api/game 200 with the Bearer token, and GET /api/health returned 200 with {\"status\":\"ready\"}."
+      }
+    ],
+    "kind": "agent",
+    "judge": {
+      "agent": "codex",
+      "model": "gpt-5.6-luna",
+      "timeout": 600,
+      "cwd": null,
+      "isolated": false,
+      "atif_trajectory": null,
+      "mode": "batched",
+      "mcp_servers": [
+        {
+          "name": "playwright",
+          "transport": "stdio",
+          "url": null,
+          "command": "playwright-mcp",
+          "args": [
+            "--headless",
+            "--isolated",
+            "--executable-path=/usr/local/bin/chromium",
+            "--no-sandbox"
+          ],
+          "allowed_tools": []
+        }
+      ]
+    },
+    "judge_output": "{\"required_server_backed_workspace\":{\"score\":\"yes\",\"reasoning\":\"Signed-out view exposed no board or totals; incorrect password was rejected. Correct sign-in returned a server-issued token, and GET /api/game returned 200 with that Bearer token. The workspace visibly showed Avery Morgan, a populated Connect Four board, active status, totals, move history, Undo/Redo, New Game, and Archive controls.\"},\"local_refresh_and_health\":{\"score\":\"yes\",\"reasoning\":\"After a full reload, Avery\u2019s workspace rendered again and remained usable. Reload network evidence showed GET /api/game 200 with the Bearer token, and GET /api/health returned 200 with {\\\"status\\\":\\\"ready\\\"}.\"}}\n"
+  },
+  "functional": {
+    "score": 0.2093,
+    "criteria": [
+      {
+        "id": "seeded_state_import_and_isolation",
+        "name": "seeded_state_import_and_isolation",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 2.0,
+        "description": "Before any game mutation, sign in as Avery. Require revision 7, totals Red 2,\nYellow 1, Draws 1, Red at row 6 column 4, Yellow at row 6 column 5, every other\ncell empty, `Red's turn`, two matching applied-history entries, Undo and Redo\navailable, and no completed match. Activate Redo and require the workbook's Red\nmove at row 5 column 4, three matching history entries, `Yellow's turn`, and\nrevision 8. Undo and require the original board, history, turn, totals, and Redo\navailability restored at revision 9. Sign out, sign in as Jordan, and require\nrevision 4, totals Red 1, Yellow 2, Draws 0, Red at row 6 column 2, Yellow at\nrow 6 column 3, Red at row 5 column 2, `Yellow's turn`, three matching history\nentries, Undo available, and Redo unavailable. Jordan's archive must show\nan overall count of eleven and exactly the latest ten workbook\nmatches newest first, in this result/move-count order: Yellow/8, Red/7, Draw/42,\nYellow/8, Red/7, Draw/42, Yellow/8, Red/7, Draw/42, Yellow/8. The oldest\nworkbook Red/7 match must be omitted. Sign out and return to Avery; require\nAvery's exact post-undo revision-9 state unchanged and no Jordan archive data.\n",
+        "reasoning": "Avery matched revision 7 seed, redo revision 8, undo revision 9, and Jordan matched revision 4 and the specified archive isolation/order."
+      },
+      {
+        "id": "completed_match_archive_and_replay",
+        "name": "completed_match_archive_and_replay",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 3.0,
+        "description": "As Avery, record the displayed and overall Completed matches counts and totals, start New game, and\nplay 1,7,2,7,3,6,4. Require one new newest archive entry named `Red wins` with\nseven moves. Open it, move Replay step to 7, and require a separate 42-cell\nread-only replay board at step 7 of 7 showing the final position. Move Replay\nstep to 0 and require 42 empty replay cells; use Next once and require only Red\nat replay row 6 column 1; return to step 7 and require the exact completed\nposition. Throughout replay, the active winning board, totals, history,\nrevision, and controls stay unchanged.\n\nUndo the winning move and require active play, the score increment reversed,\nand both archive counts reduced by one. Redo it and require the identical win\nand exactly one restored archive entry in both counts, including its original completion ordering.\nA repeated Redo attempt changes nothing. Reload and require the archive entry\nand active terminal state to persist. Start New game and require the archive\nentry to remain while active round state resets.\n",
+        "reasoning": "Win/archive and undo/redo persistence worked, but replay opened only an empty title modal without replay board or controls."
+      },
+      {
+        "id": "authenticated_account_workflow",
+        "name": "authenticated_account_workflow",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Confirm the signed-in workspace identifies Avery Morgan and\n`avery@dropline.test`. Start New game, drop once in column 3, sign out, and\nconfirm protected board and totals disappear. Attempt Avery's email with\n`wrong-pass-47` and require visible rejection without protected state. Then\nsign back in with `password123` and require the Red piece at row 6 column 3,\n`Yellow's turn`, and exactly one history entry naming Red, column 3, row 6.\nNetwork evidence must show the restored game read uses a same-origin request\nwith a server-issued `Bearer` credential rather than a browser-supplied user id.\n",
+        "reasoning": "Identity, protected sign-out state, wrong-password rejection, restored board/history, and Bearer-authenticated game read all passed."
+      },
+      {
+        "id": "gravity_turns_and_full_column",
+        "name": "gravity_turns_and_full_column",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 1.0,
+        "description": "Play columns 4,4,4. Require Red at row 6 column 4, Yellow at row 5 column 4,\nRed at row 4 column 4, every other cell empty, `Yellow's turn`, and three\nmatching history entries. Start New game and click column 1 six times. Require\nbottom-to-top Red, Yellow, Red, Yellow, Red, Yellow and `Red's turn`. Record all\ncells, history, totals, revision, and archive; one more click must show\n`Column 1 is full` without changing board, turn, history, Undo/Redo\navailability, totals, revision, or archive.\nActivate New game and require the full-column feedback to disappear.\n",
+        "reasoning": "Gravity and full-column feedback passed, but visible move history remained empty after moves."
+      },
+      {
+        "id": "horizontal_and_vertical_wins",
+        "name": "horizontal_and_vertical_wins",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 1.0,
+        "description": "Record Red's total, then play 1,7,2,7,3,6,4. Require `Red wins`, exactly row 6\ncolumns 1-4 marked winning, seven history entries, and Red's total increased by\none. Start New game, play 1,2,1,2,1,2,1, and require `Red wins`, exactly column\n1 rows 3-6 marked winning, seven history entries, and Red's total increased by\none again. Start New game and play 7,1,7,1,6,1,6,1. Require `Yellow wins`,\nexactly column 1 rows 3-6 marked winning, and one Yellow score increment.\nNo other cell is winning in any game.\n",
+        "reasoning": "Win results and markers were correct, but required visible seven-entry histories were missing."
+      },
+      {
+        "id": "both_diagonal_wins",
+        "name": "both_diagonal_wins",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 1.0,
+        "description": "Play 1,2,2,3,4,3,3,4,5,4,4. Require `Red wins` with exactly row 6 column 1,\nrow 5 column 2, row 4 column 3, and row 3 column 4 marked winning. Start New\ngame and play 7,6,6,5,4,5,5,4,3,4,4. Require the mirrored win at row 3 column\n4, row 4 column 5, row 5 column 6, and row 6 column 7. Require eleven matching\nhistory entries and no other winning cell in either game. Start New game and\nplay 7,1,2,2,3,4,3,3,4,5,4,4; require `Yellow wins` at row 6 column 1, row 5\ncolumn 2, row 4 column 3, and row 3 column 4. Start New game and play\n1,7,6,6,5,4,5,5,4,3,4,4; require the mirrored Yellow diagonal and no other\nwinning cell.\n",
+        "reasoning": "All diagonal results and winning cells were correct, but required histories were missing."
+      },
+      {
+        "id": "yellow_win_and_terminal_lock",
+        "name": "yellow_win_and_terminal_lock",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 1.0,
+        "description": "Record Yellow's total and archive count, then play 7,1,7,2,6,3,6,4. Require `Yellow wins`, exactly\nthe four Yellow pieces at row 6 columns 1-4 marked winning, eight history\nentries, Yellow's total increased by one, and one newest `Yellow wins` archive\nentry with eight moves. Record board, result, markers,\nhistory, totals, revision, and archive; attempt columns 5 and 1. Require every\nrecorded value to remain exactly unchanged.\n",
+        "reasoning": "Yellow win, archive, score, markers, and terminal lock worked, but visible history was empty."
+      },
+      {
+        "id": "exact_draw_and_terminal_lock",
+        "name": "exact_draw_and_terminal_lock",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 1.0,
+        "description": "Record Draws and the archive count, then play exactly\n4,4,4,4,4,4,3,3,3,3,3,3,5,2,5,6,5,5,5,5,2,2,2,2,2,6,1,6,6,6,6,1,1,1,1,1,7,7,7,7,7,7.\nRequire all 42 cells occupied, visible result exactly `Draw`, zero winning\nmarkers, exactly 42 history entries, and Draws increased by one. Attempt one\nlater drop and require board, result, history, totals, and the single new newest\n`Draw` archive entry with 42 moves unchanged, with no revision increment.\nUndo the final drawing move: require active play, 41 occupied cells, Draws\nreturned to its baseline and that round removed from the archive. Redo must\nrestore the exact full draw board, one Draws increment and one archive record.\n",
+        "reasoning": "Draw board, zero markers, archive, and lock worked, but immediate history was empty and Undo was unavailable until reload."
+      },
+      {
+        "id": "move_history_undo_redo_branching",
+        "name": "move_history_undo_redo_branching",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 2.0,
+        "description": "Start New game and play 4,5,4. Require the history to read, in order, Red at\ncolumn 4 row 6, Yellow at column 5 row 6, and Red at column 4 row 5. Undo twice.\nRequire only the first Red piece and first history entry to remain, status\n`Yellow's turn`, Redo available, and exactly two revision increments. Reload\nand require that exact revision and state. Redo once and require the Yellow\npiece/history entry restored with `Red's turn`, another Redo still available,\none revision increment, and a distinct opaque high-entropy operation identifier\non every Undo and Redo request. Now play column 2. Require a new Red entry at\ncolumn 2 row 6, Redo unavailable, and one revision increment; a Redo attempt,\nif the UI permits one, must change nothing.\n\nThen start New game, record Red's total, and play 1,7,2,7,3,6,4. Require the\nRed win and one score increment. Undo once: require an active round with\n`Red's turn`, the last Red piece and every winning marker removed, six history\nentries, and the Red total returned to its baseline. Reload and require the\nsame undo state. Redo once: require the identical Red win, four markers, seven\nhistory entries, and exactly one restored score increment. Redo is then\nunavailable and cannot increment the score again.\n",
+        "reasoning": "Undo/redo branching and operation IDs worked after reload, but immediate moves lost history and disabled Undo."
+      },
+      {
+        "id": "new_game_reset_and_persistence",
+        "name": "new_game_reset_and_persistence",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 1.0,
+        "description": "Start New game, play column 4, and Undo. Require Redo available. Record the\nrevision, activate New game, and require exactly one revision increment, all 42\ncells empty, no history, and Redo unavailable. Then create the Red win with\n1,7,2,7,3,6,4, record all three match totals and the revision, and activate New\ngame. Require exactly one revision increment, all 42 cells empty, no winning\nmarkers, no history, Undo and Redo unavailable, status exactly `Red's turn`,\nand recorded totals unchanged. Click column 7 and require Red at row 6 column 7,\none matching history entry, and `Yellow's turn`. Fully reload the page and\nrequire that exact one-piece board, history, turn, totals, revision, and Undo\navailability to remain. Network evidence must show every New game request used\na distinct opaque high-entropy operation identifier.\n",
+        "reasoning": "Reset, persistence, totals, and archive retention worked, but initial Undo and visible history requirements failed."
+      },
+      {
+        "id": "keyboard_focus_and_activation",
+        "name": "keyboard_focus_and_activation",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 2.0,
+        "description": "Start New game. Focus `Drop in column 1` without pointer navigation. Press\nArrowRight and require column 2 focus, End for column 7, Home for column 1,\nArrowLeft and require focus remains at column 1, then Right twice and Left once\nfor column 2. Press Enter and require Red at row 6 column 2 with focus still on\ncolumn 2. Press Space and require Yellow at row 5 column 2 with that focus still\nusable and two matching history entries. Navigate to Undo and activate it by\nkeyboard; require the Yellow move removed and Redo enabled. Activate Redo by\nkeyboard and require the same Yellow move restored without losing usable focus.\n",
+        "reasoning": "Column keyboard navigation and drops worked, but Undo was disabled after moves, so keyboard Undo/Redo behavior failed."
+      },
+      {
+        "id": "multi_tab_revision_and_duplicate_guard",
+        "name": "multi_tab_revision_and_duplicate_guard",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 2.0,
+        "description": "In tab A, sign in as Avery and start New game. Open tab B, sign in as Avery,\nand record the same empty board and visible revision in both tabs. In tab A,\ncapture the app's successful Red move request and drop Red in column 1. Replay\nthat exact same-origin request with the same body and bearer credential; require\nthe original successful response but no second piece, history entry, score,\narchive entry, or revision increment. Without refreshing tab B, capture its\ncolumn 2 request and attempt it. Require visible `Game updated in another tab`,\nthe authoritative one-piece board and history from tab A, and no Yellow move or\nextra revision. Retry column 2 through its visible control, which must use a new\nidentifier, and require one accepted Yellow move and one revision increment.\nNow replay the original stale request after state has advanced; require its\noriginal conflict response while a fresh game read still shows the two-move\nstate and current revision unchanged. Require every newly captured move request\nto carry a distinct opaque high-entropy operation identifier. Then rapidly\ndouble-activate column 3 while its first request is demonstrably pending. You\nmay delay delivery of that real server response without altering its body,\nstatus or request so the pending interval is observable; do not count two\nseparate activations after the first response as a duplicate-pending defect.\nRequire exactly one\nRed piece at row 6 column 3, exactly three total history entries, one revision\nincrement, and the same three-move state after reloading tab A.\n",
+        "reasoning": "The first tab's move returned Unauthorized after shared-token revocation, preventing duplicate/conflict/retry verification."
+      },
+      {
+        "id": "cross_tab_sign_out_revocation",
+        "name": "cross_tab_sign_out_revocation",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 1.0,
+        "description": "Submit the Avery login form separately in tabs A and B, and use network evidence\nto require two distinct issued bearer tokens. Record the same board, history,\ntotals, archive, and revision, and capture tab B's actual protected game-read\nrequest before signing out. Sign out in tab A. If tab B still shows its game,\nattempt a visible action and require return to sign-in with no mutation.\nProactive automatic sign-out of tab B is also correct; do not demand a control\nthat has already disappeared. In either case replay the captured protected\nread with tab B's old token and require rejection with no protected game data.\nSign in again in tab B and require every recorded game value unchanged.\n",
+        "reasoning": "Distinct tokens and stale-token rejection were observed, but tab B remained stale and did not return to sign-in after A signed out."
+      },
+      {
+        "id": "accessible_grid_and_winning_names",
+        "name": "accessible_grid_and_winning_names",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Sign in as Avery and start New game. Confirm the active board exposes one grid\nwith exactly 42 grid cells and every cell name identifies its row, column, and\nempty state. Play 1,7,2,7,3,6,4.\nRequire exactly four winning Red cells; each accessible name must include its\nrow, column, Red, and winning, while no other cell name includes winning.\n",
+        "reasoning": "The grid exposed exactly 42 cells with row, column, and state names; exactly four Red cells were named winning."
+      },
+      {
+        "id": "restart_persistence_and_seed_idempotence",
+        "name": "restart_persistence_and_seed_idempotence",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 1.0,
+        "description": "Run this last, after all other Functional criteria. Through the visible UI,\nsign in as Avery, start New game, play columns 4,5,4 and Undo once. Capture a\nfresh server-backed record of board, turn/result, winning cells, totals,\napplied history, redo availability, revision and completed matches. Restart\nthe application with bash /tests/app-lifecycle.sh restart, then reload and\nsign in again if required. Require every captured game value and archive\nrecord unchanged and Redo to restore the third move exactly. Repeat restart\nand require that post-Redo state and archive unchanged, with no duplicate\ncompleted matches or replacement of the captured account state. Do not infer persistence from a browser\nreload alone. A browser-tool disconnection is unverified evidence, not proof\nthat the app lost data; do not invent successful post-restart reads.\n",
+        "reasoning": "State and archive survived both restarts and Redo restored the third move, but the required initial Undo was unavailable until reload."
+      },
+      {
+        "id": "runtime_manifest_routes",
+        "name": "runtime_manifest_routes",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 0.5,
+        "description": "Read only /app/APP_MANIFEST.md for this deliverable check. Require the documented\nnode /app/server.js start command, SQLite path /app/dropline.db, and the actual\nmethods/paths used for sign-in, sign-out, reading state, New game, moves, Undo\nand Redo, matching browser requests observed in the preceding journey. Routes\nmay be shared; do not require the golden app's URL names. Missing or inaccurate\nroute documentation fails this criterion. Do not grade other source files.\n",
+        "reasoning": "APP_MANIFEST.md documented the required start command, SQLite path, and all observed authentication and game mutation routes."
+      }
+    ],
+    "kind": "agent",
+    "judge": {
+      "agent": "codex",
+      "model": "gpt-5.6-luna",
+      "timeout": 9000,
+      "cwd": null,
+      "isolated": false,
+      "atif_trajectory": null,
+      "mode": "batched",
+      "mcp_servers": [
+        {
+          "name": "playwright",
+          "transport": "stdio",
+          "url": null,
+          "command": "playwright-mcp",
+          "args": [
+            "--headless",
+            "--isolated",
+            "--executable-path=/usr/local/bin/chromium",
+            "--no-sandbox"
+          ],
+          "allowed_tools": []
+        }
+      ]
+    },
+    "judge_output": "{\"seeded_state_import_and_isolation\":{\"score\":\"yes\",\"reasoning\":\"Avery matched revision 7 seed, redo revision 8, undo revision 9, and Jordan matched revision 4 and the specified archive isolation/order.\"},\"completed_match_archive_and_replay\":{\"score\":\"no\",\"reasoning\":\"Win/archive and undo/redo persistence worked, but replay opened only an empty title modal without replay board or controls.\"},\"authenticated_account_workflow\":{\"score\":\"yes\",\"reasoning\":\"Identity, protected sign-out state, wrong-password rejection, restored board/history, and Bearer-authenticated game read all passed.\"},\"gravity_turns_and_full_column\":{\"score\":\"no\",\"reasoning\":\"Gravity and full-column feedback passed, but visible move history remained empty after moves.\"},\"horizontal_and_vertical_wins\":{\"score\":\"no\",\"reasoning\":\"Win results and markers were correct, but required visible seven-entry histories were missing.\"},\"both_diagonal_wins\":{\"score\":\"no\",\"reasoning\":\"All diagonal results and winning cells were correct, but required histories were missing.\"},\"yellow_win_and_terminal_lock\":{\"score\":\"no\",\"reasoning\":\"Yellow win, archive, score, markers, and terminal lock worked, but visible history was empty.\"},\"exact_draw_and_terminal_lock\":{\"score\":\"no\",\"reasoning\":\"Draw board, zero markers, archive, and lock worked, but immediate history was empty and Undo was unavailable until reload.\"},\"move_history_undo_redo_branching\":{\"score\":\"no\",\"reasoning\":\"Undo/redo branching and operation IDs worked after reload, but immediate moves lost history and disabled Undo.\"},\"new_game_reset_and_persistence\":{\"score\":\"no\",\"reasoning\":\"Reset, persistence, totals, and archive retention worked, but initial Undo and visible history requirements failed.\"},\"keyboard_focus_and_activation\":{\"score\":\"no\",\"reasoning\":\"Column keyboard navigation and drops worked, but Undo was disabled after moves, so keyboard Undo/Redo behavior failed.\"},\"multi_tab_revision_and_duplicate_guard\":{\"score\":\"no\",\"reasoning\":\"The first tab's move returned Unauthorized after shared-token revocation, preventing duplicate/conflict/retry verification.\"},\"cross_tab_sign_out_revocation\":{\"score\":\"no\",\"reasoning\":\"Distinct tokens and stale-token rejection were observed, but tab B remained stale and did not return to sign-in after A signed out.\"},\"accessible_grid_and_winning_names\":{\"score\":\"yes\",\"reasoning\":\"The grid exposed exactly 42 cells with row, column, and state names; exactly four Red cells were named winning.\"},\"restart_persistence_and_seed_idempotence\":{\"score\":\"no\",\"reasoning\":\"State and archive survived both restarts and Redo restored the third move, but the required initial Undo was unavailable until reload.\"},\"runtime_manifest_routes\":{\"score\":\"yes\",\"reasoning\":\"APP_MANIFEST.md documented the required start command, SQLite path, and all observed authentication and game mutation routes.\"}}\n"
+  },
+  "polish": {
+    "score": 0.1667,
+    "criteria": [
+      {
+        "id": "archive_replay_usability",
+        "name": "archive_replay_usability",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 1.0,
+        "description": "Sign in as Jordan in a fresh browser context and open an existing completed\nmatch. Do not play, reset or change the active game. Require the replay to be\nvisually and semantically separate from the active board, identifying its\nresult and current/total step. Reach the range control, Previous, Next and\nClose with Tab/Shift+Tab and operate available steps with the keyboard. Require\n42 named replay cells whose states follow the selected step; zero is empty.\nDisabled Previous/Next at the endpoints is correct. Close returns to the\nunchanged active board, revision, totals and history. Do not demand that the\nlatest entry still be a particular seeded match after another dimension.\n",
+        "reasoning": "Jordan authentication and archive loading worked, but the selected Draw/42-move replay hides its replay container; range, step indicator, Previous and Next are not visible or keyboard-operable. Close returned the unchanged active board."
+      },
+      {
+        "id": "responsive_layout_and_feedback",
+        "name": "responsive_layout_and_feedback",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 0.5,
+        "description": "At 375 by 760 pixels, the sign-in form, authenticated workspace and existing\nJordan replay must fit without horizontal page overflow, clipped controls or\noverlapping text. Identity, board, seven column controls, status, revision,\ntotals, history, Undo, Redo, New game, archive and Sign out must be reachable\nthrough ordinary vertical scrolling. Do not require everything above the\nfold or fixed panel placement. Inspect only: do not mutate the active game.\n",
+        "reasoning": "At 375px there was no horizontal overflow and the main controls fit vertically, but revision was not displayed and the existing replay reduced to only a Draw title and close button."
+      },
+      {
+        "id": "reduced_motion_usability",
+        "name": "reduced_motion_usability",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 0.5,
+        "description": "Emulate prefers-reduced-motion: reduce. Require existing animated or\ntransitioning interface effects to be removed or materially reduced while\nstatus, board and replay-step changes remain understandable. An interface\nwith no animation already satisfies the motion requirement. Change only\nread-only replay steps; never play or reset a game for this observation.\n",
+        "reasoning": "With prefers-reduced-motion enabled, transitions changed from about 0.2s to 0.00001s and animations were absent; the active status and board remained understandable."
+      },
+      {
+        "id": "control_labels_and_focus",
+        "name": "control_labels_and_focus",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 1.0,
+        "description": "The visible sign-in fields and game/replay controls must have meaningful\naccessible names matching their visible purpose. Tab and Shift+Tab must give\na visible focus indicator and reach enabled controls without a keyboard trap;\nordinary scrolling is allowed. Inspect sign-in, board controls, history\nactions, archive and an existing replay. Do not activate New game, moves,\nUndo or Redo: exact game actions are graded by Functional, not here.\n",
+        "reasoning": "Sign-in, board, column, and action controls had useful names and visible focus through Tab/Shift+Tab, but archive entries were non-focusable generic elements, close buttons were named only \u201c\u00d7\u201d, and replay controls were hidden."
+      }
+    ],
+    "kind": "agent",
+    "judge": {
+      "agent": "codex",
+      "model": "gpt-5.6-luna",
+      "timeout": 900,
+      "cwd": null,
+      "isolated": false,
+      "atif_trajectory": null,
+      "mode": "batched",
+      "mcp_servers": [
+        {
+          "name": "playwright",
+          "transport": "stdio",
+          "url": null,
+          "command": "playwright-mcp",
+          "args": [
+            "--headless",
+            "--isolated",
+            "--executable-path=/usr/local/bin/chromium",
+            "--no-sandbox"
+          ],
+          "allowed_tools": []
+        }
+      ]
+    },
+    "judge_output": "{\"archive_replay_usability\":{\"score\":\"no\",\"reasoning\":\"Jordan authentication and archive loading worked, but the selected Draw/42-move replay hides its replay container; range, step indicator, Previous and Next are not visible or keyboard-operable. Close returned the unchanged active board.\"},\"responsive_layout_and_feedback\":{\"score\":\"no\",\"reasoning\":\"At 375px there was no horizontal overflow and the main controls fit vertically, but revision was not displayed and the existing replay reduced to only a Draw title and close button.\"},\"reduced_motion_usability\":{\"score\":\"yes\",\"reasoning\":\"With prefers-reduced-motion enabled, transitions changed from about 0.2s to 0.00001s and animations were absent; the active status and board remained understandable.\"},\"control_labels_and_focus\":{\"score\":\"no\",\"reasoning\":\"Sign-in, board, column, and action controls had useful names and visible focus through Tab/Shift+Tab, but archive entries were non-focusable generic elements, close buttons were named only \u201c\u00d7\u201d, and replay controls were hidden.\"}}\n"
+  },
+  "render": {
+    "score": 1.0,
+    "criteria": [
+      {
+        "id": "page_load_and_refresh",
+        "name": "page_load_and_refresh",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Open the same-origin page and require a substantive DropLine sign-in screen\nwith visible email and password fields and a usable sign-in control. Fully\nrefresh once and require the same usable page to render again\nwithout a blank screen, fatal error, or broken layout that blocks the form.\n",
+        "reasoning": "Fresh signed-out context showed DropLine sign-in with visible email/password fields and usable Sign In control. Full refresh rendered the same usable screen without blank, fatal, or blocking errors; protected game content was absent while signed out, and an incorrect password returned an error."
+      },
+      {
+        "id": "basic_control_and_game_surface",
+        "name": "basic_control_and_game_surface",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Enter `avery@dropline.test` in the visible email field and `password123` in the\npassword field, then sign in. Require a substantive game workspace to render\nwith Avery's identity, a visible Connect Four board, game status, match totals,\nmove history, and visible game controls. Do not require a particular saved\nboard, history, score, or enabled state.\n",
+        "reasoning": "Signing in as Avery rendered Avery Morgan\u2019s identity, Connect Four board, active status, match totals, move history, column controls, Undo/Redo, New Game, Archive, and Sign Out. Network evidence showed local POST /api/sign-in returning a server token followed by authenticated GET /api/game using a Bearer token."
+      }
+    ],
+    "kind": "agent",
+    "judge": {
+      "agent": "codex",
+      "model": "gpt-5.6-luna",
+      "timeout": 600,
+      "cwd": null,
+      "isolated": false,
+      "atif_trajectory": null,
+      "mode": "batched",
+      "mcp_servers": [
+        {
+          "name": "playwright",
+          "transport": "stdio",
+          "url": null,
+          "command": "playwright-mcp",
+          "args": [
+            "--headless",
+            "--isolated",
+            "--executable-path=/usr/local/bin/chromium",
+            "--no-sandbox"
+          ],
+          "allowed_tools": []
+        }
+      ]
+    },
+    "judge_output": "{\"page_load_and_refresh\":{\"score\":\"yes\",\"reasoning\":\"Fresh signed-out context showed DropLine sign-in with visible email/password fields and usable Sign In control. Full refresh rendered the same usable screen without blank, fatal, or blocking errors; protected game content was absent while signed out, and an incorrect password returned an error.\"},\"basic_control_and_game_surface\":{\"score\":\"yes\",\"reasoning\":\"Signing in as Avery rendered Avery Morgan\u2019s identity, Connect Four board, active status, match totals, move history, column controls, Undo/Redo, New Game, Archive, and Sign Out. Network evidence showed local POST /api/sign-in returning a server token followed by authenticated GET /api/game using a Bearer token.\"}}\n"
+  },
+  "visual": {
+    "score": 0.625,
+    "criteria": [
+      {
+        "id": "visual_typography",
+        "name": "visual_typography",
+        "value": 0.75,
+        "raw": 4,
+        "weight": 1.0,
+        "description": "Assess rendered sign-in, game and existing replay typography at desktop size.\n5: deliberate, readable type sizes and weights distinguish product title,\naccount, turn/result, totals and secondary history; alignment is consistent.\n4: readable with one or two minor sizing or alignment imperfections.\n3: noticeable inconsistent sizing, crowding or awkward text truncation.\n2: several important labels or history entries are difficult to read.\n1: broadly illegible, misaligned or undifferentiated text.\n0: no coherent typographic rendering on the reviewed surfaces.\nDo not grade move correctness or exact seed values here.\n",
+        "reasoning": "Readable, consistent type hierarchy across sign-in, account details, stats, history, controls and replay title. The bare lowercase active status and duplicated sign-in surface make the authenticated typography feel less polished."
+      },
+      {
+        "id": "visual_color_and_contrast",
+        "name": "visual_color_and_contrast",
+        "value": 0.75,
+        "raw": 4,
+        "weight": 1.0,
+        "description": "Assess the supplied theme; a theme switcher is not required.\n5: cohesive palette with clearly distinguishable Red/Yellow pieces, empty\ncells, legible text and purposeful accents across game and replay.\n4: one or two minor contrast or palette imperfections.\n3: some low-contrast text or conflicting accents distract from the board.\n2: substantial legibility or piece-distinction problems.\n1: widespread low contrast or harsh, incoherent color treatment.\n0: no readable color treatment renders.\nJudge appearance, not actual winner detection or accessible-name behavior.\n",
+        "reasoning": "Cohesive gradient, white card, navy board and clearly distinct red/yellow pieces. Secondary gray text, yellow status text and disabled Redo are somewhat muted, especially beneath the dark replay overlay."
+      },
+      {
+        "id": "visual_spacing_and_layout",
+        "name": "visual_spacing_and_layout",
+        "value": 0.5,
+        "raw": 3,
+        "weight": 1.0,
+        "description": "Assess spacing on desktop sign-in, active board/history and existing replay.\n5: consistent margins and alignment, deliberate board/control grouping and\nbalanced spacing between totals, history and replay.\n4: minor uneven spacing or alignment.\n3: several crowded, drifting or excessively separated elements.\n2: frequent collisions, clipping or inconsistent gutters.\n1: broadly unbalanced or broken layout.\n0: no coherent spaced layout renders.\nDo not require a specific arrangement or the reference's pixels.\n",
+        "reasoning": "Board, stats, history and controls use consistent gutters and scale well. The authenticated view incorrectly retains the full sign-in form, creating an excessively tall stack, while the replay modal is mostly empty."
+      },
+      {
+        "id": "visual_hierarchy_and_scanability",
+        "name": "visual_hierarchy_and_scanability",
+        "value": 0.5,
+        "raw": 3,
+        "weight": 1.0,
+        "description": "Assess how easily the board, turn/result, account, totals and history can be\nvisually located on desktop without reading all surrounding text.\n5: clear visual order with primary game state prominent and related secondary\ninformation grouped; replay is clearly distinct from the active game.\n4: mostly clear with minor competing emphasis.\n3: several competing sections or important information visually buried.\n2: headings, controls and content are difficult to distinguish.\n1: little usable visual order.\n0: no scannable hierarchy renders.\nFunctional correctness and keyboard traversal are outside this criterion.\n",
+        "reasoning": "The board and supporting game information are easy to scan once reached, but the persistent sign-in form competes with the game, the active status is visually weak, and the replay presents only a title rather than a clear replay surface."
+      },
+      {
+        "id": "visual_overall_craft",
+        "name": "visual_overall_craft",
+        "value": 0.5,
+        "raw": 3,
+        "weight": 1.0,
+        "description": "Assess visual consistency across sign-in, the game and an existing replay.\n5: one deliberate component language, integrated board-game identity and\nfinished treatment of history, empty states and secondary controls.\n4: one or two minor inconsistent details.\n3: noticeable default styling or inconsistent components between surfaces.\n2: much of the interface looks unfinished or disconnected.\n1: little considered component styling.\n0: no crafted presentation renders.\nDo not require branding, decorative assets or features absent from the brief.\n",
+        "reasoning": "The core game has a deliberate rounded-card, gradient and board-game visual language with readable history and stats. Major unfinished details remain: duplicate authentication UI, lost status styling and an empty Jordan replay modal without board or replay controls."
+      },
+      {
+        "id": "visual_responsive_consistency",
+        "name": "visual_responsive_consistency",
+        "value": 0.75,
+        "raw": 4,
+        "weight": 1.0,
+        "description": "Compare screenshots at 1280 by 800 and 375 by 760 for sign-in, game and replay.\n5: typography, palette, component styling and hierarchy remain visually\ncoherent while the layout adapts naturally to each viewport.\n4: minor visual inconsistency at one size.\n3: visible uneven scaling, crowding or loss of hierarchy between sizes.\n2: substantial visual fragmentation at the narrow size.\n1: barely coherent presentation at one size.\n0: no reviewable presentation at either size.\nScore visual adaptation only; control reachability/overflow is graded by\nPolish. Ordinary vertical scrolling is allowed; missing required surfaces\nare not waived or treated as full-credit evidence.\n",
+        "reasoning": "At 375px the card, board cells, column controls, stats and buttons scale cleanly without horizontal overflow, and the same palette and styling persist at 1280px. The tall duplicated authenticated layout crowds the narrow viewport, and the replay body is absent at both sizes."
+      }
+    ],
+    "kind": "agent",
+    "judge": {
+      "agent": "codex",
+      "model": "gpt-5.6-luna",
+      "timeout": 900,
+      "cwd": null,
+      "isolated": false,
+      "atif_trajectory": null,
+      "mode": "batched",
+      "mcp_servers": [
+        {
+          "name": "playwright",
+          "transport": "stdio",
+          "url": null,
+          "command": "playwright-mcp",
+          "args": [
+            "--headless",
+            "--isolated",
+            "--executable-path=/usr/local/bin/chromium",
+            "--no-sandbox"
+          ],
+          "allowed_tools": []
+        }
+      ]
+    },
+    "judge_output": "{\"visual_typography\":{\"score\":4,\"reasoning\":\"Readable, consistent type hierarchy across sign-in, account details, stats, history, controls and replay title. The bare lowercase active status and duplicated sign-in surface make the authenticated typography feel less polished.\"},\"visual_color_and_contrast\":{\"score\":4,\"reasoning\":\"Cohesive gradient, white card, navy board and clearly distinct red/yellow pieces. Secondary gray text, yellow status text and disabled Redo are somewhat muted, especially beneath the dark replay overlay.\"},\"visual_spacing_and_layout\":{\"score\":3,\"reasoning\":\"Board, stats, history and controls use consistent gutters and scale well. The authenticated view incorrectly retains the full sign-in form, creating an excessively tall stack, while the replay modal is mostly empty.\"},\"visual_hierarchy_and_scanability\":{\"score\":3,\"reasoning\":\"The board and supporting game information are easy to scan once reached, but the persistent sign-in form competes with the game, the active status is visually weak, and the replay presents only a title rather than a clear replay surface.\"},\"visual_overall_craft\":{\"score\":3,\"reasoning\":\"The core game has a deliberate rounded-card, gradient and board-game visual language with readable history and stats. Major unfinished details remain: duplicate authentication UI, lost status styling and an empty Jordan replay modal without board or replay controls.\"},\"visual_responsive_consistency\":{\"score\":4,\"reasoning\":\"At 375px the card, board cells, column controls, stats and buttons scale cleanly without horizontal overflow, and the same palette and styling persist at 1280px. The tall duplicated authenticated layout crowds the narrow viewport, and the replay body is absent at both sizes.\"}}\n"
+  }
+}

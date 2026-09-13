@@ -1,0 +1,66 @@
+--- before/tests/functional/judge.toml
++++ after/tests/functional/judge.toml
+@@ -145,10 +145,10 @@
+ weight = 1.0
+ description = """
+ Feature metadata: feature=selection; sub_feature=offscreen_autoscroll; kind=graded; depends_on=seed_document_integrity.
+-Setup: use ordinary visible navigation or Find to bring ALPHA-0010 into view with ALPHA-0060 initially below the visible region. Record the document's exact lines from the start of ALPHA-0010 through the end of ALPHA-0060. Identify the actual scroll region: editor, ancestor or page. Establish the start of the ALPHA-0010 line as the selection anchor. Use its rendered text start or a supported gutter gesture; the app's layout and setup route are not graded.
++Setup: use ordinary visible navigation, Find and scrolling to place the ALPHA-0010 line near the lower boundary of the visible document region, with the ALPHA-0013 line entirely below that boundary. Record the exact four logical lines from the start of ALPHA-0010 through the end of ALPHA-0013 and the initial offscreen geometry. Identify the actual scroll region: editor, ancestor or page. Establish the start of the ALPHA-0010 line as the selection anchor. Use its rendered text start or a supported gutter gesture; the app's layout and setup route are not graded. Both endpoints being visible is not valid setup for this offscreen check.
+ Graded observations, all required:
+-1. From that anchor, hold the primary mouse button and drag to the lower boundary of the visible document region, keeping the pointer horizontally over the document area. Hold there for up to 20 seconds while the region scrolls until ALPHA-0060 is selected, then release once. Copy once from the focused editor. Require actual selection-driven scrolling with newly revealed content and a copied range beginning with the full ALPHA-0010 line and including ALPHA-0060 afterward. The editor, an ancestor or the page may scroll. Synthetic events, separate wheel scrolling, programmatic scroll changes, a stationary viewport, a wrong anchor or a whole-document copy fail this observation.
+-2. As setup for the keyboard leg, clear the selection and return to the same start-of-line anchor with ALPHA-0060 offscreen again. Confirm focus and the caret before acting. Hold Shift, press ArrowDown exactly 50 times, then Shift+End. Copy once. Require exactly the recorded document slice through the end of ALPHA-0060, selection-driven scrolling and a visible final caret.
++1. From that anchor, hold the primary mouse button and drag to the lower boundary of the visible document region, keeping the pointer horizontally over the document area. Observe selection-driven scrolling in short intervals, allowing up to 20 seconds in total; once ALPHA-0013 is included, release once. Copy once from the focused editor. Require actual selection-driven scrolling with newly revealed content and a contiguous copied range beginning with the full ALPHA-0010 line and including the complete ALPHA-0013 marker afterward. Additional trailing document text is allowed: passing beyond the target does not fail the mouse leg. Compare the copied range against the corresponding document text; do not apply the keyboard leg's exact endpoint to this mouse leg. The editor, an ancestor or the page may scroll. Synthetic events, separate wheel scrolling during selection, programmatic scroll changes, a stationary viewport, a wrong anchor or a whole-document copy fail this observation.
++2. As setup for the keyboard leg, clear the selection and independently restore the same start-of-line anchor near the lower boundary, with the ALPHA-0013 line entirely offscreen again. Confirm the initial geometry, focus and caret before acting. Hold Shift, press ArrowDown exactly three times, then Shift+End. Copy once. Require exactly the recorded four-line document slice through the end of ALPHA-0013, selection-driven scrolling and a visible final caret. Separate wheel scrolling is allowed only during setup, not during this selection.
+ 3. The full document remains unchanged. Record mouse and keyboard results separately; both legs must work. Do not reject a successful selection solely because the supported starting point was in a gutter or because the app uses a different scroll container.
+ """
+ 
+@@ -260,7 +260,14 @@
+ type = "binary"
+ weight = 0.5
+ description = """
+-Feature metadata: feature=multi_caret; sub_feature=backspace_delete_sibling; kind=graded; depends_on=seed_document_integrity. This criterion is all-or-nothing. Using one real normal click and the same permitted real modifier-click path established for this criterion, create exactly three carets immediately after the final characters of Timeline, Customer impact, and Action items. The permitted path is Alt+Click or platform Ctrl/Cmd+Click; hold the chosen modifier during each real mouse click, use it consistently, and never dispatch synthetic events. Press Backspace exactly once. Require the three complete lines to become exactly "Timelin", "Customer impac", and "Action item" while adjacent lines remain unchanged. Press Undo exactly once and require all three original lines to return. Clear the carets. Repeat the same modifier-down, real mouse click, modifier-up sequence for each added caret immediately before the first characters of Timeline, Customer impact, and Action items. Press Delete exactly once. Require the three complete lines to become exactly "imeline", "ustomer impact", and "ction items" while adjacent lines remain unchanged. Press Undo exactly once and require all three original lines to return. The reasoning must quote the chosen modifier and all three exact lines after Backspace, after its one Undo, after Delete, and after its one Undo. Testing only one caret, a shorter subset, or only one deletion key is an automatic failure. Reload without saving afterward.
++Feature metadata: feature=multi_caret; sub_feature=backspace_delete_sibling; kind=graded; depends_on=seed_document_integrity.
++Setup: bring the adjacent original lines "Customer impact" and "Checkout requests were delayed but not lost." into view together. Record the full draft. Use one real normal click and one real modifier-click to establish exactly two carets immediately after the final characters of these lines. The permitted path is Alt+Click or platform Ctrl/Cmd+Click; hold the chosen modifier during the added real mouse click, use that path consistently, and never dispatch synthetic events. Measure the actual rendered glyph boundaries, including padding and horizontal scroll, and inspect both caret positions before each deletion. A primary-caret status label alone does not establish the second caret's position. Correct a demonstrated misplaced click during setup before pressing the tested key; a correctly targeted wrong editor result remains a failure.
++Graded observations, all required:
++1. With both end-of-line carets established, press Backspace exactly once. Require the complete lines to become exactly "Customer impac" and "Checkout requests were delayed but not lost". Every other draft line remains unchanged. Record these strings before the next action.
++2. Press Undo exactly once and require the full original draft, including both complete target lines, to return.
++3. Clear the carets. Through one normal click and the same modifier-down, real mouse click, modifier-up path, establish exactly two carets immediately before the first characters of those same original lines. Inspect both positions and focus before pressing Delete exactly once. Require the complete lines to become exactly "ustomer impact" and "heckout requests were delayed but not lost.". Every other draft line remains unchanged. Record these strings before the next action.
++4. Press Undo exactly once and require the full original draft, including both complete target lines, to return. Reload without saving afterward and require the saved document to remain unchanged.
++The reasoning must quote the chosen modifier and both exact lines after Backspace, after its one Undo, after Delete, and after its one Undo. Both deletion keys must affect both active carets in their respective single action. Testing only one caret or only one deletion key fails this criterion. The separate three-caret typing/Undo/Redo criterion is unchanged and must also be evaluated independently.
+ """
+ 
+ [[criterion]]
+--- before/tests/functional/prompt.md
++++ after/tests/functional/prompt.md
+@@ -1,5 +1,5 @@
+ Task version: 1.0.0
+-Prompt version: patchpad-editor-v2-functional-v1.0.0-r3
++Prompt version: patchpad-editor-v2-functional-v1.0.0-r4
+ 
+ You are the PatchPad browser verifier. Use Playwright MCP to drive the app at
+ `http://localhost:3000` and evaluate the criteria below.
+@@ -69,6 +69,10 @@
+   caret/selection anchor. Do not assume fixed pixels, row heights or IDs.
+   A supported gutter gesture is acceptable for the offscreen-selection
+   criterion when it establishes the required start-of-line anchor.
++  In that criterion, confirm the target is initially offscreen separately for
++  mouse and keyboard. The mouse leg allows contiguous trailing text beyond
++  the target; only the keyboard leg requires the exact four-line endpoint.
++  Observe a held drag in short intervals, not one blind 20-second wait.
+ - Capture one transient checkpoint before the next mutation. Return plain
+   strings, numbers and booleans from browser observations, not DOM nodes,
+   locators or unresolved promises. Serialize a small read-only sample first.
+@@ -130,7 +134,12 @@
+   editor focus. Keyboard-only criteria must still use their required shortcuts.
+ - For exact-word drags and multi-caret placement, measure the requested visible
+   glyphs, not the gutter or the left edge of a full-width line container. Before Backspace/Delete at
+-  multiple carets, inspect their positions at the requested ends/starts. If a
++  multiple carets, inspect every caret at its requested end/start, not only
++  the primary caret or its status label. Record each target line and boundary
++  before the keypress. An interior caret caused by a misplaced setup click
++  does not test start-of-line Delete. Correct that setup before the keypress;
++  do not reinterpret the resulting interior deletion as the requested action.
++  If a
+   read-only coordinate query errors before any gesture, correct the measurement
+   and perform the original gesture once; do not count an unperformed gesture
+   as an observed app failure or award it a pass. A correctly performed gesture

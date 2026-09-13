@@ -141,6 +141,7 @@ async function mutate(key, url, method, payload = {}) {
       error.status === 409 && error.data?.snapshot
         ? "Updated elsewhere - refresh applied"
         : "Not saved";
+    if (error.status === 409 && error.data?.snapshot) await loadWorkspace();
     throw error;
   } finally {
     pendingWrites.delete(key);
@@ -191,7 +192,6 @@ window.addEventListener("storage", (event) => {
     const message = JSON.parse(event.newValue);
     if (message.type === "account-signout") acceptAccountSignout(message.user_id);
   } catch {
-    // Ignore unrelated or malformed local storage values.
   }
 });
 
@@ -544,7 +544,7 @@ function openAttempt(attemptId) {
                 `
               )
               .join("")
-          : `<textarea name="answer-${item.id}" rows="4" placeholder="Write your response">${escapeHtml(current)}</textarea>`;
+          : `<textarea name="answer-${item.id}" aria-label="${escapeHtml(item.prompt)}" rows="4" placeholder="Write your response">${escapeHtml(current)}</textarea>`;
       return `
         <section class="question">
           <p class="question-number">Question ${index + 1} · ${item.points} points</p>
@@ -689,7 +689,6 @@ $("logout").addEventListener("click", async () => {
     try {
       localStorage.setItem(SESSION_EVENT_KEY, JSON.stringify(message));
     } catch {
-      // The BroadcastChannel and next protected request remain authoritative.
     }
     clearSession();
   }
@@ -954,7 +953,7 @@ $("grade-content").addEventListener("click", async (event) => {
   $("grade-error").textContent = "";
   const numericScore = Number(score);
   const maximum = Number(scoreInput.max);
-  if (!Number.isFinite(numericScore) || numericScore < 0 || numericScore > maximum) {
+  if (!score.trim() || !Number.isFinite(numericScore) || numericScore < 0 || numericScore > maximum) {
     scoreInput.setCustomValidity(`Enter a score from 0 to ${maximum}.`);
     scoreInput.reportValidity();
     $("grade-error").textContent = `Score must be from 0 to ${maximum}. Nothing was saved.`;
