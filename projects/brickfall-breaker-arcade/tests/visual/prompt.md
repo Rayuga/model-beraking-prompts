@@ -1,3 +1,6 @@
+Task version: 1.0.0
+Prompt version: brickfall-breaker-arcade-visual-v1.0.0-r1
+
 Global browser gate:
 Use a fresh isolated browser context, leaving other tabs and saved games
 untouched. Open http://localhost:3000 and require a substantive local page

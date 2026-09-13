@@ -15,6 +15,15 @@ returns to paused, stopping early only at a stated outcome. Show telemetry with
 phase, score, lives, combo, ball identity/state/velocity, ordered item details,
 each brick state, paddle width, effect and whole-second timer.
 
+Also show a visible cumulative simulation-step counter in the lab telemetry.
+Start it at zero whenever a drill is loaded. Increment it once for each fixed
+engine step actually executed, including the final step when Advance stops
+early. It accumulates across Advance actions and stays unchanged while paused;
+it is not a wall-clock timer or an animation-frame count. For example, two full
+Advance actions show 120 then 240 steps; an outcome after one step shows 1.
+Any clear label such as "Steps" or "Ticks" is fine. Reloading a drill resets
+this practice counter without changing ranked state.
+
 Import all guest and Polly terminal fixtures. Keep only Polly's newest ten
 personal snapshots, but retain every result globally; the top ten still omits
 DVP 6,200 and the lower fixtures.

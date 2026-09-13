@@ -12,9 +12,11 @@ same work. Two tabs must not silently overwrite one another, retried actions
 must not duplicate records, and signing out should revoke every session for
 that account.
 
-The full contract is under `/instructions`; initial records are in
+The full contract is under `/assets/instructions`; initial records are in
 `/assets/artifacts/coursemark_seed.json`. Put the app in `/app` using vanilla HTML,
 CSS and JavaScript, Node.js with Express, and SQLite. Store server-issued bearer
 tokens in SQLite. Start with `node /app/server.js` on port `3000`, serve
-`/app/public/index.html`, persist to `/app/coursemark.db`, and use no runtime installs
-or public-internet assets.
+`/app/public/index.html`, and persist to `/app/coursemark.db`. Dependency
+installation is allowed while building; deliver what is needed to start without
+server-startup installs. Public browser assets are allowed, while authentication
+and course data remain on the local server.

@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DropLine - Connect Four</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 400px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      padding: 24px;
+    }
+
+    @media (max-width: 375px) {
+      .container {
+        padding: 16px;
+      }
+    }
+
+    /* Sign In Screen */
+    .signin-screen {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .signin-screen h1 {
+      font-size: 32px;
+      color: #333;
+      text-align: center;
+      margin-bottom: 10px;
+    }
+
+    .signin-screen p {
+      color: #666;
+      text-align: center;
+      font-size: 14px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-group label {
+      font-weight: 600;
+      color: #333;
+      font-size: 14px;
+    }
+
+    .form-group input {
+      padding: 12px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: border-color 0.2s;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .error-message {
+      color: #e53e3e;
+      font-size: 14px;
+      padding: 10px;
+      background: #fff5f5;
+      border-radius: 6px;
+      border-left: 4px solid #e53e3e;
+      display: none;
+    }
+
+    .error-message.show {
+      display: block;
+    }
+
+    button {
+      padding: 12px 24px;
+      font-size: 16px;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-secondary {
+      background: #f0f0f0;
+      color: #333;
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: #e0e0e0;
+    }
+
+    .btn-small {
+      padding: 8px 12px;
+      font-size: 12px;
+    }
+
+    /* Game Screen */
+    .game-screen {
+      display: none;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .game-screen.active {
+      display: flex;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .player-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .player-name {
+      font-weight: 600;
+      color: #333;
+      font-size: 14px;
+    }
+
+    .player-email {
+      color: #999;
+      font-size: 12px;
+    }
+
+    .sign-out-btn {
+      padding: 8px 12px;
+      font-size: 13px;
+    }
+
+    .game-status {
+      text-align: center;
+      font-size: 20px;
+      font-weight: 600;
+      color: #333;
+      padding: 12px;
+      background: #f9f9f9;
+      border-radius: 8px;
+      min-height: 32px;
+    }
+
+    .status-red {
+      color: #e74c3c;
+    }
+
+    .status-yellow {
+      color: #f39c12;
+    }
+
+    .status-draw {
+      color: #7f8c8d;
+    }
+
+    .board-container {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      grid-template-rows: repeat(6, 1fr);
+      gap: 4px;
+      padding: 8px;
+      background: #1e3a8a;
+      border-radius: 8px;
+    }
+
+    @media (max-width: 375px) {
+      .board {
+        gap: 3px;
+        padding: 6px;
+      }
+    }
+
+    .board-cell {
+      aspect-ratio: 1;
+      background: white;
+      border: 2px solid #1e3a8a;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0;
+      transition: all 0.2s;
+      position: relative;
+    }
+
+    .board-cell::after {
+      content: '';
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle, transparent 0%, transparent 100%);
+      border-radius: 50%;
+      position: absolute;
+    }
+
+    .board-cell.red {
+      background: #e74c3c;
+    }
+
+    .board-cell.red::after {
+      background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.4), transparent);
+    }
+
+    .board-cell.yellow {
+      background: #f39c12;
+    }
+
+    .board-cell.yellow::after {
+      background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.4), transparent);
+    }
+
+    .board-cell.winning {
+      box-shadow: 0 0 0 2px #27ae60, inset 0 0 10px rgba(39, 174, 96, 0.5);
+    }
+
+    .board-cell:focus {
+      outline: 2px solid #667eea;
+      outline-offset: 2px;
+    }
+
+    .column-controls {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+    }
+
+    @media (max-width: 375px) {
+      .column-controls {
+        gap: 3px;
+      }
+    }
+
+    .column-btn {
+      padding: 8px;
+      font-size: 12px;
+      background: #667eea;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    @media (max-width: 375px) {
+      .column-btn {
+        padding: 6px;
+        font-size: 11px;
+      }
+    }
+
+    .column-btn:hover {
+      background: #5568d3;
+    }
+
+    .column-btn:focus {
+      outline: 2px solid #333;
+      outline-offset: 1px;
+    }
+
+    .column-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .action-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .action-row.full {
+      grid-template-columns: 1fr;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      text-align: center;
+    }
+
+    .stat {
+      background: #f9f9f9;
+      padding: 10px;
+      border-radius: 6px;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: #666;
+      font-weight: 500;
+    }
+
+    .stat-value {
+      font-size: 20px;
+      font-weight: 700;
+      color: #333;
+      margin-top: 4px;
+    }
+
+    .history-section {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .history-label {
+      font-weight: 600;
+      color: #333;
+      font-size: 13px;
+    }
+
+    .history-list {
+      background: #f9f9f9;
+      border-radius: 6px;
+      padding: 8px;
+      max-height: 150px;
+      overflow-y: auto;
+      font-size: 12px;
+    }
+
+    .history-item {
+      padding: 6px;
+      border-bottom: 1px solid #e0e0e0;
+      color: #333;
+    }
+
+    .history-item:last-child {
+      border-bottom: none;
+    }
+
+    .history-empty {
+      color: #999;
+      text-align: center;
+      padding: 12px;
+    }
+
+    .action-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .action-buttons.full {
+      grid-template-columns: 1fr;
+    }
+
+    .btn-action {
+      padding: 10px;
+      font-size: 13px;
+      background: #e8f4f8;
+      color: #0c5460;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .btn-action:hover:not(:disabled) {
+      background: #d1ecf1;
+    }
+
+    .btn-action:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .archive-section {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .archive-btn {
+      padding: 10px;
+      font-size: 13px;
+      background: #f0f0f0;
+      color: #333;
+    }
+
+    .archive-btn:hover {
+      background: #e0e0e0;
+    }
+
+    /* Modal */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      max-width: 500px;
+      max-height: 90vh;
+      overflow-y: auto;
+      width: 100%;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .modal-header h2 {
+      font-size: 20px;
+      color: #333;
+    }
+
+    .close-btn {
+      background: none;
+      border: none;
+      font-size: 24px;
+      color: #999;
+      cursor: pointer;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+
+    .close-btn:hover {
+      background: #f0f0f0;
+    }
+
+    .archive-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .archive-item {
+      padding: 12px;
+      background: #f9f9f9;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 2px solid transparent;
+    }
+
+    .archive-item:hover {
+      background: #f0f0f0;
+      border-color: #667eea;
+    }
+
+    .archive-result {
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 4px;
+    }
+
+    .archive-result.red {
+      color: #e74c3c;
+    }
+
+    .archive-result.yellow {
+      color: #f39c12;
+    }
+
+    .archive-date {
+      font-size: 12px;
+      color: #999;
+    }
+
+    /* Replay Board */
+    .replay-container {
+      display: none;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .replay-container.active {
+      display: flex;
+    }
+
+    .replay-board {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      grid-template-rows: repeat(6, 1fr);
+      gap: 4px;
+      padding: 8px;
+      background: #1e3a8a;
+      border-radius: 8px;
+    }
+
+    .replay-cell {
+      aspect-ratio: 1;
+      background: white;
+      border: 2px solid #1e3a8a;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .replay-cell::after {
+      content: '';
+      width: 100%;
+      height: 100%;
+      background: transparent;
+      border-radius: 50%;
+      position: absolute;
+    }
+
+    .replay-cell.red {
+      background: #e74c3c;
+    }
+
+    .replay-cell.red::after {
+      background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.4), transparent);
+    }
+
+    .replay-cell.yellow {
+      background: #f39c12;
+    }
+
+    .replay-cell.yellow::after {
+      background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.4), transparent);
+    }
+
+    .replay-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .replay-step-control {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .replay-step-input {
+      width: 100%;
+      padding: 8px;
+      border: 2px solid #e0e0e0;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    .replay-nav {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .replay-nav button {
+      padding: 10px;
+      font-size: 13px;
+      background: #f0f0f0;
+      color: #333;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Sign In Screen -->
+    <div class="signin-screen active" id="signinScreen">
+      <h1>DropLine</h1>
+      <p>Connect Four</p>
+      <form id="signinForm">
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" required autocomplete="email" />
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" required autocomplete="current-password" />
+        </div>
+        <div class="error-message" id="signinError"></div>
+        <button type="submit" class="btn-primary" style="width: 100%; margin-top: 12px;">Sign In</button>
+      </form>
+    </div>
+
+    <!-- Game Screen -->
+    <div class="game-screen" id="gameScreen">
+      <div class="header">
+        <div class="player-info">
+          <div class="player-name" id="playerName"></div>
+          <div class="player-email" id="playerEmail"></div>
+        </div>
+        <button class="btn-primary btn-small sign-out-btn" id="signOutBtn">Sign Out</button>
+      </div>
+
+      <div class="game-status" id="gameStatus">Red's turn</div>
+
+      <div class="board-container">
+        <div class="board" role="grid" id="board">
+          <!-- 42 cells will be generated here -->
+        </div>
+
+        <div class="column-controls" id="columnControls">
+          <!-- 7 buttons will be generated here -->
+        </div>
+      </div>
+
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-label">Red wins</div>
+          <div class="stat-value" id="redWins">0</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Draws</div>
+          <div class="stat-value" id="draws">0</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Yellow wins</div>
+          <div class="stat-value" id="yellowWins">0</div>
+        </div>
+      </div>
+
+      <div class="history-section">
+        <div class="history-label">Move History</div>
+        <div class="history-list" id="historyList">
+          <div class="history-empty">No moves yet</div>
+        </div>
+      </div>
+
+      <div class="action-buttons">
+        <button class="btn-action" id="undoBtn" disabled>Undo</button>
+        <button class="btn-action" id="redoBtn" disabled>Redo</button>
+      </div>
+
+      <div class="action-row">
+        <button class="btn-secondary" id="newGameBtn">New Game</button>
+        <button class="btn-secondary" id="archiveBtn">Archive</button>
+      </div>
+    </div>
+
+    <!-- Archive Modal -->
+    <div class="modal" id="archiveModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Match Archive</h2>
+          <button class="close-btn" id="closeArchiveBtn">&times;</button>
+        </div>
+        <div id="archiveListContainer">
+          <div class="history-empty">Loading...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Replay Modal -->
+    <div class="modal" id="replayModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 id="replayTitle">Match Replay</h2>
+          <button class="close-btn" id="closeReplayBtn">&times;</button>
+        </div>
+        <div class="replay-container" id="replayContainer">
+          <div class="replay-board" id="replayBoard">
+            <!-- 42 cells will be generated here -->
+          </div>
+          <div class="replay-controls">
+            <div class="replay-step-control">
+              <label for="replayStep">Move:</label>
+              <input type="range" id="replayStep" class="replay-step-input" min="0" max="0" value="0" />
+            </div>
+            <div class="replay-nav">
+              <button class="btn-secondary" id="replayPrevBtn">Previous</button>
+              <button class="btn-secondary" id="replayNextBtn">Next</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

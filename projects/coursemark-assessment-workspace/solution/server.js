@@ -376,7 +376,7 @@ function audit(actorId, action, entityType, entityId, details) {
 function assessmentItems(assessmentId, user = null) {
   return db
     .prepare(
-      "SELECT id, kind, prompt, options_json, points FROM items WHERE assessment_id = ? ORDER BY rowid"
+      "SELECT id, kind, prompt, options_json, answer, points FROM items WHERE assessment_id = ? ORDER BY rowid"
     )
     .all(assessmentId)
     .map((item) => ({
@@ -1179,7 +1179,7 @@ app.post(
         const timing = effectiveTiming(assessment, attempt.student_id, attempt.started_at);
         const automatic = new Date(referenceNow()) >= new Date(timing.expires_at);
         const supplied = Array.isArray(request.body.answers) ? request.body.answers : [];
-        if (supplied.length) {
+        if (supplied.length && !automatic) {
           const validItems = new Set(
             db
               .prepare("SELECT id FROM items WHERE assessment_id = ?")
@@ -1249,7 +1249,9 @@ app.put(
         WHERE r.id = ? AND i.assessment_id = ?
       `)
       .get(request.params.criterionId, assessment.id);
-    const score = Number(request.body.score);
+    const rawScore = request.body.score;
+    const score = (typeof rawScore === "number" || (typeof rawScore === "string" && rawScore.trim()))
+      ? Number(rawScore) : NaN;
     const feedback = cleanText(request.body.feedback, 1000);
     if (!criterion || !Number.isFinite(score) || score < 0 || score > criterion.max_points) {
       throw httpError(400, "Score must be within the rubric maximum.");
@@ -1405,6 +1407,10 @@ app.use((error, _request, response, _next) => {
     error: status < 500 ? error.message : "Something went wrong on the server.",
   });
 });
+
+for (const attempt of db.prepare("SELECT * FROM attempts WHERE status = 'in_progress'").all()) {
+  ensureAttemptCurrent(attempt);
+}
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Coursemark listening on ${PORT}`);

@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS roles (
 CREATE TABLE IF NOT EXISTS candidates (
   id TEXT PRIMARY KEY, role TEXT NOT NULL REFERENCES roles(code), name TEXT NOT NULL,
   stage TEXT NOT NULL, history TEXT NOT NULL, applied_days INTEGER NOT NULL,
+  assessment_version INTEGER NOT NULL DEFAULT 1,
   created_by TEXT NOT NULL REFERENCES people(email), created_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS panels (
   candidate TEXT NOT NULL REFERENCES candidates(id),
@@ -32,7 +33,8 @@ CREATE TABLE IF NOT EXISTS panels (
 CREATE TABLE IF NOT EXISTS scores (
   candidate TEXT NOT NULL REFERENCES candidates(id),
   panel_member TEXT NOT NULL REFERENCES people(email), score INTEGER NOT NULL,
-  PRIMARY KEY (candidate, panel_member));
+  assessment_version INTEGER NOT NULL DEFAULT 1,
+  PRIMARY KEY (candidate, panel_member, assessment_version));
 CREATE TABLE IF NOT EXISTS notes (
   id INTEGER PRIMARY KEY AUTOINCREMENT, candidate TEXT NOT NULL REFERENCES candidates(id),
   author TEXT NOT NULL REFERENCES people(email), at TEXT NOT NULL, body TEXT NOT NULL);
@@ -133,7 +135,30 @@ function panelOf(id) {
 
 function scoresOf(id) {
   return db.prepare(`SELECT panel_member,score FROM scores
-    WHERE candidate=? ORDER BY panel_member`).all(id);
+    WHERE candidate=? AND assessment_version=(SELECT assessment_version FROM candidates WHERE id=?)
+    ORDER BY panel_member`).all(id, id);
+}
+
+function historicalScores(id) {
+  return db.prepare(`SELECT s.panel_member,s.score,s.assessment_version,p.name AS scorer_name
+    FROM scores s JOIN people p ON p.email=s.panel_member
+    WHERE candidate=? AND assessment_version<(SELECT assessment_version FROM candidates WHERE id=?)
+    ORDER BY assessment_version,panel_member`).all(id, id);
+}
+
+function capacityOf(code) {
+  const openings = db.prepare('SELECT openings FROM roles WHERE code=?').get(code).openings;
+  const reserved = db.prepare("SELECT COUNT(*) AS n FROM candidates WHERE role=? AND stage='offer'").get(code).n;
+  const filled = db.prepare("SELECT COUNT(*) AS n FROM candidates WHERE role=? AND stage='hired'").get(code).n;
+  return { reserved, filled, available: openings - reserved - filled };
+}
+
+function offerReadiness(candidate) {
+  if (candidate.stage !== 'interview') return { ready: false, reason: 'Offers are assessed at interview.' };
+  const verdict = R.admitOffer({ panel: panelOf(candidate.id), scores: scoresOf(candidate.id), managers: managers() });
+  if (!verdict.ok) return { ready: false, reason: verdict.error };
+  if (capacityOf(candidate.role).available < 1) return { ready: false, reason: 'This vacancy has no available opening.' };
+  return { ready: true, reason: 'Current assessment complete; an opening is available.' };
 }
 
 function managers() {
@@ -149,6 +174,7 @@ function roleSnapshot(code) {
   return {
     role,
     revision: currentRevision(code),
+    capacity: capacityOf(code),
     funnel: R.funnel(all, code),
     candidates: mine.map((candidate) => ({
       ...candidate,
@@ -170,6 +196,8 @@ function candidateSnapshot(id) {
     revision: currentRevision(candidate.role),
     panel: panelOf(id),
     scores: scoresOf(id),
+    historical_scores: historicalScores(id),
+    offer_readiness: offerReadiness(candidate),
     notes: db.prepare(`SELECT n.*,p.name AS author_name FROM notes n
       JOIN people p ON p.email=n.author WHERE n.candidate=? ORDER BY n.id`).all(id),
     activity: db.prepare(`SELECT a.*,p.name AS actor_name FROM activity a
@@ -205,6 +233,12 @@ function requireKeys(body, allowed) {
   }
 }
 
+function canonical(value) {
+  if (Array.isArray(value)) return value.map(canonical);
+  if (value && typeof value === 'object') return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonical(value[key])]));
+  return value;
+}
+
 function mutationMetadata(request) {
   const operationId = request.body?.operation_id;
   const expectedRevision = request.body?.expected_revision;
@@ -216,7 +250,7 @@ function mutationMetadata(request) {
     throw httpError(400, 'A valid expected revision is required.');
   }
   const fingerprint = crypto.createHash('sha256').update(JSON.stringify({
-    method: request.method, path: request.path, body: request.body,
+    method: request.method, path: request.path, body: canonical(request.body),
   })).digest('hex');
   return { operationId, expectedRevision, fingerprint };
 }
@@ -255,9 +289,11 @@ function performMutation(request, role, execute, successStatus = 200) {
       if (metadata.expectedRevision !== actual) {
         throw httpError(409, 'This vacancy changed since your view was loaded. Review it and retry.');
       }
-      payload = execute();
-      const revision = incrementRevision(role);
-      payload = { ...payload, revision, snapshot: roleSnapshot(role) };
+      payload = db.transaction(() => {
+        const result = execute();
+        const revision = incrementRevision(role);
+        return { ...result, revision, snapshot: roleSnapshot(role) };
+      })();
     } catch (error) {
       status = Number(error.status) || 500;
       if (status >= 500) throw error;
@@ -272,7 +308,7 @@ function performMutation(request, role, execute, successStatus = 200) {
       VALUES (?,?,?,?,?,?)`).run(request.person.email, metadata.operationId,
         metadata.fingerprint, status, JSON.stringify(payload), nextTime());
     return { status, payload };
-  })();
+  }).immediate();
 }
 
 function sendMutation(response, outcome) {
@@ -380,11 +416,16 @@ app.post('/api/candidates/:id/stage', requireUser, (request, response) => {
       panel: panelOf(fresh.id), scores: scoresOf(fresh.id), managers: managers(),
     });
     if (!verdict.ok) throw httpError(verdict.code, verdict.error);
-    const history = fresh.history.includes(to) ? fresh.history : [...fresh.history, to];
-    db.prepare('UPDATE candidates SET stage=?,history=? WHERE id=?')
-      .run(to, JSON.stringify(history), fresh.id);
+    if (to === 'offer' && fresh.stage === 'interview' && capacityOf(fresh.role).available < 1) {
+      throw httpError(409, 'This vacancy has no available opening.');
+    }
+    const history = [...fresh.history, to];
+    const version = fresh.assessment_version + (to === 'interview' ? 1 : 0);
+    db.prepare('UPDATE candidates SET stage=?,history=?,assessment_version=? WHERE id=?')
+      .run(to, JSON.stringify(history), version, fresh.id);
     activity(fresh.role, fresh.id, 'stage_changed', request.person.email,
-      { from: fresh.stage, to });
+      { from: fresh.stage, to, assessment_version: version,
+        ...(to === 'interview' ? { assessment_reason: 'Entered interview; fresh scores required.' } : {}) });
     return { candidate: candidateRow(fresh.id) };
   });
   sendMutation(response, outcome);
@@ -394,16 +435,27 @@ app.post('/api/candidates/:id/panel', requireUser, (request, response) => {
   const candidate = candidateRow(request.params.id);
   if (!candidate) return response.status(404).json({ error: 'No such candidate.' });
   const outcome = performMutation(request, candidate.role, () => {
-    requireKeys(request.body, ['member', 'operation_id', 'expected_revision']);
+    requireKeys(request.body, ['member', 'action', 'operation_id', 'expected_revision']);
     const permission = R.may(request.person, 'panel');
     if (!permission.ok) throw httpError(permission.code, permission.error);
+    const fresh = candidateRow(candidate.id);
+    if (!['applied', 'screening', 'interview'].includes(fresh.stage)) throw httpError(409, 'The panel is frozen at this stage.');
     const member = typeof request.body.member === 'string' ? request.body.member : '';
-    if (!db.prepare('SELECT 1 FROM people WHERE email=?').get(member)) {
+    const person = db.prepare('SELECT role FROM people WHERE email=?').get(member);
+    if (!person) {
       throw httpError(404, 'No such person.');
     }
-    if (panelOf(candidate.id).includes(member)) throw httpError(409, 'That person is already on the panel.');
-    db.prepare('INSERT INTO panels (candidate,member) VALUES (?,?)').run(candidate.id, member);
-    activity(candidate.role, candidate.id, 'panel_added', request.person.email, { member });
+    if (!['hiring manager', 'panel'].includes(person.role)) throw httpError(409, 'Only eligible scorers may join a panel.');
+    const action = request.body.action ?? 'add';
+    if (!['add', 'remove'].includes(action)) throw httpError(400, 'Choose add or remove.');
+    const present = panelOf(candidate.id).includes(member);
+    if (action === 'add' && present) throw httpError(409, 'That person is already on the panel.');
+    if (action === 'remove' && !present) throw httpError(409, 'That person is not on the panel.');
+    if (action === 'add') db.prepare('INSERT INTO panels (candidate,member) VALUES (?,?)').run(candidate.id, member);
+    else db.prepare('DELETE FROM panels WHERE candidate=? AND member=?').run(candidate.id, member);
+    db.prepare('UPDATE candidates SET assessment_version=assessment_version+1 WHERE id=?').run(candidate.id);
+    activity(candidate.role, candidate.id, action === 'add' ? 'panel_added' : 'panel_removed', request.person.email,
+      { member, assessment_version: fresh.assessment_version + 1, assessment_reason: 'Panel changed; fresh scores required.' });
     return { panel: panelOf(candidate.id) };
   }, 201);
   sendMutation(response, outcome);
@@ -416,16 +468,18 @@ app.post('/api/candidates/:id/score', requireUser, (request, response) => {
     requireKeys(request.body, ['score', 'operation_id', 'expected_revision']);
     const permission = R.may(request.person, 'score');
     if (!permission.ok) throw httpError(permission.code, permission.error);
+    const fresh = candidateRow(candidate.id);
+    if (fresh.stage !== 'interview') throw httpError(409, 'Scores may be recorded only at interview.');
     const verdict = R.admitScore(request.body.score);
     if (!verdict.ok) throw httpError(verdict.code, verdict.error);
     if (!panelOf(candidate.id).includes(request.person.email)) {
       throw httpError(403, 'Only this candidate\'s panel members may score them.');
     }
-    db.prepare(`INSERT INTO scores (candidate,panel_member,score) VALUES (?,?,?)
-      ON CONFLICT(candidate,panel_member) DO UPDATE SET score=excluded.score`)
-      .run(candidate.id, request.person.email, request.body.score);
+    db.prepare(`INSERT INTO scores (candidate,panel_member,score,assessment_version) VALUES (?,?,?,?)
+      ON CONFLICT(candidate,panel_member,assessment_version) DO UPDATE SET score=excluded.score`)
+      .run(candidate.id, request.person.email, request.body.score, fresh.assessment_version);
     activity(candidate.role, candidate.id, 'score_recorded', request.person.email,
-      { score: request.body.score });
+      { score: request.body.score, assessment_version: fresh.assessment_version });
     return { scores: scoresOf(candidate.id) };
   }, 201);
   sendMutation(response, outcome);

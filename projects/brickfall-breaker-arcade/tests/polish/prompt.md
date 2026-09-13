@@ -1,3 +1,6 @@
+Task version: 1.0.0
+Prompt version: brickfall-breaker-arcade-polish-v1.0.0-r1
+
 Global browser gate:
 Use a fresh isolated browser context, leaving other tabs and saved games
 untouched. Open http://localhost:3000 and require a substantive local page
@@ -31,5 +34,12 @@ text evidence at each checkpoint. These five criteria are binary: all stated
 observations must hold for 1, otherwise 0. Keep appearance in Visual and exact
 mechanics, revision/receipt enforcement and security in Functional. Do not
 inspect source or use arbitrary API calls beyond the shared read-only gate.
+
+The pinned serial runner completes Functional before Polish. Polly's saved run,
+revision and history may therefore differ from their seed values. Discover that
+current state, then use the fresh-run setup required below; never demand original
+history values or reset the database. Close contexts without signing out when
+finished, and leave no ranked simulation running unattended. Visual subsequently
+uses the resulting existing records and non-scoring scenes, not seeded totals.
 
 {criteria}
