@@ -2,6 +2,10 @@
 
 Decision history and evidence: [11 September lessons](TASK_LEARNINGS_2026-09-11.md).
 
+Later corrections: [12 September platform QC lessons](TASK_LEARNINGS_2026-09-12.md).
+The asset-gate, independent-scoring and package-layout rules below incorporate
+that later feedback and supersede the earlier September 11 formulations.
+
 Effective 2026-09-11, from the user's manual QC instructions. This supersedes
 older four-dimension, provider-pinning and version-increment rules in this
 repository. Canonical reference: `projects/bazaarbridge-marketplace-commerce/`.
@@ -80,14 +84,38 @@ Where a task needs an all-pass prerequisite, enforce it in that dimension;
 do not silently change the final gate to `< 1.0`.
 
 Every dimension's prompt must explicitly state a `Global browser gate:` before
-scoring: a substantive working local page without fatal errors, same-origin
-runtime requests, and zero for every criterion if the gate fails. For a
+scoring: a substantive working local page without fatal errors and zero for
+every criterion if that shared prerequisite fails. Do not make external fonts,
+scripts, styles or other assets a universal gate failure under public networking.
+Keep locally served resources required by the brief graded only in their dedicated
+Constraints criterion. For a
 server-backed product, observe the populated server response used by the UI;
 a rendered static mock is insufficient. Include authentication checks only
 when the product requires authentication. Visual also needs this prerequisite,
 even though its scored criteria assess appearance. Do not replace it with only
 "a reviewable page renders." Local preflight wording checks do not establish
 that the platform's full prompt checker will pass.
+
+For a product with real sign-in, successful authentication alone is not the
+shared gate. Every dimension must also prove that protected records are hidden
+while signed out and an exact incorrect password is visibly refused without
+granting a session. Capture a real protected read through a successful UI login,
+then test it from a fresh anonymous context before and after that context's own
+wrong-password attempt. Require a refusal with no protected record content in
+the response, not merely an error toast or a401 alongside leaked data. Never
+copy good credentials into the anonymous probe or clear bad-login credentials
+afterward to manufacture rejection. Retain the correct-login and refresh
+positive controls. Keep domain data and other sessions unchanged; later
+dimensions must use current persisted records rather than reseeding.
+These observations belong inside every explicit shared gate, not only inside
+a small Functional criterion. Public demo sign-in hints remain allowed.
+See TASK_LEARNINGS_2026-09-14.md and the Ballot r10 gate regression evidence.
+
+Every batched prompt must explicitly require independent per-criterion evidence,
+continuation after individual failures and a verdict for every criterion. Only
+explicit shared prerequisites may invalidate the whole batch. Preserve conjunctive
+subchecks within each criterion; never infer cross-criterion all-pass semantics
+from a global gate or ignore the configured weighted aggregation.
 
 Functional measures behavior and server correctness. Polish measures concrete
 interaction usability, keyboard/focus access, labels and feedback. Visual
@@ -110,6 +138,21 @@ anchors and return a verdict for every criterion. A visual addition changes
 the score distribution: previous four-dimension Oracle/model scores are historical.
 
 ## Preflight and oracle reliability
+
+### Future Golden Visual Target (2026-09-12)
+
+For subsequent tasks, the user wants the golden solution to earn Visual = 1.0,
+as well as passing every Functional criterion and meeting the overall Oracle
+threshold. Treat this as an authoring and validation target: inspect all graded
+surfaces, previews, dialogs and required viewport sizes, fix actual presentation
+defects, and confirm with a full Oracle run on the frozen package. Do not weaken
+visual anchors, alter weights or rewrite recorded scores to reach it.
+
+This is not a new scoring gate and is not retroactive to the current GridForge
+v3 delivery. Its recorded Oracle is 0.9833 with Visual 0.9167 and Functional 1.0.
+The saved execution checklist requires overall Oracle above 0.95 and every
+Functional criterion passing; the supplied scorecard's C1 threshold is >=0.95.
+Neither specifies a separate Visual = 1.0 prerequisite for this existing run.
 
 Grade behavior required by the supplied product brief. When the brief leaves
 an implementation choice open, discover and test the submitted app's actual
@@ -139,6 +182,12 @@ set, scan the Dockerfiles/runner for prohibited key mentions, and calculate
 timeout nesting and reward outputs mechanically. Build both exact images and
 run startup, lifecycle and relevant behavior checks. A cached older image is
 useful diagnostic evidence but does not validate the new image.
+
+Keep coverage maps, QC reports, screenshots and authoring scripts outside the task
+ZIP. Permit only `README.md`, `environment/`, `instruction.md`, `rubrics/`,
+`solution/`, `task.toml` and `tests/` at the task root. Exclude repository-only
+metadata and use one task-named archive wrapper. Check archive entries explicitly;
+passing the local configuration checker alone is not platform static/QC approval.
 
 For surprising oracle failures, inspect action evidence before changing the app
 or rubric. Improve measurement and instructions without reducing requirements:

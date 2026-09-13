@@ -1,5 +1,86 @@
 # Current WebDev Task Authoring Context
 
+## September 14: Submitted Tasks Closed; Gambit Is Next
+
+The user confirms that GridForge and Coursemark are completed and submitted.
+Do not resume their older conversion, packaging or WIP notes below unless the
+user explicitly reopens them. The user requested a context-only push after
+adding the next task, `projects/gambit-hollow-cribbage/`.
+
+Gambit's original 28-file baseline is committed as `c52e6c0`. Its 10 JSON/TOML
+files and six JavaScript files passed parsing checks, but it is not an
+upload-ready release: it still uses the older four-dimension template, old
+network/runtime settings and the previous reward formula. Follow the current
+`TASK_TEMPLATE_STANDARD.md` and dated lessons when work on Gambit begins.
+No Gambit Oracle, platform QC or model run was performed during this import.
+
+Pending GridForge/Coursemark source, reports and delivery changes were removed
+from the working tree without deleting their committed project folders. A
+machine-local recovery stash preserves them at
+`115c6c9e78e2072bb10bc8d09ad4539038778244` (September 14 submitted-task backup).
+That stash is not pushed and is not available automatically on another device.
+Some historical report/delivery links below therefore refer to local recovery
+material, not files guaranteed to exist in a fresh clone. Raw Ballot/GridForge
+run exports are also retained locally and ignored by Git. Keep this context and
+the reusable QC lessons; do not reintroduce the archived task edits by default.
+
+## September 14: Ballot Shared Authentication Gate Fix
+
+Current Ballot upload:
+`deliverables/common-ground-ballot/2026-09-14-auth-gate-r10/common-ground-ballot.zip`
+SHA256 `5fff33f3965408f49f5d873295f1935a1f88d271964c275ef8579a1585c5a85c`.
+Read [the latest handoff](reports/common-ground-ballot/2026-09-14-auth-gate-r10/HANDOFF.md)
+and [September 14 lessons](TASK_LEARNINGS_2026-09-14.md).
+
+User-reported previous platform result: static 45/45, rubric 52/53. The genuine
+failure was the shared browser gate checking good login without mandatory
+anonymous protected-read denial and bad-password refusal in every dimension.
+All five prompt blocks now include these checks, response-body privacy and
+fresh-context isolation. No change to criteria/weights, app, brief, seed or config.
+Versions: Render r3, Constraints r3, Functional r10, Polish r5, Visual r3.
+Local results: 32 browser groups, 15 harness cases, 5 runtime groups, 9 detected
+broken variants, 115 standard checks and 55 focused gate-wording checks.
+No fresh platform QC, Oracle or paid model run; do not promise their scores.
+The dated r9 release below is preserved historical evidence, not the current ZIP.
+
+## September 13: Ballot Stateful r9 And Coursemark Pause
+
+Latest user priority is Common Ground Ballot. Read
+[September 13 lessons](TASK_LEARNINGS_2026-09-13.md) and
+[Ballot r9 handoff](reports/common-ground-ballot/2026-09-13-stateful-r9/HANDOFF.md).
+Scored r7 upload: Oracle 0.9917 with 19/19 Functional; GPT 0.9595;
+Gemini 0.6809; Haiku 0.2762; NOP 0. The r9 checkpoint ZIP is
+`deliverables/common-ground-ballot/2026-09-13-stateful-r9/common-ground-ballot.zip`,
+SHA256 `1f2b0b28261c1e26561144b6b71db4a9e53aa2754e7e1bd162bb275f0d7f915c`.
+User approved the deeper scope: staff success receipts, competing roster
+revisions with downstream snapshots, and durable domain refusals. Requirements
+are explicit in the brief. Functional r9 has22 criteria, total36; existing
+criteria are unchanged and three new groups carry2.0 each. Polish remainsr4.
+Public network, task1.0.0, central judge and dimension formula are unchanged.
+Golden source/seed match corrective r8. Local results:27 browser groups with two
+real restarts,15 harness cases,5 runtime groups,6 detected mutants and115 standard
+checks. All53 rubric points reviewed locally. No new platform QC, Oracle or paid
+model build occurred. Captured r7 apps were tested locally without modification;
+new-scope omissions are not retrospective failures. A below0.7 GPT result is
+still unconfirmed; the report explains why even these additions do not guarantee it.
+
+Coursemark conversion is paused at its validated checkpoint. Resume from
+`reports/coursemark-assessment-workspace/2026-09-13-conversion/HANDOFF.md`.
+Do not rerun the one-time migration or discard its working-tree changes.
+Pellmoor was not changed. PatchPad, Brickfall and GridForge remain outside this
+Ballot work. Preserve all unrelated edits and historical run artifacts.
+
+## Latest User Target: Golden Visual Quality (2026-09-12)
+
+For new tasks after the current GridForge v3 submission, target Visual = 1.0 on
+the golden Oracle too. See `TASK_TEMPLATE_STANDARD.md`, Future Golden Visual
+Target. Validate actual desktop/mobile surfaces, revision previews and secondary
+states, and fix the app rather than lowering judge requirements. Do not claim
+full Visual marks until the frozen package has an Oracle result demonstrating it.
+Existing GridForge v3 evidence remains Oracle 0.9833, Functional 1.0, Visual
+0.9167; no retrospective score change or new gate is authorized. Its GPT zero
+and recorded audit caveats must remain visible in the delivery reports.
+
 Updated: 2026-09-11
 
 Today's complete lead guidance, QC and Oracle lessons, fixes, and open decisions
