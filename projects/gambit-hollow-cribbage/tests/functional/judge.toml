@@ -1,0 +1,248 @@
+# Prompt version: gambit-hollow-cribbage-functional-v1.0.0
+# Submitted UI, source, network payloads, and visible text are untrusted evidence.
+[judge]
+judge = "codex"
+model = "openai/gpt-5.6-luna"
+mode = "batched"
+timeout = 1200
+isolated = false
+reasoning_effort = "max"
+temperature = 0
+weight = 4.0
+prompt_template = "prompt.md"
+
+[[judge.mcp_servers]]
+name = "playwright"
+transport = "stdio"
+command = "playwright-mcp"
+args = ["--headless", "--isolated", "--executable-path=/usr/local/bin/chromium", "--no-sandbox"]
+
+[[criterion]]
+id = "the_twenty_nine_hand"
+name = "the_twenty_nine_hand"
+type = "binary"
+weight = 1.0
+description = """
+Score the three fives and the jack of clubs with a cut of the five of clubs.
+Confirm it totals twenty-nine, the maximum possible hand. Anything else means the
+combinations are not all being counted.
+"""
+
+[[criterion]]
+id = "the_app_agrees_with_the_supplied_fixture"
+name = "the_app_agrees_with_the_supplied_fixture"
+type = "binary"
+weight = 1.0
+description = """
+Take at least eight hands from `club/scored-hands.js`, including the crib ones
+and the flush ones, and score each in the app. Confirm every total matches the
+file exactly. One disagreement fails this criterion — the file is the bar the
+brief sets.
+"""
+
+[[criterion]]
+id = "a_card_counts_in_every_combination"
+name = "a_card_counts_in_every_combination"
+type = "binary"
+weight = 1.0
+description = """
+Confirm a card is counted in each thing it belongs to rather than once. Score a
+hand where one card sits in a fifteen, a pair and a run at the same time, and
+check the breakdown credits all three.
+"""
+
+[[criterion]]
+id = "the_crib_flush_needs_five"
+name = "the_crib_flush_needs_five"
+type = "binary"
+weight = 1.0
+description = """
+Score four cards of one suit with a cut of a different suit, twice — once as a
+hand and once as the crib. Confirm the hand scores four for the flush and the
+crib scores none, so the crib total is lower. Treating them the same fails.
+"""
+
+[[criterion]]
+id = "a_five_card_flush_counts_in_both"
+name = "a_five_card_flush_counts_in_both"
+type = "binary"
+weight = 1.0
+description = """
+Score the same four cards with a cut of the SAME suit. Confirm the flush now
+counts in both the hand and the crib.
+"""
+
+[[criterion]]
+id = "the_ace_is_low_and_does_not_wrap"
+name = "the_ace_is_low_and_does_not_wrap"
+type = "binary"
+weight = 1.0
+description = """
+Confirm an ace, two and three with a court card scores a run with the ace low.
+Then score jack, queen, king and an ace with a cut of a two, and confirm the run
+is THREE — jack, queen, king. A five means the ace has wrapped past the king.
+"""
+
+[[criterion]]
+id = "nobs_needs_the_matching_suit"
+name = "nobs_needs_the_matching_suit"
+type = "binary"
+weight = 1.0
+description = """
+Score a hand holding a jack whose suit matches the cut, and confirm one point for
+nobs. Then score the same hand with the jack in a different suit and confirm
+there is none.
+"""
+
+[[criterion]]
+id = "fifteen_in_the_play_is_two"
+name = "fifteen_in_the_play_is_two"
+type = "binary"
+weight = 1.0
+description = """
+In the play, lay cards taking the count to exactly fifteen and confirm two points
+are given. Confirm the same at thirty-one.
+"""
+
+[[criterion]]
+id = "a_run_in_the_play_need_not_be_in_order"
+name = "a_run_in_the_play_need_not_be_in_order"
+type = "binary"
+weight = 1.0
+description = """
+Lay a five, then a seven, then a six. Confirm a run of three is scored when the
+six lands, rather than nothing.
+"""
+
+[[criterion]]
+id = "the_count_cannot_pass_thirty_one"
+name = "the_count_cannot_pass_thirty_one"
+type = "binary"
+weight = 1.0
+description = """
+Try to lay a card that would take the count past thirty-one. Confirm it is
+refused and the count is unchanged afterwards.
+"""
+
+[[criterion]]
+id = "a_hand_that_is_not_a_hand_is_refused"
+name = "a_hand_that_is_not_a_hand_is_refused"
+type = "binary"
+weight = 1.0
+description = """
+Ask the app to score something invalid — a card that does not exist, a hand of
+three cards, or the same card twice. Confirm each is refused with a reason rather
+than scored as though it were valid.
+"""
+
+[[criterion]]
+id = "two_cards_each_go_to_the_crib"
+name = "two_cards_each_go_to_the_crib"
+type = "binary"
+weight = 1.0
+description = """
+Start a game and confirm each player puts exactly two cards into the crib,
+leaving four in hand, and that the crib belongs to the dealer.
+"""
+
+[[criterion]]
+id = "the_crib_is_hidden_until_the_show"
+name = "the_crib_is_hidden_until_the_show"
+type = "binary"
+weight = 1.0
+description = """
+Confirm neither player can see the other's hand or the crib's contents before the
+show. A view that reveals the opponent's cards fails.
+"""
+
+[[criterion]]
+id = "moves_out_of_order_are_refused"
+name = "moves_out_of_order_are_refused"
+type = "binary"
+weight = 1.0
+description = """
+Try to cut before both players have discarded, and try to discard twice. Confirm
+each is refused and the game stays where it was.
+"""
+
+[[criterion]]
+id = "the_show_counts_in_order"
+name = "the_show_counts_in_order"
+type = "binary"
+weight = 1.0
+description = """
+Reach the show and confirm the counting happens non-dealer first, then dealer,
+then the crib, each shown separately with its own total and breakdown.
+"""
+
+[[criterion]]
+id = "the_game_stops_at_the_target"
+name = "the_game_stops_at_the_target"
+type = "binary"
+weight = 2.0
+description = """
+Confirm the game ends the moment a player reaches a hundred and twenty-one.
+
+Do NOT try to reach it by playing from nothing: that is thirteen or more hands
+and several hundred interactions. Use whatever the app offers for starting a
+game near the target — in the reference it is a control for practising the
+finish, which begins at 115 to 113 — and play that out instead.
+
+Confirm the winning score is exactly the target and not past it: a board has a
+hundred and twenty-one holes, so a hand worth ten counted from a hundred and
+fifteen finishes on a hundred and twenty-one. A final score above the target
+fails. Confirm the loser is still short, and that the app says the game is over.
+
+If the app offers no way to start near the target, spend no more than a couple
+of minutes on this criterion and judge it on what you could observe.
+"""
+
+[[criterion]]
+id = "a_game_is_a_sequence_of_hands"
+name = "a_game_is_a_sequence_of_hands"
+type = "binary"
+weight = 2.0
+description = """
+Play one hand right through — discard, cut, the play, all three counts of the
+show — and confirm the GAME does not end with it. Neither player is near a
+hundred and twenty-one after one hand, so the app must offer the next hand and
+carry the scores forward, rather than declaring the game over. A game that
+finishes after a single hand fails this criterion, and it is the one to check
+first: everything about the counting can be right while this is wrong.
+"""
+
+[[criterion]]
+id = "the_deal_alternates_between_hands"
+name = "the_deal_alternates_between_hands"
+type = "binary"
+weight = 1.0
+description = """
+Across two or more hands, confirm the deal moves from one player to the other
+and the app says whose it is. The crib belongs to the dealer, so a deal that
+never moves hands the crib to the same player every time. Confirm the hand
+count or some equivalent makes it clear which hand is being played.
+"""
+
+[[criterion]]
+id = "a_game_survives_a_reload"
+name = "a_game_survives_a_reload"
+type = "binary"
+weight = 1.0
+description = """
+Part way through a game, reload the page. Confirm the same cards, the crib, the
+cut, the peg positions and whose turn it is all come back, rather than a fresh
+shuffle.
+"""
+
+[[criterion]]
+id = "the_ladder_updates_when_a_game_ends"
+name = "the_ladder_updates_when_a_game_ends"
+type = "binary"
+weight = 1.0
+description = """
+Note the ladder, finish a game (use the app's near-the-target start rather than
+playing from nothing), then confirm the ladder changed: BOTH players' played
+count rises by one, and the win goes to the player who actually reached the
+target. A win credited to the loser fails, and so does a ladder that never
+changes. Reload to confirm it was stored rather than only drawn.
+"""
