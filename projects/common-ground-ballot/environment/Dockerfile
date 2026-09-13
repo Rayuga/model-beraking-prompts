@@ -1,8 +1,8 @@
-FROM node:22-bookworm-slim@sha256:83f487e0a63425e5b4d146fb5e5be574bcbe1b7b843d3ebafdd95eaf7767a7e5
+FROM node:22-bookworm-slim
 
 ENV NODE_PATH=/usr/local/lib/node_modules
 LABEL io.turing.task="common-ground-ballot" \
-      io.turing.task.version="2.0.0"
+      io.turing.task.version="1.0.0"
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
       ca-certificates git procps sqlite3 curl coreutils python3 \

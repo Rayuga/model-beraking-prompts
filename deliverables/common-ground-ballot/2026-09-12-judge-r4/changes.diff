@@ -1,0 +1,188 @@
+--- before/solution/public/styles.css
++++ after/solution/public/styles.css
+@@ -268,8 +268,8 @@
+   .stat strong { font-size: 1.3rem; }
+   .card-top, .panel-heading { flex-direction: column; }
+   .panel-heading .metric, .ballot-total { align-items: flex-start; }
+-  .turnout-members li { align-items: flex-start; flex-wrap: wrap; }
+-  .participation-state { margin-left: auto; }
++  .turnout-members li { display: grid; grid-template-columns: 38px minmax(0, 1fr); align-items: start; }
++  .turnout-members .participation-state { grid-column: 2; justify-self: start; margin-left: 0; }
+   .member-list li { display: grid; grid-template-columns: 38px minmax(0, 1fr) auto; }
+   .member-list .button, .member-list .read-only { grid-column: 2 / -1; justify-self: start; }
+   .dialog-actions { flex-direction: column-reverse; }
+--- before/tests/functional/judge.toml
++++ after/tests/functional/judge.toml
+@@ -49,8 +49,8 @@
+ description = """
+ Setup: Use the documented shared workflow stage for this criterion; confirm the named user, ballot and current state before acting.
+ Graded observations:
+-1. As Ruth, use the visible ballot form to try a blank title, a blank choice, fewer than two choices, repeated choice labels, and an approval limit below one or above the number of choices.
+-2. Require each invalid draft to be prevented or visibly refused without adding a ballot or audit event; native form validation or a control preventing an invalid value is acceptable.
++1. As Ruth, run the exact independent invalid-draft cases in the shared prompt: blank title, one blank choice, fewer than two choices, repeated choice labels, approval limit zero, and approval limit four for three choices. Restore the specified valid base form before each case, and confirm the displayed voting method and actual field values before submitting.
++2. Require each invalid draft to be prevented or visibly refused without adding a ballot or audit event; native form validation or a control preventing an invalid value is acceptable. Record the invalid field and values, validation feedback or actual request/response, and before/after ballot and audit counts. A form that now contains valid values is not a negative control, regardless of its title.
+ 3. Then create one distinctive valid approval draft titled Verifier room use with optional context Reserve the shared room, choices Morning, Afternoon, Evening and maximum two.
+ 4. Require exactly one revision-1 draft containing that context and one matching audit event.
+ """
+@@ -81,7 +81,7 @@
+ 3. Then activate Owen through Ruth's Members screen, create and open a separate single-choice draft titled Future roster probe with choices Yes and No, and require that new snapshot to contain both Members while Verifier room schedule remains Leila-only.
+ 4. Pause Owen again and require both already-open snapshots to stay unchanged after refresh.
+ 5. Do not infer eligibility only from the present roster.
+-After the first valid vote request reveals its actual shape, attempt Verifier room schedule as ineligible Owen using a fresh operation id, current revision and an in-ballot choice. Require non-2xx and unchanged participation, turnout, revision and audit. Its later one-participant published totals must also remain correct.
++After the first valid vote request reveals its actual shape, attempt Verifier room schedule as ineligible Owen using a fresh operation id, current revision and an in-ballot choice. Confirm the protected current-user response still identifies Owen immediately before the request. Require non-2xx and unchanged participation, turnout, revision and audit. Grade this eligibility refusal and the fixed snapshots on their own evidence; an independent invalid approval accepted from eligible Leila belongs to approval_selection_limits, not this criterion.
+ """
+ 
+ [[criterion]]
+@@ -95,7 +95,7 @@
+ 1. Using real sessions and observed same-origin requests, require Arun to remain read-only and a Member to be unable to create or progress a ballot or change membership.
+ 2. From that Member session, repeat a privileged request while claiming Ruth's identity in an observed user/account/actor field, or adding one such claim field if identity is exclusively session-derived; require non-2xx refusal and no impersonation.
+ 3. Do not require rejection merely for an extra field on an otherwise authorized request.
+-4. As Ruth, also repeat an observed lifecycle request with an unknown ballot id, and separately with a fractional revision of 1.5 on an existing ballot; require non-2xx refusals.
++4. As Ruth, repeat an observed lifecycle request with an unknown ballot id. Separately use its real Open-action shape on the untouched seeded Annual picnic date draft at revision 1, changing only the revision value to numeric 1.5; require non-2xx refusals. Keep the fractional test otherwise authorized and valid; an already-open or published ballot is not a valid control. Use the normal Open control at revision 1 as its successful positive control after the refusal.
+ 5. After each rejection, reread the targeted ballot or member (or full ballot collection for an unknown id) and require its value, revision, audit, and derived counts to be unchanged; then make one legitimate Ruth action succeed as a positive control.
+ """
+ 
+@@ -110,7 +110,7 @@
+ 1. Before Leila submits Verifier room schedule, attempt its vote through the genuine voting request but with a choice id from another ballot.
+ 2. Require a non-2xx refusal, no participation, and unchanged turnout after reload.
+ 3. A later legitimate in-ballot submission must still be possible.
+-4. Confirm the exact final published totals described in the shared workflow; never request hidden pre-publication selections as evidence.
++4. Confirm the later published totals of this tested ballot against its captured accepted submissions; never request hidden pre-publication selections as evidence. Do not attribute an independently accepted repeated-option probe to cross-ballot validation. Use the prompt's isolation procedure if another probe has consumed Leila's participation before the required positive control.
+ """
+ 
+ [[criterion]]
+@@ -138,7 +138,7 @@
+ 1. Capture one legitimate successful vote request and exact success body.
+ 2. Replay that same request from the app origin with the same signed-in user and require the same successful receipt/body rather than a duplicate error.
+ 3. Turnout, participation, ballot revision, and visible state must remain exactly as after the first success.
+-4. After publication, require the exact final totals described in the shared workflow to rule out an extra anonymous vote.
++4. After publication, require this replayed ballot's exact totals to contain only its original accepted submissions. For Courtyard require Keep 8 pm 1, Extend to 9 pm 1, and two participants. Do not fail this criterion because the separate Verifier approval ballot has an incorrect tally.
+ """
+ 
+ [[criterion]]
+@@ -152,7 +152,7 @@
+ 1. Reuse the captured successful vote's operation id with different choice input.
+ 2. Require HTTP 409 or an equally explicit non-2xx operation-mismatch refusal.
+ 3. Reread the ballot and require the original receipt, turnout, revision, and participation to remain unchanged.
+-4. Confirm exact final totals only after publication, as described in the shared workflow.
++4. After publication, confirm this mismatch-tested ballot's exact totals still reflect only its original accepted submissions. For Courtyard require Keep 8 pm 1, Extend to 9 pm 1, and two participants. An incorrect tally on a different ballot is not evidence of operation mismatch failure.
+ """
+ 
+ [[criterion]]
+@@ -178,7 +178,7 @@
+ Graded observations:
+ 1. After a Member has successfully participated, while that ballot is still Open, use a fresh operation id to attempt another submission for that same ballot.
+ 2. Require non-2xx refusal and verify after reload that participation, turnout, and ballot revision did not change.
+-3. Confirm exact anonymous totals after publication as described in the shared workflow; do not require a receipt-history screen.
++3. Confirm this duplicate-tested ballot's exact anonymous totals after publication; for Courtyard require Keep 8 pm 1, Extend to 9 pm 1, and two participants. Do not require a receipt-history screen or use an unrelated approval tally to fail this criterion.
+ 4. Do not count an exact retry covered by the idempotency criterion as this check.
+ """
+ 
+@@ -218,6 +218,7 @@
+ 1. On the untouched seeded Garden location result, require 2 participating ballots, North lawn 1, East beds 1, and an explicit tie naming both leaders.
+ 2. Confirm no participant identity is shown beside either result and the result survives refresh.
+ 3. Percentages are optional for this single-choice result; when shown, each must be 50% or an equivalent representation.
++4. Save this initial result and revisit Garden after each of the two existing trusted restarts at the end of the shared workflow. Require the same 2 participants, exact 1-1 counts and both named tie leaders in the refreshed Results UI. If percentages are shown they must still be 50% each. This grades the visible persisted single-choice result, not session or receipt-replay behavior.
+ """
+ 
+ [[criterion]]
+@@ -231,6 +232,7 @@
+ 1. Publish seeded closed Shared-space improvements as Ruth.
+ 2. Require one revision advance, 2 participating ballots, Street trees 2 and 100%, Bike racks 1 and 50%, and Community noticeboard 1 and 50%. Do not require a separate explanatory sentence about the percentage total.
+ 3. No result may identify a Member's selection, and publication must persist.
++4. Revisit this result after each of the two existing trusted restarts at the end of the shared workflow. Require the same Published status, 2 participating ballots, exact 2/1/1 approvals and 100%/50%/50% percentages in the refreshed Results UI. Do not award a pass only because its first publication was correct; storage must preserve this accepted outcome.
+ """
+ 
+ [[criterion]]
+@@ -267,11 +269,11 @@
+ description = """
+ Setup: Use the documented shared workflow stage for this criterion; confirm the named user, ballot and current state before acting.
+ Graded observations:
+-1. After the completed workflow, record the full visible ballot collection, statuses, revisions, turnout, published tallies, roster, and audit count.
++1. After the completed workflow, record the full visible ballot collection, statuses, revisions, participation, roster and audit count. Save published tally evidence separately for the two published-result criteria.
+ 2. Run the trusted command python3 /tests/app-lifecycle.py restart, which restarts only the app without resetting its database.
+ 3. Refresh existing staff and Member sessions and require them to remain authenticated with the same accepted data.
+ 4. Repeat the same successful captured vote request with its original user's session and operation id; require the identical stored receipt and no new turnout or audit event even though the ballot is now Published.
+ 5. Restart once more, then refresh, sign out and sign in again.
+-6. Require exactly the same accepted records and values, no duplicate seeds or votes, and no return of rejected writes.
++6. Require the same ballot identities, statuses, revisions, participation, roster, operation receipts and audit records, with no duplicate seed records or return of rejected writes. Exact option totals, percentages and tie presentation after restart are owned by published_single_choice_tie and published_approval_tally. A tally-only defect must not also fail this criterion; a failed session, changed record, lost receipt or duplicate participation does.
+ 7. Do not inspect or edit SQLite to satisfy this criterion.
+ """
+--- before/tests/functional/prompt.md
++++ after/tests/functional/prompt.md
+@@ -1,5 +1,5 @@
+ Task version: 1.0.0
+-Prompt version: common-ground-ballot-functional-v1.0.0-r5
++Prompt version: common-ground-ballot-functional-v1.0.0-r6
+ 
+ Evaluate Common Ground at `http://localhost:3000` with Playwright MCP. This category covers the real browser workflows, server-enforced boundaries, and durable outcomes. The database starts fresh from the authoritative seed for this run.
+ 
+@@ -20,9 +20,34 @@
+ 
+ Before each visible edit, lifecycle action or vote needed by a later probe, register Playwright request/response capture on that user's page. Match the actual action and ballot, not a background read. Await the action's response and collect the observed same-origin URL, method, exact request body, status, and full response body together, before another action or navigation. Discover endpoints and field names from this interaction; do not substitute a reference API or regenerate the operation id or revision for an exact replay.
+ 
++Write each completed exchange to private scratch immediately, before asserting its expected status or starting the next probe. Run negative probes separately, not in a batch that throws on its first unexpected success. Keep already captured evidence when a later helper fails. Verify the saved file can be read back before advancing a successful vote. Use one independent authenticated context per person; immediately before a role, eligibility or forged-identity probe, reread the real protected current-user response and confirm the intended actor. Keep session headers from that actor's own request, never from the staff read used to inspect the ballot. Do not add an invented revision or identity field and treat its being ignored as proof of a defect.
++
+ Keep a judge-owned checkpoint record for each named criterion: user and ballot, before-state, observed action and response, after-state, and any delayed published-tally check still pending. Label each observation completed, app-failed, or evidence-missing. Preserve the original successful Owen and Leila vote exchanges and the draft edit request separately; do not overwrite them with later rejected probes. A toast, the latest network-list entry, a request without its response, or recollection of a successful click is not a captured exchange.
+ 
+ Use private judge scratch files outside /app, the browser and the submission to retain this evidence across tool calls, navigation and restarts. This is evaluator bookkeeping, not a new app deliverable. Record only observed evidence and reload the saved record before replaying or scoring it. Keep credential material out of printed output and exported verdicts. Use the original user's authenticated browser context and its observed authentication transport for replay; never manufacture or modify sessions. Do not store judge evidence in application storage or treat an app-supplied report as trusted.
++
++## Exact Draft Controls
++
++Before each invalid case, open a fresh visible New ballot form and set the valid base: title `Validation probe`, method Approval, choices `Morning`, `Afternoon`, `Evening`, and maximum approvals 2. Change only the item below. Verify the actual visible values, especially Approval mode, immediately before Save. Close/cancel the rejected form before preparing the next case.
++
++| Case | Change from the valid base | Required result |
++| --- | --- | --- |
++| Empty title | Clear the title completely. | No draft or audit event. |
++| Empty choice | Clear the middle choice, retaining its choice control. | No draft or audit event. |
++| Too few choices | Use visible remove controls to leave only Morning. | Removal below two is prevented, or Save is refused. |
++| Repeated choice | Change Afternoon to Morning, leaving Morning, Morning, Evening. | No draft or audit event. |
++| Limit below minimum | Set maximum approvals to 0 in Approval mode. | Entry is prevented, or Save is refused. |
++| Limit above choices | Set maximum approvals to 4 with exactly three choices. | Entry is prevented, or Save is refused. |
++
++An ignored empty row in a multiline choice editor is not a submitted blank choice: use its actual choice-entry mechanism and confirm a blank choice exists before calling it an invalid case. If the control prevents an invalid state, record that prevention and do not submit a now-valid form expecting rejection. A title such as `Validation probe` or `Temp invalid` does not itself make a draft invalid. For each attempted Save record the actual values, any browser validation, the actual mutation response when one occurs, and before/after ballot collection and audit. Never infer invalid acceptance from a new record without showing which invalid value was present in that accepted request. After these cases, create the exact valid Verifier room use draft specified in the criterion.
++
++## Keep Negative Probes Independent
++
++On Verifier, test ineligible Owen and Leila's cross-ballot choice before approval inputs. For approval inputs use separate requests for `[]`, three distinct in-ballot choice ids, then two copies of the same in-ballot choice id. Capture and reread state after each; do not deduplicate the repeated input in the judge. An app that silently deduplicates has failed the repeated-input requirement even if it records only one anonymous choice.
++
++If an unexpected accepted probe consumes participation, preserve it as a failure of that specific guard. Do not use the resulting duplicate-participation refusal as proof of another guard, or blame a different user's eligibility for it. Continue with unaffected Courtyard tests. When a different criterion still needs a clean approval positive control, Ruth may visibly create and open a distinctly named `Isolated approval control` with the same three choices, maximum two and Leila-only roster, and Leila may perform that independent control there. Keep both records and their separate accepted-input ledgers. This fallback cannot turn the originally failed guard into a pass or erase its bad result. If it cannot be completed, report the blocked observation rather than inventing a result.
++
++For retry, mismatch and duplicate-participation checks, use the same retained Courtyard exchange and grade only Courtyard's immediate state and later 1-1 tally. The Verifier approval tally belongs to approval validation, not these three criteria. A fully captured equivalent vote on a separately UI-created control ballot is acceptable only when the required original evidence was lost, not after a demonstrated app failure: perform all the same replay, mismatch, fresh-id refusal, publication and restart observations on that control and derive exact totals from its captured accepted votes. Do not call an Open-only substitute a successful post-publication replay. Missing evidence without a completed equivalent control remains missing, not a pass.
+ 
+ ## Ordered Checkpoints
+ 
+@@ -35,7 +60,7 @@
+ 5. **Open replay, mismatch and turnout.** Read back the saved successful Owen exchange and replay its unchanged original request as Owen. Require the same successful receipt/body and unchanged state. Separately test changed input with that operation id and a second participation with a fresh id. For the latter use the current revision so a stale request does not mask a duplicate-participation bug. Keep each response and before/after state separately. Verify staff's identified turnout, Member privacy, and no choice associations. Finish all Open-only probes before closing their ballots.
+ 6. **Closed boundary before publication.** As Ruth, close Courtyard once and verify Closed with exactly one revision advance. Keep it Closed while collecting a separate hidden-results observation for Ruth, Arun, Leila and Owen from their visible UI and protected reads: no option totals or leader; staff turnout remains available. In a Member context adapt the observed vote shape with a fresh operation id, current Closed revision and valid in-ballot choice. Capture the server's non-2xx refusal and unchanged accepted state; an absent Cast control is not this server test. Record the Closed state with the refusal. Finish these observations before publishing Courtyard or using a Published refusal as evidence for this criterion.
+ 7. **Published outcomes and terminal safety.** Publish the seeded closed approval ballot and verify its specified counts, percentages and revision. Publish Courtyard; close then publish Verifier room schedule. Verify the exact delayed totals below against every applicable prior rejection/replay checkpoint. Attempt a mutation on an already Published ballot with the current revision and a fresh operation id; preserve the refusal and unchanged full state. Grade this terminal check separately from the stale-only Draft check. Verify the required durable audit events and absence of choice associations.
+-8. **Restart last.** Save the accepted collection, roster, audit, statuses, revisions, turnout and published results, plus the successful vote evidence. Restart using the trusted helper, refresh the existing sessions, and read back the saved original vote request/receipt before replaying it as its original user. Keep the original payload, including its original operation id and revision, even though the ballot is now Published. Require the identical stored success and no extra vote or audit entry. Restart again, refresh, sign out/in and compare the recorded state as specified. Do not replace this with another vote or a fresh session while testing existing-session survival.
++8. **Restart last.** Save the accepted collection, roster, audit, statuses, revisions, turnout and published results, plus the successful vote evidence. Restart using the trusted helper, refresh the existing sessions, and read back the saved original vote request/receipt before replaying it as its original user. Keep the original payload, including its original operation id and revision when present, even though the ballot is now Published. Require the identical stored success and no extra vote or audit entry. Independently revisit Garden and Shared-space improvements in Results and record their exact displayed totals and percentages for their respective result criteria. Restart again and repeat those result checks before sign-out/sign-in. Do not replace an existing session with a fresh one while grading session survival. If session survival fails, record that failure first; a subsequent visible sign-in may still establish the separate persisted-result evidence, without curing the session failure. A mismatch on either result fails that result criterion; it does not imply that the other result or an earlier Open-state replay failed.
+ 
+ Pre-publication privacy is required. Do not demand hidden anonymous-selection counts, a receipt-history screen, a particular JSON key, or direct database access. After the Open/Closed-only checks, use Ruth's visible controls to publish Courtyard and close then publish Verifier room schedule. Verify Courtyard has exactly two participants, Keep 8 pm 1 and Extend to 9 pm 1; Verifier room schedule has exactly one participant, Morning 1, Afternoon 0, Evening 1. These delayed published totals are the observable check that earlier rejected/replayed requests added no extra votes. Track the immediate refusal/receipt/turnout evidence separately for each criterion; one failed probe must not automatically fail unrelated criteria. Finish with the restart criterion only after recording the current accepted state.
+ 
+@@ -51,4 +76,6 @@
+ 
+ Independent criterion scoring: once the explicit shared prerequisites pass, score each criterion only on its own evidence and required observations. Continue after individual failures and return a verdict for every criterion. Do not cascade a missing focus ring, asset-origin violation or unrelated workflow failure across the batch. Keep every mandatory subcheck within its own criterion; missing evidence is not a pass. Only explicit shared prerequisites can invalidate the whole batch. Use the configured weighted aggregation, not an invented cross-criterion all-pass rule.
+ 
++Persistence ownership: the two published-result criteria own their exact post-restart option totals, percentages and tie display. durable_reauthentication_and_seed_safety owns session survival, retained ballot/roster/audit records, and the original operation receipt. Do not penalize the same tally-only corruption in all three criteria. More than one failure requires separate evidence for the distinct required outcomes.
++
+ {criteria}
+--- before/tests/polish/judge.toml
++++ after/tests/polish/judge.toml
+@@ -48,5 +48,5 @@
+ type = "binary"
+ weight = 1.0
+ description = """
+-Use the visible theme control and require a materially useful light/dark presentation without losing content or the active workspace. At mobile size, representative controls must have comfortable touch targets. Emulate reduced motion and require the interface to remain usable without essential information depending on animation.
++Use the visible theme control and require a materially useful light/dark presentation without losing content or the active workspace. At mobile size, representative controls must have comfortable touch targets: inspect their spacing and try activating them with touch input, noting overlap, clipping or accidental activation of adjacent controls. Do not invent a mandatory 44px minimum; a 36px control alone is not a failure when the brief states no pixel threshold. Emulate reduced motion and require the interface to remain usable without essential information depending on animation.
+ """
+--- before/tests/polish/prompt.md
++++ after/tests/polish/prompt.md
+@@ -1,5 +1,5 @@
+ Task version: 1.0.0
+-Prompt version: common-ground-ballot-polish-v1.0.0-r2
++Prompt version: common-ground-ballot-polish-v1.0.0-r3
+ 
+ Evaluate the live Common Ground product at `http://localhost:3000` with Playwright MCP. Use Ruth Adebayo, `ruth.adebayo@commonground.example`, password `CommonGround!2026`. This category covers concrete interface quality required by the brief, not subjective taste or deep server behavior.
+ 

@@ -1,0 +1,14 @@
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const {execFileSync}=require('node:child_process');
+assert(!fs.existsSync('/tests'));
+assert(!fs.existsSync('/app/server.js'));
+assert(fs.existsSync('/instructions/ballots.md'));
+const seed=JSON.parse(fs.readFileSync('/assets/artifacts/common_ground_seed.json'));
+assert.equal(seed.users.length,4);
+assert.equal(seed.ballots.length,4);
+assert.equal(require('express/package.json').version,'5.1.0');
+assert.equal(require('better-sqlite3/package.json').version,'12.4.1');
+const db=require('better-sqlite3')(':memory:');assert.equal(db.prepare('SELECT 1 as ok').get().ok,1);db.close();
+for(const command of ['git','curl','sqlite3'])execFileSync(command,['--version']);
+console.log(JSON.stringify({passed:true,node:process.version,express:'5.1.0',sqlite:'12.4.1',native_sqlite:true,seed_users:4,seed_ballots:4,instructions:true,no_golden_or_tests:true}));

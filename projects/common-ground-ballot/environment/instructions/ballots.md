@@ -14,10 +14,23 @@ Opening a ballot captures the active Members at that moment. Later roster
 changes affect future ballots, not that snapshot. This is why Owen remains
 eligible for the seeded open ballot even though he is currently inactive.
 
-Each eligible Member has one final submission per ballot. Retries of the same
-operation must return the original outcome without recording another ballot;
-reusing that operation for different input must be refused. A choice from a
+Each eligible Member has one final submission per ballot. A choice from a
 different ballot is never valid.
+
+People sometimes retry an action after losing its response. Give each create,
+edit, membership change, lifecycle action and vote an operation identifier tied
+to the signed-in person. Retrying the same operation should return its original
+response status and body, without repeating the change or its audit
+event. Reusing that identifier for different input must be refused. Keep these
+outcomes through restart, even if the ballot or roster has changed since then;
+replaying an old Open must not reopen a closed ballot or recapture its members.
+
+For a well-formed operation from someone allowed to perform it, remember a
+refusal caused by a stale revision or the wrong ballot state too. A premature
+Publish must still return its original refusal when retried after Close. To
+try again with current information, the person submits a new operation. This
+does not require keeping malformed requests, bad sign-ins or unauthorized
+requests as receipts. Refusals and retries never add audit events.
 
 The order is Draft, Open, Closed, Published. Voting happens only while Open;
 results stay hidden through Closed and appear only at Published. Published is

@@ -10,6 +10,13 @@ unpredictable session, not an account id supplied by the browser. Refuse
 unknown, stale, malformed, cross-ballot, or out-of-role writes and leave the
 ballot, revision, turnout, results, and history unchanged.
 
+Roster changes need the revision the Coordinator actually viewed, just like
+ballot edits. If two tabs are open, an older membership update must not undo a
+newer one, even when the member's active status has changed and then changed
+back. Refuse it with useful refresh guidance and no new audit event. A fresh
+update can succeed. The accepted roster determines who joins the next ballot's
+opening snapshot; it must not rewrite eligibility on an already-open ballot.
+
 Sign-out ends the current session. Also give each person a way to end all of
 their Common Ground sessions. A session that has been ended must not continue
 to read or change protected records.

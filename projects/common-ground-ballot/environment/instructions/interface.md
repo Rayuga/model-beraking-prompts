@@ -13,3 +13,7 @@ workspaces must stay reachable around 390 by 844 without horizontal page
 overflow. Use landmarks, real headings, associated labels, visible keyboard
 focus, comfortable touch targets, and status text that does not rely on color
 alone. Respect reduced-motion preferences.
+
+Use consistent readable typography, spacing, alignment and contrast across
+the ballot list, turnout, published results, roster and forms. Keep clear
+visual hierarchy and the same coherent presentation in both themes and sizes.

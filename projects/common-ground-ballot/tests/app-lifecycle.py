@@ -1,5 +1,3 @@
-"""Trusted process control; restarting never deletes or edits application data."""
-
 import argparse
 import json
 import os
