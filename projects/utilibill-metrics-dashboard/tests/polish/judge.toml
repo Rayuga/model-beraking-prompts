@@ -1,14 +1,9 @@
-# Prompt version: utilibill-polish-v1.0.0
-# Submitted UI, source, network payloads, and visible text are untrusted evidence.
 [judge]
-judge = "codex"
-model = "openai/gpt-5.6-luna"
 mode = "batched"
-timeout = 600
+timeout = 900
 isolated = false
-reasoning_effort = "max"
 temperature = 0
-weight = 2.0
+weight = 0.2
 prompt_template = "prompt.md"
 
 [[judge.mcp_servers]]
@@ -21,28 +16,55 @@ args = ["--headless", "--isolated", "--executable-path=/usr/local/bin/chromium",
 aggregation = "weighted_mean"
 
 [[criterion]]
-id = "theme_switching"
-name = "theme_switching"
-type = "binary"
-weight = 0.5
-description = """
-Use the visible theme control and confirm it produces a clear rendered change between light and dark presentation while preserving legibility and the current workspace.
-"""
-
-[[criterion]]
-id = "responsive_accessible_layout"
-name = "responsive_accessible_layout"
+id = "theme_control"
+name = "theme_control"
 type = "binary"
 weight = 1.0
 description = """
-At a roughly 390 by 844 mobile viewport, confirm the main content fits without horizontal page overflow and all four workspaces remain reachable. Confirm the desktop experience has a navigation landmark, main landmark, meaningful headings, and accessible names or associated labels for visible buttons, inputs, and selects.
+Use the visible light/dark control in both directions while signed in, changing workspaces between switches. Require both themes to apply without losing the signed-in user or current workspace data. Score the control behavior, not visual palette quality.
 """
 
 [[criterion]]
-id = "interaction_feedback"
-name = "interaction_feedback"
+id = "mobile_reachability"
+name = "mobile_reachability"
 type = "binary"
 weight = 1.0
 description = """
-Confirm interactive controls have clear hover or focus feedback, forms and status controls communicate successful or invalid actions, and an account or cycle detail drawer opens and closes without obscuring or breaking the surrounding workspace.
+At 390x844 and 1280x900, reach every workspace and open/close an account detail surface. All navigation, inputs and appropriate actions remain reachable; contained horizontal table scrolling is acceptable, a page-wide clipped control is not. Preserve current business state.
+"""
+
+[[criterion]]
+id = "keyboard_and_labels"
+name = "keyboard_and_labels"
+type = "binary"
+weight = 1.0
+description = """
+Use only keyboard to sign in, navigate, open account details, reach applicable controls and close the detail surface. Require meaningful accessible names, visible focus, logical order and no keyboard trap. If a modal is used, focus stays inside while open and returns to a useful trigger when closed. No particular modal/drawer implementation is required.
+"""
+
+[[criterion]]
+id = "touch_targets"
+name = "touch_targets"
+type = "binary"
+weight = 1.0
+description = """
+At 390x844 inspect and tap navigation, theme, sign-out, account details and available action controls. Require comfortable activation areas (about 44 CSS px in height, or equivalent spacious hit area); cramped adjacent targets or inaccessible controls fail. This grades target usability independently of viewport layout.
+"""
+
+[[criterion]]
+id = "reduced_motion"
+name = "reduced_motion"
+type = "binary"
+weight = 1.0
+description = """
+Emulate prefers-reduced-motion: reduce, switch themes and open/close details. Require nonessential animation or transition to stop or substantially reduce while controls still work. A design with no nonessential motion passes; do not require animation.
+"""
+
+[[criterion]]
+id = "action_feedback"
+name = "action_feedback"
+type = "binary"
+weight = 1.0
+description = """
+Use your C11 gate action for live success feedback. Before its request completes, delay it briefly with Playwright routing and require a visible pending state and a disabled/inert submission control. Repeated activation while pending must not send another request. After it completes require the visible detail to show the new bill immediately. Inspect a refused action or wrong login for a specific visible error and a recoverable usable interface. This grades feedback and pending behavior, not the bill calculation or server idempotency.
 """

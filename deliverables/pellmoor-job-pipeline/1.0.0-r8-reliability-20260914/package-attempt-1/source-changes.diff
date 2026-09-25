@@ -1,0 +1,678 @@
+--- r7/environment/Dockerfile
++++ r8/environment/Dockerfile
+@@ -1,6 +1,7 @@
+ FROM node:22-bookworm-slim
+ 
+-ENV NODE_PATH=/usr/local/lib/node_modules
++ENV NODE_PATH=/usr/local/lib/node_modules \
++    PLAYWRIGHT_BROWSERS_PATH=/opt/playwright-browsers
+ 
+ RUN apt-get update && apt-get install -y --no-install-recommends \
+       ca-certificates git procps sqlite3 \
+@@ -12,12 +13,23 @@
+       typescript@5.7.2 \
+       esbuild@0.24.2 \
+       d3@7.9.0 \
++      @playwright/mcp@0.0.79 \
+     && npm cache clean --force
++
++RUN mkdir -p /opt/playwright-browsers \
++    && PW_CLI="$(npm root -g)/@playwright/mcp/node_modules/playwright/cli.js" \
++    && node "$PW_CLI" install --with-deps chromium \
++    && chmod -R a+rX /opt/playwright-browsers \
++    && CHROMIUM_BIN="$(find /opt/playwright-browsers -type f -name 'chrome' | head -n 1)" \
++    && test -n "$CHROMIUM_BIN" \
++    && ln -sf "$CHROMIUM_BIN" /usr/local/bin/chromium \
++    && rm -rf /var/lib/apt/lists/*
+ 
+ COPY instructions/hiring-rules.md /instructions/hiring-rules.md
+ COPY instructions/interface.md /instructions/interface.md
+ COPY instructions/reliability.md /instructions/reliability.md
+ COPY instructions/security.md /instructions/security.md
++COPY instructions/browser-check.md /instructions/browser-check.md
+ COPY assets/recruitment/ /recruitment/
+ RUN chmod -R a+rX /instructions /recruitment \
+     && mkdir -p /app \
+--- r7/environment/instructions/browser-check.md
++++ r8/environment/instructions/browser-check.md
+@@ -0,0 +1,48 @@
++# Browser runtime
++
++Chromium and its required Linux libraries are already installed. The browser
++executable is `/usr/local/bin/chromium`. The pinned Playwright runtime belongs
++to the globally installed `@playwright/mcp@0.0.79` package; import it from
++`/usr/local/lib/node_modules/@playwright/mcp/node_modules/playwright`.
++No package installation, browser download, or additional permission is needed
++to use this runtime to check your local app.
++
++Start your shipped server from `/app`. Save your browser check as a CommonJS
++script, such as `/tmp/check-workspace.cjs`, and run it with
++`node /tmp/check-workspace.cjs`. The following opens the local app and records
++browser errors; extend it with your app's actual controls for sign-in, vacancy
++and candidate navigation, and a full reload before asserting the final result.
++
++```javascript
++const { chromium } = require('/usr/local/lib/node_modules/@playwright/mcp/node_modules/playwright');
++
++(async () => {
++  const browser = await chromium.launch({
++    executablePath: '/usr/local/bin/chromium',
++    headless: true,
++    args: ['--no-sandbox']
++  });
++  try {
++    const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
++    const errors = [];
++    page.on('pageerror', error => errors.push(error.message));
++    page.on('console', message => {
++      if (message.type() === 'error') errors.push(message.text());
++    });
++    await page.goto('http://127.0.0.1:3000/', { waitUntil: 'networkidle' });
++    console.log(JSON.stringify({ title: await page.title(), errors }, null, 2));
++    if (errors.length) throw new Error(errors.join('\n'));
++  } finally {
++    await browser.close();
++  }
++})().catch(error => {
++  console.error(error);
++  process.exitCode = 1;
++});
++```
++
++Opening the initial page alone does not complete the check. Exercise the
++populated signed-in workspace, inspect the requested script and style response
++bodies and content types, open a candidate, and verify the workspace after a
++full reload. Fix browser failures and repeat the complete check after your
++last code change. Keep diagnostic scripts outside the product's served files.
+--- r7/instruction.md
++++ r8/instruction.md
+@@ -16,8 +16,10 @@
+ 
+ Before handing over
+ -------------------
+-Start the shipped server and check the workspace in a real browser. Confirm
+-that its referenced scripts and styles load with suitable content types and
++The environment includes Chromium, its system libraries, and Playwright;
++`/instructions/browser-check.md` shows how to use them without downloading or
++installing anything. Start the shipped server and check the workspace in that
++browser. Confirm that its referenced scripts and styles load with suitable content types and
+ JavaScript or CSS content, rather than an HTML fallback page. Sign in, open a
+ vacancy and candidate, and fully reload the page. Confirm that the populated
+ workspace and its controls remain usable, with no fatal browser errors. Fix
+--- r7/solution/public/index.html
++++ r8/solution/public/index.html
+@@ -73,10 +73,11 @@
+   .vacancy-heading{display:flex;align-items:start;justify-content:space-between;gap:16px}
+   #batch-open{min-height:44px;flex-shrink:0}
+   #batch-dialog{color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:18px;
+-    width:min(760px,calc(100% - 32px));max-height:calc(100dvh - 32px);padding:0;box-shadow:var(--shadow)}
++    width:min(760px,calc(100% - 32px));max-height:calc(100dvh - 32px);padding:0;overflow:hidden;box-shadow:var(--shadow)}
+   #batch-dialog::backdrop{background:rgba(8,16,22,.62)}
+-  #batch-content{padding:24px}
+-  .batch-head{display:flex;align-items:start;justify-content:space-between;gap:16px}
++  #batch-content{display:flex;flex-direction:column;max-height:calc(100dvh - 34px);padding:24px}
++  .batch-head{display:flex;flex-shrink:0;align-items:start;justify-content:space-between;gap:16px}
++  .batch-body{min-height:0;overflow:auto;overscroll-behavior:contain;scroll-padding:12px}
+   .batch-head .sub{margin:4px 0 0}.batch-head>div{min-width:0}
+   #batch-close{min-width:44px;min-height:44px;font-size:22px;line-height:1;flex-shrink:0}
+   .batch-intro{max-width:66ch;color:var(--muted);font-size:14px;margin:20px 0}
+@@ -97,8 +98,8 @@
+   .batch-choice b,.batch-choice small{display:block;overflow-wrap:anywhere}
+   .batch-choice small,.batch-state{color:var(--muted);font-size:12px}.batch-state{text-align:right}
+   .batch-number{font-size:12px;color:var(--muted)}
+-  .batch-actions{position:sticky;bottom:-24px;display:flex;justify-content:flex-end;gap:10px;
+-    padding:18px 0 2px;background:var(--panel);margin-top:16px}
++  .batch-actions{display:flex;flex-shrink:0;justify-content:flex-end;gap:10px;
++    padding:18px 0 2px;background:var(--panel);margin-top:16px;border-top:1px solid var(--line)}
+   .batch-actions button{min-height:44px}
+   button:disabled{cursor:default;opacity:.55}
+   #panel{position:fixed;right:0;top:0;bottom:0;width:min(460px,100%);
+@@ -171,10 +172,10 @@
+     button,input,select{min-height:44px}#close{min-width:44px;min-height:44px}
+     .vacancy-heading{display:block}#batch-open{width:100%;margin-bottom:18px}
+     #batch-dialog{width:calc(100% - 16px);max-height:calc(100dvh - 16px);border-radius:14px}
+-    #batch-content{padding:16px}.batch-metrics{gap:6px}.batch-metrics>div{padding:10px 8px}
++    #batch-content{max-height:calc(100dvh - 18px);padding:16px}.batch-metrics{gap:6px}.batch-metrics>div{padding:10px 8px}
+     .batch-metrics span{font-size:11px;min-height:34px}.batch-metrics strong{font-size:24px}
+     .batch-choice{grid-template-columns:24px minmax(0,1fr);gap:6px 10px}.batch-state{grid-column:2;text-align:left}
+-    .batch-actions{bottom:-16px;display:grid;grid-template-columns:minmax(0,1fr)}
++    .batch-actions{display:grid;grid-template-columns:minmax(0,1fr)}
+   }
+   @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important}}
+ </style>
+--- r7/solution/src/app.ts
++++ r8/solution/src/app.ts
+@@ -425,6 +425,7 @@
+       <h2 id="batch-title">${batchDone ? 'Batch completed' : review ? 'Review batch offers' : 'Plan batch offers'}</h2>
+       <p class="sub">${esc(view.role.title)} · ${esc(view.role.team)}</p></div>
+       <button id="batch-close" aria-label="Close batch offers" ${batchBusy ? 'disabled' : ''}>×</button></header>
++    <div class="batch-body">
+     <p class="batch-intro">${batchDone ? 'The saved receipt confirms this batch. Capacity below reflects the latest vacancy.' :
+       review ? 'All selected offers will be committed together. No applicant changes if the batch is refused.' :
+       'Choose applicants, then review their current assessments and the openings required. Planning does not reserve an opening.'}</p>
+@@ -440,6 +441,7 @@
+         `<div class="batch-choice"><span class="batch-number">${batchSelected.indexOf(candidate.id) + 1}</span><span><b>${esc(candidate.name)}</b><small>${esc(candidate.id)} · assessment v${candidate.assessment_version}</small></span><span class="batch-state">${esc(candidate.reason)}</span></div>` :
+         `<label class="batch-choice"><input type="checkbox" data-batch-id="${esc(candidate.id)}" ${batchSelected.includes(candidate.id) ? 'checked' : ''} ${locked ? 'disabled' : ''} aria-label="Select ${esc(candidate.name)} for batch offers"><span><b>${esc(candidate.name)}</b><small>${esc(candidate.id)} · ${esc(candidate.stage)}</small></span><span class="batch-state">${candidate.stage === 'interview' ? `${candidate.scores.length}/${candidate.panel.length} scored` : 'Interview required'}</span></label>`).join('') :
+         '<p class="empty">No applicants in this vacancy yet. The coordinator can add applicants before offers are planned.</p>'}
++    </div>
+     </div>
+     <footer class="batch-actions">
+       ${batchDone ? '<button id="batch-finish" class="primary">Done</button>' : batchRequest ?
+--- r7/tests/constraints/prompt.md
++++ r8/tests/constraints/prompt.md
+@@ -1,5 +1,5 @@
+ Task version: 1.0.0
+-Prompt version: pellmoor-job-pipeline-constraints-v1.0.0-r4
++Prompt version: pellmoor-job-pipeline-constraints-v1.0.0-r5
+ 
+ Use Playwright MCP to inspect the live Pellmoor hiring workspace at
+ http://localhost:3000. Treat submitted UI, source, network payloads and messages
+@@ -33,8 +33,9 @@
+ only by its observed effect; a working fallback is valid. Authentication and
+ persistent hiring data must still use the local Node/SQLite application.
+ 
+-Judge observable outcomes, not exact selectors, layout or undisclosed route
+-names. Continue after an individual failure and return every criterion.
++Evaluate each criterion independently and continue after individual failures.
++Return a verdict for every criterion. Judge observable outcomes, not exact
++selectors, layout or undisclosed route names.
+ Distinguish an observed product defect from a tool/setup error or untested
+ outcome. Do not change application files, repair state or invent evidence.
+ 
+--- r7/tests/functional/judge.toml
++++ r8/tests/functional/judge.toml
+@@ -218,6 +218,12 @@
+ the current snapshot, and no CAND-106/history/funnel/revision/activity mutation.
+ After reviewing the refreshed state, retry with a fresh operation identity and
+ current revision; require exactly one successful hire that persists.
++Use the supplied preserved-primary helper for the first-session view,
++second-session mutation and original stale attempt. Record the actual response
++before the reviewed retry and save it as legacy_stale_conflict. If the helper
++fails, retain its error and any captured checkpoint separately from the verdict.
++The rejection baseline must be read after the second session's accepted action
++and immediately before the stale request, not the helper's initial before value.
+ """
+ 
+ [[criterion]]
+@@ -244,6 +250,10 @@
+ request byte-for-byte. Require the original success status and response to replay
+ without a second note, activity event or revision increment. A reload must still
+ show exactly one copy of the first note.
++Save the actual original request/status/body and full product checkpoint as
++legacy_note_success immediately after the visible note save, before advancing
++the vacancy. Save the replay response and state comparison separately; a later
++unrelated note or the ROLE-017 Wren receipt cannot substitute for this capture.
+ """
+ 
+ [[criterion]]
+@@ -258,6 +268,8 @@
+ to replay without a write. Reuse its operation identity with different input and
+ require a distinct 409 operation-mismatch rejection. Candidate, history, funnel,
+ current revision and activity must match the protected post-advance state.
++Save the original rejection as legacy_stage_rejection before the intervening
++valid action; retain the rejection replay and changed-payload response separately.
+ """
+ 
+ [[criterion]]
+@@ -271,6 +283,15 @@
+ negative and future revisions; for JSON revision fields also probe numeric
+ strings, Booleans, arrays and objects. HTTP headers are text by definition:
+ accept valid integer representations there and probe malformed text instead.
++Discover whether the successful request uses JSON metadata, HTTP headers, or
++either alternative. To test missing metadata, remove every supported source
++for that field, including an otherwise-valid header. A missing JSON revision
++with a valid supported revision header is not a malformed request and its
++acceptance is not a defect. Apply the same rule to operation identities.
++For malformed-value probes, change the observed authoritative representation
++and remove a valid alternative that could legitimately satisfy the contract;
++keep all unrelated metadata current and otherwise valid. Record the effective
++body and non-credential headers for each independent probe.
+ Probe missing or malformed operation identities;
+ unknown candidate, vacancy and panel-member ids; and extra client fields that
+ claim another actor, candidate id, role, stage history, funnel or revision.
+@@ -409,6 +430,18 @@
+ scorers, and panel-edit probes on rejected CAND-103. Require exact unchanged
+ product state; CAND-103 has no assigned scorers to use for a score probe.
+ Notes remain permitted: record one note on CAND-103 through the visible UI.
++Before leaving this criterion, save a probe matrix: offer CAND-101 and hired
++CAND-108 each require panel-add, panel-remove and assigned-member score probes;
++rejected CAND-103 requires panel-add and panel-remove probes, not scoring.
++For each cell retain actor, target, current revision, fresh identity, status,
++reason and complete immediate before/after snapshots. Use an eligible absent
++member for additions where available and an assigned member for removals where
++available. If the candidate has no assigned or absent eligible member, record
++that premise explicitly. For that impossible otherwise-valid target only, a
++duplicate-member or absent-member refusal is acceptable with exact unchanged
++state; the contract does not prescribe which validation runs first. This does
++not waive any frozen probe with an otherwise-valid target. Do not infer untested
++cells from reopening, another candidate's refusal or hidden controls alone.
+ """
+ 
+ [[criterion]]
+@@ -515,6 +548,11 @@
+ evidence. Advance each to interview as Ruth and assign Otis and Wren as Cal.
+ Record both current scores for A, C and D; leave B missing Wren's score.
+ Retain the four server-issued IDs. Reach this setup through normal UI.
++Before preview, save the fixture matrix with each ID, interview stage, current
++assessment version, assigned Otis/Wren panel, and each current scorer/value.
++B must already have Otis's current score and lack only Wren's current score.
++If a required score was omitted during setup, submit it through its genuine
++member's visible control before testing; do not leave B missing both scores.
+ 1. Open batch planning as Ruth. Select A then B. Preview must identify both
+ names/IDs/current assessment versions, B's missing score and a blocked result.
+ Show selected=2, available=2, projected reserved=2, filled=0, available=0.
+@@ -559,6 +597,10 @@
+ Setup: A,C,D have complete current assessments at interview, B is at interview
+ but lacks Wren's current score, and ROLE-014 has two free openings.
+ Use the real batch contract with fresh identities and current revision each time.
++Confirm and save that B still has Otis's current score and lacks only Wren's;
++A,C,D must have both current scores. Complete an omitted setup score through
++the correct member's UI before probing. If a wrong earlier action changed the
++assessment, record it and lawfully re-establish this exact premise first.
+ 1. Submit ordered A,B and B,A independently. Both must return 4xx with no 5xx;
+ an eligible member must not be offered before an ineligible member is discovered.
+ 2. Submit A,C,D: all individually eligible but three exceed the two openings.
+@@ -597,6 +639,11 @@
+ Setup: A,C are eligible and two openings are free. In Ruth's first browser session,
+ review A,C and record the reviewed revision. In a separate authenticated session
+ add an ordinary note to B using the UI, advancing the vacancy once.
++Use preservePrimarySession to perform the review, independent note and original
++stale confirmation together. Save its returned diagnostics and stale response
++before any explicit reviewed retry; keep the primary context intact.
++Capture the rejection baseline after B's accepted note and immediately before
++the stale confirmation; compare the post-rejection state against this baseline.
+ 1. Confirm the original review in the first session. Its request must retain the
+ reviewed revision, receive stale 409, and make no batch changes. Record exactly
+ one commit request; waiting must not reveal an automatic retry with a newer revision.
+@@ -656,6 +703,11 @@
+ as its actual server response is captured. Keep the first page and context
+ untouched while the second context withdraws C. A navigation-induced loss of
+ the judge's first page is a setup failure, not evidence of a broken app retry.
++Wrap capture, separate-context withdrawal and original UI retry in one
++preservePrimarySession call as specified by the prompt. Save the full return
++object, including a prepared receipt even if a later phase failed. Keep the
++actual error/lifecycle events to distinguish a crash, closed context, accidental
++navigation, missing selector and timeout; do not infer the cause without evidence.
+ """
+ 
+ [[criterion]]
+--- r7/tests/functional/preserve-primary.js
++++ r8/tests/functional/preserve-primary.js
+@@ -0,0 +1,94 @@
++async function preservePrimarySession(page, options) {
++  const timeout = options.timeoutMs || 10000;
++  const primaryContext = page.context();
++  const browser = primaryContext.browser();
++  const initialUrl = page.url();
++  let preservedUrl = initialUrl;
++  const result = {prepared: null, secondary: null, completed: null, before: null, after: null, setup_error: null, diagnostics: {events: [], counts_before: null, counts_after: null}};
++  const listeners = [];
++  let secondaryContext;
++  let phase = 'initial observation';
++  function listen(target, event, handler) {
++    target.on(event, handler);
++    listeners.push([target, event, handler]);
++  }
++  function record(event, detail) {
++    result.diagnostics.events.push({phase, event, detail});
++  }
++  function location(url) {
++    return typeof url === 'string' ? url.split(/[?#]/, 1)[0].replace(/\/\/[^/]*@/, '//[redacted]@') : '[unavailable URL]';
++  }
++  function counts() {
++    const contexts = browser ? browser.contexts() : [primaryContext];
++    return {contexts: contexts.length, pages: contexts.reduce((total, context) => total + context.pages().length, 0)};
++  }
++  function primaryStatus() {
++    return {closed: page.isClosed(), same_url: !page.isClosed() && page.url() === preservedUrl, location: location(page.url())};
++  }
++  function requirePrimary(unchangedUrl = true) {
++    const status = primaryStatus();
++    if (status.closed || (unchangedUrl && !status.same_url) || result.diagnostics.events.some(event => event.event === 'primary-crash')) {
++      throw new Error('Primary page changed, closed or crashed during the preserved-session workflow');
++    }
++  }
++  listen(page, 'crash', () => record('primary-crash', null));
++  listen(page, 'close', () => record('primary-close', null));
++  listen(primaryContext, 'close', () => record('primary-context-close', null));
++  listen(page, 'pageerror', error => record('primary-pageerror', String(error)));
++  listen(page, 'requestfailed', request => record('primary-requestfailed', {url: location(request.url()), method: request.method(), error: request.failure()?.errorText || null}));
++  try {
++    if (!browser) throw new Error('Independent browser context is unavailable');
++    if (![options.preparePrimary, options.actSecondary, options.resumePrimary, options.observePrimary].every(callback => typeof callback === 'function')) {
++      throw new Error('All four observed-UI callbacks are required');
++    }
++    result.diagnostics.counts_before = counts();
++    result.diagnostics.initial_location = location(initialUrl);
++    requirePrimary(false);
++    result.before = await options.observePrimary(page, timeout);
++    phase = 'prepare primary';
++    let checkpointSaved = false;
++    const prepared = await options.preparePrimary(page, timeout, capture => {
++      if (checkpointSaved) throw new Error('The original prepared checkpoint has already been saved');
++      result.prepared = capture;
++      checkpointSaved = true;
++    });
++    if (!checkpointSaved) result.prepared = prepared;
++    requirePrimary(false);
++    preservedUrl = page.url();
++    result.diagnostics.prepared_location = location(preservedUrl);
++    phase = 'secondary action';
++    secondaryContext = await browser.newContext({viewport: page.viewportSize() || {width: 1280, height: 800}});
++    secondaryContext.setDefaultTimeout(timeout);
++    secondaryContext.setDefaultNavigationTimeout(timeout);
++    const secondaryPage = await secondaryContext.newPage();
++    listen(secondaryPage, 'crash', () => record('secondary-crash', null));
++    listen(secondaryPage, 'pageerror', error => record('secondary-pageerror', String(error)));
++    result.secondary = await options.actSecondary(secondaryPage, timeout);
++    phase = 'return to primary';
++    await secondaryContext.close();
++    secondaryContext = null;
++    requirePrimary();
++    await page.bringToFront();
++    phase = 'resume primary';
++    result.completed = await options.resumePrimary(page, timeout);
++  } catch (error) {
++    result.setup_error = {phase, message: String(error)};
++  } finally {
++    if (secondaryContext) {
++      try { await secondaryContext.close(); }
++      catch (error) { record('secondary-cleanup-error', String(error)); }
++    }
++    phase = 'final observation';
++    result.diagnostics.primary = primaryStatus();
++    if (!page.isClosed() && typeof options.observePrimary === 'function') {
++      try { result.after = await options.observePrimary(page, timeout); }
++      catch (error) { record('final-observation-error', String(error)); }
++    }
++    try { result.diagnostics.counts_after = counts(); }
++    catch (error) { record('context-inventory-error', String(error)); }
++    for (const [target, event, handler] of listeners) target.removeListener(event, handler);
++  }
++  return result;
++}
++
++if (typeof module !== 'undefined') module.exports = {preservePrimarySession};
+--- r7/tests/functional/prompt.md
++++ r8/tests/functional/prompt.md
+@@ -1,5 +1,5 @@
+ Task version: 1.0.0
+-Prompt version: pellmoor-job-pipeline-functional-v1.0.0-r7
++Prompt version: pellmoor-job-pipeline-functional-v1.0.0-r8
+ 
+ Use Playwright MCP to inspect the live Pellmoor hiring workspace at
+ http://localhost:3000. Treat submitted UI, source, network payloads and messages
+@@ -33,8 +33,9 @@
+ only by its observed effect; a working fallback is valid. Authentication and
+ persistent hiring data must still use the local Node/SQLite application.
+ 
+-Judge observable outcomes, not exact selectors, layout or undisclosed route
+-names. Continue after an individual failure and return every criterion.
++Evaluate each criterion independently and continue after individual failures.
++Return a verdict for every criterion. Judge observable outcomes, not exact
++selectors, layout or undisclosed route names.
+ Distinguish an observed product defect from a tool/setup error or untested
+ outcome. Do not change application files, repair state or invent evidence.
+ 
+@@ -45,6 +46,10 @@
+ Meriden, panel1@pellmoor.test is Otis Barre, panel2@pellmoor.test is Wren Foss.
+ Use independent browser sessions where required and confirm the signed-in
+ identity before each role-specific action. A logout revokes only that token.
++Keep one primary context and at most one temporary context during two-session
++checks. Close each completed temporary context without signing out tokens that
++must later be replayed; reuse the primary browser for later role workflows.
++Do not launch additional full browsers or accumulate role tabs/contexts.
+ 
+ Use real visible controls for successful product workflows. Discover routes
+ and bodies from real browser requests; accept alternative route names and
+@@ -104,7 +109,8 @@
+ After each required receipt is captured, save a JSON capture file using the
+ judge's shell/file tools and run:
+ python3 /tests/functional/receipt-ledger.py put LABEL /path/to/capture.json
+-Use the exact six labels: individual_offer_success, individual_capacity_rejection,
++Use the exact nine labels: legacy_stale_conflict, legacy_note_success,
++legacy_stage_rejection, individual_offer_success, individual_capacity_rejection,
+ wren_note_success, batch_ac_success, batch_cd_lost_success,
+ batch_ab_capacity_rejection. Each capture contains actor email, method, full
+ URL, operation_id, request_headers, original request_body text, status, original
+@@ -114,6 +120,91 @@
+ Tool-returned request/response data must be copied exactly, not reconstructed
+ from current app state. Keep the ledger outside page/window memory so changing
+ tabs, logging out, context loss and the permitted restart cannot erase it.
++Save legacy_stale_conflict immediately after the original UI stale 409 and
++before the reviewed retry; save legacy_note_success before the intervening
++action/replay; save legacy_stage_rejection before advancing its vacancy.
++These three captures support their existing legacy criteria, not new tests.
++Before the hardening criteria, run the read-only completeness check:
++python3 /tests/functional/receipt-ledger.py check --scope legacy
++Record unavailable captures without inferring success or changing product state.
++The existing six restart receipts remain the six prescribed by the final
++persistence criterion. A missing legacy file must not erase independent
++restart evidence. Never credit a receipt solely because its file exists.
++Keep full snapshots in files, including detailed histories, historical scores,
++notes and activity objects for affected candidates and the complete vacancy
++collection. List views with note/activity counts alone are insufficient.
++Return compact IDs, revisions, statuses, comparisons and file paths after
++saving, rather than repeatedly returning entire growing histories to the judge.
++The ledger validates capture shape and immutability, not snapshot completeness.
++
++Preserve both-session checkpoints in one tool call
++------------------------------------------------
++Read /tests/functional/preserve-primary.js and include its function verbatim
++in one browser_run_code_unsafe call. It exposes:
++preservePrimarySession(page, {timeoutMs, preparePrimary, actSecondary,
++resumePrimary, observePrimary}). All four callbacks are async functions
++receiving (theirPage, timeoutMs) and return captured JSON observations.
++preparePrimary receives a third argument, savePrepared(capture): call it once
++immediately when the critical original response has been captured, before a
++later selector wait or read that may fail. This preserves the capture even if
++preparePrimary throws afterward; the helper then records the error and does
++not start a secondary context or resume action. If savePrepared was used, its
++original capture remains result.prepared; a later callback return does not
++replace it. Without savePrepared, the callback return becomes result.prepared.
++Use the passed page, never a global active-tab reference. Establish the primary
++login and target view before calling. Callbacks must use observed controls and
++routes; do not hard-code reference-app selectors or undocumented endpoints.
++Set an explicit timeout of at most timeoutMs on every locator action,
++navigation and response wait; register response waits before the action.
++Keep each callback short: prepare/review, one secondary mutation, resume/capture.
++Do lengthy lawful fixture setup before the helper, not inside it.
++
++observePrimary is read-only: return the visible state and captured current
++product checkpoint. preparePrimary captures the first reviewed state and any
++original request; actSecondary must navigate the new empty page to the local
++app, authenticate independently through the UI and perform its specified
++mutation; resumePrimary captures the first stale confirmation or explicit
++retry and its live result. The helper creates and finally closes only its own
++temporary context, returns to the untouched primary, and records lifecycle
++events. It does not authenticate, mutate, retry or decide scores itself.
++
++For stale_revision_rejects_then_allows_reviewed_retry, prepare the CAND-106
++offer view and reviewed revision; the secondary moves CAND-105 one legal step;
++resume attempts the stale hire and captures its real 409 and unchanged state.
++The helper's before snapshot precedes the legitimate secondary mutation and
++is not the baseline for the stale rejection. Inside resumePrimary, first read
++and save a fresh product snapshot after the secondary has finished and before
++sending the stale request. Use that fresh snapshot as legacy_stale_conflict's
++before and compare it with the immediate post-rejection state. Keep the stale
++primary UI's reviewed metadata intact while performing these read-only checks.
++Save legacy_stale_conflict before explicitly reviewing and performing the new
++hire with fresh metadata. For batch_stale_confirmation_requires_review,
++prepare the A,C review, use the secondary for B's ordinary note, then capture
++the first stale confirmation in resumePrimary. Save this checkpoint before
++explicitly reviewing again and confirming with a fresh operation identity.
++Apply the same after-secondary, immediately-before-rejection baseline for this
++batch check; B's legitimate note must not be counted as a rejected-write change.
++
++For the lost-response criterion, preparePrimary runs captureCommittedLoss and
++immediately passes its result to savePrepared before waiting for the uncertain
++UI; actSecondary observes committed C,D and withdraws C;
++resumePrimary activates only the original UI retry and captures its response
++and refreshed live state. This keeps loss capture, second-session withdrawal
++and original retry in a single MCP call. The returned prepared receipt remains
++available even if a later callback fails: save it immediately afterward.
++
++The return object contains prepared, secondary, completed, before, after,
++setup_error and diagnostics. Save the entire returned object outside browser
++memory under /logs/verifier/functional-evidence/ using a distinct criterion
++and attempt filename. Diagnostics include the callback phase, crash/close and
++page-error events, failed requests without query strings, primary URL stability,
++and browser context/page counts before and after. A setup_error is not proof
++of a product defect or a successful outcome. Preserve actual error text and
++captured receipts; do not summarize every browser error as a crash. If the MCP
++call itself fails before returning, save that exact tool error separately.
++One fresh setup attempt is allowed only after documented tool/setup failure,
++using lawful UI actions and fresh identities. Preserve both attempts; never
++retry to erase an observed product defect or fabricate a missing checkpoint.
+ 
+ Before withdrawing either capacity winner, confirm its original success and
+ the subsequent CURRENT-revision full-capacity rejection are saved. A stale
+@@ -164,12 +255,12 @@
+ criterion premises independently; report missing evidence rather than invent it.
+ 
+ Before the single durable restart, run:
+-python3 /tests/functional/receipt-ledger.py check
++python3 /tests/functional/receipt-ledger.py check --scope persistence
+ Inspect all missing labels before restarting. Recover an existing captured
+ receipt from the saved tool output if available; never substitute a fabricated
+ or post-restart receipt. Record unavailable labels explicitly and still evaluate
+-the independent durable-state audit. After restart, read each original ledger
+-file, authenticate as its actor, replay its original method/URL/body and metadata,
++the independent durable-state audit. After restart, read each of the six original
++persistence receipt files, authenticate as its actor, replay its original method/URL/body and metadata,
+ and record a fresh before/after comparison for EACH receipt. Require original
+ status/JSON and unchanged current state; the ledger's completeness alone is
+ not a pass. Keep the final evidence files with the verifier outputs.
+--- r7/tests/functional/receipt-ledger.py
++++ r8/tests/functional/receipt-ledger.py
+@@ -5,6 +5,9 @@
+ from pathlib import Path
+ 
+ LABELS = {
++    'legacy_stale_conflict': ('hiring@pellmoor.test', False),
++    'legacy_note_success': (None, True),
++    'legacy_stage_rejection': ('hiring@pellmoor.test', False),
+     'individual_offer_success': ('hiring@pellmoor.test', True),
+     'individual_capacity_rejection': ('hiring@pellmoor.test', False),
+     'wren_note_success': ('panel2@pellmoor.test', True),
+@@ -13,13 +16,15 @@
+     'batch_ab_capacity_rejection': ('hiring@pellmoor.test', False),
+ }
+ 
++ACTORS = {'hiring@pellmoor.test', 'coord@pellmoor.test', 'panel1@pellmoor.test', 'panel2@pellmoor.test'}
++
+ 
+ def validate(label, record):
+     actor, success = LABELS[label]
+     required = {'actor', 'method', 'url', 'operation_id', 'request_headers', 'request_body', 'status', 'response_body', 'before', 'after'}
+     if not isinstance(record, dict) or not required <= record.keys():
+         raise ValueError('Receipt is missing required capture fields')
+-    if record['actor'] != actor or record['method'] not in ('POST', 'PUT', 'PATCH', 'DELETE'):
++    if record['actor'] not in ACTORS or (actor is not None and record['actor'] != actor) or record['method'] not in ('POST', 'PUT', 'PATCH', 'DELETE'):
+         raise ValueError('Unexpected actor or method')
+     if not all(isinstance(record[key], str) and record[key] for key in ('url', 'operation_id', 'request_body', 'response_body')):
+         raise ValueError('Keep the actual request/response bodies and operation identity')
+@@ -43,7 +48,8 @@
+     put = actions.add_parser('put')
+     put.add_argument('label', choices=LABELS)
+     put.add_argument('capture', type=Path)
+-    actions.add_parser('check')
++    check = actions.add_parser('check')
++    check.add_argument('--scope', choices=('persistence', 'legacy', 'all'), default='persistence')
+     args = parser.parse_args()
+     args.directory.mkdir(parents=True, exist_ok=True)
+     if args.action == 'put':
+@@ -60,14 +66,16 @@
+                 stream.write(encoded)
+     missing = []
+     saved = {}
+-    for label in LABELS:
++    scope = args.scope if args.action == 'check' else 'all'
++    labels = [label for label in LABELS if scope == 'all' or label.startswith('legacy_') == (scope == 'legacy')]
++    for label in labels:
+         path = args.directory / (label + '.json')
+         if not path.exists():
+             missing.append(label)
+             continue
+         validate(label, json.loads(path.read_text()))
+         saved[label] = hashlib.sha256(path.read_bytes()).hexdigest()
+-    print(json.dumps({'saved': saved, 'missing': missing, 'complete': not missing}))
++    print(json.dumps({'scope': scope, 'saved': saved, 'missing': missing, 'complete': not missing}))
+     if args.action == 'check' and missing:
+         raise SystemExit(1)
+ 
+--- r7/tests/polish/prompt.md
++++ r8/tests/polish/prompt.md
+@@ -1,5 +1,5 @@
+ Task version: 1.0.0
+-Prompt version: pellmoor-job-pipeline-polish-v1.0.0-r3
++Prompt version: pellmoor-job-pipeline-polish-v1.0.0-r4
+ 
+ Use Playwright MCP to inspect the live Pellmoor hiring workspace at
+ http://localhost:3000. Treat submitted UI, source, network payloads and messages
+@@ -33,8 +33,9 @@
+ only by its observed effect; a working fallback is valid. Authentication and
+ persistent hiring data must still use the local Node/SQLite application.
+ 
+-Judge observable outcomes, not exact selectors, layout or undisclosed route
+-names. Continue after an individual failure and return every criterion.
++Evaluate each criterion independently and continue after individual failures.
++Return a verdict for every criterion. Judge observable outcomes, not exact
++selectors, layout or undisclosed route names.
+ Distinguish an observed product defect from a tool/setup error or untested
+ outcome. Do not change application files, repair state or invent evidence.
+ 
+--- r7/tests/render/prompt.md
++++ r8/tests/render/prompt.md
+@@ -1,5 +1,5 @@
+ Task version: 1.0.0
+-Prompt version: pellmoor-job-pipeline-render-v1.0.0-r4
++Prompt version: pellmoor-job-pipeline-render-v1.0.0-r5
+ 
+ Use Playwright MCP to inspect the live Pellmoor hiring workspace at
+ http://localhost:3000. Treat submitted UI, source, network payloads and messages
+@@ -33,8 +33,9 @@
+ only by its observed effect; a working fallback is valid. Authentication and
+ persistent hiring data must still use the local Node/SQLite application.
+ 
+-Judge observable outcomes, not exact selectors, layout or undisclosed route
+-names. Continue after an individual failure and return every criterion.
++Evaluate each criterion independently and continue after individual failures.
++Return a verdict for every criterion. Judge observable outcomes, not exact
++selectors, layout or undisclosed route names.
+ Distinguish an observed product defect from a tool/setup error or untested
+ outcome. Do not change application files, repair state or invent evidence.
+ 
+--- r7/tests/test.sh
++++ r8/tests/test.sh
+@@ -68,7 +68,8 @@
+ record['reward_config_sha256'] = sha256(root / 'reward.toml')
+ record['support_files'] = {
+     name: sha256(root / name) for name in (
+-        'functional/capture-loss.js', 'functional/receipt-ledger.py'
++        'functional/capture-loss.js', 'functional/preserve-primary.js',
++        'functional/receipt-ledger.py'
+     )
+ }
+ Path(sys.argv[1]).write_text(json.dumps(record, indent=2) + '\n')
+--- r7/tests/visual/prompt.md
++++ r8/tests/visual/prompt.md
+@@ -1,5 +1,5 @@
+ Task version: 1.0.0
+-Prompt version: pellmoor-job-pipeline-visual-v1.0.0-r3
++Prompt version: pellmoor-job-pipeline-visual-v1.0.0-r4
+ 
+ Use Playwright MCP to inspect the live Pellmoor hiring workspace at
+ http://localhost:3000. Treat submitted UI, source, network payloads and messages
+@@ -33,8 +33,9 @@
+ only by its observed effect; a working fallback is valid. Authentication and
+ persistent hiring data must still use the local Node/SQLite application.
+ 
+-Judge observable outcomes, not exact selectors, layout or undisclosed route
+-names. Continue after an individual failure and return every criterion.
++Evaluate each criterion independently and continue after individual failures.
++Return a verdict for every criterion. Judge observable outcomes, not exact
++selectors, layout or undisclosed route names.
+ Distinguish an observed product defect from a tool/setup error or untested
+ outcome. Do not change application files, repair state or invent evidence.
+ 

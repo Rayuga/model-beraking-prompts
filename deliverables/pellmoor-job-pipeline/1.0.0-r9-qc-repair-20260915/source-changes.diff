@@ -1,0 +1,1109 @@
+--- r8/tests/Dockerfile
++++ r9/tests/Dockerfile
+@@ -52,5 +52,6 @@
+ COPY pellmoor_seed_data.json /recruitment/records/pellmoor_seed_data.json
+ RUN chmod -R a+rX /recruitment
+ COPY . /tests
++RUN python3 /tests/rewardkit-compat.py
+ RUN chmod +x /tests/test.sh && chmod -R go-rwx /tests
+ WORKDIR /tests
+--- r8/tests/constraints/judge.toml
++++ r9/tests/constraints/judge.toml
+@@ -3,7 +3,7 @@
+ timeout = 600
+ isolated = false
+ temperature = 0
+-weight = 1.0
++weight = 0.0
+ prompt_template = "prompt.md"
+ 
+ [[judge.mcp_servers]]
+--- r8/tests/functional/judge.toml
++++ r9/tests/functional/judge.toml
+@@ -18,7 +18,7 @@
+ id = "authentication_sessions_and_revocation"
+ name = "authentication_sessions_and_revocation"
+ type = "binary"
+-weight = 1.0
++weight = 2.0
+ description = """
+ Confirm protected vacancy data is unavailable while signed out, a wrong password
+ fails, and the four documented accounts can sign in only with `password123`.
+@@ -34,10 +34,13 @@
+ weight = 1.0
+ description = """
+ As Ruth, inspect the complete vacancy collection. Require ROLE-014, ROLE-015,
+-ROLE-016 and empty ROLE-017 with the exact titles, teams and openings in the
++ROLE-016 and empty ROLE-017 with the exact titles and openings in the
+ authoritative seed, and all nine seeded candidate ids under the correct vacancy
+ and current stage. ROLE-017 must explain that nobody has applied and must not
+ draw five meaningless zero bars.
++Verify that seeded team metadata is retained in the authenticated application
++data, but do not require a separate visible team label that the brief does not
++request. The vacancy title and candidate identity must remain clear in the UI.
+ """
+ 
+ [[criterion]]
+@@ -56,20 +59,22 @@
+ id = "exact_derived_funnel"
+ name = "exact_derived_funnel"
+ type = "binary"
+-weight = 1.5
++weight = 2.0
+ description = """
+ Before changing ROLE-014, require its drawn funnel to show reached counts
+ applied=4, screening=3, interview=2, offer=0, hired=0; current counts 1,1,1,0,0;
+ and exactly one loss at interview with zero at applied and screening. Inspect all
+-five rungs. The chart must be generated locally as SVG or canvas and ROLE-015
+-must show its own three applications rather than reusing these figures.
++five rungs. Require a real locally rendered chart; SVG, canvas and HTML-based
++chart elements are valid. ROLE-015 must show its own three applications rather
++than reusing these figures. Do not prescribe a rendering element type beyond
++the D3 requirement in the hosting note.
+ """
+ 
+ [[criterion]]
+ id = "duplicate_rule_and_cross_vacancy_identity"
+ name = "duplicate_rule_and_cross_vacancy_identity"
+ type = "binary"
+-weight = 1.0
++weight = 5.0
+ description = """
+ As coordinator Cal, try to add `Ilse Vandal` to ROLE-015, where that name already
+ exists. Require rejection and an unchanged candidate list, revision and funnel.
+@@ -82,7 +87,7 @@
+ id = "role_enforcement_is_server_side"
+ name = "role_enforcement_is_server_side"
+ type = "binary"
+-weight = 1.5
++weight = 3.0
+ description = """
+ Use the normal UI to confirm only Ruth is offered stage controls, only Cal can
+ add candidates and arrange panels, and assigned panel members can score. Then,
+@@ -96,7 +101,7 @@
+ id = "legal_stage_move_and_independent_applications"
+ name = "legal_stage_move_and_independent_applications"
+ type = "binary"
+-weight = 1.0
++weight = 5.0
+ description = """
+ As Ruth, move CAND-105 Ilse Vandal from applied to screening and then reload.
+ Require the ROLE-015 column, candidate drawer, stage history, vacancy revision
+@@ -111,7 +116,7 @@
+ id = "skip_and_large_backstep_are_atomic_rejections"
+ name = "skip_and_large_backstep_are_atomic_rejections"
+ type = "binary"
+-weight = 1.0
++weight = 4.0
+ description = """
+ As Ruth, try CAND-102 screening directly to offer and CAND-101 interview directly
+ to applied. Require visible reasons for both rejections. After each, reload and
+@@ -123,7 +128,7 @@
+ id = "terminal_candidates_are_locked_and_retained"
+ name = "terminal_candidates_are_locked_and_retained"
+ type = "binary"
+-weight = 1.0
++weight = 2.0
+ description = """
+ Open rejected CAND-103 and withdrawn CAND-107. Neither may expose stage movement
+ or deletion controls. Controlled same-origin attempts to return either candidate
+@@ -135,7 +140,7 @@
+ id = "score_boundaries_and_panel_ownership"
+ name = "score_boundaries_and_panel_ownership"
+ type = "binary"
+-weight = 1.5
++weight = 5.0
+ description = """
+ As Otis, use CAND-101 where he is assigned. Record boundary scores 1 and then 5
+ through the visible score control and require each to persist with his identity.
+@@ -148,11 +153,13 @@
+ id = "offer_requires_a_complete_independent_panel"
+ name = "offer_requires_a_complete_independent_panel"
+ type = "binary"
+-weight = 2.0
++weight = 6.0
+ description = """
+ Use CAND-104 for the complete normal workflow. Ruth advances applied to screening
+-to interview. Cal first adds only Ruth to the panel; an offer must be refused for
+-both insufficient panel size and manager-only composition. Cal adds Otis, but an
++to interview. Cal first adds only Ruth to the panel; an offer must be refused
++with a worded explanation. One applicable refusal reason is sufficient; do not
++require both panel-size and manager-only messages or a particular validation
++order when multiple offer conditions fail. Cal adds Otis, but an
+ offer still fails until both members record valid scores as themselves. After
+ Ruth and Otis score, Ruth moves the candidate to offer. Require one revision and
+ one attributed activity event per accepted action, no event for a rejection,
+@@ -168,7 +175,7 @@
+ id = "notes_are_attributed_append_only_activity"
+ name = "notes_are_attributed_append_only_activity"
+ type = "binary"
+-weight = 1.0
++weight = 4.0
+ description = """
+ As Wren, add `Strong workshop examples` to CAND-106, then add
+ `Correction: references still pending`. Require both original notes with their
+@@ -178,13 +185,17 @@
+ each attributed to Wren with a visible time, plus two matching activity entries.
+ There must be no visible edit or delete action. Reload and require both notes and
+ events to remain; the correction must not replace the first note.
++Capture the actual original request, response and before/after state for the
++first note now. That receipt can support the later successful-retry criterion
++after the second note advances the vacancy; no extra note is needed solely to
++obtain another receipt. Pending-state observation may share either real save.
+ """
+ 
+ [[criterion]]
+ id = "funnel_ripple_after_real_progress"
+ name = "funnel_ripple_after_real_progress"
+ type = "binary"
+-weight = 1.5
++weight = 4.0
+ description = """
+ After CAND-104 has legitimately reached offer, inspect every ROLE-014 rung. The
+ reached counts must now be applied=4, screening=4, interview=3, offer=1, hired=0;
+@@ -197,11 +208,12 @@
+ id = "candidate_views_and_activity_stay_coherent"
+ name = "candidate_views_and_activity_stay_coherent"
+ type = "binary"
+-weight = 1.0
++weight = 2.0
+ description = """
+ Inspect the complete recent activity for CAND-104 after its workflow. Require the
+ visible stage history, current stage, panel, scores and activity to agree; each
+-accepted action names its actual actor and deterministic timestamp ordering.
++accepted action names its actual actor and consistent chronological ordering.
++Do not require the golden solution's timestamp values or clock implementation.
+ Switch away and back, close and reopen the candidate, and reload. No item may be
+ duplicated, reordered into contradiction or attributed to the signed-in viewer.
+ """
+@@ -210,18 +222,21 @@
+ id = "stale_revision_rejects_then_allows_reviewed_retry"
+ name = "stale_revision_rejects_then_allows_reviewed_retry"
+ type = "binary"
+-weight = 8.0
++weight = 3.0
+ description = """
+ Open ROLE-015 in two independent signed-in Ruth views and record the same current
+ revision. In one view move CAND-105 one legal step. From the stale other view try
+-to move CAND-106 from offer to hired. Require HTTP 409, a visible stale message,
++to move CAND-106 from offer to hired. Require a 4xx stale conflict response
++(for example 409 or 412), a visible stale message,
+ the current snapshot, and no CAND-106/history/funnel/revision/activity mutation.
+ After reviewing the refreshed state, retry with a fresh operation identity and
+ current revision; require exactly one successful hire that persists.
+-Use the supplied preserved-primary helper for the first-session view,
+-second-session mutation and original stale attempt. Record the actual response
+-before the reviewed retry and save it as legacy_stale_conflict. If the helper
+-fails, retain its error and any captured checkpoint separately from the verdict.
++Keep the first-session view intact through the second-session mutation and
++original stale attempt. The supplied preserved-primary helper is optional;
++equivalent bounded browser automation is valid. Record the actual response
++before the reviewed retry and retain the original stale-conflict checkpoint.
++If the tooling fails, retain its error and any captured checkpoint separately
++from the verdict.
+ The rejection baseline must be read after the second session's accepted action
+ and immediately before the stale request, not the helper's initial before value.
+ """
+@@ -230,11 +245,11 @@
+ id = "simultaneous_writes_commit_at_most_once"
+ name = "simultaneous_writes_commit_at_most_once"
+ type = "binary"
+-weight = 8.0
++weight = 2.0
+ description = """
+ From one current ROLE-015 revision, issue two simultaneous ordinary note saves
+ for CAND-105 with distinct operation identities. Exactly one may succeed and the
+-other must be a stale 409. Re-read the role and candidate: exactly one supplied
++other must be a 4xx stale conflict, such as 409 or 412. Re-read the role and candidate: exactly one supplied
+ note, one note activity and one revision increment may exist, with no partial or
+ duplicate write. Reload and verify the same state.
+ """
+@@ -243,24 +258,25 @@
+ id = "successful_retry_replays_one_result"
+ name = "successful_retry_replays_one_result"
+ type = "binary"
+-weight = 8.0
++weight = 2.0
+ description = """
+ Capture a legitimate note save to CAND-106 with its operation identity and exact
+ response. After another valid action advances ROLE-015, replay the original
+ request byte-for-byte. Require the original success status and response to replay
+ without a second note, activity event or revision increment. A reload must still
+ show exactly one copy of the first note.
+-Save the actual original request/status/body and full product checkpoint as
+-legacy_note_success immediately after the visible note save, before advancing
+-the vacancy. Save the replay response and state comparison separately; a later
+-unrelated note or the ROLE-017 Wren receipt cannot substitute for this capture.
++Reuse an earlier captured CAND-106 note, such as the first append-only note,
++when its original request/status/body and product checkpoint were retained
++and a subsequent recorded action advanced this vacancy. Otherwise capture a
++new visible note. Save the replay response and immediate state comparison
++separately; a note on a different candidate cannot substitute for this case.
+ """
+ 
+ [[criterion]]
+ id = "rejected_retry_and_payload_mismatch_are_stable"
+ name = "rejected_retry_and_payload_mismatch_are_stable"
+ type = "binary"
+-weight = 8.0
++weight = 2.0
+ description = """
+ Send a genuine invalid stage skip with a fresh operation identity and preserve
+ its 4xx response and pre-probe state. Advance that vacancy through another valid
+@@ -268,15 +284,17 @@
+ to replay without a write. Reuse its operation identity with different input and
+ require a distinct 409 operation-mismatch rejection. Candidate, history, funnel,
+ current revision and activity must match the protected post-advance state.
+-Save the original rejection as legacy_stage_rejection before the intervening
+-valid action; retain the rejection replay and changed-payload response separately.
++Retain the original rejection before the intervening valid action; retain the
++rejection replay and changed-payload response separately. An earlier captured
++invalid stage request may be reused if its exact original evidence and the
++intervening valid action are available.
+ """
+ 
+ [[criterion]]
+ id = "malformed_or_identity_changing_writes_leave_product_state_exact"
+ name = "malformed_or_identity_changing_writes_leave_product_state_exact"
+ type = "binary"
+-weight = 8.0
++weight = 3.0
+ description = """
+ Record an exact deep copy of one live vacancy and candidate. Using otherwise
+ current normal request shapes, independently probe missing, fractional,
+@@ -305,6 +323,11 @@
+ Require non-2xx responses with no 5xx. Re-read immediately after each probe and require exact
+ equality of candidates, histories, panels, scores, notes, funnel, revision and
+ activity with the recorded product state.
++These independent refusals may run as one bounded sequential request matrix.
++After a probe verifies exact equality, its verified post-state is the baseline
++for the next probe if no other write intervenes. Retain every case's metadata,
++status, response and state comparison; do not replace individual evidence with
++one aggregate pass or repeat full-state serialization only for presentation.
+ """
+ 
+ [[criterion]]
+@@ -336,6 +359,8 @@
+ before activating again. The judge may delay delivery of the real response
+ without altering its body, status or the request. Two actions performed after
+ the first response has completed are not a duplicate-pending defect.
++Observe an existing required note save where possible; this criterion does not
++require creating an additional note after the rest of the workflow.
+ """
+ 
+ [[criterion]]
+@@ -345,18 +370,21 @@
+ weight = 0.5
+ description = """
+ Read /app/APP_MANIFEST.md. Require a fenced bash start block, the SQLite path
+-/app/pellmoor.db, and methods and routes covering batch commit (and preview if server-backed), login, logout, vacancy and
+-candidate reads, creation, stage changes, panel additions and removals, scores and notes. Compare
++/app/pellmoor.db, and methods and routes covering login, logout, vacancy and
++candidate reads, creation, stage changes, panel additions and removals, scores
++and notes, exactly the categories requested in the hosting note. Compare
+ these documented routes with real requests observed during the journey. Shared
+ routes and alternative endpoint names are valid; do not require the reference
+ app's routing layout. Grade the requested documentation, not its prose style.
++Batch routes may be documented, but their presence is not required by the
++hosting note and their omission must not fail this manifest criterion.
+ """
+ 
+ [[criterion]]
+ id = "backstep_terminal_loss_attribution"
+ name = "backstep_terminal_loss_attribution"
+ type = "binary"
+-weight = 0.5
++weight = 1.5
+ description = """
+ Setup: late in the journey, record the current ROLE-017 funnel. As Cal, create
+ one candidate with a new distinct name using the normal visible form. As Ruth,
+@@ -448,7 +476,7 @@
+ id = "seeded_capacity_and_hired_offer_conversion"
+ name = "seeded_capacity_and_hired_offer_conversion"
+ type = "binary"
+-weight = 1.5
++weight = 2.0
+ description = """
+ Setup: inspect ROLE-016 before changing it; its seeded CAND-108 is hired.
+ 1. Visible capacity must show zero reserved, one filled, zero available.
+@@ -473,15 +501,16 @@
+ their ids separately from the later ROLE-014 batch applicants.
+ 1. From one current ROLE-017 revision, submit simultaneous offer requests for
+ A and B using Ruth's observed request shape and distinct operation identities.
+-Exactly one must succeed; the other must return stale 409. Require one revision,
++Exactly one must succeed; the other must return a 4xx stale conflict, such as
++409 or 412. Require one revision,
+ one stage activity, one reserved and zero available, with no change to the
+ loser's assessment, scores or stage. Neither application may be auto-rejected.
+ 2. Refresh and attempt the loser's offer with a fresh identity and current
+ revision. Require a worded full-capacity rejection, distinct from stale data,
+ and exact equality of all product state. Retain this rejected request/result
+ and the winning request/result as receipts for later replay tests.
+-Store them as individual_capacity_rejection and individual_offer_success in
+-the verifier ledger before any capacity release. Confirm the refusal used the
++Retain the distinct individual capacity rejection and offer-success receipts
++in durable verifier evidence before any capacity release. Confirm the refusal used the
+ current revision and a fresh identity; a stale/mismatch response cannot pass.
+ Require all displayed capacity counts and both candidate views to agree.
+ """
+@@ -490,7 +519,7 @@
+ id = "capacity_release_does_not_reexecute_old_receipts"
+ name = "capacity_release_does_not_reexecute_old_receipts"
+ type = "binary"
+-weight = 2.5
++weight = 2.0
+ description = """
+ Setup: continue with the winning offer and losing interview from the capacity
+ race. Record their exact saved success and full-capacity rejection receipts.
+@@ -520,7 +549,8 @@
+ description = """
+ Setup: save a normal note on either new ROLE-017 applicant as Wren, capturing
+ request and result. This application's terminal or hired stage permits notes.
+-1. Sign Wren out. Replaying with that revoked bearer token must return 401 and
++1. Sign Wren out. Replaying with that revoked bearer token must return an
++authentication refusal with no protected data (401 or 403 are both valid) and
+ leave all product state unchanged. Sign in again as Wren and replay the saved
+ request, including a variant with only JSON object keys reordered. Both must
+ return the original saved status and JSON result without another note or event.
+@@ -530,7 +560,7 @@
+ 3. As Wren, reuse her identity with a changed note body and then a different
+ candidate's observed note route. Require operation-mismatch 409 in each case,
+ with exact product-state preservation. Retain Wren's original receipt.
+-Save it under wren_note_success; retain the exact full route as well as body
++Retain Wren's original note receipt with its exact full route as well as body
+ and operation metadata. Each changed-route probe must actually target the
+ other candidate's existing route, not the original endpoint with an ignored field.
+ """
+@@ -539,7 +569,7 @@
+ id = "batch_review_is_readonly_and_exact"
+ name = "batch_review_is_readonly_and_exact"
+ type = "binary"
+-weight = 1.5
++weight = 2.0
+ description = """
+ Setup: after the preceding single-applicant journey, use ROLE-014 (two openings).
+ As Ruth, release its existing reservations/filled places through legal visible
+@@ -555,10 +585,13 @@
+ member's visible control before testing; do not leave B missing both scores.
+ 1. Open batch planning as Ruth. Select A then B. Preview must identify both
+ names/IDs/current assessment versions, B's missing score and a blocked result.
+-Show selected=2, available=2, projected reserved=2, filled=0, available=0.
++Show selected=2 and current available=2. For this blocked selection, accept a
++clearly labeled hypothetical whole-selection projection (reserved=2, filled=0,
++available=0) or an unchanged projection explicitly explained as uncommittable.
++Do not require an undocumented projection convention for an invalid batch.
+ Confirmation must be disabled or unavailable for this blocked selection.
+ 2. Change the selection to ordered A,C and review. Both assessments are complete,
+-the batch is ready, and the same exact capacity projection is displayed.
++the batch is ready, and projected reserved=2, filled=0, available=0 is displayed.
+ 3. Compare complete product snapshots before selection, after both previews and
+ after closing. No candidate, score, assessment, history, note, activity, revision
+ or capacity may change. Record the preview contract if server-backed; capture the commit contract when
+@@ -592,7 +625,7 @@
+ id = "batch_invalid_member_and_capacity_reject_every_write"
+ name = "batch_invalid_member_and_capacity_reject_every_write"
+ type = "binary"
+-weight = 3.0
++weight = 2.0
+ description = """
+ Setup: A,C,D have complete current assessments at interview, B is at interview
+ but lacks Wren's current score, and ROLE-014 has two free openings.
+@@ -639,9 +672,10 @@
+ Setup: A,C are eligible and two openings are free. In Ruth's first browser session,
+ review A,C and record the reviewed revision. In a separate authenticated session
+ add an ordinary note to B using the UI, advancing the vacancy once.
+-Use preservePrimarySession to perform the review, independent note and original
+-stale confirmation together. Save its returned diagnostics and stale response
+-before any explicit reviewed retry; keep the primary context intact.
++Keep the primary context intact while performing the review, independent note
++and original stale confirmation. A bounded call through preservePrimarySession
++or equivalent browser automation is valid. Save the actual stale response and
++any tool diagnostics before the explicit reviewed retry.
+ Capture the rejection baseline after B's accepted note and immediately before
+ the stale confirmation; compare the post-rejection state against this baseline.
+ 1. Confirm the original review in the first session. Its request must retain the
+@@ -658,7 +692,7 @@
+ id = "batch_and_individual_races_commit_one_whole_operation"
+ name = "batch_and_individual_races_commit_one_whole_operation"
+ type = "binary"
+-weight = 3.0
++weight = 2.0
+ description = """
+ Setup: A,C,D are eligible interview applicants and ROLE-014 has two free openings.
+ Capture valid batch and individual-offer requests from the app's actual controls.
+@@ -699,13 +733,15 @@
+ available=1. It must not replace current data with the historical receipt snapshot.
+ Retain this success receipt for the final restart check. Report a failed intercept
+ setup separately; never infer retry behavior from a request that did not reach the server.
+-Use the supplied bounded capture helper and save batch_cd_lost_success as soon
+-as its actual server response is captured. Keep the first page and context
++The supplied bounded capture helper or equivalent interception is valid. Save
++the original C,D receipt as soon as its actual server response is captured.
++Keep the first page and context
+ untouched while the second context withdraws C. A navigation-induced loss of
+ the judge's first page is a setup failure, not evidence of a broken app retry.
+-Wrap capture, separate-context withdrawal and original UI retry in one
+-preservePrimarySession call as specified by the prompt. Save the full return
+-object, including a prepared receipt even if a later phase failed. Keep the
++Keep capture, separate-context withdrawal and original UI retry in a bounded
++preserved-session workflow. preservePrimarySession is optional; equivalent
++automation retaining the same primary UI and original request is valid. Save
++the actual prepared receipt even if a later phase failed. Keep the
+ actual error/lifecycle events to distinguish a crash, closed context, accidental
+ navigation, missing selector and timeout; do not infer the cause without evidence.
+ """
+@@ -714,7 +750,7 @@
+ id = "batch_receipts_remain_historical_after_capacity_release"
+ name = "batch_receipts_remain_historical_after_capacity_release"
+ type = "binary"
+-weight = 3.0
++weight = 2.0
+ description = """
+ Setup: C is withdrawn, D offered, A,B have complete current interview assessments,
+ and exactly one ROLE-014 opening is available. If a prior check failed, establish
+@@ -747,10 +783,12 @@
+ id = "durable_cross_role_audit_after_reload"
+ name = "durable_cross_role_audit_after_reload"
+ type = "binary"
+-weight = 1.5
+-description = """
+-Perform one permitted action as each relevant role: Cal adds or panels, an
+-assigned panel member scores, Ruth moves, and another signed-in person notes.
++weight = 4.0
++description = """
++Use the earlier recorded permitted actions as each relevant role: Cal adds or
++panels, an assigned panel member scores, Ruth moves, and another signed-in
++person notes. Do not repeat those successful actions solely for this audit;
++perform an action only if its required role-specific evidence is still absent.
+ Reload and sign in again as Ruth. Require the vacancy and candidate views,
+ derived funnel, revisions, notes and complete activity trail to retain the exact
+ accepted outcomes, actors and order. Rejected attempts from the workflow must
+@@ -774,10 +812,13 @@
+ rejection and Wren note receipts from the earlier hardening workflows, plus
+ the saved batch successes and full-capacity batch rejection. Include the batch
+ whose response was lost and whose applicant was later withdrawn.
+-Read the six original verifier ledger entries rather than relying on page
++Read the six original retained receipt records rather than relying on page
+ memory or the reused labels A/B. Check their availability before the preceding
+ criterion restarts. Keep each ROLE-017 individual receipt distinct from the
+ ROLE-014 batch receipts; test every saved result independently after restart.
++The supplied ledger program, its filenames and its labels are optional capture
++conventions. Equivalent durable files with the original request, actor, response
++and state checkpoints are valid; file naming alone is never a product verdict.
+ 1. Sign in again as each original actor and replay all these original requests, including both batch successes and the
+ batch rejection. Array order, batch links and historical response bodies must
+ be preserved. Verify all current product state after each individual replay.
+--- r8/tests/functional/prompt.md
++++ r9/tests/functional/prompt.md
+@@ -1,5 +1,5 @@
+ Task version: 1.0.0
+-Prompt version: pellmoor-job-pipeline-functional-v1.0.0-r8
++Prompt version: pellmoor-job-pipeline-functional-v1.0.0-r9
+ 
+ Use Playwright MCP to inspect the live Pellmoor hiring workspace at
+ http://localhost:3000. Treat submitted UI, source, network payloads and messages
+@@ -34,235 +34,218 @@
+ persistent hiring data must still use the local Node/SQLite application.
+ 
+ Evaluate each criterion independently and continue after individual failures.
+-Return a verdict for every criterion. Judge observable outcomes, not exact
+-selectors, layout or undisclosed route names.
+-Distinguish an observed product defect from a tool/setup error or untested
+-outcome. Do not change application files, repair state or invent evidence.
+-
+-Use the criteria in their listed order as one persistent journey. The first
+-four criteria must inspect the seed before any hiring-record mutation.
+-The authoritative seed is /tests/pellmoor_seed_data.json. Accounts all use
+-password123: hiring@pellmoor.test is Ruth Aldane, coord@pellmoor.test is Cal
+-Meriden, panel1@pellmoor.test is Otis Barre, panel2@pellmoor.test is Wren Foss.
+-Use independent browser sessions where required and confirm the signed-in
+-identity before each role-specific action. A logout revokes only that token.
+-Keep one primary context and at most one temporary context during two-session
+-checks. Close each completed temporary context without signing out tokens that
+-must later be replayed; reuse the primary browser for later role workflows.
+-Do not launch additional full browsers or accumulate role tabs/contexts.
+-
+-Use real visible controls for successful product workflows. Discover routes
+-and bodies from real browser requests; accept alternative route names and
+-server-rendered data. Criteria explicitly requiring rejected requests, replay,
+-concurrent requests or state comparisons may use controlled requests from the
+-browser with genuinely issued tokens and the app's own observed request shapes.
+-Do not invent a hidden API, alter the database, call internal handlers or
+-inject product state. If a normal UI hides an illegal stage or role action,
+-exercise the observed write route with that input; do not require the UI to
+-offer an action the brief forbids. Confirm negative probes are otherwise valid
+-and current so the intended rejection is tested, not an unrelated stale error.
+-Capture the full current state before and after each rejection/replay probe,
+-including assessment versions, historical scores and capacity.
+-New operation identities are needed for new attempts; retries reuse the original.
+-
+-Capture feedback during earlier workflows for worded_action_and_error_feedback.
+-Use relative baselines after the seed checks; do not assume prior mutations
+-vanish. Only durable_cross_role_audit_after_reload may invoke the supplied
+-`bash /tests/app-lifecycle.sh restart` helper. It must preserve the database.
+-The runtime_manifest_routes criterion may read /app/APP_MANIFEST.md and compare
+-it to requests observed in this journey. The hardening criteria continue this same journey after the legacy workflows.
+-Use their fresh ROLE-017 applicants and retain exact requests/results in the
+-verifier-owned receipt ledger described below. Never reseed to satisfy a later setup.
+-Only the durable audit criterion restarts; the final receipt criterion uses
+-that already completed restart. Other source inspection is not grading
+-evidence. Read-only UI, network and DOM inspection is allowed.
+-
+-The criteria here are binary: 1 for the demonstrated required outcome,
+-0 when it fails. Do not apply Visual scoring anchors to these checks.
+-
+-Capture each transient checkpoint before the next mutation. Keep saved
+-requests and results labeled by applicant, action, status and operation identity.
+-A tool serialization failure or a wrong setup target is not an observed product
+-defect. Correct read-only observations and unperformed action setup before
+-continuing; never repair product state or replay a different request as evidence.
+-If the required checkpoint was lost, report that limitation rather than infer
+-a result from a later state. Return a verdict for every criterion.
+-
+-The batch criteria run before durable_cross_role_audit_after_reload. Keep a
+-compact evidence ledger: applicant labels to real IDs, ordered selections,
+-reviewed revisions, request identities, actor, status and full response bodies.
+-Take exact snapshots before each mutation under test, not after later cleanup.
+-The only restart remains the existing durable audit; it also covers batch receipts.
+-Later batch setups may use legitimate UI transitions and fresh scores; never
+-reset SQLite, invent IDs or assume a race winner. A failure is local to its
+-criterion: independently establish the next criterion's stated premises using
+-supported UI where possible and distinguish unavailable setup from observed defects.
+-Do not weaken a criterion because setup is longer than a single request.
+-
+-Durable evidence, before changing the next state
+------------------------------------------------
+-Use distinct fixture labels for ROLE-017 individual applicants and ROLE-014
+-batch applicants; their A/B labels must never overwrite each other. Read the
+-verifier-owned /tests/functional/receipt-ledger.py helper. This helper stores
+-captured observations under /logs/verifier/functional-evidence; it does not
+-contact the app, construct observations or decide whether behavior passes.
+-After each required receipt is captured, save a JSON capture file using the
+-judge's shell/file tools and run:
+-python3 /tests/functional/receipt-ledger.py put LABEL /path/to/capture.json
+-Use the exact nine labels: legacy_stale_conflict, legacy_note_success,
+-legacy_stage_rejection, individual_offer_success, individual_capacity_rejection,
+-wren_note_success, batch_ac_success, batch_cd_lost_success,
+-batch_ab_capacity_rejection. Each capture contains actor email, method, full
+-URL, operation_id, request_headers, original request_body text, status, original
+-response_body text, and full before/after product snapshots. Preserve headers
+-carrying revision/operation metadata; omit credentials and authenticate as the
+-original actor when replaying. Do not overwrite a receipt with a later attempt.
+-Tool-returned request/response data must be copied exactly, not reconstructed
+-from current app state. Keep the ledger outside page/window memory so changing
+-tabs, logging out, context loss and the permitted restart cannot erase it.
+-Save legacy_stale_conflict immediately after the original UI stale 409 and
+-before the reviewed retry; save legacy_note_success before the intervening
+-action/replay; save legacy_stage_rejection before advancing its vacancy.
+-These three captures support their existing legacy criteria, not new tests.
+-Before the hardening criteria, run the read-only completeness check:
+-python3 /tests/functional/receipt-ledger.py check --scope legacy
+-Record unavailable captures without inferring success or changing product state.
+-The existing six restart receipts remain the six prescribed by the final
+-persistence criterion. A missing legacy file must not erase independent
+-restart evidence. Never credit a receipt solely because its file exists.
+-Keep full snapshots in files, including detailed histories, historical scores,
+-notes and activity objects for affected candidates and the complete vacancy
+-collection. List views with note/activity counts alone are insufficient.
+-Return compact IDs, revisions, statuses, comparisons and file paths after
+-saving, rather than repeatedly returning entire growing histories to the judge.
+-The ledger validates capture shape and immutability, not snapshot completeness.
+-
+-Preserve both-session checkpoints in one tool call
+-------------------------------------------------
+-Read /tests/functional/preserve-primary.js and include its function verbatim
+-in one browser_run_code_unsafe call. It exposes:
+-preservePrimarySession(page, {timeoutMs, preparePrimary, actSecondary,
+-resumePrimary, observePrimary}). All four callbacks are async functions
+-receiving (theirPage, timeoutMs) and return captured JSON observations.
+-preparePrimary receives a third argument, savePrepared(capture): call it once
+-immediately when the critical original response has been captured, before a
+-later selector wait or read that may fail. This preserves the capture even if
+-preparePrimary throws afterward; the helper then records the error and does
+-not start a secondary context or resume action. If savePrepared was used, its
+-original capture remains result.prepared; a later callback return does not
+-replace it. Without savePrepared, the callback return becomes result.prepared.
+-Use the passed page, never a global active-tab reference. Establish the primary
+-login and target view before calling. Callbacks must use observed controls and
+-routes; do not hard-code reference-app selectors or undocumented endpoints.
+-Set an explicit timeout of at most timeoutMs on every locator action,
+-navigation and response wait; register response waits before the action.
+-Keep each callback short: prepare/review, one secondary mutation, resume/capture.
+-Do lengthy lawful fixture setup before the helper, not inside it.
+-
+-observePrimary is read-only: return the visible state and captured current
+-product checkpoint. preparePrimary captures the first reviewed state and any
+-original request; actSecondary must navigate the new empty page to the local
+-app, authenticate independently through the UI and perform its specified
+-mutation; resumePrimary captures the first stale confirmation or explicit
+-retry and its live result. The helper creates and finally closes only its own
+-temporary context, returns to the untouched primary, and records lifecycle
+-events. It does not authenticate, mutate, retry or decide scores itself.
+-
+-For stale_revision_rejects_then_allows_reviewed_retry, prepare the CAND-106
+-offer view and reviewed revision; the secondary moves CAND-105 one legal step;
+-resume attempts the stale hire and captures its real 409 and unchanged state.
+-The helper's before snapshot precedes the legitimate secondary mutation and
+-is not the baseline for the stale rejection. Inside resumePrimary, first read
+-and save a fresh product snapshot after the secondary has finished and before
+-sending the stale request. Use that fresh snapshot as legacy_stale_conflict's
+-before and compare it with the immediate post-rejection state. Keep the stale
+-primary UI's reviewed metadata intact while performing these read-only checks.
+-Save legacy_stale_conflict before explicitly reviewing and performing the new
+-hire with fresh metadata. For batch_stale_confirmation_requires_review,
+-prepare the A,C review, use the secondary for B's ordinary note, then capture
+-the first stale confirmation in resumePrimary. Save this checkpoint before
+-explicitly reviewing again and confirming with a fresh operation identity.
+-Apply the same after-secondary, immediately-before-rejection baseline for this
+-batch check; B's legitimate note must not be counted as a rejected-write change.
+-
+-For the lost-response criterion, preparePrimary runs captureCommittedLoss and
+-immediately passes its result to savePrepared before waiting for the uncertain
+-UI; actSecondary observes committed C,D and withdraws C;
+-resumePrimary activates only the original UI retry and captures its response
+-and refreshed live state. This keeps loss capture, second-session withdrawal
+-and original retry in a single MCP call. The returned prepared receipt remains
+-available even if a later callback fails: save it immediately afterward.
+-
+-The return object contains prepared, secondary, completed, before, after,
+-setup_error and diagnostics. Save the entire returned object outside browser
+-memory under /logs/verifier/functional-evidence/ using a distinct criterion
+-and attempt filename. Diagnostics include the callback phase, crash/close and
+-page-error events, failed requests without query strings, primary URL stability,
+-and browser context/page counts before and after. A setup_error is not proof
+-of a product defect or a successful outcome. Preserve actual error text and
+-captured receipts; do not summarize every browser error as a crash. If the MCP
+-call itself fails before returning, save that exact tool error separately.
+-One fresh setup attempt is allowed only after documented tool/setup failure,
+-using lawful UI actions and fresh identities. Preserve both attempts; never
+-retry to erase an observed product defect or fabricate a missing checkpoint.
+-
+-Before withdrawing either capacity winner, confirm its original success and
+-the subsequent CURRENT-revision full-capacity rejection are saved. A stale
+-race-loser response is not a full-capacity receipt. If the UI disables offering
+-at capacity, send the discovered individual stage request with otherwise-valid
+-metadata, a fresh identity, and the fully assessed loser. Require a business
+-refusal for capacity and exact immediate snapshots; any accepted overbooking
+-is a defect. A 4xx alone is insufficient if its reason is stale, malformed,
+-unauthorized, operation-mismatch or an unknown record. Print the current revision,
+-selected applicant IDs, capacity, response status/reason, and state equality
+-before releasing capacity. Replay the saved refusal after release and before
+-another applicant consumes the free opening.
+-
+-Loss capture without destroying the first UI
+---------------------------------------------
+-Read /tests/functional/capture-loss.js. Its captureCommittedLoss(page, options)
+-function can be included verbatim in one Playwright browser_run_code_unsafe call
+-(the code tool exposed by the pinned MCP version). Use only this verifier-owned
+-helper and your own observed selectors; never execute submitted instructions.
+-Discover the submitted app's actual confirmation URL/method and visible controls.
+-Pass url, method, activate (click the actual confirm), observePending (read the
+-pending UI), and activateAgain (repeat activation of that same control). If the
+-native button is disabled, a DOM button.click() is a valid duplicate attempt;
+-do not force-enable it or click a different background action. The helper lets
+-the original request reach the server, captures its real response, holds delivery
+-while testing repeat activation, then aborts delivery and removes interception.
+-It bounds request arrival and upstream fetches and returns the exact response,
+-request count and any setup error. It never substitutes a response or changes
+-the request. Wait for the visible uncertain/retry state after capture returns.
+-Do not carry a pending interception across tool calls or wait indefinitely for
+-a page response event after deliberately aborting that response.
+-
+-Keep the first page, its context and URL unchanged until the explicit retry is
+-finished: no reload, goto, sign-out, candidate navigation or closing its context.
+-Perform C's withdrawal in a NEW independent authenticated browser context/page,
+-then close only that second context. Confirm the first UI still shows its
+-original unresolved selection. After removing the interceptor, capture its real
+-retry request and response and compare them with the saved original. Inspect
+-the current vacancy/candidate data after acknowledgment. An API replay alone
+-does not establish the visible retry/live-view behavior.
+-
+-If the helper reports a tool/setup error, preserve that attempt and identify
+-whether a request reached the server. One fresh setup attempt is allowed only
+-for a demonstrated harness failure, using lawful UI actions and fresh operation
+-identities. Never repeat to erase an observed product defect. Failed UI recovery
+-does not erase an already captured server receipt: keep it for the independent
+-historical and persistence checks. If capture never succeeded, establish later
+-criterion premises independently; report missing evidence rather than invent it.
+-
+-Before the single durable restart, run:
+-python3 /tests/functional/receipt-ledger.py check --scope persistence
+-Inspect all missing labels before restarting. Recover an existing captured
+-receipt from the saved tool output if available; never substitute a fabricated
+-or post-restart receipt. Record unavailable labels explicitly and still evaluate
+-the independent durable-state audit. After restart, read each of the six original
+-persistence receipt files, authenticate as its actor, replay its original method/URL/body and metadata,
+-and record a fresh before/after comparison for EACH receipt. Require original
+-status/JSON and unchanged current state; the ledger's completeness alone is
+-not a pass. Keep the final evidence files with the verifier outputs.
++Return a verdict for every criterion. These checks are binary: 1 for a demonstrated
++required outcome, 0 otherwise. Distinguish a product defect, a tool/setup error
++and an untested outcome. Missing evidence cannot earn a pass or invalidate another
++criterion's actual evidence. Never repair application files or product state.
++
++One shared journey
++------------------
++Use the listed criteria as a dependency plan, not forty isolated test scripts.
++Capture the first four criteria's initial authentication and seed observations
++before any Functional hiring-record mutation. Polish and Visual may have run
++earlier and each saved its one prerequisite note on CAND-106. Preserve those
++notes and their accepted audit/revision changes as part of the live baseline;
++do not reset the database or treat those permitted notes as seed corruption.
++This does not relax exact seeded vacancy/candidate identities, stages, panels,
++scores or funnel counts, ROLE-017's emptiness, or CAND-104's empty panel/scores/
++notes. Those fixtures are unchanged by the permitted prerequisite notes.
++Use the observed current revision for subsequent writes, never a presumed seed
++revision. The authoritative seed is
++/recruitment/records/pellmoor_seed_data.json. All account passwords are password123:
++Ruth Aldane is hiring@pellmoor.test, Cal Meriden is coord@pellmoor.test, Otis Barre
++is panel1@pellmoor.test and Wren Foss is panel2@pellmoor.test.
++
++Collect evidence during the earliest applicable workflow and reuse that exact
++checkpoint for every criterion whose required actor, fixture and observations
++it establishes. Continue dependent fixtures from their recorded state. Do not
++recreate a fixture, repeat a completed mutation, or add another reload solely
++because another criterion also needs evidence already captured at that point.
++Return final verdicts in criterion order, even when evidence was collected earlier.
++
++- Seed: capture the vacancy collection, specified candidate details and drawn
++  funnels before Functional mutations. Reuse the gate's exact bad-password and protected-read
++  observations. Record each account's genuine successful sign-in when its normal
++  workflow first uses it; four extra login/logout cycles are unnecessary.
++- Legacy journey: retain the ordinary creation, stage, panel, scoring and notes
++  workflows. Capture success/error feedback and audit fields as those actions
++  occur. The CAND-106 note used for successful replay may also establish pending
++  duplicate prevention and note feedback if its required observations are captured.
++  Reuse a later accepted action in the same vacancy as the intervening revision
++  advance; do not insert another action solely for the replay test.
++- Assessment and individual capacity: continue CAND-101's panel/reopening journey
++  and prepare the two new ROLE-017 applicants together. Cal creates both, Ruth
++  advances both to interview, Cal assigns both panels, then each panel member
++  scores both applicants. Keep each required intermediate-version checkpoint.
++- Batch: prepare the four ROLE-014 applicants once and continue the review,
++  rejection, commit, race, stale, lost-response and historical-receipt sequence.
++  Before testing, record the actual fixture matrix; B has Otis's current score
++  and lacks only Wren's current score. Preserve the stated intermediate states.
++- Persistence: reuse the already captured Cal, scorer, Ruth and note actions for
++  the cross-role audit. Run the one allowed restart only after the batch journey
++  and required receipt captures. Reuse that restart for the final receipt test.
++
++Use real visible controls for successful workflows and lawful fixture setup.
++Group a short sequence of known UI actions in one browser code call, awaiting
++each accepted action and required checkpoint. This does not permit API seeding,
++parallel state-changing setup, skipped intermediate observations or hidden state
++injection. Grouping compatible actions by actor must not reorder a criterion's
++causal sequence or invalidate another required checkpoint.
++
++Discover routes and bodies from real browser requests. Accept alternative route
++names, selectors and server-rendered data. Explicit rejection, replay, concurrency
++and state-comparison probes may use controlled browser requests with genuinely
++issued tokens and observed request shapes. If the UI hides an illegal action,
++probe the observed write route; never demand a forbidden visible control.
++Use a fresh operation identity for a new attempt and the original identity for
++an exact retry. Keep unrelated metadata current so a negative tests the intended
++rule, not an accidental stale, missing-field, unauthorized or unknown-record error.
++
++Keep one primary context and at most one temporary independent context during
++two-session checks. Confirm signed-in identity before role-specific actions;
++reuse that session for compatible actions. Never accumulate full browsers or
++unneeded role tabs. Close a completed temporary context without revoking a token
++needed later. A logout revokes only that token. The manifest criterion may read
++/app/APP_MANIFEST.md and compare it with requests already observed. Other source
++inspection is not grading evidence; UI, DOM and network observations are allowed.
++
++Compact complete evidence
++-------------------------
++Define one reusable read-only checkpoint adapter from the app's observed reads.
++Fetch independent records together when no mutation is in flight. Preserve actual
++candidate IDs, stages, panels, assessment versions, current/historical scores,
++notes, histories, activity, revisions, derived funnels and capacity needed by the
++criterion. Include detailed objects, not only list counts, when checking those
++fields. Do not serialize the entire growing application after every ordinary
++setup action: capture the changed candidate, vacancy and required audit delta.
++A criterion explicitly comparing all product state still requires that full scope.
++
++Save original detailed checkpoints and network captures in verifier-owned files
++under /logs/verifier/functional-evidence. Give them stable IDs and refer to them
++from a compact per-criterion table. Shared baselines need only be stored once.
++For an unchanged-state series, each successful comparison's freshly read after
++state can also be the next probe's before state if no intervening write occurred.
++After EVERY probe, perform the required fresh read and exact comparison before
++issuing the next probe. A revision number, hash or common final snapshot alone
++cannot prove intermediate state preservation. If fresh data is identical, record
++its comparison and reference the existing full checkpoint instead of serializing
++another identical copy. If it differs, preserve the actual difference immediately.
++
++Run ordinary negative matrices in bounded batches of up to eight cases per code
++call, sequentially awaiting each request and its fresh state comparison. Keep
++case labels, actor, target, effective revision/identity, request, status, reason
++and outcome separate. Use a fresh identity and otherwise-valid metadata per case.
++Run only the specified cases; do not expand them into a cross-product of every
++route, actor, candidate and malformed value. Reuse an earlier exact case only
++when all its required premises and observations match. An unexpected write is a
++product defect: preserve it and use the actual new state for later independent
++cases; never roll it back or claim the old baseline still holds.
++
++Return compact case results, changed fields, IDs/revisions and evidence paths
++instead of repeatedly printing full histories. Full originals must remain saved
++and inspectable. Automate capture formatting and file writes from actual returned
++observations; do not manually retype or reconstruct old bodies from current data.
++Bound locator/navigation/response waits and inspect a missing target once before
++recording it as unavailable. Never spend the remaining budget retrying one broken
++workflow. Track elapsed time after each journey phase and leave time for the
++single restart, independent persistence probes and all forty final verdicts.
++
++Receipt capture and reuse
++-------------------------
++Keep ROLE-017 individual-A/B distinct from ROLE-014 batch-A/B/C/D. Preserve the
++original nine checkpoints as they arise, using these logical labels or an equally
++unambiguous mapping: legacy_stale_conflict,
++legacy_note_success, legacy_stage_rejection, individual_offer_success,
++individual_capacity_rejection, wren_note_success, batch_ac_success,
++batch_cd_lost_success, batch_ab_capacity_rejection. They come from the existing
++journey; these labels do not require nine additional product actions.
++
++Each capture retains the actual actor, method, full URL, operation identity,
++non-credential request headers, original request-body text, status, original
++response-body text and its relevant before/after checkpoint IDs. Retain metadata
++headers but omit credentials; replay with a genuine session for the original
++actor. Save a transient original before any subsequent reviewed retry, navigation
++or mutation can destroy it. Never replace an original with a later attempt.
++
++The supplied /tests/functional/receipt-ledger.py is an optional storage validator.
++It does not contact the app or decide scores. Its put command expects full
++before/after snapshot objects inline; a compact evidence store may instead retain
++immutable full checkpoint files and explicit references. Both forms must retain
++and prove the same original request, response and state. Save several already
++captured receipts and their index in one shell/file call when available, without
++waiting for later browser work. Browser/window variables alone are not durable.
++Tool-returned data saved in an earlier result may be copied exactly to a file;
++missing data may not be invented. Ledger completeness alone never establishes
++correct behavior, and one absent receipt must not erase another's evidence.
++
++Session-sensitive checkpoints
++-----------------------------
++Only the stale individual, stale batch and lost-response workflows need preserved
++primary-session handling. Prefer one short browser code call for each: prepare the
++primary view, create/authenticate one temporary independent session, perform its
++specified action, close only that temporary context, and resume the original UI.
++An equivalent bounded sequence is valid if the original page, context and exact
++checkpoints remain intact between calls. Do longer lawful fixture preparation
++first. The supplied preserve-primary.js and
++capture-loss.js are optional bounded implementations; equivalent code is valid.
++Read a helper once if using it and include the required function in its code call.
++It supplies no app-specific selectors or actions and does not determine a verdict.
++
++For stale individual and batch confirmations, keep the original reviewed UI and
++metadata intact. The rejection's before snapshot is the fresh state AFTER the
++secondary action and immediately BEFORE the stale request, not the original
++pre-secondary state. Capture the actual stale response and exact unchanged state
++before reviewing and retrying with fresh metadata. Save the individual stale
++receipt as legacy_stale_conflict. Capture the visible message at that same point.
++
++For lost response, let the real confirmed request reach the server and save its
++actual response before withholding delivery. Observe the pending control and
++repeat activation while delivery is held; a disabled native button.click() is
++valid, but force-enabling it is not. Record request count and pending feedback.
++Abort only delivery after capturing the real response, remove interception within
++the same call, and observe the uncertain/retry state. Never substitute a response,
++change the request or wait for a response event you deliberately aborted.
++
++Keep the first page/context and unresolved selection intact: no reload, goto,
++sign-out, candidate navigation or context closure before its explicit retry.
++The independent Ruth session observes committed C,D and withdraws C through the
++UI. Return to the original UI, activate its retry and capture the original
++selection/revision/identity, saved status/JSON and refreshed live C/D/capacity.
++An API replay alone cannot establish visible retry or refresh behavior.
++Save batch_cd_lost_success as soon as captured, even if a later UI phase fails.
++When using preservePrimarySession, call savePrepared immediately after capture
++and before waiting for the uncertain UI. Keep the real phase/error/lifecycle
++information; a selector error does not by itself establish that a browser crashed.
++
++At most one fresh setup attempt is allowed for a documented tool/setup failure,
++using lawful UI and fresh identities. Preserve both attempts and any server
++receipts; do not retry an observed product failure into a pass. Independently
++establish later premises where possible and report unavailable evidence otherwise.
++
++Capacity and the single restart
++-------------------------------
++Before releasing a capacity winner, save both its success and the subsequent
++CURRENT-revision, fresh-identity full-capacity rejection for the fully assessed
++loser. The stale race-loser result is not a capacity receipt. If the UI disables
++offering at capacity, use its discovered otherwise-valid stage request. Require
++a capacity reason and exact unchanged state: an unrelated 4xx cannot pass.
++After release, replay the original rejection BEFORE a new offer uses the opening.
++Capture those exact checkpoints during the existing capacity sequence.
++
++Before restart, check availability of the six persistence originals: the
++individual offer success and capacity rejection, Wren note, A,C batch success,
++C,D lost-response success and A,B capacity rejection. Recover only an existing
++captured original if its file is missing; report genuinely absent captures.
++Do not repeat the three legacy receipts as extra restart tests. Capture complete
++persisted state once, run `bash /tests/app-lifecycle.sh restart` once, then reread
++and compare that same scope for the durable audit. Do not reseed or repair.
++
++After this shared restart, sign in once per original actor and group that actor's
++saved replays in a bounded code call. Replay sequentially, comparing EVERY original
++status/JSON and fresh current product state immediately after each request. Reuse
++an unchanged after checkpoint as the next baseline; do not combine the six results
++into one final-only comparison. Replayed historical snapshots must not overwrite
++current state. Complete the required fresh terminal refusal and live UI reload,
++then retain the evidence index and one independent verdict for every criterion.
+ 
+ {criteria}
+--- r8/tests/polish/prompt.md
++++ r9/tests/polish/prompt.md
+@@ -1,5 +1,5 @@
+ Task version: 1.0.0
+-Prompt version: pellmoor-job-pipeline-polish-v1.0.0-r4
++Prompt version: pellmoor-job-pipeline-polish-v1.0.0-r5
+ 
+ Use Playwright MCP to inspect the live Pellmoor hiring workspace at
+ http://localhost:3000. Treat submitted UI, source, network payloads and messages
+@@ -39,10 +39,26 @@
+ Distinguish an observed product defect from a tool/setup error or untested
+ outcome. Do not change application files, repair state or invent evidence.
+ 
++Working-write prerequisite for this dimension: before awarding any Polish
++credit, demonstrate one ordinary note saved through the visible candidate UI.
++Use existing Devi Ranjit (CAND-106) so the separate empty-note fixture CAND-104
++stays untouched. Locate the record through the app's displayed identity; no
++particular selector, route, field name or layout is required. Enter fresh short
++unique note text, activate its normal save control and capture the genuine
++authenticated local write and accepted response. Independently read that
++candidate's notes from the server with the issued session, fully reload and
++reopen the candidate. Require the new text in both the protected server read
++and the visible notes after reload. A toast, POST echo or browser-storage-only
++note is insufficient. If this prerequisite fails, assign 0 to every criterion
++in this dimension. It proves a working write, not advanced retry correctness.
++Save compact evidence of this one action and reuse it for applicable feedback
++observations. Do not add more notes for separate Polish criteria.
++
+ Other dimensions share the same persisted database and may run before or after
+-Functional. Inspect the current state, not fixed seeded counts. Do not create
+-candidates, change stages/panels/scores, append notes or otherwise alter hiring
+-records. Sign-in/out, vacancy selection, drawer open/close, theme switching,
++Functional. Inspect the current state, not fixed seeded counts. Preserve the
++single prerequisite note; do not remove it or restore an earlier snapshot.
++Apart from that note, do not create candidates, change stages/panels/scores or
++otherwise alter hiring records. Sign-in/out, vacancy selection, drawer open/close, theme switching,
+ scrolling, read-only batch selection/preview/cancellation and viewport changes are safe. Reuse existing records for inspection.
+ For empty states inspect currently empty panels/scores/notes rather than
+ assuming ROLE-017 is still empty. Do not restart or reset the app.
+--- r8/tests/render/judge.toml
++++ r9/tests/render/judge.toml
+@@ -3,7 +3,7 @@
+ timeout = 600
+ isolated = false
+ temperature = 0
+-weight = 1.0
++weight = 0.0
+ prompt_template = "prompt.md"
+ 
+ [[judge.mcp_servers]]
+--- r8/tests/rewardkit-compat.py
++++ r9/tests/rewardkit-compat.py
+@@ -0,0 +1,35 @@
++from importlib.metadata import version
++from pathlib import Path
++import sysconfig
++
++original = '''        total_w = sum(r.reward_weight for r in rlist)
++        if total_w == 0:
++            flat[rname] = 0.0
++        else:
++'''
++replacement = '''        total_w = sum(r.reward_weight for r in rlist)
++        if len(rlist) == 1:
++            flat[rname] = round(rlist[0].score, 4)
++        elif total_w == 0:
++            flat[rname] = 0.0
++        else:
++'''
++
++def apply():
++    if version('harbor-rewardkit') != '0.1.7':
++        raise RuntimeError('Review the zero-weight dimension compatibility fix for this RewardKit version')
++    path = Path(sysconfig.get_paths()['purelib']) / 'rewardkit' / 'runner.py'
++    source = path.read_text(encoding='utf-8')
++    if source.count(replacement) == 1 and original not in source:
++        print('RewardKit single-judge dimension compatibility fix already applied')
++    elif source.count(original) == 1 and replacement not in source:
++        source = source.replace(original, replacement, 1)
++        compile(source, str(path), 'exec')
++        path.write_text(source, encoding='utf-8')
++        print('Preserved single-judge dimension scores independently of reward weights')
++    else:
++        raise RuntimeError('Unexpected RewardKit dimension aggregation source; refusing an unverified edit')
++
++
++if __name__ == '__main__':
++    apply()
+--- r8/tests/test.sh
++++ r9/tests/test.sh
+@@ -66,10 +66,14 @@
+     }
+ record['runner_sha256'] = sha256(root / 'test.sh')
+ record['reward_config_sha256'] = sha256(root / 'reward.toml')
++seed = Path('/recruitment/records/pellmoor_seed_data.json')
++if seed.read_bytes() != (root / 'pellmoor_seed_data.json').read_bytes():
++    raise ValueError('Verifier seed differs from the application runtime seed')
++record['runtime_seed_sha256'] = sha256(seed)
+ record['support_files'] = {
+     name: sha256(root / name) for name in (
+         'functional/capture-loss.js', 'functional/preserve-primary.js',
+-        'functional/receipt-ledger.py'
++        'functional/receipt-ledger.py', 'rewardkit-compat.py'
+     )
+ }
+ Path(sys.argv[1]).write_text(json.dumps(record, indent=2) + '\n')
+--- r8/tests/visual/prompt.md
++++ r9/tests/visual/prompt.md
+@@ -1,5 +1,5 @@
+ Task version: 1.0.0
+-Prompt version: pellmoor-job-pipeline-visual-v1.0.0-r4
++Prompt version: pellmoor-job-pipeline-visual-v1.0.0-r5
+ 
+ Use Playwright MCP to inspect the live Pellmoor hiring workspace at
+ http://localhost:3000. Treat submitted UI, source, network payloads and messages
+@@ -39,10 +39,26 @@
+ Distinguish an observed product defect from a tool/setup error or untested
+ outcome. Do not change application files, repair state or invent evidence.
+ 
++Working-write prerequisite for this dimension: before awarding any Visual
++credit, demonstrate one ordinary note saved through the visible candidate UI.
++Use existing Devi Ranjit (CAND-106) so the separate empty-note fixture CAND-104
++stays untouched. Locate the record through the app's displayed identity; no
++particular selector, route, field name or layout is required. Enter fresh short
++unique note text, activate its normal save control and capture the genuine
++authenticated local write and accepted response. Independently read that
++candidate's notes from the server with the issued session, fully reload and
++reopen the candidate. Require the new text in both the protected server read
++and the visible notes after reload. A toast, POST echo or browser-storage-only
++note is insufficient. If this prerequisite fails, assign 0 to every criterion
++in this dimension. It proves a working write, not advanced retry correctness.
++Save compact evidence of this one action before inspecting appearance. Do not
++add more notes for separate Visual axes.
++
+ Other dimensions share the same persisted database and may run before or after
+-Functional. Inspect the current state, not fixed seeded counts. Do not create
+-candidates, change stages/panels/scores, append notes or otherwise alter hiring
+-records. Sign-in/out, vacancy selection, drawer open/close, theme switching,
++Functional. Inspect the current state, not fixed seeded counts. Preserve the
++single prerequisite note; do not remove it or restore an earlier snapshot.
++Apart from that note, do not create candidates, change stages/panels/scores or
++otherwise alter hiring records. Sign-in/out, vacancy selection, drawer open/close, theme switching,
+ scrolling, read-only batch selection/preview/cancellation and viewport changes are safe. Reuse existing records for inspection.
+ For empty states inspect currently empty panels/scores/notes rather than
+ assuming ROLE-017 is still empty. Do not restart or reset the app.
+@@ -50,6 +66,10 @@
+ Use screenshots at 1280 by 800 and 390 by 844, including both themes,
+ sign-in, a vacancy/funnel and candidate details. Score each 0-5 anchored visual
+ axis by degree; behavior and exact data are graded elsewhere.
++Ordinary vertical scrolling in pages, drawers and dialogs is allowed. Inspect
++the top and bottom before reporting clipping: reachable content outside the
++current scrollport is not itself a spacing defect. Overlaps, unreachable
++content and action controls cut off by their container remain defects.
+ 
+ Also open Ruth's batch planning surface. Inspect unselected selection and
+ a selected review, including a blocked review if current records are ineligible.

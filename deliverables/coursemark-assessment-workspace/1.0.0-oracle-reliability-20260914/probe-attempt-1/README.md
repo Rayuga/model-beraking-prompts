@@ -1,0 +1,1 @@
+The new local probe initially required an explicit null hidden score. The public contract permits an absent value or null. The golden omitted the field correctly; the probe now accepts either representation. No product or scoring requirement changed. Original failure evidence is preserved here.

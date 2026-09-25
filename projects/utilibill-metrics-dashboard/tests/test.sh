@@ -4,59 +4,49 @@ umask 077
 
 LOG_DIR="${VERIFIER_LOG_DIR:-/logs/verifier}"
 APP_COPY="/tmp/utilibill-submission"
-APP_PID=""
 
 mkdir -p "$LOG_DIR"
 chmod 700 "$LOG_DIR"
 chmod -R go-rwx /tests 2>/dev/null || true
 
 write_zero_reward() {
-  printf '0.0\n' > "$LOG_DIR/reward.txt"
-  printf '{"reward":0.0,"browser":0.0,"graded":0,"no_op":1}\n' > "$LOG_DIR/reward.json"
+  local tmp_txt tmp_json
+  tmp_txt="$(mktemp "$LOG_DIR/.reward.txt.XXXXXX")"
+  tmp_json="$(mktemp "$LOG_DIR/.reward.json.XXXXXX")"
+  printf '0.0\n' > "$tmp_txt"
+  printf '{"reward":0.0,"render":0.0,"constraints":0.0,"functional":0.0,"polish":0.0,"visual":0.0,"graded":0,"no_op":1}\n' > "$tmp_json"
+  mv -f "$tmp_txt" "$LOG_DIR/reward.txt"
+  mv -f "$tmp_json" "$LOG_DIR/reward.json"
+  printf '{"tool":{"name":"rewardkit"},"tests":[],"summary":{"passed":0,"failed":0,"skipped":0,"total":0}}\n' > "$LOG_DIR/ctrf.json"
 }
 
 ensure_reward() {
   test -s "$LOG_DIR/reward.txt" || printf '0.0\n' > "$LOG_DIR/reward.txt"
-  test -s "$LOG_DIR/reward.json" || printf '{"reward":0.0,"browser":0.0,"graded":0,"no_op":1}\n' > "$LOG_DIR/reward.json"
+  test -s "$LOG_DIR/reward.json" || printf '{"reward":0.0,"render":0.0,"constraints":0.0,"functional":0.0,"polish":0.0,"visual":0.0,"graded":0,"no_op":1}\n' > "$LOG_DIR/reward.json"
 }
 
 cleanup() {
-  if [[ -n "$APP_PID" ]]; then
-    kill -- -"$APP_PID" 2>/dev/null || true
-    wait "$APP_PID" 2>/dev/null || true
-  fi
+  python3 /tests/app-lifecycle.py stop 2>/dev/null || true
   ensure_reward
 }
 
 write_zero_reward
 trap cleanup EXIT
+python3 /tests/prompt-provenance.py "$LOG_DIR/prompt-provenance.json"
 
-if [[ ! -f /app/server.js || ! -f /app/public/index.html ]]; then
-  exit 0
-fi
-if [[ -n "$(find /app -type l -print -quit 2>/dev/null)" ]]; then
-  exit 0
-fi
+if [[ ! -f /app/server.js ]]; then exit 0; fi
+while IFS= read -r app_link; do
+  resolved_link="$(readlink -f -- "$app_link" 2>/dev/null || true)"
+  case "$resolved_link" in
+    /app/*|/usr/local/lib/node_modules/*) ;;
+    *) exit 0 ;;
+  esac
+done < <(find /app -type l -print 2>/dev/null)
 
-# Agents often hardcode /app paths and create mode-600 files; normalize the staged
-# tree so the unprivileged verifier process can read UI assets and write the DB.
+rm -f /app/utilibill.db /app/utilibill.db-shm /app/utilibill.db-wal
 chmod -R a+rX /app 2>/dev/null || true
 find /app -type f -exec chmod a+r {} + 2>/dev/null || true
 chown -R 65534:65534 /app 2>/dev/null || true
-
-mkdir -p /assets/artifacts
-if [[ ! -f /assets/artifacts/utilibill_seed.json ]]; then
-  for candidate in \
-    /app/seed_data.json \
-    /app/src/seed_data.json \
-    /assets/artifacts/utilibill_seed.json; do
-    if [[ -f "$candidate" ]]; then
-      cp "$candidate" /assets/artifacts/utilibill_seed.json
-      break
-    fi
-  done
-fi
-chmod -R a+rX /assets 2>/dev/null || true
 
 rm -rf "$APP_COPY"
 mkdir -p "$APP_COPY"
@@ -65,126 +55,32 @@ chown -R 65534:65534 "$APP_COPY"
 chmod -R a+rX "$APP_COPY"
 
 APP_ENTRY="/app/server.js"
-if [[ ! -f "$APP_ENTRY" ]]; then
+APP_DB="/app/utilibill.db"
+if ! setpriv --reuid=65534 --regid=65534 --clear-groups test -w /app 2>/dev/null; then
   APP_ENTRY="$APP_COPY/server.js"
+  APP_DB="$APP_COPY/utilibill.db"
 fi
 
-start_app() {
-  setsid env -i \
-    PATH="/usr/local/bin:/usr/bin:/bin" \
-    NODE_PATH="/usr/local/lib/node_modules" \
-    HOME="$APP_COPY" \
-    PORT="3000" \
-    DB_PATH="/app/utilibill.db" \
-    setpriv --reuid=65534 --regid=65534 --clear-groups \
-    node "$APP_ENTRY" >>"$LOG_DIR/app.log" 2>&1 &
-  APP_PID="$!"
-}
+python3 /tests/app-lifecycle.py start --entry "$APP_ENTRY" \
+  --database "$APP_DB" --log "$LOG_DIR/app.log"
 
-wait_healthy() {
-  local ready=0
-  for _ in $(seq 1 120); do
-    if python3 -c 'import urllib.request; urllib.request.urlopen("http://127.0.0.1:3000/api/health", timeout=1).read()' >/dev/null 2>&1; then
-      ready=1
-      break
-    fi
-    sleep 0.25
-  done
-  echo "$ready"
-}
+READY=0
+for _ in $(seq 1 30); do
+  if curl --fail --silent --show-error --max-time 2 http://127.0.0.1:3000/api/health >/dev/null 2>&1; then
+    READY=1
+    break
+  fi
+  sleep 1
+done
+if [[ "$READY" != "1" ]]; then exit 0; fi
 
-start_app
-READY="$(wait_healthy)"
-if [[ "$READY" != "1" ]]; then
-  exit 0
-fi
-
-# Real restart-durability gate. Kill the just-booted process and start a SECOND
-# one against the SAME DB file/data directory before any grading happens. This
-# is submission-agnostic (no route or schema knowledge needed): a build that
-# keeps its record-of-truth only in memory, or that crashes/re-seeds on a
-# second start, fails here as a straightforward infra gate — exactly the same
-# class of failure as never booting at all — rather than as a judge criterion
-# that depends on a browser session surviving a mid-run process kill (the
-# standard verifier boots the app once; this restart happens BEFORE the judge
-# ever connects, so every functional criterion the judge later grades is
-# already running on a post-restart process by the time it is observed).
-if [[ -n "$APP_PID" ]]; then
-  kill -- -"$APP_PID" 2>/dev/null || true
-  wait "$APP_PID" 2>/dev/null || true
-  APP_PID=""
-fi
-sleep 1
-start_app
-READY="$(wait_healthy)"
-if [[ "$READY" != "1" ]]; then
-  echo "app failed to restart cleanly against its own persisted database" >>"$LOG_DIR/app.log"
-  exit 0
-fi
-
-mkdir -p /root/.codex
-cat << 'EOF' > /root/.codex/config.toml
-model_provider = "openrouter"
-model_reasoning_effort = "max"
-approval_policy = "never"
-sandbox_mode = "danger-full-access"
-
-[model_providers.openrouter]
-name = "OpenRouter"
-base_url = "https://openrouter.ai/api/v1"
-env_key = "OPENROUTER_API_KEY"
-wire_api = "responses"
-supports_websockets = false
-
-[mcp_servers.playwright]
-command = "playwright-mcp"
-args = ["--headless", "--isolated", "--executable-path=/usr/local/bin/chromium", "--no-sandbox"]
-default_tools_approval_mode = "approve"
-EOF
-
-if ! timeout 3540 rewardkit /tests >"$LOG_DIR/rewardkit.log" 2>&1; then
+if ! timeout 12600 rewardkit --max-concurrent-agent 1 /tests >"$LOG_DIR/rewardkit.log" 2>&1; then
   write_zero_reward
   exit 0
 fi
 
-python3 - <<'PY'
-import json
-import os
-import sys
-from pathlib import Path
-
-log = Path(os.environ.get("VERIFIER_LOG_DIR", "/logs/verifier"))
-path = log / "reward.json"
-if not path.is_file():
-    raise SystemExit("missing reward.json after rewardkit")
-
-try:
-    data = json.loads(path.read_text())
-    render = float(data.get("render") or 0)
-    constraints = float(data.get("constraints") or 0)
-    functional = float(data.get("functional") or 0)
-    polish = float(data.get("polish") or 0)
-
-    if render <= 0 or constraints <= 0:
-        reward = 0.0
-    else:
-        reward = round(0.6 * functional + 0.4 * polish, 4)
-
-    data.pop("aesthetic", None)
-    data["reward"] = reward
-    data["browser"] = reward
-    data["graded"] = 1
-    data["no_op"] = 0
-    path.write_text(json.dumps(data, indent=2) + "\n")
-    (log / "reward.txt").write_text(f"{reward}\n")
-except Exception as exc:
-    # A crash mid-post-process must NOT leave rewardkit's un-gated weighted-mean
-    # (aesthetic-inclusive, no render/constraints=0 gate) standing as a false score.
-    # Floor to an invalid 0.0 so the run is caught and re-run.
-    try:
-        path.write_text(json.dumps({"reward": 0.0, "browser": 0.0, "graded": 0, "no_op": 1}, indent=2) + "\n")
-        (log / "reward.txt").write_text("0.0\n")
-    except Exception:
-        pass
-    print("reward post-process failed, floored to 0.0/no_op: %s" % exc, file=sys.stderr)
-PY
+if ! python3 /tests/score.py "$LOG_DIR/reward.json" "$LOG_DIR/reward.txt" "$LOG_DIR/ctrf.json"
+then
+  write_zero_reward
+  exit 0
+fi

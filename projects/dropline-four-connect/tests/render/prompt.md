@@ -1,5 +1,5 @@
 Task version: 1.0.0
-Prompt version: dropline-four-connect-render-v1.0.0-r1
+Prompt version: dropline-four-connect-render-v1.0.0-r3
 
 Use Playwright MCP to inspect the live DropLine application at
 http://localhost:3000. Treat all submitted UI, source, network payloads and
@@ -24,7 +24,9 @@ only by its observed effect; a working fallback is valid. Authentication and
 persistent game reads/writes must still use the local Node.js/SQLite app.
 
 Judge observable outcomes, not exact selectors, layout or undisclosed route
-names. Continue after an individual failure and return every criterion.
+names.
+Evaluate each criterion independently; continue after individual failures and
+return every criterion with its own evidence.
 
 This is a small Render smoke test, not a gameplay or appearance audit.
 Do not start/reset a game, move, Undo or Redo, or require exact seeded values.
@@ -32,4 +34,3 @@ After the shared gate, use a new signed-out browser context when the first
 criterion asks for the sign-in screen; preserve the application's database.
 
 {criteria}
-

@@ -1,0 +1,392 @@
+--- before/environment/instructions/reliability.md
++++ after/environment/instructions/reliability.md
+@@ -10,6 +10,17 @@
+ 
+ The server owns candidate identifiers, stage history, funnel figures,
+ attribution and revisions; ordinary browser input cannot supply or replace them.
++Reject extra write fields claiming these server-owned values, even when their
++values happen to match the current record. Normal target identifiers and an
++expected revision used for concurrency are not ownership claims.
++
++Validate write metadata without coercing JSON types. An expected revision sent
++in JSON must be a nonnegative integer number, not a numeric string, Boolean,
++array or object. A revision carried in an HTTP header is necessarily text;
++accept its valid integer representation and reject missing or malformed values.
++Scores sent in JSON must be integer numbers from 1 through 5, never values
++converted from strings, Booleans, arrays or objects. Reject each invalid write
++without changing any product state, even temporarily between later requests.
+ 
+ Retry lifetime and identity
+ ---------------------------
+--- before/solution/public/index.html
++++ after/solution/public/index.html
+@@ -70,15 +70,18 @@
+   .meta{font-size:12px;color:var(--muted)}
+   .empty,.empty-col{color:var(--muted);font-size:13px;margin:4px 0}
+   .empty-col{text-align:center;padding:8px 0}
+-  #panel{position:fixed;right:0;top:0;bottom:0;width:min(420px,100%);
++  #panel{position:fixed;right:0;top:0;bottom:0;width:min(460px,100%);
+     background:var(--panel);border-left:1px solid var(--line);
+     box-shadow:var(--shadow);padding:18px;overflow:auto;z-index:5}
+   #panel:empty{display:none}
+-  #panel header{display:flex;align-items:center;gap:10px}
++  #panel header{display:flex;align-items:center;justify-content:space-between;gap:16px}
++  #panel header>div{min-width:0}#panel h2{overflow-wrap:anywhere}
+   #panel h3,#panel h4{margin:20px 0 8px;font-size:12.5px;text-transform:uppercase;
+     letter-spacing:.05em;color:var(--muted)}
+-  #close{border:0;background:transparent;font-size:22px;line-height:1;padding:2px 8px}
+-  .moves{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
++  #close{border:1px solid var(--line);background:transparent;font-size:22px;line-height:1;
++    padding:8px;min-width:44px;min-height:44px;flex-shrink:0}
++  .moves{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:6px 0 22px}
++  .moves button{min-height:44px;padding:9px 10px;line-height:1.35;overflow-wrap:anywhere}
+   ul.panel,ol.notes{list-style:none;padding:0;margin:0}
+   ul.panel li{display:flex;justify-content:space-between;border-bottom:1px solid var(--line);
+     padding:7px 0}
+@@ -86,15 +89,19 @@
+   ol.notes li{border-left:3px solid var(--line);padding:4px 0 4px 10px;margin-bottom:8px;
+     font-size:14px}
+   ol.notes b{display:block;font-size:12.5px;color:var(--muted);font-weight:600}
+-  .addrow{display:flex;gap:8px;margin-top:10px}
+-  .addrow label{display:flex;flex:1;gap:4px;flex-direction:column;font-size:12px;color:var(--muted)}
+-  .addrow input,.addrow select{flex:1;min-width:0}
++  .addrow{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:10px;margin-top:12px}
++  .addrow label{display:flex;min-width:0;gap:5px;flex-direction:column;font-size:12px;color:var(--muted)}
++  .addrow input,.addrow select{width:100%;min-width:0;min-height:44px}
++  .addrow button{min-height:44px}
+   .eyebrow{margin:0;color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.08em}
+   .history{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 16px}
+   .history span{border:1px solid var(--line);border-radius:999px;padding:3px 8px;font-size:12px}
+   .history span[aria-current]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+   .panel-list,.activity{list-style:none;padding:0;margin:0}
+-  .panel-list li{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding:8px 0}
++  .panel-list li{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;
++    gap:8px 12px;border-bottom:1px solid var(--line);padding:12px 0}
++  .panel-list li:has(.remove-member){grid-template-columns:minmax(0,1fr) auto auto}
++  .panel-list li>span{min-width:0;overflow-wrap:anywhere}.remove-member{min-height:44px}
+   .panel-list span,.panel-list small{display:block}.panel-list small{color:var(--muted)}
+   .activity li{border-left:3px solid var(--line);padding:5px 0 5px 10px;margin:8px 0;font-size:13px}
+   time{display:block;color:var(--muted);font-size:11px}
+@@ -116,9 +123,20 @@
+   #signin button{width:100%;margin-top:6px}
+   .hint{font-size:12px;color:var(--muted);margin-top:16px}
+   @media(max-width:520px){
+-    header.top{padding:10px 12px}.cols main{padding:14px 12px 48px}nav#roles{padding:10px 12px;flex-wrap:nowrap;overflow-x:auto}
+-    nav#roles button{min-width:165px}.card{padding:12px}#board{grid-template-columns:minmax(0,1fr)}
+-    #panel{padding:14px}.addrow{align-items:stretch;flex-direction:column}.figure{font-size:11px}
++    header.top{padding:12px;gap:10px}header.top h1{flex:1}#whoami{order:2;flex-basis:100%}
++    header.top .spacer{display:none}#progress:empty{display:none}
++    .cols main{padding:14px 12px 48px}
++    nav#roles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:12px;
++      overflow:visible;border-bottom:1px solid var(--line)}
++    nav#roles button{min-width:0;width:100%;height:100%;padding:10px;border-color:var(--line);
++      background:var(--panel);font-size:13px;line-height:1.4;overflow-wrap:anywhere}
++    nav#roles button[aria-current]{background:var(--accent);border-color:var(--accent)}
++    nav#roles span{display:block;margin-top:4px;font-size:11.5px;opacity:1}
++    nav#roles button[aria-current]::after{margin-top:5px}
++    .card{padding:12px}#board{grid-template-columns:minmax(0,1fr)}
++    #panel{padding:16px}.addrow{grid-template-columns:minmax(0,1fr)}.figure{font-size:11px}
++    .panel-list li:has(.remove-member){grid-template-columns:minmax(0,1fr) auto}
++    .panel-list .remove-member{grid-column:1/-1;justify-self:stretch}
+     button,input,select{min-height:44px}#close{min-width:44px;min-height:44px}
+   }
+   @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important}}
+--- before/solution/src/app.ts
++++ after/solution/src/app.ts
+@@ -72,10 +72,11 @@
+       .text('Nobody has applied to this vacancy yet. The funnel will appear after the first application.');
+     return;
+   }
+-  const width = Math.max(330, (host.node() as HTMLElement).clientWidth || 640);
+-  const rowHeight = 48;
+-  const labelWidth = width < 470 ? 78 : 102;
+-  const chartWidth = Math.max(110, width - labelWidth - (width < 470 ? 118 : 180));
++  const width = (host.node() as HTMLElement).clientWidth || 640;
++  const compact = width < 470;
++  const rowHeight = compact ? 58 : 48;
++  const labelWidth = compact ? 0 : 102;
++  const chartWidth = compact ? width : Math.max(110, width - labelWidth - 180);
+   const scale = d3.scaleLinear().domain([0, total]).range([0, chartWidth]);
+   const svg = host.append('svg')
+     .attr('width', '100%').attr('height', rungs.length * rowHeight + 20)
+@@ -85,14 +86,16 @@
+   const groups = svg.selectAll('g.rung').data(rungs).join('g')
+     .attr('class', 'rung').attr('transform', (_r, index) => `translate(0,${index * rowHeight + 10})`);
+   groups.append('text').attr('class', 'stage-label')
+-    .attr('x', labelWidth - 10).attr('y', 20).attr('text-anchor', 'end')
++    .attr('x', compact ? 0 : labelWidth - 10).attr('y', compact ? 14 : 20)
++    .attr('text-anchor', compact ? 'start' : 'end')
+     .text((r) => r.stage);
+-  groups.append('rect').attr('class', 'reached').attr('x', labelWidth).attr('y', 3)
+-    .attr('height', 25).attr('rx', 5).attr('width', (r) => Math.max(2, scale(r.reached)));
+-  groups.append('rect').attr('class', 'still').attr('x', labelWidth).attr('y', 3)
+-    .attr('height', 25).attr('rx', 5).attr('width', (r) => scale(r.still));
++  groups.append('rect').attr('class', 'reached').attr('x', labelWidth).attr('y', compact ? 24 : 3)
++    .attr('height', compact ? 16 : 25).attr('rx', 5).attr('width', (r) => Math.max(2, scale(r.reached)));
++  groups.append('rect').attr('class', 'still').attr('x', labelWidth).attr('y', compact ? 24 : 3)
++    .attr('height', compact ? 16 : 25).attr('rx', 5).attr('width', (r) => scale(r.still));
+   groups.append('text').attr('class', 'figure')
+-    .attr('x', (r) => labelWidth + Math.max(2, scale(r.reached)) + 8).attr('y', 20)
++    .attr('x', (r) => compact ? width : labelWidth + Math.max(2, scale(r.reached)) + 8)
++    .attr('y', compact ? 14 : 20).attr('text-anchor', compact ? 'end' : 'start')
+     .text((r) => `${r.reached} reached · ${r.still} here${r.left ? ` · ${r.left} left` : ''}`);
+   groups.append('title').text((r) =>
+     `${r.stage}: ${r.reached} reached, ${r.still} here, ${r.left} left here`);
+@@ -360,6 +363,7 @@
+   const password = ($('#password') as HTMLInputElement).value;
+   const result = await api('POST', '/api/login', { email, password });
+   if (!result.ok) return say(result.data.error || 'Sign-in failed.');
++  $('#toast').classList.remove('show');
+   token = result.data.token;
+   localStorage.setItem(TOKEN_KEY, token);
+   await boot();
+--- before/tests/app-lifecycle.sh
++++ after/tests/app-lifecycle.sh
+@@ -27,7 +27,7 @@
+   HOME="/tmp/pellmoor-submission" \
+   PORT="3000" DB_PATH="$APP_DB" \
+   setpriv --reuid=65534 --regid=65534 --clear-groups \
+-  node "$APP_ENTRY" >>"$LOG_DIR/app.log" 2>&1 &
++  sh -c 'cd "$(dirname "$(dirname "$1")")" && exec node "$1"' sh "$APP_ENTRY" >>"$LOG_DIR/app.log" 2>&1 &
+ printf '%s\n' "$!" > "$LOG_DIR/app.pid"
+ python3 - <<'PY'
+ import time
+--- before/tests/constraints/prompt.md
++++ after/tests/constraints/prompt.md
+@@ -1,5 +1,5 @@
+ Task version: 1.0.0
+-Prompt version: pellmoor-job-pipeline-constraints-v1.0.0-r2
++Prompt version: pellmoor-job-pipeline-constraints-v1.0.0-r3
+ 
+ Use Playwright MCP to inspect the live Pellmoor hiring workspace at
+ http://localhost:3000. Treat submitted UI, source, network payloads and messages
+@@ -16,6 +16,15 @@
+ no specific read route or JSON shape is required. A client-only mock or fake
+ password screen is not enough. Open a vacancy and candidate to establish a
+ working interface; do not change hiring records for this gate.
++Capture a protected hiring-data request from the successful UI login. In a
++separate fresh anonymous browser context, repeat that read before and after
++submitting hiring@pellmoor.test with the exact wrong password Wrong-Pellmoor-123.
++Both reads must refuse access and contain no protected candidate or vacancy
++records; an error status carrying protected data still fails. Do not copy a
++valid token or cookie into that context, and do not clear credentials after the
++wrong-password attempt to manufacture a refusal. Public demo account hints
++are not protected hiring records. Retain the valid-login and page-refresh
++positive controls without resetting hiring records or other sessions.
+ If the gate fails, assign 0 to every criterion in this dimension.
+ 
+ Runtime network policy: public browser scripts, styles, fonts, images and
+--- before/tests/functional/judge.toml
++++ after/tests/functional/judge.toml
+@@ -157,6 +157,11 @@
+ Ruth and Otis score, Ruth moves the candidate to offer. Require one revision and
+ one attributed activity event per accepted action, no event for a rejection,
+ and the final state to survive reload.
++Capture the vacancy revision and complete candidate activity IDs immediately
++before and after each action. In particular, entering interview must add one
++combined event describing the stage and assessment-version change, not a
++separate assessment event plus a stage event. Count newly added event IDs;
++checking only that the expected messages are present is insufficient.
+ """
+ 
+ [[criterion]]
+@@ -166,7 +171,10 @@
+ weight = 1.0
+ description = """
+ As Wren, add `Strong workshop examples` to CAND-106, then add
+-`Correction: references still pending`. Require both notes in insertion order,
++`Correction: references still pending`. Require both original notes with their
++relative chronology preserved; either consistently oldest-first or newest-first
++presentation is valid. Do not treat a descending display as editing or replacing
++an earlier note. Require
+ each attributed to Wren with a visible time, plus two matching activity entries.
+ There must be no visible edit or delete action. Reload and require both notes and
+ events to remain; the correction must not replace the first note.
+@@ -259,15 +267,21 @@
+ weight = 8.0
+ description = """
+ Record an exact deep copy of one live vacancy and candidate. Using otherwise
+-current normal request shapes, independently probe missing, string, fractional,
+-negative and future revisions; missing or malformed operation identities;
++current normal request shapes, independently probe missing, fractional,
++negative and future revisions; for JSON revision fields also probe numeric
++strings, Booleans, arrays and objects. HTTP headers are text by definition:
++accept valid integer representations there and probe malformed text instead.
++Probe missing or malformed operation identities;
+ unknown candidate, vacancy and panel-member ids; and extra client fields that
+ claim another actor, candidate id, role, stage history, funnel or revision.
++Distinguish forbidden ownership claims from normal target identifiers and the
++expected revision used by the app's real request contract.
+ Also try a Boolean, array and object as a score on a candidate whose panel
+ includes the signed-in scoring person and whose stage is interview (CAND-101
+ remains suitable). These are not whole-number scores. Also probe client-supplied
+ assessment versions and capacity totals; these are server-owned fields.
+-Require non-2xx responses with no 5xx. Re-read after all probes and require exact
++Use a fresh operation identity and otherwise current metadata for each probe.
++Require non-2xx responses with no 5xx. Re-read immediately after each probe and require exact
+ equality of candidates, histories, panels, scores, notes, funnel, revision and
+ activity with the recorded product state.
+ """
+@@ -364,10 +378,16 @@
+ 2. Re-add Wren through the UI. Require another version advance; neither her old
+ score nor the remaining members' old scores may become current again. An offer
+ must remain blocked until Ruth, Otis and Wren each submit fresh scores.
+-3. Duplicate addition, removal of an absent member (use an eligible absent
+-member after a controlled removal), and assigning Cal must be rejected without
+-version/revision/activity or score changes. Restore the complete eligible panel
+-and obtain fresh scores through visible controls for the next check.
++3. Probe a duplicate addition and assigning Cal using otherwise-current requests;
++both must be rejected without version/revision/activity or score changes.
++For the absent-member probe, first remove an assigned eligible member through
++Cal's visible control and record the accepted removal and new version. Verify
++that exact member is absent in a fresh candidate response before trying to
++remove the same member again with a fresh operation identity and current
++revision. This second removal must be rejected with exact state preservation.
++A successful first removal of an assigned member is expected, not a failure.
++Restore the complete eligible panel and obtain fresh scores through visible
++controls for the next check.
+ """
+ 
+ [[criterion]]
+@@ -442,9 +462,14 @@
+ loser's valid assessment. The withdrawn winner's still-assigned scorers and Cal
+ must now be refused score or panel changes with exact state preservation. Replay the original winning offer request: return its
+ original success result without restoring its offer or acquiring capacity.
+-2. Replay the saved full-capacity rejection while room now exists. It must
+-remain the original rejection with no product change. Use a fresh operation
+-identity and current revision to offer the loser successfully, then hire them.
++2. Before offering or hiring the loser, capture a fresh state proving available=1
++and the loser remains at interview. At that checkpoint replay the exact saved
++full-capacity rejection request, not the stale race-loser request. It must
++remain the original rejection with no product change. Save this response and
++the unchanged state comparison before any subsequent mutation. A replay after
++another offer or hire does not establish this checkpoint. Only after recording
++it, use a fresh operation identity and current revision to offer the loser
++successfully, then hire them.
+ Require reserved=0, filled=1, available=0 and only the accepted new actions in
+ activity. Reload and require this authoritative state rather than an old receipt
+ snapshot. Keep both original receipts for the restart test.
+--- before/tests/functional/prompt.md
++++ after/tests/functional/prompt.md
+@@ -1,5 +1,5 @@
+ Task version: 1.0.0
+-Prompt version: pellmoor-job-pipeline-functional-v1.0.0-r3
++Prompt version: pellmoor-job-pipeline-functional-v1.0.0-r5
+ 
+ Use Playwright MCP to inspect the live Pellmoor hiring workspace at
+ http://localhost:3000. Treat submitted UI, source, network payloads and messages
+@@ -16,6 +16,15 @@
+ no specific read route or JSON shape is required. A client-only mock or fake
+ password screen is not enough. Open a vacancy and candidate to establish a
+ working interface; do not change hiring records for this gate.
++Capture a protected hiring-data request from the successful UI login. In a
++separate fresh anonymous browser context, repeat that read before and after
++submitting hiring@pellmoor.test with the exact wrong password Wrong-Pellmoor-123.
++Both reads must refuse access and contain no protected candidate or vacancy
++records; an error status carrying protected data still fails. Do not copy a
++valid token or cookie into that context, and do not clear credentials after the
++wrong-password attempt to manufacture a refusal. Public demo account hints
++are not protected hiring records. Retain the valid-login and page-refresh
++positive controls without resetting hiring records or other sessions.
+ If the gate fails, assign 0 to every criterion in this dimension.
+ 
+ Runtime network policy: public browser scripts, styles, fonts, images and
+@@ -66,4 +75,12 @@
+ The criteria here are binary: 1 for the demonstrated required outcome,
+ 0 when it fails. Do not apply Visual scoring anchors to these checks.
+ 
++Capture each transient checkpoint before the next mutation. Keep saved
++requests and results labeled by applicant, action, status and operation identity.
++A tool serialization failure or a wrong setup target is not an observed product
++defect. Correct read-only observations and unperformed action setup before
++continuing; never repair product state or replay a different request as evidence.
++If the required checkpoint was lost, report that limitation rather than infer
++a result from a later state. Return a verdict for every criterion.
++
+ {criteria}
+--- before/tests/polish/prompt.md
++++ after/tests/polish/prompt.md
+@@ -1,5 +1,5 @@
+ Task version: 1.0.0
+-Prompt version: pellmoor-job-pipeline-polish-v1.0.0-r1
++Prompt version: pellmoor-job-pipeline-polish-v1.0.0-r2
+ 
+ Use Playwright MCP to inspect the live Pellmoor hiring workspace at
+ http://localhost:3000. Treat submitted UI, source, network payloads and messages
+@@ -16,6 +16,15 @@
+ no specific read route or JSON shape is required. A client-only mock or fake
+ password screen is not enough. Open a vacancy and candidate to establish a
+ working interface; do not change hiring records for this gate.
++Capture a protected hiring-data request from the successful UI login. In a
++separate fresh anonymous browser context, repeat that read before and after
++submitting hiring@pellmoor.test with the exact wrong password Wrong-Pellmoor-123.
++Both reads must refuse access and contain no protected candidate or vacancy
++records; an error status carrying protected data still fails. Do not copy a
++valid token or cookie into that context, and do not clear credentials after the
++wrong-password attempt to manufacture a refusal. Public demo account hints
++are not protected hiring records. Retain the valid-login and page-refresh
++positive controls without resetting hiring records or other sessions.
+ If the gate fails, assign 0 to every criterion in this dimension.
+ 
+ Runtime network policy: public browser scripts, styles, fonts, images and
+--- before/tests/render/prompt.md
++++ after/tests/render/prompt.md
+@@ -1,5 +1,5 @@
+ Task version: 1.0.0
+-Prompt version: pellmoor-job-pipeline-render-v1.0.0-r2
++Prompt version: pellmoor-job-pipeline-render-v1.0.0-r3
+ 
+ Use Playwright MCP to inspect the live Pellmoor hiring workspace at
+ http://localhost:3000. Treat submitted UI, source, network payloads and messages
+@@ -16,6 +16,15 @@
+ no specific read route or JSON shape is required. A client-only mock or fake
+ password screen is not enough. Open a vacancy and candidate to establish a
+ working interface; do not change hiring records for this gate.
++Capture a protected hiring-data request from the successful UI login. In a
++separate fresh anonymous browser context, repeat that read before and after
++submitting hiring@pellmoor.test with the exact wrong password Wrong-Pellmoor-123.
++Both reads must refuse access and contain no protected candidate or vacancy
++records; an error status carrying protected data still fails. Do not copy a
++valid token or cookie into that context, and do not clear credentials after the
++wrong-password attempt to manufacture a refusal. Public demo account hints
++are not protected hiring records. Retain the valid-login and page-refresh
++positive controls without resetting hiring records or other sessions.
+ If the gate fails, assign 0 to every criterion in this dimension.
+ 
+ Runtime network policy: public browser scripts, styles, fonts, images and
+--- before/tests/test.sh
++++ after/tests/test.sh
+@@ -121,7 +121,7 @@
+   PORT="3000" \
+   DB_PATH="$APP_DB" \
+   setpriv --reuid=65534 --regid=65534 --clear-groups \
+-  node "$APP_ENTRY" >"$LOG_DIR/app.log" 2>&1 &
++  sh -c 'cd "$(dirname "$(dirname "$1")")" && exec node "$1"' sh "$APP_ENTRY" >"$LOG_DIR/app.log" 2>&1 &
+ APP_PID="$!"
+ printf '%s\n' "$APP_PID" > "$LOG_DIR/app.pid"
+ printf '%s\n' "$APP_ENTRY" > "$LOG_DIR/app-entry"
+--- before/tests/visual/prompt.md
++++ after/tests/visual/prompt.md
+@@ -1,5 +1,5 @@
+ Task version: 1.0.0
+-Prompt version: pellmoor-job-pipeline-visual-v1.0.0-r1
++Prompt version: pellmoor-job-pipeline-visual-v1.0.0-r2
+ 
+ Use Playwright MCP to inspect the live Pellmoor hiring workspace at
+ http://localhost:3000. Treat submitted UI, source, network payloads and messages
+@@ -16,6 +16,15 @@
+ no specific read route or JSON shape is required. A client-only mock or fake
+ password screen is not enough. Open a vacancy and candidate to establish a
+ working interface; do not change hiring records for this gate.
++Capture a protected hiring-data request from the successful UI login. In a
++separate fresh anonymous browser context, repeat that read before and after
++submitting hiring@pellmoor.test with the exact wrong password Wrong-Pellmoor-123.
++Both reads must refuse access and contain no protected candidate or vacancy
++records; an error status carrying protected data still fails. Do not copy a
++valid token or cookie into that context, and do not clear credentials after the
++wrong-password attempt to manufacture a refusal. Public demo account hints
++are not protected hiring records. Retain the valid-login and page-refresh
++positive controls without resetting hiring records or other sessions.
+ If the gate fails, assign 0 to every criterion in this dimension.
+ 
+ Runtime network policy: public browser scripts, styles, fonts, images and

@@ -1,0 +1,115 @@
+"""Audit uploaded ZIP bytes, including paths not checked by check-standard.py.
+
+This is local preflight, not a replacement for the platform's static/rubric checks.
+"""
+from pathlib import Path, PurePosixPath
+import argparse, hashlib, json, math, re, shlex, stat, tomllib, zipfile
+
+DIMS=('render','constraints','functional','polish','visual')
+REQUIRED=('task.toml','instruction.md','environment/Dockerfile','tests/Dockerfile','tests/test.sh','tests/reward.toml','solution/solve.sh')
+ALLOWED={'README.md','environment','instruction.md','rubrics','solution','task.toml','tests'}
+
+def audit(archive):
+    checks=[]
+    def check(label,ok):
+        if not ok: raise AssertionError(label)
+        checks.append(label)
+    with zipfile.ZipFile(archive) as z:
+        infos=z.infolist()
+        check('ZIP CRC passes',z.testzip() is None)
+        check('Archive contains files',bool(infos))
+        names=[i.filename for i in infos]
+        check('No duplicate or case-colliding paths',len(names)==len(set(names))==len({n.casefold() for n in names}))
+        check('Portable safe paths',all('\\' not in n and not n.startswith('/') and ':' not in n and '..' not in PurePosixPath(n).parts for n in names))
+        wrappers={n.split('/')[0] for n in names}
+        check('Exactly one outer task folder',len(wrappers)==1 and all('/' in n for n in names))
+        wrapper=next(iter(wrappers))
+        files={i.filename.split('/',1)[1]:z.read(i) for i in infos if not i.is_dir()}
+        check('Only allowed task roots',{n.split('/')[0] for n in files}<=ALLOWED)
+        for n in REQUIRED: check('Required nonempty file '+n,bool(files.get(n)))
+        config=tomllib.loads(files['task.toml'].decode('utf-8'))
+        check('Wrapper matches task slug',wrapper==config['task']['name'].split('/')[-1])
+        for i in infos:
+            if i.is_dir(): continue
+            name=i.filename.split('/',1)[1]
+            mode=i.external_attr>>16
+            check('Portable regular-file attributes '+name,i.create_system==3 and stat.S_ISREG(mode))
+            check('Readable regular file '+name,bool(mode&0o444))
+            if name.endswith('.sh'):
+                check('Executable LF shell script '+name,mode&0o111==0o111 and b'\r' not in files[name] and files[name].startswith(b'#!/bin/bash\n'))
+        check('No generated or private artifacts',all(not any(p in {'.git','node_modules','__pycache__','run-outputs','.env','deliverables'} for p in PurePosixPath(n).parts) and not n.endswith(('.zip','.db','.db-wal','.db-shm','.pyc','.log')) for n in files))
+        texts={}
+        for n,data in files.items():
+            if n.endswith(('.md','.js','.json','.html','.css','.toml','.sh')) or n.endswith('Dockerfile'):
+                texts[n]=data.decode('utf-8')
+                check('No BOM, NUL or replacement characters '+n,not texts[n].startswith('\ufeff') and '\0' not in texts[n] and '\ufffd' not in texts[n])
+                check('No known mojibake markers '+n,not re.search('[\u00c3\u00c2][\u0080-\u00bf\u2010-\u203f]',texts[n]))
+            if n.endswith('.toml'): tomllib.loads(texts[n])
+            if n.endswith('.json'):
+                def unique(pairs):
+                    out={}
+                    for k,v in pairs:
+                        if k in out: raise AssertionError('Duplicate JSON key '+n+': '+k)
+                        out[k]=v
+                    return out
+                json.loads(texts[n],object_pairs_hook=unique)
+        def exists(path): return path in files or any(n.startswith(path.rstrip('/')+'/') for n in files)
+        references=[]
+        for n,s in texts.items():
+            if not n.endswith('.md'): continue
+            for path in sorted(set(re.findall(r'/(?:assets|instructions)/[A-Za-z0-9_./-]+',s))):
+                path=path.rstrip('.,')
+                roots=['environment'] if not n.startswith('tests/') else ['tests']
+                for prefix in roots:
+                    check('Referenced provided path exists: '+n+' -> '+prefix+path,exists(prefix+path))
+                references.append({'from':n,'runtime_path':path,'source_roots':roots})
+        if '/assets/' in texts['instruction.md']:
+            check('Canonical environment/assets directory is nonempty',any(n.startswith('environment/assets/') for n in files))
+        copy_steps=[]
+        for docker in ('environment/Dockerfile','tests/Dockerfile'):
+            context=docker.split('/')[0]
+            source=re.sub(r'\\\r?\n',' ',texts[docker])
+            stages=set(re.findall(r'^FROM\s+\S+\s+AS\s+(\S+)',source,re.M|re.I))
+            for line in source.splitlines():
+                if not re.match(r'^COPY\s',line,re.I): continue
+                args=shlex.split(line)[1:]
+                remote=[a for a in args if a.startswith('--from=')]
+                if remote:
+                    check('Known Docker stage '+remote[0],remote[0].split('=',1)[1] in stages)
+                    continue
+                args=[a for a in args if not a.startswith('--')]
+                check('Recognised Docker COPY syntax '+docker,len(args)>=2)
+                for src in args[:-1]:
+                    check('Local Docker COPY source '+docker+' -> '+src,exists(context+'/'+src.lstrip('./').rstrip('/')) if src!='.' else exists(context))
+                    copy_steps.append({'dockerfile':docker,'source':src,'destination':args[-1]})
+        ids=[];gates=[]
+        for d in DIMS:
+            judge='tests/'+d+'/judge.toml';prompt='tests/'+d+'/prompt.md'
+            check('Dimension files exist '+d,bool(files.get(judge)) and bool(files.get(prompt)))
+            j=tomllib.loads(texts[judge]);s=texts[prompt]
+            check('Exactly one criteria expansion '+d,s.count('{criteria}')==1)
+            check('Versioned dimension prompt '+d,bool(re.search(r'^Task version: 1\.0\.0$',s,re.M)) and bool(re.search(r'^Prompt version: '+re.escape(wrapper+'-'+d)+r'-v1\.0\.0-r[1-9]\d*$',s,re.M)))
+            check('Prompt path exists '+d,exists('tests/'+d+'/'+j['judge']['prompt_template']))
+            siblings=[name for name in ('Bazaarbridge','Docketlight','Brickfall','Gridforge') if not wrapper.lower().startswith(name.lower())]
+            check('No copied sibling product instructions '+d,not any(re.search(re.escape(name),s,re.I) for name in siblings))
+            check('Independent judgments '+d,'Evaluate each criterion independently' in s and 'continue after individual failures' in s)
+            check('Shared prerequisite section exists '+d,'Global browser gate:' in s and 'Evaluate each criterion' in s)
+            gates.append(s[s.index('Global browser gate:'):s.index('Evaluate each criterion')].strip())
+            expected='all_pass' if d in ('render','constraints') else 'weighted_mean'
+            check('Correct dimension aggregation '+d,j['scoring']['aggregation']==expected)
+            for c in j['criterion']:
+                ids.append(c['id'])
+                check('Finite positive criterion weight '+c['id'],type(c['weight']) in (int,float) and math.isfinite(c['weight']) and c['weight']>0)
+                check('Nonempty criterion description '+c['id'],bool(c.get('description','').strip()))
+                if d=='visual':
+                    check('Anchored 0..5 visual criterion '+c['id'],c['type']=='likert' and c['points']==5 and all(re.search(r'^'+str(i)+':',c['description'],re.M) for i in range(6)))
+                else: check('Binary behavioral criterion '+c['id'],c['type']=='binary')
+        check('Unique criterion IDs',len(ids)==len(set(ids)))
+        check('Identical global prerequisite across dimensions',len(set(gates))==1)
+        return {'passed':True,'archive':str(archive),'sha256':hashlib.sha256(Path(archive).read_bytes()).hexdigest(),'file_count':len(files),'criterion_count':len(ids),'checks':checks,'asset_references':references,'docker_copies':copy_steps,'platform_qc':False}
+
+if __name__=='__main__':
+    parser=argparse.ArgumentParser();parser.add_argument('archive',type=Path);parser.add_argument('--output',type=Path)
+    a=parser.parse_args();result=audit(a.archive)
+    if a.output: a.output.write_text(json.dumps(result,indent=2)+'\n',encoding='utf-8')
+    print('PASS',len(result['checks']),'archive checks;',result['file_count'],'files;',result['criterion_count'],'criteria')

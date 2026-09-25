@@ -1,0 +1,833 @@
+--- r16/environment/instructions/ballots.md
++++ r17/environment/instructions/ballots.md
+@@ -31,6 +31,18 @@
+ choice is different input and must be refused. Repeated copies of a choice
+ are invalid input, not another spelling of the set.
+ 
++Each person's operation identifiers share one namespace across all actions.
++An identifier used to create a ballot cannot later edit a ballot or change
++membership for that same person. Refuse that collision without changing either
++record or replacing the original receipt. Different people have independent
++namespaces; an identifier used by one person does not reserve it for everyone.
++
++A viewed revision or approval maximum represents a single positive whole
++number. Lists, objects, booleans, null and omitted required values are not
++versions or limits; do not coerce them into valid numbers. Text encoding in an
++ordinary HTML form is fine, but structured or boolean values in a request must
++not become a version or limit just because a numeric conversion accepts them.
++
+ For a well-formed operation from someone allowed to perform it, remember a
+ refusal caused by a stale revision or the wrong ballot state too. A premature
+ Publish must still return its original refusal when retried after Close. To
+--- r16/environment/instructions/privacy.md
++++ r17/environment/instructions/privacy.md
+@@ -25,7 +25,9 @@
+ 
+ Validate membership updates before changing the roster. A missing status or
+ an object or array in place of the requested active/paused value is malformed;
+-do not silently convert it into an activation or pause. Refusal must preserve
++do not silently convert it into an activation or pause. A required membership
++revision also cannot be a list, object, boolean, null or omitted value; use the
++single whole-number revision the person actually viewed. Refusal must preserve
+ the member's status, its applicable revision, and audit history. It must also
+ leave the next ballot's eligibility snapshot based on the unchanged roster.
+ 
+--- r16/environment/instructions/recovery.md
++++ r17/environment/instructions/recovery.md
+@@ -0,0 +1,45 @@
++# Picking up interrupted staff work
++
++Our coordinators sometimes lose the connection just after pressing Save. They
++cannot tell whether the server accepted the change, and they often reload or
++sign out before coming back. Give them a Pending actions area inside the
++workspace so they can resolve that uncertainty without repeating the change.
++
++Keep each staff attempt before sending it: creating and editing a draft,
++opening, closing, publishing, and changing membership all need this support.
++If no usable confirmation arrives, say that the outcome is unknown and retain
++the attempt through page reload and a later sign-in in the same browser profile.
++Identify its action and affected record clearly. Do not automatically resend it
++on startup, refresh or sign-in. An unreadable response or server failure does not
++prove the write was refused. A confirmed write followed by a failed refresh is
++still a confirmed write; explain the refresh problem separately.
++
++Provide an explicit Retry for each pending attempt. Retry must use that exact
++attempt's original target, action, inputs, operation identifier and viewed
++revision. Even if another tab has edited the record or advanced the ballot,
++Retry is asking what happened to the original attempt, not requesting a new
++change. Resolve the pending entry when a usable success or definite business
++refusal arrives, show the outcome, and refresh the current records. Do not copy
++an old receipt's state over newer data. After a refusal, trying a changed action
++is a separate user decision using current information and a new identifier.
++
++Several actions can be uncertain at once. Keep them separately recognizable and
++let people continue independent work. Retrying or dismissing one must leave the
++others intact; it must not send the entire queue. Dismiss removes the reminder,
++not a change that may already have happened, and the UI should explain that.
++
++Pending work belongs to the person who initiated it. Signing out hides its
++details. Another account on the same browser must neither see those details nor
++send the original person's requests. Returning as the original person restores
++their unresolved work. If a session expires or is revoked, keep the uncertainty
++for that person to resolve after signing in again; do not silently replay it as
++whoever signs in next. This recovery area is for staff writes, not Members'
++private selections.
++
++We also keep two tabs open for the same account in the same browser profile.
++They share the pending work. Once one tab resolves or dismisses an entry, the
++other must reflect that on its next interaction or reload. A stale tab or late
++response must not bring a removed entry back or overwrite another pending
++attempt. Disable an action while its request is in flight so a double click
++does not create two new attempts. No particular storage library or layout is
++required; accepted business records and receipts still belong in SQLite.
+--- r16/instruction.md
++++ r17/instruction.md
+@@ -6,10 +6,14 @@
+ same access.
+ 
+ The rest of the brief is in `/instructions/`: `overview.md`, `ballots.md`,
+-`privacy.md`, `runtime.md`, and `interface.md`. The starting records are in
++`privacy.md`, `runtime.md`, `interface.md`, and `recovery.md`. The starting records are in
+ `/assets/artifacts/common_ground_seed.json`; treat that file as authoritative.
+ A small runnable base is available in `/assets/starter/`; copy it into `/app`
+ and build from there instead of assembling the browser shell from scratch.
++
++Staff often come back after a dropped connection without knowing whether their
++last change saved. Make that interrupted work recoverable from the workspace,
++including after reload or sign-in, without repeating a change or mixing accounts.
+ 
+ Routes and element names are up to you. Work through the supplied ballots as
+ each demo user, make a new decision from draft through publication, and check
+--- r16/solution/public/app.js
++++ r17/solution/public/app.js
+@@ -14,6 +14,10 @@
+ const ballotDialog = byId("ballot-dialog");
+ const voteDialog = byId("vote-dialog");
+ let authenticationPending = false;
++let ballotSubmission = null;
++const pendingPrefix = "common-ground-pending:v1:";
++const identityKey = "common-ground-browser-identity:v1";
++const pendingInFlight = new Set();
+ 
+ function setAuthenticationPending(pending) {
+   authenticationPending = pending;
+@@ -94,6 +98,235 @@
+   return data;
+ }
+ 
++function pendingKey(actorId, id) {
++  return `${pendingPrefix}${encodeURIComponent(actorId)}:${id}`;
++}
++
++function currentCoordinator(actorId) {
++  if (state.user?.role !== "coordinator" || state.user.id !== actorId) return false;
++  try {
++    const identity = JSON.parse(localStorage.getItem(identityKey) || "null");
++    return !identity || identity.actorId === actorId;
++  } catch {
++    return false;
++  }
++}
++
++function currentStaffSession(user) {
++  return state.user === user && currentCoordinator(user?.id);
++}
++
++function announceIdentity(actorId) {
++  try { localStorage.setItem(identityKey, JSON.stringify({ actorId, change: operationId() })); } catch {}
++}
++
++function readPending(actorId, id) {
++  const raw = localStorage.getItem(pendingKey(actorId, id));
++  if (!raw) return null;
++  try {
++    const entry = JSON.parse(raw);
++    if (entry.actorId !== actorId || entry.id !== id || typeof entry.body !== "string" || typeof entry.title !== "string" || typeof entry.action !== "string" || typeof entry.createdAt !== "string" || !Number.isFinite(Date.parse(entry.createdAt))) return null;
++    if (!["POST", "PATCH"].includes(entry.method) || !/^\/api\/(?:ballots(?:\/[^/?#]+(?:\/(?:open|close|publish))?)?|members\/[^/?#]+)$/.test(entry.url)) return null;
++    return entry;
++  } catch {
++    return null;
++  }
++}
++
++function pendingFor(actorId) {
++  const prefix = `${pendingPrefix}${encodeURIComponent(actorId)}:`;
++  const entries = [];
++  for (let index = 0; index < localStorage.length; index += 1) {
++    const key = localStorage.key(index);
++    if (!key?.startsWith(prefix)) continue;
++    const entry = readPending(actorId, key.slice(prefix.length));
++    if (entry) entries.push(entry);
++  }
++  return entries.sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
++}
++
++function renderPending() {
++  const tray = byId("pending-actions");
++  const list = byId("pending-actions-list");
++  const focused = document.activeElement;
++  const focusedAction = list.contains(focused) ? { retry: focused.dataset.pendingRetry, dismiss: focused.dataset.pendingDismiss } : null;
++  const actorId = state.user?.id;
++  if (!currentCoordinator(actorId)) {
++    tray.classList.add("hidden");
++    list.replaceChildren();
++    byId("pending-actions-count").textContent = "";
++    return;
++  }
++  let entries;
++  try { entries = pendingFor(actorId); } catch { entries = []; }
++  tray.classList.toggle("hidden", entries.length === 0);
++  byId("pending-actions-count").textContent = `${entries.length} pending`;
++  list.innerHTML = entries.map((entry) => {
++    const sending = pendingInFlight.has(pendingKey(actorId, entry.id));
++    return `<li class="pending-item" data-pending-id="${escapeHtml(entry.id)}"><div class="pending-copy"><h3>${escapeHtml(entry.action)} — ${escapeHtml(entry.title)}</h3><p>${sending ? "Waiting for an outcome…" : "Outcome not confirmed. Retry when you are ready."}</p><p>Started ${escapeHtml(formatDate(entry.createdAt))}</p></div><div class="pending-controls"><button class="button primary" type="button" data-pending-retry="${escapeHtml(entry.id)}" ${sending ? "disabled" : ""}>Retry</button><button class="button secondary" type="button" data-pending-dismiss="${escapeHtml(entry.id)}" ${sending ? "disabled" : ""}>Dismiss</button></div></li>`;
++  }).join("");
++  if (focusedAction) {
++    const replacement = [...list.querySelectorAll("button:not([disabled])")].find((button) => (focusedAction.retry && button.dataset.pendingRetry === focusedAction.retry) || (focusedAction.dismiss && button.dataset.pendingDismiss === focusedAction.dismiss));
++    (replacement || (entries.length ? byId("pending-actions-title") : byId("main-content"))).focus({ preventScroll: true });
++  }
++}
++
++function uncertainAction() {
++  const error = new Error("The outcome could not be confirmed. This action is saved in Pending actions. Retry there to recover its original outcome; submitting the form again starts a new action.");
++  error.uncertain = true;
++  return error;
++}
++
++async function verifyStaffActor(actorId, user) {
++  if (!currentStaffSession(user) || user.id !== actorId) throw new Error("Sign in as the person who started this action to continue.");
++  let data;
++  try { data = await api("/api/me"); } catch (error) {
++    if (error.status === 401 || error.status === 403) { if (currentStaffSession(user)) showLogin(); throw error; }
++    throw uncertainAction();
++  }
++  if (!currentStaffSession(user)) throw new Error("Your sign-in changed. Recover this action from the original account when you are ready.");
++  if (data.user?.id !== actorId || data.user?.role !== "coordinator") {
++    showLogin();
++    throw new Error("Your sign-in changed. Sign in again before continuing this action.");
++  }
++}
++
++async function withPendingLock(entry, work) {
++  const key = pendingKey(entry.actorId, entry.id);
++  if (pendingInFlight.has(key)) return { busy: true };
++  pendingInFlight.add(key);
++  renderPending();
++  try {
++    if (navigator.locks?.request) {
++      return await navigator.locks.request(key, { ifAvailable: true }, (lock) => lock ? work() : { busy: true });
++    }
++    return await work();
++  } finally {
++    pendingInFlight.delete(key);
++    renderPending();
++  }
++}
++
++async function sendPending(entry) {
++  const user = state.user;
++  return withPendingLock(entry, async () => {
++    await verifyStaffActor(entry.actorId, user);
++    // Re-read after the asynchronous identity check. Another tab may have resolved it.
++    const saved = readPending(entry.actorId, entry.id);
++    if (!saved || !currentStaffSession(user)) return { gone: true };
++    let response;
++    try {
++      response = await fetch(saved.url, { method: saved.method, headers: { "Content-Type": "application/json" }, body: saved.body });
++    } catch {
++      throw uncertainAction();
++    }
++    if (response.status === 401 || response.status === 403) {
++      if (currentStaffSession(user)) showLogin();
++      const error = new Error("Your session or access changed. Sign in again as the original person to recover the saved action.");
++      error.status = response.status;
++      throw error;
++    }
++    let data;
++    try { data = await response.json(); } catch { throw uncertainAction(); }
++    const objectBody = data && typeof data === "object" && !Array.isArray(data);
++    const accepted = response.ok && objectBody && typeof (saved.url.startsWith("/api/members/") ? data.member?.id : data.ballot?.id) === "string";
++    const refused = response.status >= 400 && response.status < 500 && objectBody && typeof data.error === "string" && data.error.length > 0;
++    if (!accepted && !refused) throw uncertainAction();
++    // Resolve this entry before any separate refresh; do not apply an old receipt to current records.
++    localStorage.removeItem(pendingKey(saved.actorId, saved.id));
++    if (refused) {
++      const error = new Error(data.error);
++      error.status = response.status;
++      error.data = data;
++      error.definitive = true;
++      throw error;
++    }
++    return { data };
++  });
++}
++
++async function staffMutation(url, method, payload, action, title) {
++  const actorId = state.user?.id;
++  if (!currentCoordinator(actorId)) throw new Error("Sign in as the Coordinator before making changes.");
++  const entry = { actorId, id: payload.operation_id, url, method, body: JSON.stringify(payload), action, title, createdAt: new Date().toISOString() };
++  try {
++    localStorage.setItem(pendingKey(actorId, entry.id), JSON.stringify(entry));
++  } catch {
++    throw new Error("This browser could not save recovery information. No action was sent. Enable browser storage and try again.");
++  }
++  renderPending();
++  return sendPending(entry);
++}
++
++async function refreshRecovered(entry, refusal = null, user = state.user) {
++  if (!currentStaffSession(user)) return;
++  const outcome = refusal
++    ? `${refusal.message} The original action was refused. Review the current record before starting a new action.`
++    : `Original action confirmed: ${entry.action} — ${entry.title}.`;
++  try {
++    await refresh();
++    if (!currentStaffSession(user)) return;
++    if (state.activeView !== "members" && state.members.length) await loadMembers();
++    if (currentStaffSession(user)) notify(`${outcome} Current records have been refreshed.`, refusal ? "error" : "success");
++  } catch (error) {
++    if (!currentStaffSession(user)) return;
++    if (error.status === 401) showLogin();
++    else notify(`${outcome} Current records could not be refreshed: ${error.message}`, "error");
++  }
++}
++
++byId("pending-actions-list").addEventListener("click", async (event) => {
++  const retry = event.target.closest("[data-pending-retry]");
++  const dismiss = event.target.closest("[data-pending-dismiss]");
++  if (!retry && !dismiss) return;
++  const actorId = state.user?.id;
++  const user = state.user;
++  if (!currentCoordinator(actorId)) { renderPending(); return; }
++  const id = retry?.dataset.pendingRetry || dismiss.dataset.pendingDismiss;
++  let entry;
++  try {
++    entry = readPending(actorId, id);
++    if (!entry) { renderPending(); notify("This reminder was already resolved or dismissed in another tab."); return; }
++    if (dismiss) {
++      const result = await withPendingLock(entry, () => {
++        if (!currentStaffSession(user) || !readPending(actorId, id)) return { gone: true };
++        localStorage.removeItem(pendingKey(actorId, id));
++        return {};
++      });
++      if (!currentStaffSession(user)) return;
++      if (result.busy) notify("This action is being checked in another tab. Wait for its outcome before dismissing it.", "error");
++      else notify(`Reminder dismissed: ${entry.action} — ${entry.title}. No request was sent; accepted work has not been cancelled or undone.`);
++    } else {
++      const result = await sendPending(entry);
++      if (!currentStaffSession(user)) return;
++      if (result.busy) notify("This action is already being checked in another tab.");
++      else if (result.gone) notify("This reminder was already resolved or dismissed in another tab.");
++      else await refreshRecovered(entry, null, user);
++    }
++  } catch (error) {
++    if (currentStaffSession(user)) {
++      if (error.definitive && entry) await refreshRecovered(entry, error, user);
++      else notify(error.message, "error");
++    }
++  } finally {
++    renderPending();
++    if (currentStaffSession(user)) {
++      const next = byId("pending-actions-list").querySelector("button:not([disabled])");
++      (next || byId("main-content")).focus({ preventScroll: true });
++    }
++  }
++});
++
++window.addEventListener("storage", (event) => {
++  if (event.key === identityKey && state.user) {
++    let actorId;
++    try { actorId = JSON.parse(localStorage.getItem(identityKey) || "null")?.actorId; } catch {}
++    if (actorId !== state.user.id) { showLogin(false); return; }
++  }
++  if (!event.key || event.key === identityKey || event.key.startsWith(pendingPrefix)) renderPending();
++});
++window.addEventListener("focus", renderPending);
++
+ function notify(message, type = "success") {
+   byId("feedback-text").textContent = message;
+   byId("feedback-icon").textContent = type === "error" ? "!" : "✓";
+@@ -118,10 +351,20 @@
+   return ballot.method === "single" ? "Single choice" : `Approval · up to ${ballot.max_selections}`;
+ }
+ 
+-function showLogin() {
++function showLogin(broadcast = true) {
+   state.user = null;
+   state.ballots = [];
+   state.members = [];
++  state.audit = [];
++  state.editingBallot = null;
++  state.selectedBallot = null;
++  ballotSubmission = null;
++  byId("ballot-form").querySelector("button[type=submit]").disabled = false;
++  if (ballotDialog.open) ballotDialog.close();
++  if (voteDialog.open) voteDialog.close();
++  renderPending();
++  clearNotice();
++  if (broadcast) announceIdentity(null);
+   appView.classList.add("hidden");
+   loginView.classList.remove("hidden");
+   document.querySelector(".demo-access").open = false;
+@@ -130,16 +373,20 @@
+ }
+ 
+ function showApp() {
++  announceIdentity(state.user.id);
+   loginView.classList.add("hidden");
+   appView.classList.remove("hidden");
+   byId("user-name").textContent = state.user.name;
+   byId("user-role").textContent = roleLabel(state.user.role);
+   byId("user-initials").textContent = state.user.name.split(/\s+/).map((word) => word[0]).join("").slice(0, 2).toUpperCase();
+   byId("new-ballot-button").classList.toggle("hidden", state.user.role !== "coordinator");
++  renderPending();
+ }
+ 
+ async function loadBallots() {
++  const user = state.user;
+   const data = await api("/api/ballots");
++  if (!user || state.user !== user) return;
+   state.ballots = data.ballots;
+   renderBallots();
+   renderVote();
+@@ -148,33 +395,46 @@
+ }
+ 
+ async function loadMembers() {
+-  if (state.user.role === "member") {
++  const user = state.user;
++  if (!user) return;
++  if (user.role === "member") {
+     state.members = [];
+   } else {
+-    state.members = (await api("/api/members")).members;
++    const data = await api("/api/members");
++    if (state.user !== user) return;
++    state.members = data.members;
+   }
+   renderMembers();
+ }
+ 
+ async function loadAudit() {
+-  if (state.user.role === "member") {
++  const user = state.user;
++  if (!user) return;
++  if (user.role === "member") {
+     state.audit = [];
+   } else {
+-    state.audit = (await api("/api/audit")).events;
++    const data = await api("/api/audit");
++    if (state.user !== user) return;
++    state.audit = data.events;
+   }
+   renderAudit();
+ }
+ 
+ async function refresh(message) {
++  const user = state.user;
+   await loadBallots();
++  if (!user || state.user !== user) return;
+   if (["members", "audit"].includes(state.activeView)) {
+     if (state.activeView === "members") await loadMembers();
+     if (state.activeView === "audit") await loadAudit();
+   }
++  if (state.user !== user) return;
+   if (message) notify(message);
++  renderPending();
+ }
+ 
+ async function setView(view) {
++  renderPending();
+   state.activeView = view;
+   document.querySelectorAll(".nav-item").forEach((item) => {
+     const active = item.dataset.view === view;
+@@ -412,6 +672,10 @@
+ 
+ byId("ballot-form").addEventListener("submit", async (event) => {
+   event.preventDefault();
++  const submit = event.currentTarget.querySelector("button[type=submit]");
++  if (submit.disabled) return;
++  const user = state.user;
++  const editingBallot = state.editingBallot;
+   const form = new FormData(event.currentTarget);
+   const payload = {
+     title: form.get("title"),
+@@ -421,14 +685,31 @@
+     choices: form.getAll("choice"),
+     operation_id: operationId(),
+   };
+-  if (state.editingBallot) payload.expected_revision = state.editingBallot.revision;
++  if (editingBallot) payload.expected_revision = editingBallot.revision;
+   byId("ballot-form-error").textContent = "";
+-  try {
+-    await api(state.editingBallot ? `/api/ballots/${state.editingBallot.id}` : "/api/ballots", { method: state.editingBallot ? "PATCH" : "POST", body: JSON.stringify(payload) });
++  submit.disabled = true;
++  const submission = {};
++  ballotSubmission = submission;
++  let accepted = false;
++  try {
++    const result = await staffMutation(editingBallot ? `/api/ballots/${editingBallot.id}` : "/api/ballots", editingBallot ? "PATCH" : "POST", payload, editingBallot ? "Edit draft" : "Create draft", payload.title);
++    if (result.busy || result.gone || !currentStaffSession(user)) return;
++    accepted = true;
+     ballotDialog.close();
+-    await refresh(state.editingBallot ? "Draft changes saved." : "Draft ballot created.");
++    await refresh(editingBallot ? "Draft changes saved." : "Draft ballot created.");
+   } catch (error) {
+-    byId("ballot-form-error").textContent = error.message;
++    if (error.status === 401 && currentStaffSession(user)) showLogin();
++    else if (currentStaffSession(user)) {
++      if (error.uncertain || accepted) {
++        ballotDialog.close();
++        notify(accepted ? `The draft was saved, but current records could not be refreshed: ${error.message}` : error.message, "error");
++      } else byId("ballot-form-error").textContent = error.message;
++    }
++  } finally {
++    if (ballotSubmission === submission) {
++      ballotSubmission = null;
++      submit.disabled = false;
++    }
+   }
+ });
+ 
+@@ -440,16 +721,23 @@
+     return;
+   }
+   const button = event.target.closest("[data-ballot-action]");
+-  if (!button) return;
++  if (!button || button.disabled) return;
+   const ballot = state.ballots.find((item) => item.id === button.dataset.id);
+   if (!ballot) return;
+   const labels = { open: "Ballot opened with a fixed eligibility snapshot.", close: "Voting closed; tallies remain hidden.", publish: "Anonymous results published." };
++  const actionNames = { open: "Open ballot", close: "Close voting", publish: "Publish results" };
++  const user = state.user;
+   button.disabled = true;
+-  try {
+-    await api(`/api/ballots/${ballot.id}/${button.dataset.ballotAction}`, { method: "POST", body: JSON.stringify({ expected_revision: ballot.revision, operation_id: operationId() }) });
++  let accepted = false;
++  try {
++    const result = await staffMutation(`/api/ballots/${ballot.id}/${button.dataset.ballotAction}`, "POST", { expected_revision: ballot.revision, operation_id: operationId() }, actionNames[button.dataset.ballotAction], ballot.title);
++    if (result.busy || result.gone || !currentStaffSession(user)) return;
++    accepted = true;
+     await refresh(labels[button.dataset.ballotAction]);
+   } catch (error) {
+-    notify(error.message, "error");
++    if (error.status === 401 && currentStaffSession(user)) showLogin();
++    else if (currentStaffSession(user)) notify(accepted ? `The action was accepted, but current records could not be refreshed: ${error.message}` : error.message, "error");
++  } finally {
+     button.disabled = false;
+   }
+ });
+@@ -484,17 +772,24 @@
+ 
+ byId("members-list").addEventListener("click", async (event) => {
+   const button = event.target.closest("[data-member-id]");
+-  if (!button) return;
++  if (!button || button.disabled) return;
+   const member = state.members.find((item) => item.id === button.dataset.memberId);
+   if (!member) return;
++  const user = state.user;
+   button.disabled = true;
+-  try {
+-    await api(`/api/members/${member.id}`, { method: "PATCH", body: JSON.stringify({ active: !member.active, expected_revision: member.revision, operation_id: operationId() }) });
++  let accepted = false;
++  try {
++    const result = await staffMutation(`/api/members/${member.id}`, "PATCH", { active: !member.active, expected_revision: member.revision, operation_id: operationId() }, member.active ? "Pause member" : "Activate member", member.name);
++    if (result.busy || result.gone || !currentStaffSession(user)) return;
++    accepted = true;
+     await loadMembers();
++    if (!currentStaffSession(user)) return;
+     await loadBallots();
+-    notify(`${member.name} is now ${member.active ? "paused" : "active"} for future ballots.`);
++    if (currentStaffSession(user)) notify(`${member.name} is now ${member.active ? "paused" : "active"} for future ballots.`);
+   } catch (error) {
+-    notify(error.message, "error");
++    if (error.status === 401 && currentStaffSession(user)) showLogin();
++    else if (currentStaffSession(user)) notify(accepted ? `The membership change was accepted, but current records could not be refreshed: ${error.message}` : error.message, "error");
++  } finally {
+     button.disabled = false;
+   }
+ });
+--- r16/solution/public/index.html
++++ r17/solution/public/index.html
+@@ -83,6 +83,12 @@
+             <button id="feedback-close" type="button" aria-label="Dismiss message">×</button>
+           </section>
+ 
++          <section id="pending-actions" class="pending-actions hidden" aria-labelledby="pending-actions-title">
++            <div class="pending-heading"><div><p class="eyebrow">Interrupted work</p><h2 id="pending-actions-title" tabindex="-1">Pending actions</h2></div><span id="pending-actions-count" class="pending-count"></span></div>
++            <p class="muted pending-explanation">An interrupted request may already have been accepted. Retry retrieves its original outcome without submitting a new action. Dismiss removes only this reminder; it does not cancel or undo accepted work.</p>
++            <ul id="pending-actions-list" class="pending-list"></ul>
++          </section>
++
+           <section id="view-ballots" class="view active-view" aria-labelledby="ballots-title">
+             <div class="page-heading"><div><p class="eyebrow">Decision desk</p><h1 id="ballots-title">Ballots</h1><p id="ballots-subtitle" class="muted"></p></div><button id="new-ballot-button" class="button primary hidden" type="button">New ballot</button></div>
+             <div id="ballot-stats" class="stats-grid"></div>
+--- r16/solution/public/styles.css
++++ r17/solution/public/styles.css
+@@ -136,6 +136,16 @@
+ .feedback > span { display: grid; place-items: center; width: 25px; height: 25px; border-radius: 50%; color: white; background: var(--success); font-weight: 900; }
+ .feedback.error > span { background: var(--danger); }
+ .feedback button { width: 36px; height: 36px; padding: 0; color: inherit; background: transparent; border: 0; border-radius: 8px; cursor: pointer; font-size: 1.25rem; }
++.pending-actions { margin-bottom: 1.5rem; padding: 1.1rem; background: var(--surface); border: 1px solid var(--brand); border-radius: var(--radius); }
++.pending-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
++.pending-count { padding: 0.3rem 0.6rem; color: var(--brand-strong); background: var(--brand-soft); border-radius: 999px; font-weight: 800; }
++.pending-explanation { margin-bottom: 0.8rem; font-size: 0.88rem; }
++.pending-list { display: grid; gap: 0.75rem; margin: 0; padding: 0; list-style: none; }
++.pending-item { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1rem; padding-top: 0.9rem; border-top: 1px solid var(--line); }
++.pending-copy { flex: 1 1 220px; min-width: 0; }
++.pending-copy h3 { margin-bottom: 0.3rem; font-size: 1rem; overflow-wrap: anywhere; }
++.pending-copy p { margin-bottom: 0.2rem; color: var(--muted); font-size: 0.83rem; }
++.pending-controls { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+ .page-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; margin-bottom: 1.8rem; }
+ .page-heading .muted { max-width: 700px; margin-bottom: 0; }
+ 
+--- r16/task.toml
++++ r17/task.toml
+@@ -4,12 +4,12 @@
+ [task]
+ name = "turing/common-ground-ballot"
+ version = "1.0.0"
+-description = "Private membership ballot workspace with fixed eligibility, two voting methods, revision-safe lifecycle controls, anonymous results, and durable audit history."
++description = "Private membership ballot workspace with fixed eligibility, anonymous results, revision-safe lifecycle controls, durable audit history, and recovery of interrupted staff work."
+ keywords = ["webdev", "codearena", "full-stack", "nodejs", "express", "sqlite", "ballot", "voting", "privacy", "forms", "authentication", "browser-judge", "rewardkit"]
+ 
+ [metadata]
+ difficulty = "medium"
+-difficulty_explanation = "A compact six-workspace product combines two ballot methods, fixed eligibility, anonymous choice storage, identified turnout, exact result math, durable sessions, role boundaries, optimistic revisions, and idempotent write receipts."
++difficulty_explanation = "A compact six-workspace product combines two ballot methods, fixed eligibility, anonymous choice storage, identified turnout, exact result math, durable sessions, role boundaries, optimistic revisions, idempotent write receipts, and account-isolated recovery of interrupted staff actions across reloads and tabs."
+ category = "Software"
+ tags = ["full-stack", "forms", "authentication", "sqlite", "private-ballots", "optimistic-concurrency", "idempotency", "accessibility"]
+ provenance = "Common Ground brief and golden implementation aligned to the current five-dimension standard; historical scores belong to earlier packages."
+--- r16/tests/functional/judge.toml
++++ r17/tests/functional/judge.toml
+@@ -96,7 +96,8 @@
+ weight = 0.75
+ description = """
+ Setup: Use the ordered shared workflow and its named records. Record this observation independently of other outcomes from the same scenario.
+-Run every independent invalid-draft case in Exact Draft Controls, resetting its stated valid base before each: blank title, blank choice, fewer than two choices, repeated labels, approval maximum zero, and maximum four for three choices. Require prevention or a visible refusal with no new ballot or audit event. Native validation or controls preventing an invalid value are accepted; do not submit a now-valid form and call it invalid. Retain actual values and evidence for each. The later valid creation is its positive control, whose resulting record is graded separately.
++Run every independent invalid-draft case in Exact Draft Controls, resetting its stated valid base before each: blank title, blank submitted choice, fewer than two choices, repeated labels, approval maximum zero, and maximum four for three choices. Require prevention or a visible refusal with no invalid new ballot or audit event. Native validation or controls preventing an invalid value are accepted; do not submit a now-valid form and call it invalid. Empty lines discarded by a multiline editor are not blank submitted choices: if the outgoing request contains two valid choices, its successful creation is valid and must not fail this criterion. Use the observed real request shape to replace one actual submitted choice with a blank when the UI cannot represent that invalid item. Retain the offending transmitted value before alleging invalid acceptance. The later valid creation is its positive control, whose resulting record is graded separately.
++Also adapt the observed valid approval-draft request with its maximum replaced separately by a list containing its valid maximum, an object, true, null and an omitted field, leaving valid title/choices/method unchanged and using fresh operation IDs. Refuse each malformed required limit. Use an otherwise valid approval ballot with two choices and maximum 1 for true so its numeric coercion would otherwise be in range. Capture the actual field; ordinary form text encoding is allowed. A failed probe must not contaminate the next case or be counted again under version validation.
+ """
+ 
+ [[criterion]]
+@@ -182,7 +183,7 @@
+ weight = 0.5
+ description = """
+ Setup: Use the ordered shared workflow and its named records. Record this observation independently of other outcomes from the same scenario.
+-As Ruth repeat a genuine lifecycle request with an unknown ballot ID and a fresh operation ID. Independently apply the real Open shape to untouched Annual picnic date at revision 1, using another fresh operation ID and revision numeric 1.5. Require both refusals and unchanged records/audit. Then the normal Open action at integer revision 1 must succeed. An already-open ballot or reused operation ID cannot be the fractional-input control. These probe well-formed target/version validation, not stale optimistic concurrency.
++As Ruth repeat a genuine lifecycle request with an unknown ballot ID and a fresh operation ID. Independently apply the real edit and Open shapes to UI-created valid Draft controls at revision 1. In separate probes replace only the actual required revision with numeric 1.5, [1], an object, true, null, and an omitted field; use a fresh operation ID each time. Require refusal and unchanged records/audit, followed by a valid integer-revision UI counterpart. If a bad probe is accepted, record that specific failure and use a fresh Draft for the next probe so a changed state/revision cannot disguise malformed-input acceptance. Do not treat ordinary form text encoding as a defect. These probe malformed targets/versions, not stale optimistic concurrency or an invented ignored field. Use the real transport; private fetch is permitted only after capturing it through the UI.
+ """
+ 
+ [[criterion]]
+@@ -193,6 +194,7 @@
+ description = """
+ Setup: Use the ordered shared workflow and its named records. Record this observation independently of other outcomes from the same scenario.
+ Exercise the malformed-membership checkpoint in the shared workflow. Capture a successful real membership request, restore Owen paused, and use Ruth's authorized transport with a fresh operation id and the currently applicable revision for each probe. Independently omit the actual active/paused value, replace it with an object, then replace it with an array; preserve all other valid fields. Require each non-2xx refusal to leave status, revision and audit unchanged. Immediately create/open a separate Membership validation snapshot through the UI: it must include Leila only, remain absent for Owen, and stay fixed after a subsequent valid Owen activation and pause. This is the downstream consequence of malformed-input refusal; ordinary stale-roster checks belong to roster_conflict_snapshot_chain. For action-based routes with no status field, test malformed values in the actual action discriminator or documented mutation payload; do not invent an ignored status field or demand a particular JSON schema. If the route itself completely encodes the status with no status/action payload, record the observed transport and apply the malformed-value probes to its required revision instead. No-op success that silently ignores malformed required input is not a refusal.
++Independently test the required membership revision as a list containing its actual current revision, an object, null and omitted value, with otherwise valid active/paused input and fresh IDs. Require unchanged roster/audit; use a normal current-revision action as the positive control. A boolean probe only isolates type validation when its coerced value would match the current version; otherwise use the fresh revision-1 Draft boolean case owned by ballot_target_and_revision_validation. Do not mistake stale or wrong-state refusal for validation of the malformed field.
+ """
+ 
+ [[criterion]]
+@@ -257,6 +259,7 @@
+ description = """
+ Setup: Use the ordered shared workflow and its named records. Record this observation independently of other outcomes from the same scenario.
+ Use the captured successful Owen Courtyard vote, Leila Partial turnout approval vote and Ruth Receipt rehearsal create. For each, reuse its original operation ID with different otherwise valid input and the same person. Require an explicit operation-mismatch refusal, unchanged accepted records and the original request still returning its original successful status/body. Repeat approval mismatch at Open, Published and after each restart as specified. A mismatch must not overwrite the original receipt. Grade wrong-input rejection here, independently of unchanged-input replay and result presentation.
++This criterion varies inputs within the same action family. Cross-action namespace collisions belong only to user_wide_operation_namespace.
+ """
+ 
+ [[criterion]]
+@@ -468,6 +471,7 @@
+ 3. Through the UI create/open Roster includes Owen. Its snapshot must include exactly Leila and Owen, and it must be visible to Owen after refresh. A stale refusal alone is insufficient: the accepted roster must reach this downstream eligibility result.
+ 4. Refresh tab B, make its now-current Pause succeed, and create/open Roster excludes Owen. Require a Leila-only snapshot, absent for Owen but visible to Leila. Roster includes Owen must still contain both Members and remain visible to Owen. Do not require a particular revision field name or per-member versus whole-roster implementation; compare the applicable version actually used by the app.
+ 5. After each of the same two existing restarts, require Owen still paused, the two ballots still Open, their exact respective snapshots and role-appropriate visibility unchanged, and no return of the stale write or extra membership audit. Own these conflict-driven snapshots here, not under the earlier ordinary fixed-snapshot criterion.
++Record an explicit three-row checkpoint ledger: before restart, after restart 1, after restart 2. At EACH row retain both ballots and the Owen/Leila visibility reads, then mark that row complete before the next restart. A helper omission is missing evidence, not proof that the roster changed; perform any still-reachable missing observation immediately.
+ """
+ 
+ [[criterion]]
+@@ -483,3 +487,57 @@
+ 3. A fresh current-revision Publish operation through the UI must now succeed. Replay both original refused operations again while Published. Require their original statuses and bodies, unchanged final Board review C context, Published status, revisions, eligibility, turnout/results and audit. Reuse of a failed operation is not a new attempt.
+ 4. After each of the two existing trusted restarts, repeat both refused-operation replays and the exact current-state comparisons. Receipt storage may change privately at the original refusal; it must never create a public audit event or change an accepted record. Do not require preservation of unauthorized or malformed requests.
+ """
++
++[[criterion]]
++id = "user_wide_operation_namespace"
++name = "user_wide_operation_namespace"
++type = "binary"
++weight = 2.0
++description = """
++Use the namespace section of recovery.md. Retain Ruth's successful create exchange on a dedicated control. Using otherwise valid observed edit and membership shapes, their current target revisions and Ruth's same original create operation ID, require explicit collision refusals with unchanged target state and audit; the original create still replays its original outcome. Ordinary fresh-ID edit and membership writes are positive controls. Separately, two eligible Members must be able to submit their own legitimate ballots using the same identifier in their independent actor namespaces. Grade the namespace across actions/people here; same-action payload mismatch and ordinary receipt persistence have existing owners. Never use a stale revision or unauthorized role as the collision witness.
++"""
++
++[[criterion]]
++id = "durable_pending_staff_work"
++name = "durable_pending_staff_work"
++type = "binary"
++weight = 4.0
++description = """
++Follow the browser recovery sequence in /tests/functional/recovery.md. For each of the six staff action families (create, edit, Open, Close, Publish, membership), deliberately lose a genuine UI action's response after retaining the upstream exchange. Require an identifiable pending action and explicit uncertainty, available after reload in the same browser profile. Retain one through the trusted process restart and fresh sign-in. Also reload while an initial mutation's reply is still held: the attempt must survive without relying on the old page's error handler. There must be no automatic resubmission on reload or sign-in. Browser retention and uncertainty are graded here; request equality, per-account isolation, multiple entries and cross-tab completion have their own criteria. A write acknowledged successfully before a later GET refresh failure must not become a pending mutation. During a held original form submission, prevent a second activation from creating another operation; this criterion owns initial-submit protection, while cross_tab_pending_resolution owns concurrent recovery attempts.
++"""
++
++[[criterion]]
++id = "immutable_pending_retry"
++name = "immutable_pending_retry"
++type = "binary"
++weight = 4.0
++description = """
++Use the same pending attempts and captured exchanges. Click their visible Retry controls and inspect the actual outgoing requests: preserve original method, target, business inputs, operation ID and viewed revision without silently refreshing or regenerating them. Exercise both an upstream-accepted action whose response was lost before a later target change, and a stale/domain refusal whose response was lost before its preconditions changed. A usable success or business refusal resolves the reminder and supplies useful outcome feedback; an unreadable response, server failure or missing acknowledgment remains uncertain. Refresh current records instead of applying the old receipt as current state. Grade browser retry identity and outcome handling here; existing server receipt criteria own original status/body calculation. A correct outgoing request must not be marked wrong merely because a separately graded server receipt is defective.
++"""
++
++[[criterion]]
++id = "independent_pending_actions"
++name = "independent_pending_actions"
++type = "binary"
++weight = 4.0
++description = """
++In Ruth's one browser profile, retain two distinct uncertain staff actions on separate records. Both must be individually recognizable after reload, while independent work remains usable. Retry one and dismiss the other in an independently exercised order: acting on one must not overwrite/remove the other, resend the entire queue or block all other staff work. Capture the exact outgoing requests and per-entry visible states. Grade separation of entries here; dismissal meaning and cross-tab propagation belong to cross_tab_pending_resolution. One fixed global retry slot is insufficient.
++"""
++
++[[criterion]]
++id = "pending_actor_isolation"
++name = "pending_actor_isolation"
++type = "binary"
++weight = 4.0
++description = """
++With Ruth's unresolved work in one browser profile, visibly sign out and sign in in turn as Arun, Leila and Owen in that same profile. They must neither see Ruth's pending details nor send her original requests. Observe UI and outgoing mutations, not browser-storage internals. Returning through Ruth's real sign-in restores her own unresolved work without automatic replay. Also revoke her session from an independent Ruth context before a recovery attempt: refused authentication must retain the original pending work for her later sign-in; it must not be discarded or retried as another person. Other users' normal authorized reads remain the positive control. Grade actor ownership of recovery only; ordinary/global session revocation has separate criteria.
++"""
++
++[[criterion]]
++id = "cross_tab_pending_resolution"
++name = "cross_tab_pending_resolution"
++type = "binary"
++weight = 4.0
++description = """
++Open two ordinary tabs in Ruth's SAME browser context/profile. Make both observe the same unresolved entries. Resolving an entry in one tab must be reflected by the other on its next interaction or reload; a stale Retry must not send a newly reconstructed attempt or recreate a removed entry. For a separate upstream-accepted pending action, use visible Dismiss: it sends no business mutation, removes only that reminder in both tabs, and clearly says dismissal does not undo accepted work. Hold and then release one late network outcome while another tab observes the operation; it must not resurrect a removed reminder or overwrite a different pending entry. A temporary busy/disabled control while another tab handles the same operation is valid. Grade cross-tab coordination and dismissal semantics here; underlying server receipt identity is not graded a second time.
++"""
+--- r16/tests/functional/prompt.md
++++ r17/tests/functional/prompt.md
+@@ -1,5 +1,5 @@
+ Task version: 1.0.0
+-Prompt version: common-ground-ballot-functional-v1.0.0-r16
++Prompt version: common-ground-ballot-functional-v1.0.0-r17
+ 
+ Evaluate Common Ground at `http://localhost:3000` with Playwright MCP. This category covers the real browser workflows, server-enforced boundaries, and durable outcomes. The database starts fresh from the authoritative seed for this run.
+ 
+@@ -55,6 +55,10 @@
+ Requests sent before logout finished, a cancelled dialog, or credentials from the phase-6 fresh sign-in cannot establish a surviving ended session. If the actual logout request fails, preserve its response and resulting UI; do not treat a merely hidden workspace as successful revocation. A missing capture remains missing evidence and cannot receive a pass.
+ 
+ 
++## Required evidence checkpoints
++
++Read /tests/functional/recovery.md before starting. Execute its dedicated controls after the main staff receipt/roster/refusal sequences and before the final restart checks. Retain pending control evidence through the same trusted restarts without changing the previously tested ballots. The addendum defines narrowly scoped transport interruption permission; no other app/file/storage mutation is allowed. Keep a ledger for every criterion and each required restart phase. Record completion immediately. If a needed state is absent, use the expressly allowed isolated UI fixture; do not claim fixture creation is forbidden when this prompt permits it. Do not turn an unperformed observation into a factual app defect.
++
+ ## Exact Draft Controls
+ 
+ Before each invalid case, open a fresh visible New ballot form and set the valid base: title `Validation probe`, method Approval, choices `Morning`, `Afternoon`, `Evening`, and maximum approvals 2. Change only the item below. Verify the actual visible values, especially Approval mode, immediately before Save. Close/cancel the rejected form before preparing the next case.
+@@ -62,7 +66,7 @@
+ | Case | Change from the valid base | Required result |
+ | --- | --- | --- |
+ | Empty title | Clear the title completely. | No draft or audit event. |
+-| Empty choice | Clear the middle choice, retaining its choice control. | No draft or audit event. |
++| Empty choice | Clear a real submitted choice. Blank multiline separators that the editor discards are valid normalization; use the observed request shape for an actual blank item if needed. | No invalid draft or audit event; a valid normalized request is allowed. |
+ | Too few choices | Set maximum approvals to 1 first, then use the app's visible choice controls to leave only Morning. | Removal below two is prevented, or Save is refused. |
+ | Repeated choice | Change Afternoon to Morning, leaving Morning, Morning, Evening. | No draft or audit event. |
+ | Limit below minimum | Set maximum approvals to 0 in Approval mode. | Entry is prevented, or Save is refused. |
+@@ -207,3 +211,5 @@
+ {criteria}
+ 
+ Observer review checkpoints: during step 1, before mutations, use Arun's own signed-in context to open Ballots, Members and the published Garden location result. Capture each populated protected read and compare the visible records with Ruth's current records. Reload and navigate back to each. Save separate evidence for observer_ballot_setup_access, observer_members_access and observer_published_results_access. After the accepted draft creation in step 2, inspect its Audit event as Ruth, then visibly open Audit as Arun, capture its matching protected record and reload/navigate back for observer_audit_access. If no event was created, use another accepted staff action from the journey as that criterion specifies. A login, turnout read, hidden unpublished result or refused write proves none of these other permitted reads. Do not batch these inspections in a way that abandons the others on one access failure. Grade each access separately from content correctness and from the existing staff_identified_turnout criterion, which already requires Ruth and Arun.
++
++Before EACH trusted restart, read back the saved roster-conflict checkpoint. Immediately after EACH restart, capture both Roster includes Owen and Roster excludes Owen, their snapshots, and the Owen and Leila visibility reads before proceeding. Complete the current row before the next restart. The recovery addendum contributes only its own dedicated pending controls and must not replace these original checks.
+--- r16/tests/functional/recovery.md
++++ r17/tests/functional/recovery.md
+@@ -0,0 +1,67 @@
++# Staff recovery and operation namespace controls
++
++This is the Functional prompt's recovery addendum. Read the six associated criterion descriptions before acting. Use dedicated UI-created records, preserving the main journey's receipt, roster, result and restart fixtures. Normal writes use visible controls. Discover request fields, URLs, controls and authenticated actors from this submission; the examples below prescribe behavior, not a reference implementation. No source, database, DOM or browser-storage mutation is allowed.
++
++## Capture an interrupted operation
++
++Playwright MCP's run-code tool may narrowly intercept the next genuine staff mutation from the intended page. Install the route before the visible action, filter by the observed method/target/action, and forward unrelated reads and authentication requests normally. For each interrupted action:
++
++1. Capture its original outgoing method, URL and body. Forward it once with `route.fetch({maxRetries: 0})`. Await and retain the upstream status and response body before dropping delivery with `route.abort()`. This establishes whether the server committed or refused the action. Aborting before forwarding cannot establish recovery of an accepted write.
++2. Save the complete noncredential exchange to evaluator scratch immediately, before assertions or another action. Keep authentication solely in that actor's own browser context. Never print request headers or credentials. The app must see uncertainty, not the retained upstream reply.
++3. Remove the one-shot route in a `finally` cleanup. Inspect the app's visible pending reminder and uncertainty guidance; reload normally and inspect again. Record all outgoing staff mutations during reload to establish that no automatic resend occurred.
++4. When instructed below, use the reminder's visible Retry. Capture its actual outgoing request and compare its original method, target, business inputs, operation identifier and viewed revision. Transport-only header changes are irrelevant. Do not reconstruct the retry yourself: this criterion grades the app's outgoing request. After its usable result, inspect the reminder, feedback and separately refreshed current business records.
++
++Retain page/context references in the automation process across MCP calls; do not depend on a previous call's local JavaScript bindings. Return serializable captures and save them outside the app, as the main prompt requires. Use distinct tool calls for arming capture, clicking, and retrieving evidence if necessary. Never leave a blocked interception waiting across an unbounded tool call: retain its release handle in the automation process and bound the wait. Use the MCP dialog handler for native confirmations as described by the session sequence. An inability to complete the interception is missing test evidence, not a demonstrated app defect.
++
++## Six staff families and current-state refresh
++
++Use a new single-choice Recovery rehearsal with two distinct choices. Keep Leila active. Create dedicated Recovery Ruth A and Recovery Ruth B contexts, separate from the main journey's persistence sessions. Use Recovery B for intervening changes; that context has a separate browser profile and is not expected to share Recovery A's pending reminders.
++
++| Family | Interrupted action through visible controls | Later observation/control |
++| --- | --- | --- |
++| Create | Create Recovery rehearsal and drop its accepted response. | In the independent Ruth context find the one created Draft and edit its context. After reload, Retry the original create in the first profile. Its reminder resolves; the current collection still has one ballot with the later context. |
++| Edit | Refresh the Draft, edit its context again, and drop the accepted edit response. | Independently make a newer valid edit. Retry the earlier pending edit after reload; current UI must retain the newer context. |
++| Open | Open that Draft and drop its accepted response. | Independently close it. Retry the original Open after reload; refreshed UI remains Closed with its original opening snapshot. |
++| Close | On another dedicated Draft, open normally, then close and drop the accepted response. | Independently publish it. Retry the original Close after reload; refreshed UI remains Published. |
++| Publish | Publish a suitable dedicated Closed ballot and drop its accepted response. | Reload, Retry, and observe resolution plus the current Published record. |
++| Membership | Read Owen's current state, change it, and drop the accepted response. | Independently change him back with the current revision. Reload and Retry the original pending change; refreshed roster keeps the later state. Restore Owen paused through a normal current UI action before returning to the main journey. |
++
++For each row save visible identification, uncertainty, post-reload reminder and no-resend evidence before Retry. Maintain a row for every family; success for Create alone does not establish all six. Existing server receipt criteria own exact cached status/body and server persistence; here compare browser retention, outgoing retry identity, clearing/feedback, and current UI after refresh. If a server receipt is separately defective, still record whether the browser transmitted the right original attempt.
++
++For one original Create or Edit submission, hold its response briefly after capturing the upstream exchange. Inspect its submitting control and try a second ordinary activation only if it remains available. Require one outgoing operation and one reminder, with duplicate activation prevented while the first submission is in flight. Release delivery and finish normally. This initial-submit protection belongs only to durable_pending_staff_work; the cross-tab criterion owns concurrent recovery attempts.
++
++For another initial submission, retain its upstream exchange and reload the same page while delivery is still held, before the original page handles a failure or acknowledgment. Release/clean up the old route without resending. The reloaded page must already retain the original attempt, with no automatic write. Retry visibly and confirm its original identity and resolution. This checks that retention happens before sending, rather than only in a network-error handler.
++
++For one additional acknowledged successful staff action, let its mutation response reach the browser, then fail only the subsequent record-refresh GET. Require confirmation to remain final: it must not appear as an uncertain pending write. Restore reads and refresh to show the accepted record. Scope this to an actual observed refresh request; do not interrupt the mutation or current-user check accidentally.
++
++## Refused and unreadable outcomes
++
++Use a separate Draft opened for editing in Ruth A. In independent Ruth B, save another valid edit. Submit A's still-open stale form while intercepting its actual outgoing request. Confirm that request carries the older viewed revision. If the app prevents stale submission and offers a refresh instead, record that protection; do not rewrite its internal form state. To obtain the required pending-refusal control, an alternative is to hold A's genuine current edit request before forwarding, let B complete a newer edit, then forward A exactly once. This transport scheduling permission changes neither request nor browser state.
++
++Drop the resulting well-formed stale refusal after capturing it upstream. Its reminder must remain uncertain because the response was lost. Change the target once more in B, then click Retry in A. Require the original request identity, visible useful refusal, reminder resolution and refreshed latest data. A malformed-input or unauthorized request is not a substitute for this valid business refusal. A stale refusal is sufficient for this recovery control; the existing refusal-receipt criterion separately covers both stale and wrong-state cached refusals.
++
++For distinct genuine staff attempts, also replace only the delivered upstream reply with (a) an unreadable success body, then (b) a server-failure response such as 503. Capture the real upstream outcome first. The UI must retain uncertainty rather than clearing the reminder or claiming failure meant nothing was saved. Remove each interception, reload, then visibly Retry to recover. Do not manufacture an invented application API or require a particular error message. These narrowly scoped delivery changes and the failed refresh GET above are the only response substitutions authorized by this addendum.
++
++## Independent reminders and two tabs
++
++Create two distinct interrupted staff actions on separate dedicated records in one Ruth browser profile. Both must remain individually recognizable after reload. Perform an independent normal staff action while both exist. It must remain usable and must not resend either pending action.
++
++Open a second ordinary tab in the SAME browser context. Make both tabs observe the reminders. Retry the first entry in one tab, recording only its original outgoing request; the second entry must remain intact. On the other tab's next interaction or reload, the resolved first entry must disappear. A stale Retry control must not reconstruct/resend a removed attempt or recreate its reminder. A busy/disabled control while the same operation is in flight is acceptable.
++
++Dismiss the remaining upstream-accepted entry through its visible control. Require clear guidance that dismissal removes the reminder and does not undo/cancel the accepted action. Observe no business mutation and confirm the accepted record through an ordinary read. Both tabs must cease offering that reminder on their next interaction or reload. Repeat with two fresh pending actions, dismissing one before retrying the other, to establish that either order preserves independent entries. Do not treat deleting all pending reminders as success.
++
++For the late-outcome control, start a Retry in one tab, forward and retain its upstream exchange, and hold delivery with a bounded release handle. In the other tab dismiss that entry if available; otherwise observe its legitimate busy state. Create/retain a different pending entry while the first is busy or dismissed. Release the delayed response, then reload both tabs. The completed/dismissed reminder must not return, and the different reminder must remain. Multiple clicks must not launch overlapping requests for the same entry. Do not require a particular storage API, lock library or immediate push update; coordination by the next interaction or reload is sufficient.
++
++## Account boundaries and the existing restarts
++
++Retain an interrupted Ruth action. In that SAME profile use visible sign-out and sign-in successively as Arun, Leila and Owen. Inspect for the absence of Ruth's pending reminder, its attempted inputs and Retry/Dismiss controls, and record outgoing mutations to establish no replay. Ordinary ballot titles may legitimately appear in authorized Ballots/Audit reads; their presence alone is not a pending-data leak. Each account's normal authorized workspace is the positive control. Return through Ruth's real sign-in: her unresolved reminder returns, without automatic resend.
++
++With a pending Ruth action again, revoke her sessions through End all sessions in an independently authenticated Ruth context. Use the main prompt's confirmation/capture sequence to establish revocation. Attempt recovery in the original profile. Require refusal of the expired authentication and preservation of Ruth's unresolved work for a subsequent genuine Ruth sign-in. Do not count a login screen alone as lost work; sign in and inspect. Do not let an alternate account send her captured operation. Restore the main journey's independent account sessions before its persistence checkpoints so this deliberate revocation does not invalidate them.
++
++Keep one additional pending action in Recovery Ruth A through the main prompt's first trusted `python3 /tests/app-lifecycle.py restart`. First complete and save the main journey's session-survival, receipt, roster visibility and result rows. Then refresh Recovery A, retain its visible state and no-resend observation, and sign out and back in only that dedicated recovery profile to repeat. Retry or dismiss its reminder before recording final state for restart two. Keep the main journey's persistence sessions signed in through both restarts as its prompt requires. This is the same existing process restart, not permission to reset the database or replace any main journey restart observation. Save recovery evidence separately, under its owning criterion.
++
++## Operation namespace across actions and people
++
++Create a dedicated Namespace rehearsal through Ruth's visible UI and retain the successful create exchange. Discover genuine successful edit and membership shapes through separate normal controls. In Ruth's context send an otherwise valid current Draft edit using the create operation identifier, then an otherwise valid membership change using that same identifier. Adapt only the real observed shapes: use current target revisions, valid content and Ruth's own authentication. Each must return an explicit operation-collision refusal with unchanged target state and audit. A stale/state/role refusal does not establish a collision. Follow each with a fresh-identifier normal UI positive control. Replay the original create unchanged and verify that collision attempts did not replace its original outcome. These narrowly scoped cross-action substitutions are allowed direct-request probes; ordinary setup remains in the UI.
++
++For independent people, activate both Members normally and create/open a separate Namespace participation ballot. Each Member must be eligible in its fixed snapshot and not yet participated. Capture the genuine vote request shape and operation mechanism through a visible Member vote. From the other Member's own authenticated page, submit its legitimate choice with the SAME operation identifier using that observed shape and the correct target/selection. This identity-only collision control is an authorized direct-request adaptation; do not copy the first Member's credentials or forge an actor field. Require both accepted participations. Restore Owen paused for subsequent fixtures. Grade same-person cross-action collision and separate-person namespace here; existing vote, receipt and mismatch criteria retain their other verdict ownership.
+--- r16/tests/polish/prompt.md
++++ r17/tests/polish/prompt.md
+@@ -1,5 +1,5 @@
+ Task version: 1.0.0
+-Prompt version: common-ground-ballot-polish-v1.0.0-r8
++Prompt version: common-ground-ballot-polish-v1.0.0-r9
+ 
+ Evaluate the live Common Ground product at `http://localhost:3000` with Playwright MCP. Use Ruth Adebayo, `ruth.adebayo@commonground.example`, password `CommonGround!2026`. This category covers concrete interface quality required by the brief, not subjective taste or deep server behavior.
+ 
+@@ -25,3 +25,5 @@
+ Status and unavailable-action checkpoints: before leaving each representative workspace, retain the visible text associated with each ballot, membership and participation state. status_text_without_color owns non-color identification; Visual owns contrast and palette. For unavailable_action_guidance, inspect the lifecycle explanation or disabled controls before acting, alongside the available next action. A backend refusal or a successful unrelated feedback message does not establish this presentation requirement. Sign in as Arun Das (arun.das@commonground.example, same password) in a separate ordinary context for its Observer read-only explanation, and use Leila's recorded-participation view for final-submission guidance. These two Polish criteria are independent of each other and of permitted Observer reads in Functional.
+ 
+ Earlier dimensions may have consumed or advanced the seed ballots. Read current state first. Keep all existing Functional evidence intact. If any lifecycle state is absent, Ruth may create distinctly named two-choice Presentation review ballots through the UI and move separate ones only as far as the missing Draft, Open, Closed or Published state. Do not reset storage or move the Functional ballots just to create this display. Prefer the existing Members and Turnout records for both membership and participation states. If those states are absent, use the same presentation controls: record the original roster, establish active Leila and paused Owen, open one dedicated ballot, and have eligible Leila visibly submit once only if a participated state is missing; a separate open presentation ballot supplies pending. Restore any roster status changed for setup through its normal current-revision UI control. Use the already requested final-submission workflow, not a fabricated API or DOM state. Missing prerequisite capabilities remain missing evidence, not a pass; record the failure and continue other independent checks. No particular fixture title, wording, selector, API path or layout is required of a submission.
++
++Presentation checkpoint: first list the lifecycle, membership and participation states currently available. If Open or a recorded Member participation is missing, explicitly use the permitted dedicated Presentation review setup above. Do not skip unavailable_action_guidance or status_text_without_color by asserting that all fixture creation or voting is forbidden. It is authorized only on those dedicated controls, not on earlier Functional ballots. Record the setup and observation separately; inability to complete it remains missing evidence and must be reported accurately.
+--- r16/tests/prompt-provenance.py
++++ r17/tests/prompt-provenance.py
+@@ -10,6 +10,7 @@
+     assert len(versions)==1 and re.fullmatch('common-ground-ballot-'+d+r'-v1\.0\.0-r[1-9]\d*',versions[0])
+     record['judges'][d]={'prompt_version':versions[0],'prompt_sha256':sha(p),'judge_sha256':sha(root/d/'judge.toml')}
+ record['runner_sha256']=sha(root/'test.sh');record['reward_sha256']=sha(root/'reward.toml');record['score_sha256']=sha(root/'score.py')
++record['resource_sha256']={'functional/recovery.md':sha(root/'functional/recovery.md')}
+ if __name__ == '__main__':
+     Path(sys.argv[1]).write_text(json.dumps(record,indent=2)+'\n')
+     print('Prompt provenance: '+json.dumps(record,sort_keys=True),flush=True)

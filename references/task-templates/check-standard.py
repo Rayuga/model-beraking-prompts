@@ -1,11 +1,14 @@
 """Read-only preflight for Bazaarbridge configuration with Docketlight judge weights."""
 from pathlib import Path
-import argparse, json, re, tomllib
+import argparse, json, math, re, tomllib
 
 ROOT = Path(__file__).resolve().parents[2]
 REF = ROOT / 'projects/bazaarbridge-marketplace-commerce'
 WEIGHT_REF = ROOT / 'projects/docketlight-claims-insurance'
 DIMS = ('render', 'constraints', 'functional', 'polish', 'visual')
+BALLOT_RECOVERY_IDS = {'user_wide_operation_namespace', 'durable_pending_staff_work',
+    'immutable_pending_retry', 'independent_pending_actions', 'pending_actor_isolation',
+    'cross_tab_pending_resolution'}
 
 def parsed(p):
     return tomllib.loads(p.read_text(encoding='utf-8'))
@@ -23,6 +26,13 @@ def validate(task):
         if not condition: raise AssertionError(label)
         checks.append(label)
     cfg, ref = parsed(task/'task.toml'), parsed(REF/'task.toml')
+    reward_config = parsed(task/'tests/reward.toml')
+    centralized_ballot = cfg['task']['name'] == 'turing/common-ground-ballot' and 'composition' in reward_config
+    ballot_r15 = centralized_ballot and (task/'tests/SCORING.md').is_file()
+    ballot_r16 = ballot_r15 and bool(re.search(r'common-ground-ballot-polish-v1\.0\.0-r(?:[89]|[1-9][0-9]+)\b', (task/'tests/polish/prompt.md').read_text(encoding='utf-8')))
+    ballot_r17 = ballot_r15 and (bool(re.search(r'common-ground-ballot-functional-v1\.0\.0-r(?:1[7-9]|[2-9][0-9]|[1-9][0-9]{2,})\b', (task/'tests/functional/prompt.md').read_text(encoding='utf-8')))
+        or (task/'environment/instructions/recovery.md').exists()
+        or bool(BALLOT_RECOVERY_IDS & {c['id'] for c in parsed(task/'tests/functional/judge.toml')['criterion']}))
     check('Exact task.toml key paths', keys(cfg)==keys(ref))
     for k in ('schema_version','artifacts','agent','environment','verifier'):
         check('Exact operational config: '+k,cfg[k]==ref[k])
@@ -36,6 +46,35 @@ def validate(task):
         check(dim+' exact judge configuration',here['judge']==standard['judge'])
         check(dim+' no extra TOML table keys',set(here)==set(standard))
         check(dim+' no extra scoring keys',set(here['scoring'])==set(standard['scoring']))
+        if centralized_ballot:
+            expected_aggregation = 'all_pass' if dim in ('render','constraints') else 'weighted_mean'
+            check(dim+' aggregation matches composition role',here['scoring']['aggregation']==expected_aggregation)
+            ids={c['id'] for c in here['criterion']}
+            if dim=='render':
+                check('No duplicate root-load criterion',ids==({'workspace_navigation'} if ballot_r15 else {'public_control_responds'}))
+            if dim=='constraints':
+                check('Independent mandatory runtime criteria',ids==({'health_endpoint','sqlite_persistence'} if ballot_r15 else {'same_origin_shell','health_endpoint','sqlite_persistence'}))
+            if dim=='functional' and ballot_r16:
+                check('Observer positive read coverage', {'observer_ballot_setup_access','observer_published_results_access','observer_members_access','observer_audit_access'} <= ids)
+            if ballot_r17:
+                if dim != 'functional':
+                    check(dim+' does not duplicate Functional recovery criteria', not (ids & BALLOT_RECOVERY_IDS))
+                else:
+                    check('Ballot r17 namespace and five independent recovery criteria', BALLOT_RECOVERY_IDS <= ids)
+                    by_id={c['id']:c for c in here['criterion']}
+                    for cid in sorted(BALLOT_RECOVERY_IDS):
+                        c=by_id[cid]
+                        check('Ballot r17 positive binary criterion '+cid, c['type']=='binary' and type(c['weight']) in (int,float) and math.isfinite(c['weight']) and c['weight']>0)
+                    for name in ('environment/instructions/recovery.md','tests/functional/recovery.md'):
+                        check('Ballot r17 nonempty recovery document '+name, (task/name).is_file() and bool((task/name).read_text(encoding='utf-8').strip()))
+                    check('Ballot r17 recovery brief is referenced','recovery.md' in (task/'instruction.md').read_text(encoding='utf-8'))
+                    check('Ballot r17 browser addendum is referenced','/tests/functional/recovery.md' in (task/'tests/functional/prompt.md').read_text(encoding='utf-8'))
+                    check('Ballot r17 namespace ownership excludes same-action mismatches','same-action' in by_id['user_wide_operation_namespace']['description'].lower() and 'user_wide_operation_namespace' in by_id['operation_id_mismatch_safety']['description'])
+                    check('Ballot r17 retry ownership excludes server receipt calculation','existing server receipt criteria' in by_id['immutable_pending_retry']['description'].lower())
+                    check('Ballot r17 multi-entry and cross-tab ownership separated','cross_tab_pending_resolution' in by_id['independent_pending_actions']['description'])
+                    check('Ballot r17 actor isolation distinguishes ordinary revocation','ordinary/global session revocation' in by_id['pending_actor_isolation']['description'].lower())
+            if dim=='polish':
+                check('Independent theme touch and motion criteria',ids==(({'responsive_workspace_navigation','keyboard_control_operation','semantic_labels_and_landmarks','visible_and_managed_focus','persistent_action_feedback','theme_switch_preserves_workspace','comfortable_touch_targets','reduced_motion_preference'} | ({'status_text_without_color','unavailable_action_guidance'} if ballot_r16 else set())) if ballot_r15 else {'responsive_workspace_navigation','accessible_keyboard_forms','persistent_action_feedback','theme_switch_preserves_workspace','comfortable_touch_targets','reduced_motion_preference'}))
         check(dim+' nonempty criteria',bool(here['criterion']))
         prompt=(task/f'tests/{dim}/prompt.md').read_text(encoding='utf-8')
         check(dim+' local prompt contains criteria placeholder','{criteria}' in prompt)
@@ -47,7 +86,10 @@ def validate(task):
         # This checks wording/structure only, not full platform rubric semantics.
         check(dim+' explicit global browser gate',bool(re.search(r'global browser gate\s*:',prompt,re.I)))
         check(dim+' fatal browser error prerequisite','fatal' in prompt.lower() and 'error' in prompt.lower())
-        check(dim+' same-origin prerequisite','same-origin' in prompt.lower())
+        if ballot_r15:
+            check(dim+' public resource origins allowed','Do not restrict the origin' in prompt)
+        else:
+            check(dim+' same-origin prerequisite','same-origin' in prompt.lower())
         check(dim+' failed gate zeros criteria',bool(re.search(r'assign\s+(?:0|no|the lowest score)\s+to\s+(?:every|all)',prompt,re.I)))
         check(dim+' no judge/model overrides',not({'judge','model','reasoning_effort'}&here['judge'].keys()))
         allowed=set().union(*(c.keys() for c in standard['criterion']))
@@ -59,7 +101,18 @@ def validate(task):
     check('Serial reference timeout wrapper','timeout 12600 rewardkit --max-concurrent-agent 1 /tests' in runner)
     check('Sequential budget headroom',sum(budgets.values())==12000<12600<cfg['verifier']['timeout_sec'])
     check('Lifetime budget',cfg['environment']['build_timeout_sec']+cfg['agent']['timeout_sec']+cfg['verifier']['timeout_sec']<=21600)
-    check('Exact reference reward config',parsed(task/'tests/reward.toml')==parsed(REF/'tests/reward.toml'))
+    if centralized_ballot:
+        check('Ballot QC composition roles',reward_config=={'reward':[{'name':'reward','aggregation':'weighted_mean'}] if ballot_r15 else [],'composition':{'gates':['render','constraints'],'weighted_dimensions':['functional','polish','visual']}})
+        score_source=(task/'tests/score.py').read_text(encoding='utf-8')
+        check('Single final scorer', 'python3 /tests/score.py "$LOG_DIR/reward.json" "$LOG_DIR/reward.txt" "$LOG_DIR/ctrf.json"' in runner)
+        check('Weights read from authoritative judges','judge["judge"]["weight"]' in score_source and 'tomllib.loads' in score_source)
+        check('No duplicated point coefficients',not any(value in score_source or value in runner for value in ['0.6 *','0.2 *','"functional": 0.6','"polish": 0.2','"visual": 0.2']))
+    elif cfg['task']['name']=='turing/pellmoor-job-pipeline':
+        check('Pellmoor exact reference reward config',reward_config==parsed(REF/'tests/reward.toml'))
+        check('Pellmoor final composition documented',(task/'tests/SCORING.md').is_file())
+        check('No obsolete zero-weight compatibility patch',not (task/'tests/rewardkit-compat.py').exists())
+    else:
+        check('Exact reference reward config',reward_config==parsed(REF/'tests/reward.toml'))
     for p in [task/'environment/Dockerfile',task/'tests/Dockerfile',task/'tests/test.sh']:
         s=p.read_text(encoding='utf-8')
         check(str(p.relative_to(task))+' no API key mentions',not re.search(r'(?:OPENAI|OPENROUTER)[ _-]*API[ _-]*KEY',s,re.I))
@@ -68,9 +121,13 @@ def validate(task):
     reward = 0.0
 else:
     reward = 0.6 * data["functional"] + 0.2 * data["polish"] + 0.2 * data["visual"]'''
-    check('Exact reward formula',expected in runner)
+    if centralized_ballot:
+        check('Mandatory gate composition','if any(data[dimension] <= 0 for dimension in gates):' in score_source and 'return 0.0' in score_source)
+        check('Weighted point composition','sum(data[dimension] * weights[dimension] for dimension in weighted) / sum(weights[dimension] for dimension in weighted)' in score_source)
+    else:
+        check('Exact reward formula',expected in runner)
     check('Visual zero fallback','"polish":0.0,"visual":0.0' in runner)
-    check('CTRF output','"total": 5' in runner and 'ctrf.json' in runner)
+    check('CTRF output','"total": 5' in (score_source if centralized_ballot else runner) and 'ctrf.json' in runner)
     return dict(task=str(task),checks=checks,counts=counts,timeouts=budgets,passed=True)
 
 if __name__=='__main__':

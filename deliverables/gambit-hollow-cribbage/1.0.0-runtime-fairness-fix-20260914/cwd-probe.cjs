@@ -1,0 +1,6 @@
+const A=require('node:assert/strict'),fs=require('node:fs'),{execFileSync}=require('node:child_process');
+const mode=process.env.CWD_CASE,legacy=mode==='legacy',expected=mode==='readonly'?'/tmp/gambit-submission':'/app';
+async function inspect(){const pid=fs.readFileSync('/logs/verifier/app.pid','utf8').trim(),cwd=execFileSync('setpriv',['--reuid=65534','--regid=65534','--clear-groups','readlink','/proc/'+pid+'/cwd'],{encoding:'utf8'}).trim();const root=await fetch('http://127.0.0.1:3000/',{headers:{Connection:'close'}}),script=await fetch('http://127.0.0.1:3000/js/cards.js',{headers:{Connection:'close'}});return {cwd,root_status:root.status,script_status:script.status};}
+(async()=>{const observations=[await inspect()];if(legacy){A.equal(observations[0].cwd,'/tests');A(observations[0].root_status>=400);A(observations[0].script_status>=400);}else{for(let i=0;i<3;i++){if(i){execFileSync('bash',['/tests/app-lifecycle.sh','restart']);observations.push(await inspect());}A.equal(observations[i].cwd,expected);A.equal(observations[i].root_status,200);A.equal(observations[i].script_status,200);}}
+fs.writeFileSync('/evidence/cwd-'+mode+'-results.json',JSON.stringify({case:mode,passed:true,legacy_failure_reproduced:legacy,observations},null,2));console.log('PASS cwd case '+mode);
+})().catch(e=>{console.error(e);process.exitCode=1;});

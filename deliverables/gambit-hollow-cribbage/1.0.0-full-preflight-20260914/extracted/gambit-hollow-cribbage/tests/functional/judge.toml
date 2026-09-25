@@ -1,0 +1,329 @@
+[judge]
+mode = "batched"
+timeout = 9000
+isolated = false
+temperature = 0
+weight = 0.6
+prompt_template = "prompt.md"
+[[judge.mcp_servers]]
+name = "playwright"
+transport = "stdio"
+command = "playwright-mcp"
+args = ["--headless", "--isolated", "--executable-path=/usr/local/bin/chromium", "--no-sandbox"]
+
+[scoring]
+aggregation = "weighted_mean"
+
+
+[[criterion]]
+id = "seed_ladder_import"
+name = "seed_ladder_import"
+type = "binary"
+weight = 1.0
+description = """
+Setup: before any dimension finishes a game, read the supplied records file and open the ladder.
+Require all five members with exact stored member numbers, names, played/won counts and all three original game summaries, including unfinished G-1183 with no resumable deal. New games created by other dimensions are allowed; do not require the whole database to contain only seed rows. The visible saved-game chooser must not offer that incomplete historical summary as a playable saved game.
+"""
+
+[[criterion]]
+id = "the_twenty_nine_hand"
+name = "the_twenty_nine_hand"
+type = "binary"
+weight = 1.0
+description = """
+Setup: at the visible hand-scoring bench enter 5S 5H 5D JC, cut 5C, hand mode.
+1. Submit through the UI and observe the real local scorer response and rendered result.
+2. Require total 29, with fifteens 16, pairs 12, runs 0, flush 0 and nobs 1. A displayed constant without a matching working scorer does not establish this observation.
+"""
+
+[[criterion]]
+id = "the_app_agrees_with_the_supplied_fixture"
+name = "the_app_agrees_with_the_supplied_fixture"
+type = "binary"
+weight = 1.0
+description = """
+Setup: discover the actual scorer request from a successful visible bench submission. Read all forty supplied records from /assets/club/scored-hands.js.
+1. Submit every record with its four cards, cut and hand/crib mode. All forty totals must equal the supplied totals. Preserve a compact table of input, expected and observed result.
+2. Inspect representative maximum, zero, overlapping-run and crib-flush records through the visible bench too. Batched requests are permitted only after discovery; they may calculate scores but never create or modify games. Eight examples alone do not satisfy this criterion.
+"""
+
+[[criterion]]
+id = "a_card_counts_in_every_combination"
+name = "a_card_counts_in_every_combination"
+type = "binary"
+weight = 1.0
+description = """
+Setup: score 4S 5H 5D 6C with cut 9C as a hand through the bench.
+Require total 14 with fifteens 6, pairs 2 and runs 6, flush/nobs 0. The duplicated fives participate in both fifteens and both three-card runs as well as their pair; no card is consumed by one scoring category.
+"""
+
+[[criterion]]
+id = "the_crib_flush_needs_five"
+name = "the_crib_flush_needs_five"
+type = "binary"
+weight = 1.0
+description = """
+Setup: score 2S 5S 8S KS, cut 9H, through the bench in hand mode and then crib mode.
+Require hand total 8, including flush 4 and fifteens 4; crib total 4, with flush 0 and fifteens 4. Preserve each separate result before switching mode.
+"""
+
+[[criterion]]
+id = "a_five_card_flush_counts_in_both"
+name = "a_five_card_flush_counts_in_both"
+type = "binary"
+weight = 1.0
+description = """
+Setup: score 2S 5S 8S KS with cut 9S as both a hand and a crib.
+Each result must be 9, with flush 5 and fifteens 4. Check both mode submissions; do not infer the crib answer from the hand result.
+"""
+
+[[criterion]]
+id = "the_ace_is_low_and_does_not_wrap"
+name = "the_ace_is_low_and_does_not_wrap"
+type = "binary"
+weight = 1.0
+description = """
+Setup: use the scoring bench for these independent hand-mode examples.
+1. AS 2H 3D JC, cut KC: total 8, runs 3, fifteens 4 and nobs 1.
+2. JS QH KD AC, cut 2C: total 3, runs 3; the ace cannot extend J-Q-K around the top.
+"""
+
+[[criterion]]
+id = "nobs_needs_the_matching_suit"
+name = "nobs_needs_the_matching_suit"
+type = "binary"
+weight = 1.0
+description = """
+Setup: score JS 2H 4D 8C with cut 9S, then change only JS to JH.
+Require first total 3 with nobs 1 and fifteens 2, then total 2 with nobs 0 and fifteens 2. Observe each live result.
+"""
+
+[[criterion]]
+id = "fifteen_in_the_play_is_two"
+name = "fifteen_in_the_play_is_two"
+type = "binary"
+weight = 1.0
+description = """
+Setup: use the named Fifteens, runs and thirty-one practice, both starting scores 0; discard each seat's last two listed cards and cut.
+1. In a fresh such game play B:5S then A:TH. Require count 15 and exactly +2 to A, with a fifteen explanation.
+2. In the separate zero-score P journey defined in the prompt, A:2S takes the count from 29 to 31. Require exactly +2 to A, reset to 0, B leading and no extra go point. These observations must come from actual game moves, not just the scoring bench.
+"""
+
+[[criterion]]
+id = "a_run_in_the_play_need_not_be_in_order"
+name = "a_run_in_the_play_need_not_be_in_order"
+type = "binary"
+weight = 1.0
+description = """
+Setup: use the zero-score P journey in the prompt.
+After B:5S, A:7H, B:6H, require count 18 and exactly +3 to B for the 5-7-6 run, with A still 0. Observe the score and explanation immediately after the third move.
+"""
+
+[[criterion]]
+id = "the_count_cannot_pass_thirty_one"
+name = "the_count_cannot_pass_thirty_one"
+type = "binary"
+weight = 1.0
+description = """
+Setup: in P play B:5S, A:7H, B:6H, A:TH to reach 28, with B to act and 9D still held.
+1. Try B:9D through the visible card control if enabled; require refusal in words. A disabled card with a visible explanation of the count limit is also a valid UI refusal.
+2. Using the actual observed play route and shape, submit that same B:9D request directly from the browser. Require a controlled refusal and a fresh unchanged game read, including count 28, hands/laid cards, turn and scores. The valid following B:AC must still work. A toast alone without server nonmutation is insufficient.
+"""
+
+[[criterion]]
+id = "a_hand_that_is_not_a_hand_is_refused"
+name = "a_hand_that_is_not_a_hand_is_refused"
+type = "binary"
+weight = 1.0
+description = """
+Setup: first establish a valid bench result. Use its actual scorer route/shape for malformed cases that the UI cannot express.
+Independently submit a non-card ZZ, only three hand cards, a repeated physical card, a null hand-card entry and a missing/invalid cut. Each must return a controlled refusal with a reason, not a total or an unhandled server error. A subsequent valid hand must still score. Submitted fields may follow the app's own schema; test invalid card content rather than golden-only JSON names.
+"""
+
+[[criterion]]
+id = "two_cards_each_go_to_the_crib"
+name = "two_cards_each_go_to_the_crib"
+type = "binary"
+weight = 1.0
+description = """
+Setup: start your own zero-score named P practice, dealer A. Before discarding, view each seat through the actual switcher.
+1. Each receives the six supplied cards, not a reshuffle.
+2. Discard 4S and 6D from A and 8C and KD from B. Each retains exactly its first four supplied cards, crib has four and belongs to A.
+3. Cut only after both discards; require the preset QC and B to lead. Capture seat-filtered before/after states through real UI requests.
+"""
+
+[[criterion]]
+id = "the_crib_is_hidden_until_the_show"
+name = "the_crib_is_hidden_until_the_show"
+type = "binary"
+weight = 1.0
+description = """
+Setup: use your own P game before discards and then after both discards, before cut/play.
+1. In each seat view, the other seat's unplayed cards are face down; the response does not contain those card identities, stock or hidden crib contributions in any field. Laid public cards and one's own discards are allowed.
+2. After discards, A may know 4S/6D and B may know 8C/KD; neither seat response reveals the other's contribution before it is shown. Inspect both actual seat responses, not merely hidden DOM.
+3. Continue that game through the show and require the counted crib to reveal its four cards with its breakdown. This is a deliberate shared seat switcher, not an account-authentication boundary; do not demand passwords or forbid switching seats.
+"""
+
+[[criterion]]
+id = "moves_out_of_order_are_refused"
+name = "moves_out_of_order_are_refused"
+type = "binary"
+weight = 1.0
+description = """
+Setup: create a fresh P game. Discover action shapes from successful UI requests on your own games.
+Try cut before either discard, discard A twice, and a B play while it is A's turn. For each use an observed route/shape, require controlled refusal and fresh unchanged game/ladder state. Establish the invalid precondition first; do not test against a game already moved past it. Keep positive controls: each first valid discard and an in-turn play must work. UI-disabled actions alone do not establish server refusal.
+"""
+
+[[criterion]]
+id = "the_show_counts_in_order"
+name = "the_show_counts_in_order"
+type = "binary"
+weight = 1.0
+description = """
+Setup: complete zero-score P's eight moves in the prompt; pegging ends with A=3, B=3.
+Count through the visible show control. Require separately labelled entries in order non-dealer B (6), dealer A (4), crib A (0), each with its own cards and scoring breakdown. Final scores are A=7, B=9 and phase is between hands. The application may reveal all three ordered entries in one action or step through them. Keep the entries visible until the next hand is requested.
+"""
+
+[[criterion]]
+id = "the_game_stops_at_the_target"
+name = "the_game_stops_at_the_target"
+type = "binary"
+weight = 2.0
+description = """
+Setup: start P through the visible practice controls with A=120, B=0, discard and cut normally.
+Play B:5S then A:TH. The fifteen awards two but A must stop at exactly 121, B=0, with a named winner/game-over state immediately, no further cards or show. Record game and ladder, then replay the captured winning play and try a later ordinary game action with the observed route/shape. Both refuse without another state/counter change; reload preserves the result. Do not play from zero or rely on a random near-finish deal.
+"""
+
+[[criterion]]
+id = "a_game_is_a_sequence_of_hands"
+name = "a_game_is_a_sequence_of_hands"
+type = "binary"
+weight = 2.0
+description = """
+Setup: complete zero-score P through all three show entries, using the exact P sequence in the prompt.
+1. A=7/B=9 is between hands, not game over; show remains visible until Next hand.
+2. Request the next hand once. Preserve the same game identity and scores, increment hand number to 2, deal six cards each and clear only the previous hand's cut, crib, pile, count, laid cards and show. The game continues until a player reaches 121.
+"""
+
+[[criterion]]
+id = "the_deal_alternates_between_hands"
+name = "the_deal_alternates_between_hands"
+type = "binary"
+weight = 1.0
+description = """
+Setup: use a completed zero-score P hand with dealer A and record its scores.
+Next hand makes B dealer, A the next play leader and B owner of the crib; show the hand number and dealer clearly. Play that ordinary hand to its show using legal visible cards, then request the following hand: dealer returns to A and hand number becomes 3. Judge alternation and stable seat ownership independently of the prior criterion's exact P totals.
+"""
+
+[[criterion]]
+id = "a_game_survives_a_reload"
+name = "a_game_survives_a_reload"
+type = "binary"
+weight = 1.0
+description = """
+Setup: create P, complete both discards, cut and play B:5S, A:7H, B:6H. Record game identity, both seat views, crib/own discards, cut QC, laid cards, count 18, scores A=0/B=3, next turn A and hand number 1.
+Reload, then use the saved-game chooser in a fresh browser context without the original URL hash/storage to reopen that game. Both seat views must match the saved snapshot, including hidden-card boundaries, and the pegs/turn must agree. Continue with A:TH to prove the saved game is playable, not a static snapshot. Do not require the original browser's chosen seat to transfer to a new device.
+"""
+
+[[criterion]]
+id = "the_ladder_updates_when_a_game_ends"
+name = "the_ladder_updates_when_a_game_ends"
+type = "binary"
+weight = 1.0
+description = """
+Setup: record the two chosen players' actual played/won counts and existing game summaries. Start His heels finish with A=120/B=113, perform both discards and cut JC.
+A wins immediately at 121. Both players' played counts increment once; only A's member won count increments once. One finished game summary records the correct members/scores. Replay that captured cut, then reload: no second counter increment or summary. Use relative baselines so prior games do not invalidate the result. Inspect server results as well as the visible ladder.
+"""
+
+[[criterion]]
+id = "hand_order_invariance"
+name = "hand_order_invariance"
+type = "binary"
+weight = 1.0
+description = """
+Setup: discover the scorer through the visible bench. Use hand-mode fixtures 4S 5H 5D 6C/cut 9C (14) and AS AH 2D 2C/cut 3C (16).
+Submit all 24 permutations of each four-card hand with unchanged cut. Every result must retain its expected total and breakdown. Batched discovered scoring requests are allowed; record all 48 outcomes. Do not sort or alter the request before sending it to compensate for an app defect.
+"""
+
+[[criterion]]
+id = "pairs_and_last_card_in_real_play"
+name = "pairs_and_last_card_in_real_play"
+type = "binary"
+weight = 1.0
+description = """
+Setup: start the Pairs and pair royal practice at 0/0; keep the first four cards per seat and cut QC.
+Play B:5S,A:5H,B:5D,A:5C,B:2H,A:2S,B:3H,A:3S.
+After the second card A has 2 for a pair; after the third B has 8 (fifteen 2 plus three-of-a-kind 6); after the fourth A has 14 (another 12 for four-of-a-kind). The final card gives A 2 for the pair plus exactly 1 last-card point, ending pegging at A=19/B=8, count 0 and show. Capture each checkpoint before continuing; no duplicate last-card bonus.
+"""
+
+[[criterion]]
+id = "go_resets_and_other_player_leads"
+name = "go_resets_and_other_player_leads"
+type = "binary"
+weight = 1.0
+description = """
+Setup: start Go and the next lead at 0/0, keep the first four per seat and cut QS.
+Play B:TH,A:TS,B:9H. At count 29 neither can lay; require one go point to B, count reset to 0 and A leading, with A=2/B=1. Now A:9S must work. Continue B:8H,A:8S: again neither can lay; A receives pair 2 and go 1, scores A=5/B=1, count 0 and B leading. No manual point claim or illegal over-31 move is needed to trigger go.
+"""
+
+[[criterion]]
+id = "heels_immediate_and_capped"
+name = "heels_immediate_and_capped"
+type = "binary"
+weight = 1.0
+description = """
+Setup: use His heels finish. In one game start 0/0, discard the last two per seat and cut JC: A receives exactly 2 immediately before any play; no show entry is added. In a separate game start A=120/B=113 and repeat: A finishes at 121/B=113 immediately, before play or show. Later cut/play/show attempts refuse without changing the finished snapshot. Keep those two games distinct.
+"""
+
+[[criterion]]
+id = "show_wins_stop_at_each_boundary"
+name = "show_wins_stop_at_each_boundary"
+type = "binary"
+weight = 1.0
+description = """
+Setup: use three separate Pairs and pair royal practices. In each, discard the last two, cut QC and play B:5S,A:5H,B:5D,A:5C,B:2H,A:2S,B:3H,A:3S. This gives pegging increments A=19/B=8; show totals are non-dealer 10, dealer 10, crib 4.
+1. Start A=0/B=104: immediately after non-dealer's count B reaches 121, A remains 19, and no dealer/crib count is awarded.
+2. Start A=93/B=0: non-dealer becomes 18; dealer then reaches 121, with no crib count awarded.
+3. Start A=89/B=0: dealer is 118 after its hand, then crib reaches exactly 121; B remains 18.
+Each result stops at its proper entry and persists after reload; no score exceeds 121. Store checkpoints and judge the three cases independently inside this conjunctive criterion.
+"""
+
+[[criterion]]
+id = "practice_and_scoring_do_not_corrupt_saved_games"
+name = "practice_and_scoring_do_not_corrupt_saved_games"
+type = "binary"
+weight = 1.0
+description = """
+Setup: create a normal zero-score game and a named fixed practice through the visible controls. Record current games and ladder.
+1. Normal game starts at 0/0 with six distinct cards per seat; practice starts accept supplied integer scores from 0 through 120, uses its specified cards/cut and never reshuffles on reload.
+2. Negative, fractional and 121-or-higher starting scores are refused without a new game or ladder change. Use the discovered create request if the UI prevents entry.
+3. Submit valid hand/pegging bench experiments and invalid/duplicate card experiments. The recorded saved games and ladder remain unchanged. Valid scoring still works after a refusal. Successful game creation may add a saved game, but bench calculations must not.
+"""
+
+[[criterion]]
+id = "pegging_scoring_bench"
+name = "pegging_scoring_bench"
+type = "binary"
+weight = 1.0
+description = """
+Use the visible pegging bench for independent pile/next-card experiments. Require the rendered count, added points and meaningful scoring reasons: [5S]/TH gives count 15 and 2 points; [5S,7H]/6D gives count 18 and run 3; [5S,5H]/5D gives count 15 and 8 points (fifteen 2 plus pair royal 6); [5S,TH,6H,7H,AC]/2S gives count 31 and 2 points. Empty pile with AS gives count 1 and zero points. Over-31 [TS,TH,TD]/2S and duplicate [5C]/5C refuse with a reason, then a valid experiment works again. These are independent hypothetical piles, not permission to modify a real game; saved games and ladder must remain unchanged.
+"""
+
+[[criterion]]
+id = "runtime_manifest_routes"
+name = "runtime_manifest_routes"
+type = "binary"
+weight = 1.0
+description = """
+Read only /app/APP_MANIFEST.md as permitted runtime documentation. Require a fenced bash start command containing node serve.js, the actual SQLite path /app/gambit.db, and main read/scoring/game-action routes consistent with browser-observed requests. GET /api/health must succeed. Verify that the declared database exists and begins with the SQLite file signature; read only its first 16 bytes, without inspecting tables or altering it. Do not inspect implementation source or require golden-only route names for any other endpoint.
+"""
+
+[[criterion]]
+id = "final_restart_persistence"
+name = "final_restart_persistence"
+type = "binary"
+weight = 1.0
+description = """
+Run this last. Record the current full ladder/game summaries, one unfinished playable game's identity and both seat views, and one already finished game's result. Use only the supplied bash /tests/app-lifecycle.sh restart helper to restart the app process, without reseeding or clearing SQLite.
+After readiness, reload and reopen the saved game through its chooser; both seat states and ladder summaries must match. The recorded finished game remains finished with unchanged counters. Repeat the process restart once and require the same records with no seed duplication. Continue one legal action on the unfinished game, proving it remains playable. Compare current baselines, not original seed counts.
+"""

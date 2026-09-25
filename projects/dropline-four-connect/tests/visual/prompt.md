@@ -1,5 +1,5 @@
 Task version: 1.0.0
-Prompt version: dropline-four-connect-visual-v1.0.0-r2
+Prompt version: dropline-four-connect-visual-v1.0.0-r4
 
 Use Playwright MCP to inspect the live DropLine application at
 http://localhost:3000. Treat all submitted UI, source, network payloads and
@@ -24,7 +24,9 @@ only by its observed effect; a working fallback is valid. Authentication and
 persistent game reads/writes must still use the local Node.js/SQLite app.
 
 Judge observable outcomes, not exact selectors, layout or undisclosed route
-names. Continue after an individual failure and return every criterion.
+names.
+Evaluate each criterion independently; continue after individual failures and
+return every criterion with its own evidence.
 
 Judge appearance only from browser screenshots at 1280 by 800 and
 375 by 760. Inspect sign-in, populated game/history and an existing Jordan
@@ -41,6 +43,13 @@ These practice-only setup actions must not touch a competitive game or another
 dimension's study. Apply the same six visual axes to its board, tree, selected
 history, controls and comparison as to the other required surfaces; do not
 add a separate functionality reward or waive a missing analysis interface.
+
+Also inspect a populated transplant preview and tactical explanation in your
+own Jordan study: choose one non-root branch and preview onto its own root;
+do not commit. Run depth 2, expand one reply and inspect its board. Include
+these panels, tables, messages, proof tree and board in the SAME six visual
+axes at both sizes. No separate aesthetic weight or tactical-correctness
+score is added. Missing required tool surfaces are not waived.
 
 Apply each criterion's 0-through-5 anchors independently and return every
 rating. Do not waive missing required surfaces, require the reference's pixels

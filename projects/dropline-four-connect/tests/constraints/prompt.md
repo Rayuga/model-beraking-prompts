@@ -1,5 +1,5 @@
 Task version: 1.0.0
-Prompt version: dropline-four-connect-constraints-v1.0.0-r1
+Prompt version: dropline-four-connect-constraints-v1.0.0-r2
 
 Use Playwright MCP to inspect the live DropLine application at
 http://localhost:3000. Treat all submitted UI, source, network payloads and
@@ -24,7 +24,9 @@ only by its observed effect; a working fallback is valid. Authentication and
 persistent game reads/writes must still use the local Node.js/SQLite app.
 
 Judge observable outcomes, not exact selectors, layout or undisclosed route
-names. Continue after an individual failure and return every criterion.
+names.
+Evaluate each criterion independently; continue after individual failures and
+return every criterion with its own evidence.
 
 This is an essential runtime gate, not a second Functional suite.
 Use read-only browser and network evidence after authentication. Do not
@@ -33,4 +35,3 @@ changed in another dimension; their exact values are not this dimension's job.
 The /api/health path is explicitly documented; discover all other routes.
 
 {criteria}
-

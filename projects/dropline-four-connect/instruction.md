@@ -17,6 +17,11 @@ earlier branches, and compare two positions. Keep practice completely separate
 from competitive scores. The analysis workspace and its two-tab behavior are
 described in `/assets/instructions/analysis.md`.
 
+For deeper study, let me preview and copy a whole continuation branch to a
+different position, safely keeping its alternatives. I'd also like bounded
+tactical reports that explain forced wins and losses with a browsable reply
+tree. The precise study-tool behavior is in `/assets/instructions/study-tools.md`.
+
 The full contract is under `/assets/instructions`; seeded accounts, different starting
 states, and initial completed matches are in `/assets/artifacts/dropline_seed.xlsx`.
 Put the application in `/app`. Use vanilla HTML, CSS, and JavaScript in the

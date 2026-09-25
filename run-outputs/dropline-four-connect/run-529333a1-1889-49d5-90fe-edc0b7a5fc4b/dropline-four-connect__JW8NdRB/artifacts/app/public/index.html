@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DropLine — Connect Four & Analysis</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-brand">
+        <h1 class="logo-text">DropLine</h1>
+        <span class="logo-sub">Connect Four</span>
+      </div>
+
+      <!-- Auth Bar (when signed in) -->
+      <div id="auth-bar" class="auth-bar hidden" aria-label="Account details">
+        <div class="user-info">
+          <span class="user-name" id="user-name-display"></span>
+          <span class="user-email" id="user-email-display"></span>
+        </div>
+        <button id="sign-out-btn" class="btn btn-secondary btn-sm" aria-label="Sign out">Sign out</button>
+      </div>
+    </header>
+
+    <!-- Global Live Region for Screen Readers -->
+    <div id="sr-announcements" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+
+    <!-- MAIN VIEWS -->
+    <main id="main-content">
+      <!-- 1. SIGN IN SCREEN -->
+      <section id="sign-in-section" class="card auth-card" aria-labelledby="sign-in-heading">
+        <h2 id="sign-in-heading" class="card-title">Sign in to DropLine</h2>
+        <p class="card-desc">Sign in with a demo account to play and study games.</p>
+
+        <form id="sign-in-form" class="auth-form" novalidate>
+          <div class="form-group">
+            <label for="sign-in-email">Email</label>
+            <input type="email" id="sign-in-email" name="email" class="form-input" autocomplete="email" required placeholder="e.g. avery@dropline.test">
+          </div>
+          <div class="form-group">
+            <label for="sign-in-password">Password</label>
+            <input type="password" id="sign-in-password" name="password" class="form-input" autocomplete="current-password" required placeholder="password123">
+          </div>
+          <div id="sign-in-error" class="alert alert-error hidden" role="alert"></div>
+          <button type="submit" id="sign-in-submit-btn" class="btn btn-primary btn-block">Sign in</button>
+        </form>
+
+        <div class="demo-hints">
+          <h3>Demo Accounts:</h3>
+          <ul>
+            <li><code>avery@dropline.test</code> / <code>password123</code> (Active mid-game)</li>
+            <li><code>jordan@dropline.test</code> / <code>password123</code> (11 completed matches)</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- 2. SIGNED-IN APP WORKSPACE -->
+      <div id="app-workspace" class="workspace hidden">
+        <!-- Navigation Tabs -->
+        <nav class="nav-tabs" aria-label="Game and Study Navigation">
+          <button id="tab-game-btn" class="tab-btn active" role="tab" aria-selected="true" aria-controls="game-view-panel">Competitive Match</button>
+          <button id="tab-archive-btn" class="tab-btn" role="tab" aria-selected="false" aria-controls="archive-view-panel">Match Archive</button>
+          <button id="tab-analysis-btn" class="tab-btn" role="tab" aria-selected="false" aria-controls="analysis-view-panel">Saved Analyses</button>
+        </nav>
+
+        <!-- VIEW A: COMPETITIVE MATCH -->
+        <section id="game-view-panel" class="view-panel" role="tabpanel" aria-labelledby="tab-game-btn">
+          <div class="match-layout">
+            <!-- Game Board & Column Controls -->
+            <div class="board-column">
+              <!-- Game Status Header -->
+              <div class="game-meta-card">
+                <div class="game-status-row">
+                  <div id="game-turn-result" class="turn-indicator" aria-live="polite">Red's turn</div>
+                  <div class="revision-badge" id="game-revision-badge">Revision: 0</div>
+                </div>
+
+                <!-- Match Score Totals -->
+                <div class="score-cards" aria-label="Match totals">
+                  <div class="score-card red-score">
+                    <span class="score-label">Red wins</span>
+                    <span class="score-val" id="red-wins-display">0</span>
+                  </div>
+                  <div class="score-card yellow-score">
+                    <span class="score-label">Yellow wins</span>
+                    <span class="score-val" id="yellow-wins-display">0</span>
+                  </div>
+                  <div class="score-card draw-score">
+                    <span class="score-label">Draws</span>
+                    <span class="score-val" id="draws-display">0</span>
+                  </div>
+                </div>
+
+                <!-- Alert banner for conflict / full column / feedback -->
+                <div id="game-feedback-alert" class="alert alert-warning hidden" role="status" aria-live="polite"></div>
+              </div>
+
+              <!-- Connect 4 Board Widget -->
+              <div class="board-widget">
+                <!-- 7 Column Drop Buttons -->
+                <div class="column-controls" role="toolbar" aria-label="Column Drop Controls">
+                  <button type="button" class="col-drop-btn" data-col="1" aria-label="Drop in column 1">
+                    <span class="arrow-down" aria-hidden="true">▼</span>
+                    <span class="col-num">1</span>
+                  </button>
+                  <button type="button" class="col-drop-btn" data-col="2" aria-label="Drop in column 2">
+                    <span class="arrow-down" aria-hidden="true">▼</span>
+                    <span class="col-num">2</span>
+                  </button>
+                  <button type="button" class="col-drop-btn" data-col="3" aria-label="Drop in column 3">
+                    <span class="arrow-down" aria-hidden="true">▼</span>
+                    <span class="col-num">3</span>
+                  </button>
+                  <button type="button" class="col-drop-btn" data-col="4" aria-label="Drop in column 4">
+                    <span class="arrow-down" aria-hidden="true">▼</span>
+                    <span class="col-num">4</span>
+                  </button>
+                  <button type="button" class="col-drop-btn" data-col="5" aria-label="Drop in column 5">
+                    <span class="arrow-down" aria-hidden="true">▼</span>
+                    <span class="col-num">5</span>
+                  </button>
+                  <button type="button" class="col-drop-btn" data-col="6" aria-label="Drop in column 6">
+                    <span class="arrow-down" aria-hidden="true">▼</span>
+                    <span class="col-num">6</span>
+                  </button>
+                  <button type="button" class="col-drop-btn" data-col="7" aria-label="Drop in column 7">
+                    <span class="arrow-down" aria-hidden="true">▼</span>
+                    <span class="col-num">7</span>
+                  </button>
+                </div>
+
+                <!-- 42-Cell Grid -->
+                <div id="game-grid" class="board-grid" role="grid" aria-label="Connect Four Game Board, 6 rows by 7 columns">
+                  <!-- Generated 42 cells -->
+                </div>
+              </div>
+
+              <!-- Game Actions Bar -->
+              <div class="game-actions-bar">
+                <button id="game-undo-btn" class="btn btn-secondary" aria-label="Undo move" disabled>
+                  <span aria-hidden="true">↶</span> Undo
+                </button>
+                <button id="game-redo-btn" class="btn btn-secondary" aria-label="Redo move" disabled>
+                  <span aria-hidden="true">↷</span> Redo
+                </button>
+                <button id="game-new-btn" class="btn btn-primary" aria-label="Start new game">
+                  New game
+                </button>
+              </div>
+            </div>
+
+            <!-- History Sidebar -->
+            <aside class="sidebar-column">
+              <div class="card history-card">
+                <h3 class="card-subtitle">Current Round Move History</h3>
+                <div id="game-history-list" class="history-list" role="list" aria-label="Move history list">
+                  <p class="empty-hint">No moves played yet in this round.</p>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <!-- VIEW B: MATCH ARCHIVE & REPLAY -->
+        <section id="archive-view-panel" class="view-panel hidden" role="tabpanel" aria-labelledby="tab-archive-btn">
+          <div class="archive-layout">
+            <div class="archive-header-row">
+              <div>
+                <h2 class="view-title">Completed Matches Archive</h2>
+                <p id="archive-count-text" class="text-muted">Loading archive...</p>
+              </div>
+              <button id="archive-refresh-btn" class="btn btn-secondary btn-sm">Refresh</button>
+            </div>
+
+            <div id="archive-list-container" class="archive-list-container">
+              <!-- Archive Table / List -->
+              <div class="table-responsive">
+                <table class="data-table" aria-label="Completed Matches Table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Match ID</th>
+                      <th scope="col">Result</th>
+                      <th scope="col">Moves</th>
+                      <th scope="col">Date</th>
+                      <th scope="col">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="archive-tbody">
+                    <!-- Rows rendered here -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Read-only Replay Panel (when a match is opened) -->
+            <div id="replay-panel" class="card replay-card hidden" aria-labelledby="replay-heading">
+              <div class="replay-header">
+                <div>
+                  <h3 id="replay-heading" class="card-subtitle">Match Replay</h3>
+                  <span id="replay-match-meta" class="text-muted"></span>
+                </div>
+                <button id="replay-close-btn" class="btn btn-secondary btn-sm" aria-label="Close replay">Close Replay</button>
+              </div>
+
+              <div class="replay-content">
+                <!-- Replay Board Widget -->
+                <div class="board-widget">
+                  <div id="replay-grid" class="board-grid replay-grid" role="grid" aria-label="Read-only Replay Board, 6 rows by 7 columns">
+                    <!-- 42 cells rendered here -->
+                  </div>
+                </div>
+
+                <!-- Replay Controls & Create Analysis -->
+                <div class="replay-controls-card">
+                  <div class="replay-step-slider-box">
+                    <label for="replay-step-slider" id="replay-step-label">Replay Step: 0</label>
+                    <input type="range" id="replay-step-slider" min="0" max="0" value="0" class="range-slider" aria-labelledby="replay-step-label">
+                  </div>
+
+                  <div class="replay-btn-row">
+                    <button id="replay-prev-btn" class="btn btn-secondary" aria-label="Previous step">◀ Previous</button>
+                    <button id="replay-next-btn" class="btn btn-secondary" aria-label="Next step">Next ▶</button>
+                  </div>
+
+                  <div class="replay-move-desc" id="replay-move-desc" aria-live="polite">Step 0: Initial empty board</div>
+
+                  <!-- Create Named Analysis from this step -->
+                  <div class="create-analysis-box">
+                    <h4 class="box-title">Explore from this Position</h4>
+                    <p class="box-desc">Create a private saved analysis starting from this exact board state.</p>
+                    <form id="create-analysis-form" class="create-analysis-form">
+                      <div class="form-group">
+                        <label for="analysis-name-input">Analysis Name (1–60 characters)</label>
+                        <input type="text" id="analysis-name-input" maxlength="60" required class="form-input" placeholder="e.g. Move 3 Alternate Line">
+                      </div>
+                      <button type="submit" id="create-analysis-submit-btn" class="btn btn-primary">Create Saved Analysis</button>
+                    </form>
+                    <div id="create-analysis-feedback" class="alert alert-warning hidden" role="status"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW C: SAVED ANALYSES & STUDY WORKSPACE -->
+        <section id="analysis-view-panel" class="view-panel hidden" role="tabpanel" aria-labelledby="tab-analysis-btn">
+          <!-- 1. Analyses List (when no analysis is open) -->
+          <div id="analyses-list-view" class="analyses-list-view">
+            <div class="archive-header-row">
+              <div>
+                <h2 class="view-title">Saved Branching Analyses</h2>
+                <p class="text-muted">Explore variations and deeper tactics without affecting competitive scores.</p>
+              </div>
+              <button id="analyses-refresh-btn" class="btn btn-secondary btn-sm">Refresh</button>
+            </div>
+
+            <div id="saved-analyses-container" class="saved-analyses-grid">
+              <!-- Cards rendered here -->
+            </div>
+          </div>
+
+          <!-- 2. Open Analysis Workspace (when an analysis is selected) -->
+          <div id="analysis-workspace-view" class="analysis-workspace-view hidden">
+            <!-- Analysis Top Bar -->
+            <div class="analysis-top-bar card">
+              <div class="analysis-title-box">
+                <button id="analysis-back-btn" class="btn btn-secondary btn-sm" aria-label="Back to saved analyses list">◀ Back to Analyses</button>
+                <div class="analysis-name-edit-group">
+                  <h2 id="open-analysis-name" class="analysis-title">Analysis Name</h2>
+                  <button id="analysis-rename-toggle-btn" class="btn btn-outline btn-sm" aria-label="Rename analysis">Rename</button>
+                </div>
+              </div>
+
+              <!-- Rename inline form -->
+              <div id="analysis-rename-form-box" class="rename-box hidden">
+                <input type="text" id="analysis-rename-input" maxlength="60" class="form-input" aria-label="New analysis name">
+                <button id="analysis-save-rename-btn" class="btn btn-primary btn-sm">Save</button>
+                <button id="analysis-cancel-rename-btn" class="btn btn-secondary btn-sm">Cancel</button>
+              </div>
+
+              <div class="analysis-meta-row">
+                <span id="analysis-source-label" class="badge badge-source">Source: match (step 0)</span>
+                <span id="analysis-revision-badge" class="revision-badge">Revision: 0</span>
+                <div id="analysis-status-indicator" class="turn-indicator" aria-live="polite">Red's turn</div>
+              </div>
+
+              <div id="analysis-feedback-alert" class="alert alert-warning hidden" role="status" aria-live="polite"></div>
+            </div>
+
+            <!-- Analysis Main Content: Board, Variation Tree, Tools -->
+            <div class="analysis-grid-layout">
+              <!-- Column 1: Analysis Practice Board & Controls -->
+              <div class="analysis-board-col">
+                <div class="board-widget">
+                  <!-- Analysis Column Controls -->
+                  <div class="column-controls" role="toolbar" aria-label="Analysis Column Controls">
+                    <button type="button" class="col-drop-btn analysis-col-btn" data-col="1" aria-label="Drop in column 1">
+                      <span class="arrow-down" aria-hidden="true">▼</span>
+                      <span class="col-num">1</span>
+                    </button>
+                    <button type="button" class="col-drop-btn analysis-col-btn" data-col="2" aria-label="Drop in column 2">
+                      <span class="arrow-down" aria-hidden="true">▼</span>
+                      <span class="col-num">2</span>
+                    </button>
+                    <button type="button" class="col-drop-btn analysis-col-btn" data-col="3" aria-label="Drop in column 3">
+                      <span class="arrow-down" aria-hidden="true">▼</span>
+                      <span class="col-num">3</span>
+                    </button>
+                    <button type="button" class="col-drop-btn analysis-col-btn" data-col="4" aria-label="Drop in column 4">
+                      <span class="arrow-down" aria-hidden="true">▼</span>
+                      <span class="col-num">4</span>
+                    </button>
+                    <button type="button" class="col-drop-btn analysis-col-btn" data-col="5" aria-label="Drop in column 5">
+                      <span class="arrow-down" aria-hidden="true">▼</span>
+                      <span class="col-num">5</span>
+                    </button>
+                    <button type="button" class="col-drop-btn analysis-col-btn" data-col="6" aria-label="Drop in column 6">
+                      <span class="arrow-down" aria-hidden="true">▼</span>
+                      <span class="col-num">6</span>
+                    </button>
+                    <button type="button" class="col-drop-btn analysis-col-btn" data-col="7" aria-label="Drop in column 7">
+                      <span class="arrow-down" aria-hidden="true">▼</span>
+                      <span class="col-num">7</span>
+                    </button>
+                  </div>
+
+                  <!-- 42 Cells Practice Grid -->
+                  <div id="analysis-grid" class="board-grid analysis-grid" role="grid" aria-label="Analysis Practice Board, 6 rows by 7 columns">
+                    <!-- 42 cells rendered here -->
+                  </div>
+                </div>
+
+                <!-- Analysis Undo / Redo Controls -->
+                <div class="game-actions-bar">
+                  <button id="analysis-undo-btn" class="btn btn-secondary" aria-label="Analysis Undo">
+                    <span aria-hidden="true">↶</span> Undo
+                  </button>
+                  <button id="analysis-redo-btn" class="btn btn-secondary" aria-label="Analysis Redo">
+                    <span aria-hidden="true">↷</span> Redo
+                  </button>
+                </div>
+
+                <!-- Ambiguous Redo Continuation Choice Modal / Selector -->
+                <div id="redo-choice-panel" class="card redo-choice-card hidden" aria-labelledby="redo-choice-heading">
+                  <h4 id="redo-choice-heading" class="box-title">Choose Continuation Branch:</h4>
+                  <div id="redo-choice-buttons" class="branch-choice-buttons">
+                    <!-- Buttons rendered dynamically -->
+                  </div>
+                </div>
+
+                <!-- Selected Line History -->
+                <div class="card history-card" style="margin-top: 1rem;">
+                  <h3 class="card-subtitle">Selected Line Move History</h3>
+                  <div id="analysis-history-list" class="history-list" role="list" aria-label="Analysis move history">
+                    <!-- Rendered moves -->
+                  </div>
+                </div>
+              </div>
+
+              <!-- Column 2: Variation Tree & Study Tools Tabs -->
+              <div class="analysis-tools-col">
+                <!-- Study Sub-Tabs -->
+                <div class="study-tabs" role="tablist" aria-label="Study Tools">
+                  <button id="subtab-tree-btn" class="study-tab-btn active" role="tab" aria-selected="true" aria-controls="subtab-tree-panel">Variation Tree</button>
+                  <button id="subtab-compare-btn" class="study-tab-btn" role="tab" aria-selected="false" aria-controls="subtab-compare-panel">Compare Positions</button>
+                  <button id="subtab-transplant-btn" class="study-tab-btn" role="tab" aria-selected="false" aria-controls="subtab-transplant-panel">Transplant Branch</button>
+                  <button id="subtab-tactical-btn" class="study-tab-btn" role="tab" aria-selected="false" aria-controls="subtab-tactical-panel">Tactical Report</button>
+                </div>
+
+                <!-- SUB-PANEL 1: VARIATION TREE -->
+                <div id="subtab-tree-panel" class="study-panel" role="tabpanel" aria-labelledby="subtab-tree-btn">
+                  <div class="card">
+                    <h3 class="card-subtitle">Variation Tree</h3>
+                    <p class="text-muted">Select any position node to restore its board, history, and continuations.</p>
+                    <div id="variation-tree-container" class="tree-container" role="tree" aria-label="Analysis Variation Tree">
+                      <!-- Rendered tree nodes -->
+                    </div>
+                  </div>
+                </div>
+
+                <!-- SUB-PANEL 2: COMPARE POSITIONS -->
+                <div id="subtab-compare-panel" class="study-panel hidden" role="tabpanel" aria-labelledby="subtab-compare-btn">
+                  <div class="card">
+                    <h3 class="card-subtitle">Compare Two Positions</h3>
+                    <p class="text-muted">Choose any two nodes in this analysis to compare shared moves and differing cells.</p>
+
+                    <form id="compare-form" class="compare-form">
+                      <div class="form-row">
+                        <div class="form-group">
+                          <label for="compare-node-a-select">Position A</label>
+                          <select id="compare-node-a-select" class="form-select" required aria-label="Choose Position A"></select>
+                        </div>
+                        <div class="form-group">
+                          <label for="compare-node-b-select">Position B</label>
+                          <select id="compare-node-b-select" class="form-select" required aria-label="Choose Position B"></select>
+                        </div>
+                      </div>
+                      <div class="btn-row">
+                        <button type="submit" id="compare-submit-btn" class="btn btn-primary">Compare Positions</button>
+                        <button type="button" id="compare-swap-btn" class="btn btn-secondary">Swap A & B</button>
+                      </div>
+                    </form>
+
+                    <!-- Comparison Result Display -->
+                    <div id="compare-result-box" class="compare-result-box hidden">
+                      <div class="compare-summary-badge" id="compare-summary-badge"></div>
+
+                      <div class="comparison-boards-row">
+                        <div class="compare-board-col">
+                          <h4 id="compare-board-a-title" class="box-title">Position A</h4>
+                          <div id="compare-grid-a" class="board-grid mini-grid" role="grid" aria-label="Position A Board, 6 rows by 7 columns"></div>
+                        </div>
+                        <div class="compare-board-col">
+                          <h4 id="compare-board-b-title" class="box-title">Position B</h4>
+                          <div id="compare-grid-b" class="board-grid mini-grid" role="grid" aria-label="Position B Board, 6 rows by 7 columns"></div>
+                        </div>
+                      </div>
+
+                      <div class="diff-list-card">
+                        <h4 class="box-title">Differing Cells:</h4>
+                        <div id="compare-diff-list" class="diff-list" aria-live="polite"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- SUB-PANEL 3: TRANSPLANT BRANCH -->
+                <div id="subtab-transplant-panel" class="study-panel hidden" role="tabpanel" aria-labelledby="subtab-transplant-btn">
+                  <div class="card">
+                    <h3 class="card-subtitle">Transplant Branch</h3>
+                    <p class="text-muted">Copy a continuation branch from this analysis onto any destination position.</p>
+
+                    <form id="transplant-preview-form" class="transplant-form">
+                      <div class="form-group">
+                        <label for="transplant-source-node-select">Source Branch Node (non-root)</label>
+                        <select id="transplant-source-node-select" class="form-select" required aria-label="Source branch node"></select>
+                      </div>
+
+                      <div class="form-group">
+                        <label for="transplant-dest-analysis-select">Destination Analysis</label>
+                        <select id="transplant-dest-analysis-select" class="form-select" required aria-label="Destination analysis"></select>
+                      </div>
+
+                      <div class="form-group">
+                        <label for="transplant-dest-node-select">Destination Position Node</label>
+                        <select id="transplant-dest-node-select" class="form-select" required aria-label="Destination node"></select>
+                      </div>
+
+                      <button type="submit" id="transplant-preview-btn" class="btn btn-primary">Preview Transplant</button>
+                    </form>
+
+                    <div id="transplant-feedback" class="alert alert-warning hidden" role="status" aria-live="polite"></div>
+
+                    <!-- Preview Result Box -->
+                    <div id="transplant-preview-result-box" class="transplant-result-box hidden">
+                      <h4 class="box-title">Preview Details</h4>
+                      <div id="transplant-preview-summary" class="preview-summary-badge"></div>
+
+                      <div class="table-responsive">
+                        <table class="data-table" aria-label="Transplanted Nodes Preview">
+                          <thead>
+                            <tr>
+                              <th>Relative Path</th>
+                              <th>Col</th>
+                              <th>Color</th>
+                              <th>Row</th>
+                              <th>Status</th>
+                              <th>Action</th>
+                            </tr>
+                          </thead>
+                          <tbody id="transplant-preview-tbody"></tbody>
+                        </table>
+                      </div>
+
+                      <div class="commit-actions-row">
+                        <button id="transplant-commit-btn" class="btn btn-success">Commit Transplant to Destination</button>
+                      </div>
+                    </div>
+
+                    <!-- Commit Result Box -->
+                    <div id="transplant-commit-result-box" class="alert alert-success hidden" role="status"></div>
+                  </div>
+                </div>
+
+                <!-- SUB-PANEL 4: TACTICAL REPORT -->
+                <div id="subtab-tactical-panel" class="study-panel hidden" role="tabpanel" aria-labelledby="subtab-tactical-btn">
+                  <div class="card">
+                    <h3 class="card-subtitle">Bounded Tactical Search</h3>
+                    <p class="text-muted">Rigorous minimax proof for forced wins, losses, or draws within 1 to 4 plies.</p>
+
+                    <form id="tactical-form" class="tactical-form">
+                      <div class="form-row">
+                        <div class="form-group">
+                          <label for="tactical-node-select">Target Position Node</label>
+                          <select id="tactical-node-select" class="form-select" required aria-label="Tactical report node"></select>
+                        </div>
+                        <div class="form-group">
+                          <label for="tactical-depth-select">Search Depth (Plies)</label>
+                          <select id="tactical-depth-select" class="form-select" required aria-label="Search depth">
+                            <option value="1">1 ply</option>
+                            <option value="2" selected>2 plies</option>
+                            <option value="3">3 plies</option>
+                            <option value="4">4 plies</option>
+                          </select>
+                        </div>
+                      </div>
+                      <button type="submit" id="tactical-submit-btn" class="btn btn-primary">Run Tactical Report</button>
+                    </form>
+
+                    <div id="tactical-feedback" class="alert alert-warning hidden" role="status" aria-live="polite"></div>
+
+                    <!-- Tactical Report Results Box -->
+                    <div id="tactical-results-box" class="tactical-results-box hidden">
+                      <div class="tactical-header-badge" id="tactical-header-badge"></div>
+
+                      <h4 class="box-title">Move Recommendations (Ascending Columns)</h4>
+                      <div id="tactical-columns-grid" class="tactical-cols-grid"></div>
+
+                      <h4 class="box-title" style="margin-top: 1.5rem;">Bounded Explanation Proof Tree</h4>
+                      <p class="text-muted" style="font-size: 0.875rem;">Click any explanation node to inspect its exact 42-cell board position.</p>
+                      <div id="tactical-tree-container" class="tactical-tree-container" role="tree" aria-label="Tactical proof explanation tree"></div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <!-- Proof Node Board Inspector Modal -->
+    <div id="proof-inspector-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="proof-modal-title">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3 id="proof-modal-title" class="card-subtitle">Proof Node Board Position</h3>
+          <button id="proof-modal-close-btn" class="btn btn-secondary btn-sm" aria-label="Close inspector">✕</button>
+        </div>
+        <div class="modal-body">
+          <div id="proof-node-meta" class="text-muted" style="margin-bottom: 0.75rem;"></div>
+          <div class="board-widget">
+            <div id="proof-inspector-grid" class="board-grid mini-grid" role="grid" aria-label="Proof Node Board, 6 rows by 7 columns"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <p>DropLine Connect Four & Study System &bull; Local 2-Player</p>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

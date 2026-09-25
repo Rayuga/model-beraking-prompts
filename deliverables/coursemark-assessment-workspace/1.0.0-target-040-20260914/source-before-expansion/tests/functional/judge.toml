@@ -1,0 +1,523 @@
+[judge]
+mode = "batched"
+timeout = 9000
+isolated = false
+temperature = 0
+weight = 0.6
+prompt_template = "prompt.md"
+[[judge.mcp_servers]]
+name = "playwright"
+transport = "stdio"
+command = "playwright-mcp"
+args = ["--headless", "--isolated", "--executable-path=/usr/local/bin/chromium", "--no-sandbox"]
+
+[scoring]
+aggregation = "weighted_mean"
+
+[[criterion]]
+id = "seeded_password_signin_and_identity"
+name = "seeded_password_signin_and_identity"
+type = "binary"
+weight = 1.0
+description = """
+Begin signed out. Submit Ada's address with `wrong-pass-47` and require visible
+rejection without protected records. Then use `Coursemark!2026` and inspect the
+successful same-origin sign-in exchange. Across the login response and its
+immediately authenticated identity/bootstrap response, require Ada Mensah, her
+email and Instructor role, the fixed reference time, and a nonnegative
+revision. Later criteria separately require those values to render in the UI.
+"""
+
+[[criterion]]
+id = "bearer_session_transport"
+name = "bearer_session_transport"
+type = "binary"
+weight = 1.25
+description = """
+Through the normal visible sign-in, require the server to issue a distinct,
+unpredictable high-entropy token rather than a user identifier or fixed value.
+Browser network evidence must show that token used as a same-origin Bearer
+credential on every successful protected read. After a reload, the active
+credential must still authorize a protected read; a fresh signed-out page
+receives no protected records. This transport criterion does not require the
+downstream protected DOM to render, which is covered by later criteria.
+"""
+
+[[criterion]]
+id = "instructor_workspace_and_seeded_schedule"
+name = "instructor_workspace_and_seeded_schedule"
+type = "binary"
+weight = 1.25
+description = """
+As Ada, require the protected assessment data or rendered assessment list to
+import A-01 through A-04 with their distinct titles, draft/published states,
+opening times, and due times. The schedule must come from the seed rather than
+repeated generic cards and remain exact after a protected reload. Duration,
+attempt-limit, question, authoring, and release behavior is tested separately.
+"""
+
+[[criterion]]
+id = "ta_student_authority_and_answer_key_privacy"
+name = "ta_student_authority_and_answer_key_privacy"
+type = "binary"
+weight = 1.0
+description = """
+Check Luis, Nora, and Ben through normal sign-in. Luis has only assigned
+grading work; students have only their own attempt controls; Ada alone has
+create, publish, and release authority. Students must not see draft A-02 or
+receive an answer/key field in a successful protected response; a matching
+value in their own saved answer is not a leaked key. Staff may inspect scoring
+details.
+"""
+
+[[criterion]]
+id = "nora_accommodation_and_active_attempt"
+name = "nora_accommodation_and_active_attempt"
+type = "binary"
+weight = 1.0
+description = """
+As Nora, require published A-01 Habitat sampling check with base opening
+10:00Z, effective due 13:00Z, and a +15-minute accommodation. Her seeded
+AT-100 remains in progress from 11:30Z with a 60-minute allowance and exact
+12:30Z expiry. Continue it without submitting and require both seeded questions
+with no answer key or released score.
+"""
+
+[[criterion]]
+id = "ben_extension_and_exact_expiry"
+name = "ben_extension_and_exact_expiry"
+type = "binary"
+weight = 1.0
+description = """
+As Ben, require A-01 to show a 60-minute deadline extension and effective due
+14:00Z while its duration stays 45 minutes. Separately, seeded AT-103 belongs
+to A-04, Species identification sprint, not A-01. It began at 11:15Z and
+must be auto-submitted exactly at the 12:00Z reference moment, score its
+`Parallel veins` answer as 5, consume its sole attempt, accept no answer edit,
+and create one auto-submitted audit event. Its score remains hidden from Ben.
+"""
+
+[[criterion]]
+id = "availability_and_attempt_limit_guards"
+name = "availability_and_attempt_limit_guards"
+type = "binary"
+weight = 1.0
+description = """
+Require students not to receive draft A-02. A-03 is outside its closed window,
+and Ben's A-04 has zero attempts remaining after AT-103, so neither offers a
+new attempt. Nora's existing A-01 attempt offers Continue rather than a second
+start. Record the baseline after AT-103's one automatic expiry transition,
+which may already have happened during earlier protected reads or startup.
+These refused states must not change the visible revision, attempts, or
+audit count.
+"""
+
+[[criterion]]
+id = "answer_save_revision_and_restore"
+name = "answer_save_revision_and_restore"
+type = "binary"
+weight = 1.0
+description = """
+In Nora's AT-100 choose `Transect` and enter the distinctive written answer
+`Observer placement can favor the trail edge.` Save through the visible
+control. Require exactly one revision increment and a synced success state.
+Fully reload, sign in again if needed, reopen AT-100, and require both exact
+answers restored with no extra revision or duplicate attempt.
+"""
+
+[[criterion]]
+id = "submission_scoring_and_terminal_lock"
+name = "submission_scoring_and_terminal_lock"
+type = "binary"
+weight = 1.0
+description = """
+Submit Nora's saved AT-100 through the visible workflow. Require exactly one
+new revision and one submitted audit event, terminal submitted state, objective
+score 4 from the server key when viewed by staff, and preservation of the
+written answer. Nora's subsequent protected attempt reads must contain neither that score nor
+grades before release,
+and no answer or second submit control may change the terminal attempt.
+"""
+
+[[criterion]]
+id = "assigned_ta_scope_and_score_bounds"
+name = "assigned_ta_scope_and_score_bounds"
+type = "binary"
+weight = 1.0
+description = """
+As Luis, require only attempts assigned to `user_2`: AT-100, AT-101, and
+AT-103; released unassigned AT-102 is absent. Open AT-101 and try RC-3 above
+its maximum 2. Require visible rejection with no grade, audit, total, status,
+or revision change. Luis has no publish or release action, and a student has no
+grading action.
+"""
+
+[[criterion]]
+id = "rubric_completion_and_derived_total"
+name = "rubric_completion_and_derived_total"
+type = "binary"
+weight = 1.0
+description = """
+As Luis on AT-101, save RC-3 as 2 with `Names the changing limit`; the attempt
+remains submitted. Save RC-4 as 2.5 with `Connects it to seasonal resources`;
+the attempt becomes graded. Each accepted save advances revision once and
+creates one grade event. Require objective 0, rubric 4.5, and total 4.5 out of
+10 after all criteria are graded, including after reload.
+"""
+
+[[criterion]]
+id = "release_privacy_immutability_and_retry"
+name = "release_privacy_immutability_and_retry"
+type = "binary"
+weight = 1.0
+description = """
+Before release, Ben sees no AT-101 scores or feedback. As Ada, release AT-101
+and capture that request. Require one revision increment and one release event.
+While Ada's same Bearer session is still active, immediately replay the exact
+captured method, URL, authorization header, and serialized body through fetch;
+do not sign out or switch accounts first. Require the original success response
+with no second revision or event. Then sign in as Ben and require total 4.5,
+both rubric scores, and exact feedback, while other students do not receive it.
+Released grading has no editable score or release control.
+"""
+
+[[criterion]]
+id = "draft_validation_and_creation"
+name = "draft_validation_and_creation"
+type = "binary"
+weight = 1.0
+description = """
+As Ada, use New assessment with a due time not after its opening time and
+require visible validation with no revision, draft, or audit change. Then
+create `Canopy survey practical`, opening 2026-09-03T09:00Z, due
+2026-09-03T11:00Z, duration 25, and maximum attempts 2. Require one new draft,
+one revision increment, persistence after reload, and no publish audit yet.
+"""
+
+[[criterion]]
+id = "question_validation_and_publish_lifecycle"
+name = "question_validation_and_publish_lifecycle"
+type = "binary"
+weight = 1.0
+description = """
+The empty Canopy draft must keep Publish unavailable. Try to add a
+multiple-choice question with duplicate options and require rejection without
+revision or item change. Add a valid written question `Explain one canopy
+closure bias.` worth 4 with rubric `Links cover to detection`, then publish.
+Each accepted action advances revision once; publish creates one audit event.
+The published item cannot be edited or published again, and students can now
+see the future assessment without being able to start it.
+"""
+
+[[criterion]]
+id = "audit_visibility_and_exactly_once_events"
+name = "audit_visibility_and_exactly_once_events"
+type = "binary"
+weight = 1.0
+description = """
+Require a durable newest-first audit with one event for each accepted publish,
+submit or auto-submit, rubric-grade write, and release performed above. The
+invalid draft, invalid question, over-maximum grade, terminal writes, and
+replayed release add no event. Ada sees course events; Luis sees his actions
+and assigned-attempt events; Nora and Ben each see only events whose attempt
+belongs to that student. Staff-authored grade or release events on the
+student's own attempt are allowed and expected; fail only if an event belongs
+to another student's attempt. Reload preserves ordering and counts.
+"""
+
+[[criterion]]
+id = "gradebook_totals_and_account_isolation"
+name = "gradebook_totals_and_account_isolation"
+type = "binary"
+weight = 1.0
+description = """
+Ada's Gradebook includes every course attempt with student, assessment, state,
+release state, and staff-visible totals. Luis receives only his assigned queue.
+Nora never receives Ben's attempts or feedback, and Ben never receives Nora's.
+Across full reload and later sign-in, AT-100 answers/submission, AT-101 grades
+and release, AT-103 expiry, and the published Canopy assessment remain exact.
+"""
+
+[[criterion]]
+id = "two_tab_revisions_receipts_and_duplicate_guard"
+name = "two_tab_revisions_receipts_and_duplicate_guard"
+type = "binary"
+weight = 1.5
+description = """
+Sign in as Ada independently in tabs A and B at the same revision. Keep both
+Ada sessions active until this entire criterion is finished. In tab A, capture
+the successful network request that creates draft `Transect calibration A`.
+Immediately replay its exact method, URL, authorization header, and serialized
+body through fetch in tab A. Do not submit the visible form again because a new
+UI action intentionally receives a new operation id. Require the replay's
+original status and body with one draft and one revision increment. Without
+refreshing tab B, submit `Transect calibration B`; require HTTP 409, visible
+updated-elsewhere feedback, the authoritative new revision/state, and no new
+draft or audit.
+
+Retain tab B's rejected request bytes. Replay that exact B request after
+another accepted write and require its original 409 status/body. Retry B
+through the visible form with a fresh
+operation id and current revision; require exactly one draft and increment.
+Reuse A's operation id with a changed title and require rejection without
+change. Finally rapidly double-submit another valid draft and require at most
+one accepted request, one record, and one increment while the control is
+pending. A transport delay preserving the actual request and response is
+allowed to expose that interval; two intended activations after completion
+are not a pending-repeat defect. Refresh both tabs to the same authoritative state.
+"""
+
+[[criterion]]
+id = "account_wide_token_revocation"
+name = "account_wide_token_revocation"
+type = "binary"
+weight = 1.25
+description = """
+Sign in as Nora independently in two tabs and require distinct unpredictable
+Bearer tokens. Sign out in tab A. On tab B's next protected navigation,
+reload, or action, require the old token to be rejected back to sign-in before
+any mutation. A new correct sign-in may issue a fresh token.
+"""
+
+[[criterion]]
+id = "reauthentication_and_cross_account_isolation"
+name = "reauthentication_and_cross_account_isolation"
+type = "binary"
+weight = 1.0
+description = """
+Record Nora's attempt, gradebook, audit, and revision. After sign-out, a
+wrong-password attempt remains signed out; correct reauthentication restores
+every recorded value unchanged. Sign in as Ben and require none of Nora's
+private answers, grades, or events, then return to Nora and require Ben's
+records never crossed accounts.
+"""
+
+[[criterion]]
+id = "start_attempt_and_single_active_guard"
+name = "start_attempt_and_single_active_guard"
+type = "binary"
+weight = 1.0
+description = """
+Setup: after the prior Functional journey, sign in as Ben and open A-01.
+AT-103 was A-04, so A-01 has no Ben attempt yet. Record revision and attempts.
+1. Start A-01 through its visible control. Require one new private active
+attempt, started at the fixed 12:00Z moment, 45-minute allowance, expiry
+12:45Z, assigned grading queue and no released score. Revision advances once.
+2. Reload: require that same attempt and Continue, not another start. Replay
+the captured successful start request exactly while its session is active:
+require the original response and no duplicate attempt/revision.
+3. A new start request with a fresh operation identifier/current revision,
+using the observed route/shape, is rejected while the attempt is active.
+No attempt, revision or audit change. Nora cannot receive Ben's new answers.
+"""
+
+[[criterion]]
+id = "server_rubric_numeric_validation"
+name = "server_rubric_numeric_validation"
+type = "binary"
+weight = 4.0
+description = """
+Setup: use Ada or assigned Luis on submitted, unreleased AT-100. Capture the
+real grade route and body from a visible RC-1 save of score 1 with feedback
+`Numeric validation baseline`. Record grades, total, revision and audit.
+1. Controlled same-origin adaptations of that observed request are allowed:
+send a fresh identifier/current revision with a missing score, null, boolean,
+empty string, nonnumeric string, -1 and 4 (RC-1 maximum is 3).
+Each must be rejected with 4xx, never 500, without changing the baseline.
+2. A fresh visible save of RC-1 as 2 replaces its old value instead of adding
+a second grade; require one revision and one grade event, total rubric score 2
+and still submitted because RC-2 is ungraded. Numeric string serialization is
+allowed when it expresses a finite number; do not impose JSON field names.
+"""
+
+[[criterion]]
+id = "multiple_choice_authoring_and_key_privacy"
+name = "multiple_choice_authoring_and_key_privacy"
+type = "binary"
+weight = 0.5
+description = """
+Setup: through Ada's authoring UI create a fresh valid draft named `Tree
+identification practice`, open 2026-09-02T11:00Z, due 13:00Z, duration 30,
+attempt limit 1. Add one multiple-choice question `Choose the broadleaf tree`,
+options Oak and Pine, correct option Oak, worth 3.
+1. Require the stored question to retain its prompt, distinct options, points
+and staff-visible answer key after reload. Publish the populated draft.
+2. Ben can read the published question and its options, but no answer/key
+field is sent to his browser. Grade this positive authored-question path,
+not another reproduction of the seeded questions.
+"""
+
+[[criterion]]
+id = "effective_due_caps_adjusted_duration"
+name = "effective_due_caps_adjusted_duration"
+type = "binary"
+weight = 0.5
+description = """
+Setup: through Ada's UI create `Short deadline check`, open
+2026-09-02T11:00Z, due 2026-09-02T12:05Z, duration 30, attempt limit 1.
+Add a valid question and publish; use a fresh assessment, not a seeded edit.
+1. Nora starts it at the fixed 12:00Z reference moment. Require her adjusted
+45-minute allowance, but expiry exactly 12:05Z because the effective due time
+is earlier than started_at plus adjusted duration.
+2. Reload and require the same single active attempt, start/expiry, allowance
+and revision. Do not alter clocks or wait for wall-clock expiry: this task's
+clock remains the documented fixed reference moment.
+"""
+
+[[criterion]]
+id = "runtime_manifest_routes"
+name = "runtime_manifest_routes"
+type = "binary"
+weight = 0.5
+description = """
+Read only /app/APP_MANIFEST.md. Require the documented node /app/server.js
+start command in a bash block, SQLite path /app/coursemark.db and actual
+authentication, read, authoring, start, save, submit, grade, release and audit
+methods/paths matching observed browser requests. Shared routes are valid;
+do not require the reference URL names or inspect other source for grading.
+"""
+
+[[criterion]]
+id = "fixed_reference_under_course_writes"
+name = "fixed_reference_under_course_writes"
+type = "binary"
+weight = 4.0
+description = """
+Setup: use a fresh authored assessment with opening 2026-09-02T11:00Z, due
+2026-09-02T13:00Z, duration 45 and attempt limit 1. Add one multiple-choice item
+worth 3 with two distinct options and publish through Ada's visible controls.
+1. Record the reference time. Create three additional small valid drafts through
+the visible UI, requiring one revision each. The clock must remain exactly
+2026-09-02T12:00:00Z, not increase with those revisions or wall-clock elapsed time.
+2. Ben starts the new assessment through the UI. Require started_at=12:00Z and
+expires_at=12:45Z regardless of how many previous course writes occurred.
+Save a chosen answer and submit. Require submitted_at=12:00Z and this submission's
+audit timestamp exactly 12:00Z. Distinguish fixed time from UTC display formatting.
+Retain this new unreleased objective-only attempt for the next privacy check.
+"""
+
+[[criterion]]
+id = "unreleased_write_and_audit_privacy"
+name = "unreleased_write_and_audit_privacy"
+type = "binary"
+weight = 4.0
+description = """
+Setup: during the preceding criterion capture Ben's actual successful submit
+response and his next course, attempt, gradebook and audit requests. Preserve the
+objective-only attempt for release. Ben owns it; Ada can inspect its true score.
+1. The submit acknowledgement, nested data and the student's audit entry for
+that attempt must disclose no numeric score, grade or feedback before release.
+A hidden zero is still a score. Do not confuse item maximum points or the
+student's own submitted choice with an answer-key or awarded-score leak.
+2. Replay Ben's exact submit request while that session remains valid. Its
+original acknowledgement must remain equally private and create no second event.
+3. Ada releases the fully graded objective-only attempt. Ben can now see its
+correct awarded total, while Nora cannot receive that attempt's score or feedback.
+Ordinary event attribution and timestamps remain visible before release; privacy
+must not be achieved by removing the required audit trail.
+"""
+
+[[criterion]]
+id = "receipt_actor_and_scope_isolation"
+name = "receipt_actor_and_scope_isolation"
+type = "binary"
+weight = 4.0
+description = """
+Setup: create a draft with a distinctive private title as Ada using the normal
+form. Capture the accepted request and result. Retain Ada's token and the exact
+operation identity. Obtain a real Nora token independently, without signing Ada
+out. Record current private records and revision through each account.
+1. Send the captured instructor-only draft request with Nora's bearer token,
+retaining the original operation identity and body. Require a non-success
+response with no Ada draft, answer keys, grading data or staff snapshot. It must
+not return Ada's original successful receipt or create another draft.
+2. Create another legitimate Ada draft with a fresh operation identity that Nora
+has never used, including in a rejected request. As Nora, legitimately save
+answers on her active Short deadline check attempt created by
+effective_due_caps_adjusted_duration, using her actual UI request shape, current
+revision and this second Ada operation identity.
+Require one authorized save attributed to Nora, not an operation collision or
+Ada's receipt. Preserve the exact result for restart replay. Unrelated records
+must be unchanged. Distinct accounts have independent identity namespaces.
+"""
+
+[[criterion]]
+id = "receipt_route_and_input_binding"
+name = "receipt_route_and_input_binding"
+type = "binary"
+weight = 3.0
+description = """
+Setup: keep Ada's captured draft success and a separately created empty draft.
+All requests use genuinely active tokens and methods/paths observed in the UI.
+1. As Ada, reuse her successful operation identity and identical request body
+against the empty draft's observed publish route. Require operation-mismatch
+409 and no publish, revision or audit change; do not accept the original create
+success simply because the body matches. A request includes its target route.
+2. Replay the actual original create request with only JSON object key order
+changed. Require the original success status and JSON result, with no write.
+3. Reuse the identity on the original route with a different title and current
+revision. Require mismatch 409 and exact unchanged product state. The earlier
+two-tab criterion covers stale views; this one specifically covers request identity.
+"""
+
+[[criterion]]
+id = "server_authoring_validation"
+name = "server_authoring_validation"
+type = "binary"
+weight = 3.0
+description = """
+Setup: capture a successful visible create request and a multiple-choice
+question request on a separate unpublished draft. Keep all baseline snapshots.
+1. Using fresh operation identities and current revisions, independently try
+unparseable opening/due dates and Boolean/null/array/object values for duration
+or attempt limit. Require 4xx, never 500, with no assessment/revision/audit change.
+2. Adapt the observed question request to three options Oak, Pine, Oak, with
+key Oak; then to an empty option beside two distinct valid ones; then to Boolean
+or null points. Each must be rejected without adding an item or changing state.
+3. Through the UI add a valid item with Oak, Pine and Birch and key Oak. Require
+all three distinct choices and the staff key to persist. Students must not get
+the key. Accept the app's own field names and input layout throughout.
+"""
+
+[[criterion]]
+id = "write_metadata_and_owned_fields"
+name = "write_metadata_and_owned_fields"
+type = "binary"
+weight = 3.0
+description = """
+Setup: capture an otherwise valid instructor draft request and its visible
+current course revision. Record all course data, attempts, audit and revision.
+1. Independently try missing/null/Boolean/array/object/fractional/negative and
+nonnumeric revision values with fresh operation identities. Each returns 4xx
+without state changes. Include a one-element array containing the actual current
+revision so numeric coercion cannot pass merely by producing a stale value.
+Safe nonnegative numeric-string serialization is allowed.
+2. With a valid current revision, try missing/array/object operation identities.
+Require 4xx without changing state. Use the app's observed metadata placement;
+for HTTP headers test invalid serialized strings rather than impossible objects.
+3. Send a fresh otherwise-valid request claiming a different actor, server-owned
+status, awarded total or timestamp. Require rejection, never acceptance of the
+claimed fields. Finish with an ordinary fresh valid UI create that succeeds
+once; rejecting every request is not a valid implementation.
+"""
+
+[[criterion]]
+id = "restart_persistence_and_seed_idempotence"
+name = "restart_persistence_and_seed_idempotence"
+type = "binary"
+weight = 1.0
+description = """
+Setup: run last. Capture fresh protected records for all four accounts:
+assessments/items, attempts/answers, grades, release/privacy, audit and course
+revision. Also retain one legitimate accepted write's exact request/response
+from the same still-active session; no arbitrary state injection is allowed.
+1. Invoke only bash /tests/app-lifecycle.sh restart, reload/re-authenticate as
+needed, and require all recorded course data unchanged, with no duplicated
+seed records or repeated AT-103 auto-submission. Do not infer restart from a
+browser refresh alone. Revoked session tokens must remain rejected.
+2. Replay the retained accepted request using its still-valid token: require
+the original response and no extra revision, record or audit event. If the
+original token was revoked during setup, obtain a fresh legitimate write and
+snapshot before restarting; never mistake authentication failure for broken
+idempotency. Tool disconnection is unverified evidence, not lost data.
+"""

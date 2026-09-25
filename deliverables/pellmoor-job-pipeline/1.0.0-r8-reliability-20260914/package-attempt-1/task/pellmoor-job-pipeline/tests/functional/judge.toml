@@ -1,0 +1,791 @@
+[judge]
+mode = "batched"
+timeout = 9000
+isolated = false
+temperature = 0
+weight = 0.6
+prompt_template = "prompt.md"
+[[judge.mcp_servers]]
+name = "playwright"
+transport = "stdio"
+command = "playwright-mcp"
+args = ["--headless", "--isolated", "--executable-path=/usr/local/bin/chromium", "--no-sandbox"]
+
+[scoring]
+aggregation = "weighted_mean"
+
+[[criterion]]
+id = "authentication_sessions_and_revocation"
+name = "authentication_sessions_and_revocation"
+type = "binary"
+weight = 1.0
+description = """
+Confirm protected vacancy data is unavailable while signed out, a wrong password
+fails, and the four documented accounts can sign in only with `password123`.
+Create two genuine sign-ins for one account and require distinct bearer tokens.
+Sign out one session: its token must fail protected reads while the other remains
+valid. No client-supplied person or role may change the authenticated identity.
+"""
+
+[[criterion]]
+id = "seeded_pipeline_and_empty_vacancy"
+name = "seeded_pipeline_and_empty_vacancy"
+type = "binary"
+weight = 1.0
+description = """
+As Ruth, inspect the complete vacancy collection. Require ROLE-014, ROLE-015,
+ROLE-016 and empty ROLE-017 with the exact titles, teams and openings in the
+authoritative seed, and all nine seeded candidate ids under the correct vacancy
+and current stage. ROLE-017 must explain that nobody has applied and must not
+draw five meaningless zero bars.
+"""
+
+[[criterion]]
+id = "candidate_panel_score_note_fidelity"
+name = "candidate_panel_score_note_fidelity"
+type = "binary"
+weight = 1.0
+description = """
+Open CAND-106 and require Devi Ranjit at offer with Otis Barre and Wren Foss on
+the panel and their exact scores 5 and 4. Open CAND-104 and require Pim Okoro at
+applied with no panel, scores or notes; another candidate's details must never
+leak into the drawer.
+"""
+
+[[criterion]]
+id = "exact_derived_funnel"
+name = "exact_derived_funnel"
+type = "binary"
+weight = 1.5
+description = """
+Before changing ROLE-014, require its drawn funnel to show reached counts
+applied=4, screening=3, interview=2, offer=0, hired=0; current counts 1,1,1,0,0;
+and exactly one loss at interview with zero at applied and screening. Inspect all
+five rungs. The chart must be generated locally as SVG or canvas and ROLE-015
+must show its own three applications rather than reusing these figures.
+"""
+
+[[criterion]]
+id = "duplicate_rule_and_cross_vacancy_identity"
+name = "duplicate_rule_and_cross_vacancy_identity"
+type = "binary"
+weight = 1.0
+description = """
+As coordinator Cal, try to add `Ilse Vandal` to ROLE-015, where that name already
+exists. Require rejection and an unchanged candidate list, revision and funnel.
+Then add that same name to empty ROLE-017 through the visible form; require a new
+server-issued candidate id at applied while both seeded Ilse applications remain
+unchanged. Reload and require the new application once.
+"""
+
+[[criterion]]
+id = "role_enforcement_is_server_side"
+name = "role_enforcement_is_server_side"
+type = "binary"
+weight = 1.5
+description = """
+Use the normal UI to confirm only Ruth is offered stage controls, only Cal can
+add candidates and arrange panels, and assigned panel members can score. Then,
+using request shapes first observed from real controls, attempt a stage change as
+Cal and Otis, candidate creation as Ruth, panel editing as Ruth, and scoring as
+Cal. Every request must be non-2xx and exact affected vacancy snapshots,
+revisions, funnels and activity lists must remain unchanged.
+"""
+
+[[criterion]]
+id = "legal_stage_move_and_independent_applications"
+name = "legal_stage_move_and_independent_applications"
+type = "binary"
+weight = 1.0
+description = """
+As Ruth, move CAND-105 Ilse Vandal from applied to screening and then reload.
+Require the ROLE-015 column, candidate drawer, stage history, vacancy revision
+and activity to agree on the move and actor. CAND-101, the same person's separate
+ROLE-014 application, must remain at interview with its own history.
+Then move CAND-105 back exactly one step to applied and forward to screening
+again. Require each accepted transition to appear in chronological history and
+the candidate to count only once in each reached-stage funnel total.
+"""
+
+[[criterion]]
+id = "skip_and_large_backstep_are_atomic_rejections"
+name = "skip_and_large_backstep_are_atomic_rejections"
+type = "binary"
+weight = 1.0
+description = """
+As Ruth, try CAND-102 screening directly to offer and CAND-101 interview directly
+to applied. Require visible reasons for both rejections. After each, reload and
+require the candidate, full history, vacancy revision, funnel and activity list
+to be exactly unchanged from the state recorded immediately before that probe.
+"""
+
+[[criterion]]
+id = "terminal_candidates_are_locked_and_retained"
+name = "terminal_candidates_are_locked_and_retained"
+type = "binary"
+weight = 1.0
+description = """
+Open rejected CAND-103 and withdrawn CAND-107. Neither may expose stage movement
+or deletion controls. Controlled same-origin attempts to return either candidate
+to the pipeline or move to another terminal outcome must be rejected. Reload and
+require both records, histories, revisions, funnels and activity to remain exact.
+"""
+
+[[criterion]]
+id = "score_boundaries_and_panel_ownership"
+name = "score_boundaries_and_panel_ownership"
+type = "binary"
+weight = 1.5
+description = """
+As Otis, use CAND-101 where he is assigned. Record boundary scores 1 and then 5
+through the visible score control and require each to persist with his identity.
+Using the observed request shape, independently try 0, 6, 2.5 and a score for
+CAND-104 where Otis is not assigned. Each must be rejected without changing the
+last valid score, revision or activity. Wren's identity must not be forgeable.
+"""
+
+[[criterion]]
+id = "offer_requires_a_complete_independent_panel"
+name = "offer_requires_a_complete_independent_panel"
+type = "binary"
+weight = 2.0
+description = """
+Use CAND-104 for the complete normal workflow. Ruth advances applied to screening
+to interview. Cal first adds only Ruth to the panel; an offer must be refused for
+both insufficient panel size and manager-only composition. Cal adds Otis, but an
+offer still fails until both members record valid scores as themselves. After
+Ruth and Otis score, Ruth moves the candidate to offer. Require one revision and
+one attributed activity event per accepted action, no event for a rejection,
+and the final state to survive reload.
+Capture the vacancy revision and complete candidate activity IDs immediately
+before and after each action. In particular, entering interview must add one
+combined event describing the stage and assessment-version change, not a
+separate assessment event plus a stage event. Count newly added event IDs;
+checking only that the expected messages are present is insufficient.
+"""
+
+[[criterion]]
+id = "notes_are_attributed_append_only_activity"
+name = "notes_are_attributed_append_only_activity"
+type = "binary"
+weight = 1.0
+description = """
+As Wren, add `Strong workshop examples` to CAND-106, then add
+`Correction: references still pending`. Require both original notes with their
+relative chronology preserved; either consistently oldest-first or newest-first
+presentation is valid. Do not treat a descending display as editing or replacing
+an earlier note. Require
+each attributed to Wren with a visible time, plus two matching activity entries.
+There must be no visible edit or delete action. Reload and require both notes and
+events to remain; the correction must not replace the first note.
+"""
+
+[[criterion]]
+id = "funnel_ripple_after_real_progress"
+name = "funnel_ripple_after_real_progress"
+type = "binary"
+weight = 1.5
+description = """
+After CAND-104 has legitimately reached offer, inspect every ROLE-014 rung. The
+reached counts must now be applied=4, screening=4, interview=3, offer=1, hired=0;
+the current counts must place Pim only at offer; and Nur remains the one loss at
+interview. ROLE-015 and ROLE-017 figures must be unaffected. Reload and require
+the same derived result rather than a stale stored total.
+"""
+
+[[criterion]]
+id = "candidate_views_and_activity_stay_coherent"
+name = "candidate_views_and_activity_stay_coherent"
+type = "binary"
+weight = 1.0
+description = """
+Inspect the complete recent activity for CAND-104 after its workflow. Require the
+visible stage history, current stage, panel, scores and activity to agree; each
+accepted action names its actual actor and deterministic timestamp ordering.
+Switch away and back, close and reopen the candidate, and reload. No item may be
+duplicated, reordered into contradiction or attributed to the signed-in viewer.
+"""
+
+[[criterion]]
+id = "stale_revision_rejects_then_allows_reviewed_retry"
+name = "stale_revision_rejects_then_allows_reviewed_retry"
+type = "binary"
+weight = 8.0
+description = """
+Open ROLE-015 in two independent signed-in Ruth views and record the same current
+revision. In one view move CAND-105 one legal step. From the stale other view try
+to move CAND-106 from offer to hired. Require HTTP 409, a visible stale message,
+the current snapshot, and no CAND-106/history/funnel/revision/activity mutation.
+After reviewing the refreshed state, retry with a fresh operation identity and
+current revision; require exactly one successful hire that persists.
+Use the supplied preserved-primary helper for the first-session view,
+second-session mutation and original stale attempt. Record the actual response
+before the reviewed retry and save it as legacy_stale_conflict. If the helper
+fails, retain its error and any captured checkpoint separately from the verdict.
+The rejection baseline must be read after the second session's accepted action
+and immediately before the stale request, not the helper's initial before value.
+"""
+
+[[criterion]]
+id = "simultaneous_writes_commit_at_most_once"
+name = "simultaneous_writes_commit_at_most_once"
+type = "binary"
+weight = 8.0
+description = """
+From one current ROLE-015 revision, issue two simultaneous ordinary note saves
+for CAND-105 with distinct operation identities. Exactly one may succeed and the
+other must be a stale 409. Re-read the role and candidate: exactly one supplied
+note, one note activity and one revision increment may exist, with no partial or
+duplicate write. Reload and verify the same state.
+"""
+
+[[criterion]]
+id = "successful_retry_replays_one_result"
+name = "successful_retry_replays_one_result"
+type = "binary"
+weight = 8.0
+description = """
+Capture a legitimate note save to CAND-106 with its operation identity and exact
+response. After another valid action advances ROLE-015, replay the original
+request byte-for-byte. Require the original success status and response to replay
+without a second note, activity event or revision increment. A reload must still
+show exactly one copy of the first note.
+Save the actual original request/status/body and full product checkpoint as
+legacy_note_success immediately after the visible note save, before advancing
+the vacancy. Save the replay response and state comparison separately; a later
+unrelated note or the ROLE-017 Wren receipt cannot substitute for this capture.
+"""
+
+[[criterion]]
+id = "rejected_retry_and_payload_mismatch_are_stable"
+name = "rejected_retry_and_payload_mismatch_are_stable"
+type = "binary"
+weight = 8.0
+description = """
+Send a genuine invalid stage skip with a fresh operation identity and preserve
+its 4xx response and pre-probe state. Advance that vacancy through another valid
+action, then replay the rejected request exactly: require the original rejection
+to replay without a write. Reuse its operation identity with different input and
+require a distinct 409 operation-mismatch rejection. Candidate, history, funnel,
+current revision and activity must match the protected post-advance state.
+Save the original rejection as legacy_stage_rejection before the intervening
+valid action; retain the rejection replay and changed-payload response separately.
+"""
+
+[[criterion]]
+id = "malformed_or_identity_changing_writes_leave_product_state_exact"
+name = "malformed_or_identity_changing_writes_leave_product_state_exact"
+type = "binary"
+weight = 8.0
+description = """
+Record an exact deep copy of one live vacancy and candidate. Using otherwise
+current normal request shapes, independently probe missing, fractional,
+negative and future revisions; for JSON revision fields also probe numeric
+strings, Booleans, arrays and objects. HTTP headers are text by definition:
+accept valid integer representations there and probe malformed text instead.
+Discover whether the successful request uses JSON metadata, HTTP headers, or
+either alternative. To test missing metadata, remove every supported source
+for that field, including an otherwise-valid header. A missing JSON revision
+with a valid supported revision header is not a malformed request and its
+acceptance is not a defect. Apply the same rule to operation identities.
+For malformed-value probes, change the observed authoritative representation
+and remove a valid alternative that could legitimately satisfy the contract;
+keep all unrelated metadata current and otherwise valid. Record the effective
+body and non-credential headers for each independent probe.
+Probe missing or malformed operation identities;
+unknown candidate, vacancy and panel-member ids; and extra client fields that
+claim another actor, candidate id, role, stage history, funnel or revision.
+Distinguish forbidden ownership claims from normal target identifiers and the
+expected revision used by the app's real request contract.
+Also try a Boolean, array and object as a score on a candidate whose panel
+includes the signed-in scoring person and whose stage is interview (CAND-101
+remains suitable). These are not whole-number scores. Also probe client-supplied
+assessment versions and capacity totals; these are server-owned fields.
+Use a fresh operation identity and otherwise current metadata for each probe.
+Require non-2xx responses with no 5xx. Re-read immediately after each probe and require exact
+equality of candidates, histories, panels, scores, notes, funnel, revision and
+activity with the recorded product state.
+"""
+
+[[criterion]]
+id = "worded_action_and_error_feedback"
+name = "worded_action_and_error_feedback"
+type = "binary"
+weight = 1.0
+description = """
+Require visible worded feedback for one accepted action and for bad sign-in,
+invalid stage movement and stale data exercised through the UI. Icons or color
+alone do not satisfy the messages. When an illegal action is intentionally
+hidden, a controlled rejection probe may use the server's worded response as
+feedback evidence; do not require a hidden role or stage action to be exposed.
+Record this feedback during the existing Functional workflows; do not repeat
+their state mutations solely to collect messages. These observations grade
+message usability, not the separate state-integrity outcomes.
+"""
+
+[[criterion]]
+id = "pending_state_and_duplicate_prevention"
+name = "pending_state_and_duplicate_prevention"
+type = "binary"
+weight = 1.0
+description = """
+During one permitted save, require the initiating control to show a clear
+pending state and resist duplicate activation. Afterwards it must recover and
+the authoritative result must remain understandable.
+Use an ordinary note on a candidate and establish that its request is pending
+before activating again. The judge may delay delivery of the real response
+without altering its body, status or the request. Two actions performed after
+the first response has completed are not a duplicate-pending defect.
+"""
+
+[[criterion]]
+id = "runtime_manifest_routes"
+name = "runtime_manifest_routes"
+type = "binary"
+weight = 0.5
+description = """
+Read /app/APP_MANIFEST.md. Require a fenced bash start block, the SQLite path
+/app/pellmoor.db, and methods and routes covering batch commit (and preview if server-backed), login, logout, vacancy and
+candidate reads, creation, stage changes, panel additions and removals, scores and notes. Compare
+these documented routes with real requests observed during the journey. Shared
+routes and alternative endpoint names are valid; do not require the reference
+app's routing layout. Grade the requested documentation, not its prose style.
+"""
+
+[[criterion]]
+id = "backstep_terminal_loss_attribution"
+name = "backstep_terminal_loss_attribution"
+type = "binary"
+weight = 0.5
+description = """
+Setup: late in the journey, record the current ROLE-017 funnel. As Cal, create
+one candidate with a new distinct name using the normal visible form. As Ruth,
+move that candidate from applied to screening, then interview, back one step
+to screening, and finally withdrawn. Keep this candidate for the restart check.
+1. The visible visit history must preserve that chronological sequence.
+2. Relative to the baseline, reached counts increase by one at applied,
+screening and interview only, despite visiting screening twice.
+3. Current counts return to their baseline, and losses increase by one at
+screening only, not interview. Require the same derived result after reload.
+"""
+
+[[criterion]]
+id = "panel_change_invalidates_entire_assessment"
+name = "panel_change_invalidates_entire_assessment"
+type = "binary"
+weight = 2.0
+description = """
+Setup: after the legacy workflows and backstep-loss check, use CAND-101 at
+interview. Complete its current Otis/Wren scores through their visible controls.
+1. As Cal, add Ruth. Require one new assessment version, one vacancy revision
+and one attributed panel-change event. Both old scores must become visibly
+historical with their original version, scorer and value; current scores empty.
+2. Score only Ruth and require an offer rejection with exact product-state
+preservation. Re-score Otis and Wren in the new version; all three must now be
+current. No unrelated application's assessment, history or scores may change.
+Use before/after snapshots and the visible historical-score section.
+"""
+
+[[criterion]]
+id = "panel_removal_and_readdition_require_fresh_scores"
+name = "panel_removal_and_readdition_require_fresh_scores"
+type = "binary"
+weight = 2.0
+description = """
+Setup: CAND-101 has the complete three-person assessment from the prior check.
+1. As Cal, remove Wren using the UI. Require a new assessment version and no
+current scores, including for remaining members. Wren's otherwise-current new
+score request must be rejected without changing any product state.
+2. Re-add Wren through the UI. Require another version advance; neither her old
+score nor the remaining members' old scores may become current again. An offer
+must remain blocked until Ruth, Otis and Wren each submit fresh scores.
+3. Probe a duplicate addition and assigning Cal using otherwise-current requests;
+both must be rejected without version/revision/activity or score changes.
+For the absent-member probe, first remove an assigned eligible member through
+Cal's visible control and record the accepted removal and new version. Verify
+that exact member is absent in a fresh candidate response before trying to
+remove the same member again with a fresh operation identity and current
+revision. This second removal must be rejected with exact state preservation.
+A successful first removal of an assigned member is expected, not a failure.
+Restore the complete eligible panel and obtain fresh scores through visible
+controls for the next check.
+"""
+
+[[criterion]]
+id = "reopened_assessment_and_frozen_stages"
+name = "reopened_assessment_and_frozen_stages"
+type = "binary"
+weight = 2.0
+description = """
+Setup: finish CAND-101's current assessment using the UI. ROLE-014 has room
+for this offer alongside CAND-104's offer. Move CAND-101 to offer and capture it.
+1. Offer-stage panel addition/removal and score changes must be rejected without
+product changes. Probe otherwise-valid requests with current revisions, not
+stale requests. Frozen controls must be absent or disabled with an explanation.
+2. Ruth moves offer back to interview. The panel is retained, the assessment
+version increases once, old scores remain historical and current scores empty.
+The vacancy releases one reservation. A new offer attempt must fail until every
+current panel member scores afresh. Complete those scores and offer again.
+3. Repeat frozen-write probes on seeded hired CAND-108, using its assigned
+scorers, and panel-edit probes on rejected CAND-103. Require exact unchanged
+product state; CAND-103 has no assigned scorers to use for a score probe.
+Notes remain permitted: record one note on CAND-103 through the visible UI.
+Before leaving this criterion, save a probe matrix: offer CAND-101 and hired
+CAND-108 each require panel-add, panel-remove and assigned-member score probes;
+rejected CAND-103 requires panel-add and panel-remove probes, not scoring.
+For each cell retain actor, target, current revision, fresh identity, status,
+reason and complete immediate before/after snapshots. Use an eligible absent
+member for additions where available and an assigned member for removals where
+available. If the candidate has no assigned or absent eligible member, record
+that premise explicitly. For that impossible otherwise-valid target only, a
+duplicate-member or absent-member refusal is acceptable with exact unchanged
+state; the contract does not prescribe which validation runs first. This does
+not waive any frozen probe with an otherwise-valid target. Do not infer untested
+cells from reopening, another candidate's refusal or hidden controls alone.
+"""
+
+[[criterion]]
+id = "seeded_capacity_and_hired_offer_conversion"
+name = "seeded_capacity_and_hired_offer_conversion"
+type = "binary"
+weight = 1.5
+description = """
+Setup: inspect ROLE-016 before changing it; its seeded CAND-108 is hired.
+1. Visible capacity must show zero reserved, one filled, zero available.
+2. Move CAND-108 hired to offer as Ruth. Require one reserved, zero filled,
+zero available despite the vacancy being full; then move back to hired and
+require zero reserved, one filled, zero available. Each accepted transition
+gets one revision and activity event. Never require a second free opening for
+these conversions. Other vacancies' capacities must be unchanged.
+Use current relative baselines for other vacancies, which earlier checks mutated.
+"""
+
+[[criterion]]
+id = "competing_offers_cannot_overbook"
+name = "competing_offers_cannot_overbook"
+type = "binary"
+weight = 3.0
+description = """
+Setup: use ROLE-017, which has one available opening. Create two distinct new
+applications through Cal's UI. Advance both to interview as Ruth, assign Otis
+and Wren, and obtain both members' current scores through their visible controls.
+Call these applicants individual-A and individual-B (A and B below); retain
+their ids separately from the later ROLE-014 batch applicants.
+1. From one current ROLE-017 revision, submit simultaneous offer requests for
+A and B using Ruth's observed request shape and distinct operation identities.
+Exactly one must succeed; the other must return stale 409. Require one revision,
+one stage activity, one reserved and zero available, with no change to the
+loser's assessment, scores or stage. Neither application may be auto-rejected.
+2. Refresh and attempt the loser's offer with a fresh identity and current
+revision. Require a worded full-capacity rejection, distinct from stale data,
+and exact equality of all product state. Retain this rejected request/result
+and the winning request/result as receipts for later replay tests.
+Store them as individual_capacity_rejection and individual_offer_success in
+the verifier ledger before any capacity release. Confirm the refusal used the
+current revision and a fresh identity; a stale/mismatch response cannot pass.
+Require all displayed capacity counts and both candidate views to agree.
+"""
+
+[[criterion]]
+id = "capacity_release_does_not_reexecute_old_receipts"
+name = "capacity_release_does_not_reexecute_old_receipts"
+type = "binary"
+weight = 2.5
+description = """
+Setup: continue with the winning offer and losing interview from the capacity
+race. Record their exact saved success and full-capacity rejection receipts.
+1. Withdraw the winner through Ruth's UI. Require the reservation released,
+available=1, terminal history and offer-stage funnel loss, without clearing the
+loser's valid assessment. The withdrawn winner's still-assigned scorers and Cal
+must now be refused score or panel changes with exact state preservation. Replay the original winning offer request: return its
+original success result without restoring its offer or acquiring capacity.
+2. Before offering or hiring the loser, capture a fresh state proving available=1
+and the loser remains at interview. At that checkpoint replay the exact saved
+full-capacity rejection request, not the stale race-loser request. It must
+remain the original rejection with no product change. Save this response and
+the unchanged state comparison before any subsequent mutation. A replay after
+another offer or hire does not establish this checkpoint. Only after recording
+it, use a fresh operation identity and current revision to offer the loser
+successfully, then hire them.
+Require reserved=0, filled=1, available=0 and only the accepted new actions in
+activity. Reload and require this authoritative state rather than an old receipt
+snapshot. Keep both original receipts for the restart test.
+"""
+
+[[criterion]]
+id = "receipt_identity_is_person_scoped_and_session_independent"
+name = "receipt_identity_is_person_scoped_and_session_independent"
+type = "binary"
+weight = 2.0
+description = """
+Setup: save a normal note on either new ROLE-017 applicant as Wren, capturing
+request and result. This application's terminal or hired stage permits notes.
+1. Sign Wren out. Replaying with that revoked bearer token must return 401 and
+leave all product state unchanged. Sign in again as Wren and replay the saved
+request, including a variant with only JSON object keys reordered. Both must
+return the original saved status and JSON result without another note or event.
+2. Sign in as Otis and use that same operation identity for his own new note
+with the current revision. Require an independent successful save attributed
+to Otis, not Wren's receipt and not an operation collision.
+3. As Wren, reuse her identity with a changed note body and then a different
+candidate's observed note route. Require operation-mismatch 409 in each case,
+with exact product-state preservation. Retain Wren's original receipt.
+Save it under wren_note_success; retain the exact full route as well as body
+and operation metadata. Each changed-route probe must actually target the
+other candidate's existing route, not the original endpoint with an ignored field.
+"""
+
+[[criterion]]
+id = "batch_review_is_readonly_and_exact"
+name = "batch_review_is_readonly_and_exact"
+type = "binary"
+weight = 1.5
+description = """
+Setup: after the preceding single-applicant journey, use ROLE-014 (two openings).
+As Ruth, release its existing reservations/filled places through legal visible
+withdrawal controls. Do not alter other vacancies or erase their saved receipts.
+As Cal create four uniquely named applicants, labeled A, B, C and D in your
+evidence. Advance each to interview as Ruth and assign Otis and Wren as Cal.
+Record both current scores for A, C and D; leave B missing Wren's score.
+Retain the four server-issued IDs. Reach this setup through normal UI.
+Before preview, save the fixture matrix with each ID, interview stage, current
+assessment version, assigned Otis/Wren panel, and each current scorer/value.
+B must already have Otis's current score and lack only Wren's current score.
+If a required score was omitted during setup, submit it through its genuine
+member's visible control before testing; do not leave B missing both scores.
+1. Open batch planning as Ruth. Select A then B. Preview must identify both
+names/IDs/current assessment versions, B's missing score and a blocked result.
+Show selected=2, available=2, projected reserved=2, filled=0, available=0.
+Confirmation must be disabled or unavailable for this blocked selection.
+2. Change the selection to ordered A,C and review. Both assessments are complete,
+the batch is ready, and the same exact capacity projection is displayed.
+3. Compare complete product snapshots before selection, after both previews and
+after closing. No candidate, score, assessment, history, note, activity, revision
+or capacity may change. Record the preview contract if server-backed; capture the commit contract when
+first used in the following criterion. Preview may instead use authenticated
+current data client-side. Do not invent a route before observing a real request.
+"""
+
+[[criterion]]
+id = "batch_commit_is_atomic_and_audit_linked"
+name = "batch_commit_is_atomic_and_audit_linked"
+type = "binary"
+weight = 3.0
+description = """
+Setup: A and C are fully assessed interview applicants; ROLE-014 has two openings
+available. Open and review A,C through the UI. Capture every vacancy and full
+candidate detail snapshot before committing.
+1. Confirm once. Exactly A and C become offered, each gains one offer history
+visit, and the vacancy revision advances once total. Reserved=2, filled=0,
+available=0; the derived funnel and visible board agree after reload.
+2. Each selected applicant gains exactly one event attributed to Ruth, containing
+interview-to-offer, its unchanged assessment version, the same stable batch ID,
+and ordered positions 1/2 and 2/2. There is no extra aggregate product event.
+Panels, scores, assessment versions, notes, unselected applicants and all other
+vacancies remain unchanged. Preserve the exact success request/status/body.
+3. To prepare independent later checks, reopen A and C to interview through
+Ruth's UI and obtain Otis and Wren's fresh scores for each. This releases both
+openings. Do not reset history or reuse historical scores.
+"""
+
+[[criterion]]
+id = "batch_invalid_member_and_capacity_reject_every_write"
+name = "batch_invalid_member_and_capacity_reject_every_write"
+type = "binary"
+weight = 3.0
+description = """
+Setup: A,C,D have complete current assessments at interview, B is at interview
+but lacks Wren's current score, and ROLE-014 has two free openings.
+Use the real batch contract with fresh identities and current revision each time.
+Confirm and save that B still has Otis's current score and lacks only Wren's;
+A,C,D must have both current scores. Complete an omitted setup score through
+the correct member's UI before probing. If a wrong earlier action changed the
+assessment, record it and lawfully re-establish this exact premise first.
+1. Submit ordered A,B and B,A independently. Both must return 4xx with no 5xx;
+an eligible member must not be offered before an ineligible member is discovered.
+2. Submit A,C,D: all individually eligible but three exceed the two openings.
+Require rejection of the whole selection, not two offers and one failure.
+3. After every probe require exact deep equality of all product snapshots,
+including assessment history, scores, capacity, funnel, revisions and activity.
+Record before/after evidence immediately. Finish B's missing score through Wren's
+visible control for later checks; this is a new accepted action, not a repair.
+"""
+
+[[criterion]]
+id = "batch_authorization_and_selection_contract"
+name = "batch_authorization_and_selection_contract"
+type = "binary"
+weight = 2.0
+description = """
+Setup: use two fully assessed interview applicants with enough capacity, such as
+A,C. Capture Ruth's genuine request contract, using valid new metadata per probe.
+1. Submit that batch as Cal and as Otis using their own authenticated sessions.
+Require refusal, no Ruth receipt leaked, and exact unchanged product state.
+2. As Ruth separately probe empty selection, repeated A,A, unknown ID alongside
+A, a candidate from ROLE-015 alongside A, and malformed selection values (string,
+object, and array containing a Boolean). None may partially commit or return 5xx.
+3. Add forged capacity, assessment-version and actor fields to an otherwise valid
+batch. Each must be refused, not silently ignored during an accepted batch.
+Check every vacancy, selected/unselected candidates, revisions and complete audit
+after each probe. Do not mistake ordinary target IDs for forbidden ownership claims.
+"""
+
+[[criterion]]
+id = "batch_stale_confirmation_requires_review"
+name = "batch_stale_confirmation_requires_review"
+type = "binary"
+weight = 2.0
+description = """
+Setup: A,C are eligible and two openings are free. In Ruth's first browser session,
+review A,C and record the reviewed revision. In a separate authenticated session
+add an ordinary note to B using the UI, advancing the vacancy once.
+Use preservePrimarySession to perform the review, independent note and original
+stale confirmation together. Save its returned diagnostics and stale response
+before any explicit reviewed retry; keep the primary context intact.
+Capture the rejection baseline after B's accepted note and immediately before
+the stale confirmation; compare the post-rejection state against this baseline.
+1. Confirm the original review in the first session. Its request must retain the
+reviewed revision, receive stale 409, and make no batch changes. Record exactly
+one commit request; waiting must not reveal an automatic retry with a newer revision.
+2. Keep the selection visible and explain the conflict. Explicitly review again,
+observe current data, then confirm with a fresh operation identity. Only this
+new confirmation may offer A,C; verify one revision and the complete batch result.
+3. Reopen A,C through the UI and obtain fresh Otis/Wren scores to restore two
+eligible interview applicants and free openings for the race checks.
+"""
+
+[[criterion]]
+id = "batch_and_individual_races_commit_one_whole_operation"
+name = "batch_and_individual_races_commit_one_whole_operation"
+type = "binary"
+weight = 3.0
+description = """
+Setup: A,C,D are eligible interview applicants and ROLE-014 has two free openings.
+Capture valid batch and individual-offer requests from the app's actual controls.
+1. Submit batch A,C and individual offer D simultaneously from one revision with
+distinct identities. Exactly one operation succeeds and the other returns stale
+409. Accept either winner. If batch wins only A,C are offered, reserved=2; if
+individual wins only D is offered, reserved=1. Revision advances exactly once.
+No partial batch, extra event or mutation to the losing applicants is allowed.
+2. Legally reopen whichever applicants were offered and re-score in their new
+versions through the UI. Then submit overlapping batches A,C and C,D simultaneously
+from one current revision and distinct identities. Exactly one whole batch wins,
+one returns stale 409, reserved=2, and the revision advances once. The shared
+applicant C has only one new offer visit/event; the losing-only applicant is unchanged.
+3. Preserve compact full before/after snapshots for both races. Reopen and freshly
+score the successful batch's applicants for later checks. Never choose a fixed
+winner in advance or turn the race into sequential refreshed submissions.
+"""
+
+[[criterion]]
+id = "batch_lost_response_recovers_original_operation_and_live_view"
+name = "batch_lost_response_recovers_original_operation_and_live_view"
+type = "binary"
+weight = 2.0
+description = """
+Setup: C,D are fully assessed interview applicants and two openings are free.
+Use Ruth's UI to review C,D. The judge may intercept the real confirmation response,
+allow the original request to reach the server, and then withhold/abort delivery
+without changing the request, body or status. Capture the actual server result.
+1. While pending, repeated activation must send no second confirmation. After
+delivery failure the UI explains uncertainty and offers an explicit retry.
+Selection, reviewed revision and operation identity remain the same; changing
+the unresolved payload is not allowed. Do not require a specific transport library.
+2. In a second genuine Ruth session, observe the committed offers and withdraw C
+through the UI, releasing one opening. Preserve that current checkpoint.
+3. Retry through the first UI. Require the exact original ordered selection,
+revision and identity, the saved successful status/JSON, and zero product writes.
+The UI must fetch/display current data: C remains withdrawn, D offered, reserved=1,
+available=1. It must not replace current data with the historical receipt snapshot.
+Retain this success receipt for the final restart check. Report a failed intercept
+setup separately; never infer retry behavior from a request that did not reach the server.
+Use the supplied bounded capture helper and save batch_cd_lost_success as soon
+as its actual server response is captured. Keep the first page and context
+untouched while the second context withdraws C. A navigation-induced loss of
+the judge's first page is a setup failure, not evidence of a broken app retry.
+Wrap capture, separate-context withdrawal and original UI retry in one
+preservePrimarySession call as specified by the prompt. Save the full return
+object, including a prepared receipt even if a later phase failed. Keep the
+actual error/lifecycle events to distinguish a crash, closed context, accidental
+navigation, missing selector and timeout; do not infer the cause without evidence.
+"""
+
+[[criterion]]
+id = "batch_receipts_remain_historical_after_capacity_release"
+name = "batch_receipts_remain_historical_after_capacity_release"
+type = "binary"
+weight = 3.0
+description = """
+Setup: C is withdrawn, D offered, A,B have complete current interview assessments,
+and exactly one ROLE-014 opening is available. If a prior check failed, establish
+these premises by lawful UI actions and record them before the graded probes.
+1. Submit A,B with fresh valid metadata. Preserve its full-capacity 4xx receipt
+and exact unchanged product checkpoint. Withdraw D through Ruth's UI so two
+openings are free, then preview A,B to prove it is now eligible.
+2. Replay that exact earlier rejection before any new offer. Require identical
+status/JSON and no product changes despite sufficient room. While A,B are still
+fully assessed interviews with two openings free, submit that otherwise-valid
+batch as Cal with a fresh identity and current revision. Require an explicit
+authorization refusal and unchanged state. Ruth may then use another new
+identity and the current revision to commit A,B successfully. Preserve both receipts.
+3. Replay the original A,C success from batch_commit_is_atomic_and_audit_linked:
+C must remain withdrawn and A's later history/audit must remain untouched. Reorder
+only JSON object keys and require the same saved result. Reverse the candidate-ID
+array with the same identity and require operation-mismatch 409, unchanged state.
+4. Revoke Ruth's session and prove that token cannot replay the success. Sign in
+again as Ruth and require its original result. As Cal, send the original batch
+request with Ruth's operation identity and require a non-2xx response, no access
+to Ruth's saved success and no product changes. This historical request may be
+stale; a stale refusal or a mismatch against Cal's own previously saved operation
+is not proof of an authorization defect. The independent current-metadata Cal
+authorization control was performed while A,B were eligible in step 2; require
+that evidence too. It must not fail merely for stale or reused metadata. Preserve all
+original requests/statuses/bodies and their actors for the shared restart check.
+"""
+
+[[criterion]]
+id = "durable_cross_role_audit_after_reload"
+name = "durable_cross_role_audit_after_reload"
+type = "binary"
+weight = 1.5
+description = """
+Perform one permitted action as each relevant role: Cal adds or panels, an
+assigned panel member scores, Ruth moves, and another signed-in person notes.
+Reload and sign in again as Ruth. Require the vacancy and candidate views,
+derived funnel, revisions, notes and complete activity trail to retain the exact
+accepted outcomes, actors and order. Rejected attempts from the workflow must
+not appear as product activity. Capture the current records and revision for
+every vacancy, including created candidates, panels, current and historical scores, assessment
+versions, capacity, notes, history and activity. Run `bash /tests/app-lifecycle.sh restart` once, then reload and sign
+in again if needed. Require the same complete persisted state and derived
+funnels, with no reseeded, duplicated or lost candidates or audit entries.
+This is the only criterion allowed to restart the server. Never remove the
+database, reseed, repair the app or launch a different entry point.
+"""
+
+[[criterion]]
+id = "success_and_rejection_receipts_survive_restart"
+name = "success_and_rejection_receipts_survive_restart"
+type = "binary"
+weight = 2.0
+description = """
+Setup: the preceding durable audit criterion has restarted the server once.
+Do not restart again. Use the saved winning offer success, full-capacity
+rejection and Wren note receipts from the earlier hardening workflows, plus
+the saved batch successes and full-capacity batch rejection. Include the batch
+whose response was lost and whose applicant was later withdrawn.
+Read the six original verifier ledger entries rather than relying on page
+memory or the reused labels A/B. Check their availability before the preceding
+criterion restarts. Keep each ROLE-017 individual receipt distinct from the
+ROLE-014 batch receipts; test every saved result independently after restart.
+1. Sign in again as each original actor and replay all these original requests, including both batch successes and the
+batch rejection. Array order, batch links and historical response bodies must
+be preserved. Verify all current product state after each individual replay.
+Require each original status and JSON result, including historical snapshots,
+while all current candidates, versions, current/historical scores, capacity,
+funnel, revisions, notes and activity remain unchanged.
+2. A fresh operation using a current revision must still obey the post-restart
+state: attempting to offer the withdrawn winner must be refused as terminal.
+Reload the UI and require the live state to remain visible. Missing saved
+receipts are an untested outcome, never evidence that persistence passed.
+"""

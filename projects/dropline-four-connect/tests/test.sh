@@ -114,14 +114,17 @@ if ! setpriv --reuid=65534 --regid=65534 --clear-groups test -w /app 2>/dev/null
   APP_DB="$APP_COPY/dropline.db"
 fi
 
-setsid env -i \
+(
+cd "$(dirname "$APP_ENTRY")"
+exec setsid env -i \
   PATH="/usr/local/bin:/usr/bin:/bin" \
   NODE_PATH="/usr/local/lib/node_modules" \
   HOME="$APP_COPY" \
   PORT="3000" \
   DB_PATH="$APP_DB" \
   setpriv --reuid=65534 --regid=65534 --clear-groups \
-  node "$APP_ENTRY" >"$LOG_DIR/app.log" 2>&1 &
+  node "$APP_ENTRY"
+) >"$LOG_DIR/app.log" 2>&1 &
 APP_PID="$!"
 printf '%s\n' "$APP_PID" > "$LOG_DIR/app.pid"
 printf '%s\n' "$APP_ENTRY" > "$LOG_DIR/app-entry"

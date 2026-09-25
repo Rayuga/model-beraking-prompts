@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gambit Hollow</title>
+<style>
+  :root {
+    --felt: #14532d; --felt2: #0d3d21; --ink: #f4f1e8; --dim: #b7c4b3;
+    --brass: #c9a227; --card: #fdfcf7; --red: #b3261e; --line: #1f6b3c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; color: var(--ink);
+    font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background:
+      radial-gradient(1000px 560px at 18% -8%, #1d6b3d 0%, transparent 62%),
+      linear-gradient(180deg, var(--felt) 0%, #082616 100%);
+    background-attachment: fixed;
+  }
+  header { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; padding: 22px 26px 6px; }
+  h1 { margin: 0; font-size: 26px; letter-spacing: -.02em; color: var(--brass);
+       font-family: ui-serif, Georgia, serif; }
+  .sub { color: var(--dim); font-size: 13px; }
+  main { display: grid; gap: 18px; padding: 12px 26px 40px;
+         grid-template-columns: minmax(0,1fr) 340px; align-items: start; }
+  @media (max-width: 980px) { main { grid-template-columns: minmax(0,1fr); } }
+  .card {
+    background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(0,0,0,.18));
+    border: 1px solid var(--line); border-radius: 14px; padding: 16px;
+    box-shadow: 0 14px 34px rgba(0,0,0,.42);
+  }
+  h2 { margin: 0 0 10px; font-size: 13px; text-transform: uppercase;
+       letter-spacing: .09em; color: var(--dim); }
+  button {
+    background: linear-gradient(180deg, #1f7a45, #145c32); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 9px; padding: 8px 14px;
+    font: inherit; font-weight: 600; cursor: pointer;
+    transition: transform .14s ease, box-shadow .18s ease, border-color .18s ease;
+  }
+  button:hover:not(:disabled) { transform: translateY(-1px); border-color: var(--brass);
+                                box-shadow: 0 6px 18px rgba(0,0,0,.35); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+  button.primary { background: linear-gradient(180deg, #e0b93a, #b8901c); color: #241c02;
+                   border-color: #a37f14; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .hand { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; min-height: 96px; }
+  /* The chosen-card affordance lives on the BUTTON, not on the svg inside it.
+     The old rule put `transform` and a `drop-shadow` on the svg; the drop-shadow
+     carried four lengths, which is invalid, and because the value contained
+     var() it could not be rejected at parse time -- it became invalid at
+     computed-value time and resolved to `none`. The transform was inert on that
+     outermost svg as well, even set inline. Net effect: picking a card changed
+     nothing on screen. A button is an ordinary box and behaves. */
+  .slot {
+    background: none; border: 0; padding: 2px; cursor: pointer; border-radius: 9px;
+    transition: transform .16s ease, box-shadow .16s ease, background .16s ease;
+  }
+  .slot:disabled { cursor: default; }
+  .slot svg { display: block; }
+  .slot:hover:not(:disabled) { transform: translateY(-5px); background: rgba(255,255,255,.06); }
+  .slot[aria-pressed="true"] {
+    transform: translateY(-10px);
+    background: rgba(212,175,84,.16);
+    box-shadow: 0 0 0 3px var(--brass), 0 10px 20px rgba(0,0,0,.45);
+  }
+  .laidrow {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 10px;
+  }
+  .laidlab {
+    font-size: 11px; text-transform: uppercase; letter-spacing: .08em;
+    color: #9db89d; margin: 0 0 4px;
+  }
+  .pile.small svg { width: 38px; height: auto; }
+  @media (max-width: 640px) { .laidrow { grid-template-columns: 1fr; } }
+  /* min-height only matters while a pile is EMPTY -- cards set their own height
+     and the container grows around them. At a full card's 96px, the four piles
+     on this page reserved most of a screen of blank green before a game even
+     started. One line of text is enough. */
+  .pile {
+    display: flex; gap: 6px; flex-wrap: wrap;
+    min-height: 34px; align-items: flex-start;
+  }
+  .pile.small { min-height: 26px; }
+  .pile .empty { align-self: center; }
+  .board { margin: 6px 0 2px; }
+  .stats { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 12px; }
+  .stat b { display: block; font-size: 22px; font-variant-numeric: tabular-nums; }
+  .stat span { color: var(--dim); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+  ul, ol { margin: 0; padding-left: 18px; }
+  li { padding: 3px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; color: var(--dim); font-weight: 600; font-size: 11px;
+       text-transform: uppercase; letter-spacing: .07em; padding-bottom: 6px; }
+  td { padding: 5px 0; border-top: 1px solid rgba(255,255,255,.07); }
+  .err { color: #ffb4ae; min-height: 1.2em; }
+  .empty { color: var(--dim); font-style: italic; }
+  .evt { color: var(--dim); font-size: 13px; }
+  .evt b { color: var(--brass); }
+  .tag { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11px;
+         font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+         background: rgba(201,162,39,.18); border: 1px solid rgba(201,162,39,.5);
+         color: var(--brass); }
+</style>
+</head>
+<body>
+  <header>
+    <h1>Gambit Hollow</h1>
+    <span class="sub">🃏 the counting is the point</span>
+    <span id="handno" class="tag" style="margin-left:auto">—</span>
+    <span id="phase" class="tag">—</span>
+  </header>
+
+  <main>
+    <section class="card" aria-label="The board">
+      <div class="row">
+        <button id="new" class="primary">New game</button>
+        <button id="cut">Turn the cut</button>
+        <button id="show">Count the show</button>
+        <button id="deal">Deal the next hand</button>
+        <button id="practice" title="Start a game near the target, to practise the finish">Practice the finish</button>
+        <span id="err" class="err" role="status" aria-live="polite"></span>
+      </div>
+
+      <svg id="board" class="board" viewBox="0 0 720 64" aria-label="Peg board"></svg>
+
+      <div class="stats">
+        <div class="stat"><b id="s-a">0</b><span id="n-a">Dealer</span></div>
+        <div class="stat"><b id="s-b">0</b><span id="n-b">Non-dealer</span></div>
+        <div class="stat"><b id="s-count">0</b><span>Count</span></div>
+        <div class="stat"><b id="s-cut">—</b><span>Cut</span></div>
+        <div class="stat"><b id="s-crib">0</b><span id="n-crib">In the crib</span></div>
+      </div>
+
+      <h2 style="margin-top:16px">The play <span id="streethint" class="sub"
+        style="text-transform:none">— the count so far, which restarts at
+        thirty-one and on a go</span></h2>
+      <div id="pile" class="pile"><span class="empty">Nothing played yet.</span></div>
+
+      <!-- The cards each player has laid THIS HAND. The pile above is only the
+           current count and empties on a go, so without these the cards you
+           just played disappear off the table. -->
+      <!-- The crib. Two cards from each player, face down, and the dealer's to
+           count at the show. Without this the two cards you just put in it
+           simply left your hand and nothing on the page said where they went. -->
+      <h2 style="margin-top:14px">The crib <span class="sub"
+        style="text-transform:none" id="cribhint">— two from each of you, face
+        down until the show</span></h2>
+      <div id="crib" class="pile small"><span class="empty">Nothing in it yet.</span></div>
+
+      <!-- Cards PLAYED during the play. Deliberately not called "laid": the
+           discard button uses that verb for the crib, and having both meant a
+           player who had just filled the crib read this as broken. -->
+      <div class="laidrow">
+        <div>
+          <h3 class="laidlab">You have played</h3>
+          <div id="laid-you" class="pile small"><span class="empty">Nothing yet.</span></div>
+        </div>
+        <div>
+          <h3 class="laidlab">They have played</h3>
+          <div id="laid-them" class="pile small"><span class="empty">Nothing yet.</span></div>
+        </div>
+      </div>
+
+      <h2>Your hand <span id="handhint" class="sub" style="text-transform:none"></span></h2>
+      <div id="hand" class="hand"></div>
+      <div class="row">
+        <button id="discard">Put these two in the crib</button>
+        <span id="chosen" class="sub" style="text-transform:none">none chosen yet</span>
+        <label class="sub"><input type="checkbox" id="seatb"> play as the non-dealer</label>
+      </div>
+    </section>
+
+    <aside style="display:grid; gap:18px">
+      <div class="card">
+        <h2>What just scored</h2>
+        <ul id="events"><li class="empty">Nothing yet.</li></ul>
+      </div>
+      <div class="card">
+        <h2>The show</h2>
+        <div id="shown"><span class="empty">Not counted yet.</span></div>
+      </div>
+      <div class="card">
+        <h2>Ladder</h2>
+        <table><thead><tr><th>Member</th><th>Played</th><th>Won</th></tr></thead>
+          <tbody id="ladder"></tbody></table>
+      </div>
+    </aside>
+  </main>
+
+<script src="/js/cards.js"></script>
+<script src="/js/app.js"></script>
+</body>
+</html>

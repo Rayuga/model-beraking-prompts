@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gambit Hollow</title>
+<style>
+  :root {
+    --felt: #14532d; --felt2: #0d3d21; --ink: #f4f1e8; --dim: #b7c4b3;
+    --brass: #c9a227; --card: #fdfcf7; --red: #b3261e; --line: #1f6b3c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; color: var(--ink);
+    font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background:
+      radial-gradient(1000px 560px at 18% -8%, #1d6b3d 0%, transparent 62%),
+      linear-gradient(180deg, var(--felt) 0%, #082616 100%);
+    background-color: #082616;
+  }
+  header { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; padding: 22px 26px 6px; }
+  h1 { margin: 0; font-size: 26px; letter-spacing: -.02em; color: var(--brass);
+       font-family: ui-serif, Georgia, serif; }
+  .sub { color: var(--dim); font-size: 13px; }
+  main { display: grid; gap: 18px; padding: 12px 26px 40px;
+         grid-template-columns: minmax(0,1fr) 340px; align-items: start; }
+  @media (max-width: 980px) { main { grid-template-columns: minmax(0,1fr); } }
+  .card {
+    background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(0,0,0,.18));
+    border: 1px solid var(--line); border-radius: 14px; padding: 16px;
+    box-shadow: 0 14px 34px rgba(0,0,0,.42);
+  }
+  h2 { margin: 0 0 10px; font-size: 13px; text-transform: uppercase;
+       letter-spacing: .09em; color: var(--dim); }
+  button {
+    background: linear-gradient(180deg, #1f7a45, #145c32); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 9px; padding: 8px 14px;
+    font: inherit; font-weight: 600; cursor: pointer;
+    transition: transform .14s ease, box-shadow .18s ease, border-color .18s ease;
+  }
+  button:hover:not(:disabled) { transform: translateY(-1px); border-color: var(--brass);
+                                box-shadow: 0 6px 18px rgba(0,0,0,.35); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+  button.primary { background: linear-gradient(180deg, #e0b93a, #b8901c); color: #241c02;
+                   border-color: #a37f14; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .hand { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; min-height: 96px; }
+  
+  .slot {
+    background: none; border: 0; padding: 2px; cursor: pointer; border-radius: 9px;
+    transition: transform .16s ease, box-shadow .16s ease, background .16s ease;
+  }
+  .slot:disabled { cursor: default; }
+  .slot svg { display: block; }
+  .slot:hover:not(:disabled) { transform: translateY(-5px); background: rgba(255,255,255,.06); }
+  .slot[aria-pressed="true"] {
+    transform: translateY(-10px);
+    background: rgba(212,175,84,.16);
+    box-shadow: 0 0 0 3px var(--brass), 0 10px 20px rgba(0,0,0,.45);
+  }
+  .laidrow {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 10px;
+  }
+  .laidlab {
+    font-size: 11px; text-transform: uppercase; letter-spacing: .08em;
+    color: #9db89d; margin: 0 0 4px;
+  }
+  .pile.small svg { width: 38px; height: auto; }
+  @media (max-width: 640px) { .laidrow { grid-template-columns: 1fr; } }
+  
+  .pile {
+    display: flex; gap: 6px; flex-wrap: wrap;
+    min-height: 34px; align-items: flex-start;
+  }
+  .pile.small { min-height: 26px; }
+  .pile .empty { align-self: center; }
+  .board { display:block; width:100%; margin: 16px 0 2px; border:1px solid #436844; border-radius:10px; background:#082b1b; }
+  .stats { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 12px; }
+  .stat b { display: block; font-size: 22px; font-variant-numeric: tabular-nums; }
+  .stat span { color: var(--dim); font-size: 12px; }
+  ul, ol { margin: 0; padding-left: 18px; }
+  li { padding: 3px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; color: var(--dim); font-weight: 600; font-size: 11px;
+       text-transform: uppercase; letter-spacing: .07em; padding-bottom: 6px; }
+  td { padding: 5px 0; border-top: 1px solid rgba(255,255,255,.07); }
+  .err { color: #ffb4ae; min-height: 1.2em; }
+  .empty { color: var(--dim); font-style: italic; }
+  .evt { color: var(--dim); font-size: 13px; }
+  .evt b { color: var(--brass); }
+  .tag { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11px;
+         font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+         background: rgba(201,162,39,.18); border: 1px solid rgba(201,162,39,.5);
+         color: var(--brass); }
+  input,select{font:inherit;background:#103e26;color:var(--ink);border:1px solid #65856d;border-radius:7px;padding:9px;max-width:100%;min-width:0}
+  input:focus-visible,select:focus-visible{outline:3px solid var(--brass);outline-offset:2px}
+  .bench{grid-column:1/-1;min-width:0}.bench-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+  .bench label{display:block;margin:8px 0}.bench input:not([type=checkbox]){width:100%}
+  .bench output{display:block;margin:12px 0;color:var(--ink)}
+  .practice-fields{display:flex;flex-wrap:wrap;gap:12px;margin:14px 0}.practice-fields label{display:flex;flex-direction:column;min-width:0;max-width:100%}
+  .practice-fields input{width:100px}.card,aside{min-width:0}#turnhint{color:var(--ink);font-weight:600}
+  .show-entry{padding:12px 0;border-bottom:1px solid #47704f}.show-entry:first-child{padding-top:0}.show-entry:last-child{border-bottom:0;padding-bottom:0}
+  .bench form{padding:18px;background:#0c3322;border:1px solid #436b4b;border-radius:12px}.bench h3{margin-top:0;font-family:Georgia,serif;font-size:20px}
+  .bench output{padding:12px;border-left:3px solid var(--brass);background:#082a1c;min-height:48px}.bench output:empty{display:none}
+  .practice-fields{padding:14px;background:#0a3622;border:1px solid #426f4b;border-radius:10px;align-items:end}
+  .stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr)) repeat(3,minmax(48px,.55fr));gap:10px}.stat{padding:8px 10px;border-left:2px solid #77995f;min-width:0}.stat span{display:block;font-size:12px}
+  #opponent-hand{min-height:48px;margin-bottom:12px}#saved-games{width:290px}main[aria-busy=true] #turnhint::after{content:' · Saving…';color:#f0d47b}
+  .table-setup{grid-column:1/-1;display:grid;grid-template-columns:1.3fr 1fr;gap:20px;align-items:center}.table-setup .practice-fields{margin:0;background:none;border:0;padding:0}.table-setup .practice-fields label:first-child{flex:1}.table-setup .practice-fields input{width:72px}.table-setup #saved-games{width:100%}.table-setup .saved-controls{align-items:end}.table-setup .saved-controls label{flex:1;min-width:150px}.table-setup label{font-size:13px}.table-setup .saved-controls label select{display:block;width:100%}.table-setup h2{grid-column:1/-1;margin:0}
+  .table-main{grid-column:1;grid-row:1}.table-aside{grid-column:2;grid-row:1}.table-setup{grid-row:2}.bench{grid-row:3}
+  @media(max-width:980px){.table-main,.table-aside,.table-setup,.bench{grid-column:1;grid-row:auto}.table-setup{grid-template-columns:1fr}}
+  @media(max-width:640px){.stats{grid-template-columns:repeat(6,minmax(0,1fr))}.stat{grid-column:span 2}.stat:nth-child(-n+2){grid-column:span 3}.practice-fields{padding:10px}.slot svg{width:54px;height:auto}.hand{gap:5px}.board{min-height:82px}}
+  @media(max-width:640px){main{padding:12px 14px 28px}.bench-grid{grid-template-columns:1fr}header{padding-inline:14px}.row>button{min-height:44px}}
+  @media(prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important}.slot[aria-pressed=true]{transform:none}}
+</style>
+</head>
+<body>
+  <header>
+    <h1>Gambit Hollow</h1>
+    <span class="sub">🃏 the counting is the point</span>
+    <span id="handno" class="tag" style="margin-left:auto">—</span>
+    <span id="phase" class="tag">—</span>
+  </header>
+
+  <main>
+    <section class="card table-main" aria-label="The board">
+      <div class="row">
+        <button id="new" class="primary">New game</button>
+        <button id="cut">Turn the cut</button>
+        <button id="show">Count the show</button>
+        <button id="deal">Deal the next hand</button>
+        <button id="practice" title="Start a game near the target, to practise the finish">Practice the finish</button>
+        <span id="err" class="err" role="status" aria-live="polite"></span>
+      </div>
+
+      <p id="turnhint" role="status" aria-live="polite">Start a game or choose a saved table.</p>
+
+      <svg id="board" class="board" viewBox="0 0 720 146" role="img" aria-label="Peg board"></svg>
+
+      <div class="stats">
+        <div class="stat"><b id="s-a">0</b><span id="n-a">Dealer</span></div>
+        <div class="stat"><b id="s-b">0</b><span id="n-b">Non-dealer</span></div>
+        <div class="stat"><b id="s-count">0</b><span>Count</span></div>
+        <div class="stat"><b id="s-cut">—</b><span>Cut</span></div>
+        <div class="stat"><b id="s-crib">0</b><span id="n-crib">In the crib</span></div>
+      </div>
+
+      <h2 style="margin-top:16px">The play <span id="streethint" class="sub"
+        style="text-transform:none">— the count so far, which restarts at
+        thirty-one and on a go</span></h2>
+      <div id="pile" class="pile"><span class="empty">Nothing played yet.</span></div>
+
+      
+      
+      <h2 style="margin-top:14px">The crib <span class="sub"
+        style="text-transform:none" id="cribhint">— two from each of you, face
+        down until the show</span></h2>
+      <div id="crib" class="pile small"><span class="empty">Nothing in it yet.</span></div>
+
+      
+      <div class="laidrow">
+        <div>
+          <h3 class="laidlab">You have played</h3>
+          <div id="laid-you" class="pile small"><span class="empty">Nothing yet.</span></div>
+        </div>
+        <div>
+          <h3 class="laidlab">They have played</h3>
+          <div id="laid-them" class="pile small"><span class="empty">Nothing yet.</span></div>
+        </div>
+      </div>
+
+      <h3 class="laidlab">Opponent’s unplayed cards</h3>
+      <div id="opponent-hand" class="pile small"><span class="empty">No opponent hand yet.</span></div>
+      <h2>Your hand <span id="handhint" class="sub" style="text-transform:none"></span></h2>
+      <div id="hand" class="hand"></div>
+      <div class="row">
+        <button id="discard">Put these two in the crib</button>
+        <span id="chosen" class="sub" style="text-transform:none">none chosen yet</span>
+        <label class="sub"><input type="checkbox" id="seatb"> <span id="seat-label">View seat B · Dev Halloran (unchecked: seat A · Marion Ashgrove)</span></label>
+      </div>
+    </section>
+
+    <aside class="table-aside" style="display:grid; gap:18px">
+      <div class="card">
+        <h2>What just scored</h2>
+        <ul id="events"><li class="empty">Nothing yet.</li></ul>
+      </div>
+      <div class="card">
+        <h2>The show</h2>
+        <div id="shown"><span class="empty">Not counted yet.</span></div>
+      </div>
+      <div class="card">
+        <h2>Ladder</h2>
+        <table><thead><tr><th>Member</th><th>Played</th><th>Won</th></tr></thead>
+          <tbody id="ladder"></tbody></table>
+      </div>
+    </aside>
+    <section class="card table-setup" aria-label="Practice and saved tables">
+      <h2>Practice &amp; saved tables</h2>
+      <div class="practice-fields"><label>Practice deal<select id="practice-deal"></select></label><label>Seat A start<input id="start-a" type="number" min="0" max="120" step="1" value="0"></label><label>Seat B start<input id="start-b" type="number" min="0" max="120" step="1" value="0"></label><button id="fixed-practice">Start selected practice</button></div>
+      <div class="row saved-controls"><label>Saved game <select id="saved-games"><option value="">Choose a game</option></select></label><button id="refresh-games">Refresh games</button><button id="open-game">Resume game</button></div>
+    </section>
+    <section class="card bench" aria-labelledby="bench-heading"><h2 id="bench-heading">The counting bench</h2><p class="sub">Try a hand or a pegging sequence without changing your game. Cards use rank and suit: AS, 5H, TD, JC.</p><div class="bench-grid">
+      <form id="hand-score-form"><h3>Count a hand</h3><label>Four cards<input id="score-hand" value="5S 5H 5D JC"></label><label>Cut card<input id="score-cut" value="5C"></label><label><input id="score-crib" type="checkbox"> Count as the crib</label><button type="submit">Score hand</button><output id="hand-score-result" role="status" aria-live="polite"></output><div id="hand-score-cards" class="pile"></div></form>
+      <form id="play-score-form"><h3>Count a play</h3><label>Cards in the current pile<input id="score-pile" value="5S 7H"></label><label>Next card<input id="score-card" value="6D"></label><button type="submit">Score play</button><output id="play-score-result" role="status" aria-live="polite"></output></form>
+    </div></section>
+  </main>
+
+<script src="/js/cards.js"></script>
+<script src="/js/app.js"></script>
+<script src="/js/bench.js"></script>
+</body>
+</html>

@@ -21,13 +21,16 @@ if kill -0 "$APP_PID" 2>/dev/null; then
   done
   kill -KILL -- -"$APP_PID" 2>/dev/null || true
 fi
-setsid env -i \
+(
+cd "$(dirname "$APP_ENTRY")"
+exec setsid env -i \
   PATH="/usr/local/bin:/usr/bin:/bin" \
   NODE_PATH="/usr/local/lib/node_modules" \
   HOME="/tmp/dropline-submission" \
   PORT="3000" DB_PATH="$APP_DB" \
   setpriv --reuid=65534 --regid=65534 --clear-groups \
-  node "$APP_ENTRY" >>"$LOG_DIR/app.log" 2>&1 &
+  node "$APP_ENTRY"
+) >>"$LOG_DIR/app.log" 2>&1 &
 printf '%s\n' "$!" > "$LOG_DIR/app.pid"
 python3 - <<'PY'
 import time

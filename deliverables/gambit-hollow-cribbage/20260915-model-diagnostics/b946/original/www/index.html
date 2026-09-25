@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gambit Hollow Cribbage Table</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to table</a>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">Gambit Hollow</p>
+      <h1>Cribbage club table</h1>
+      <p class="lede">Two seats, one board, full scoring, saved in SQLite.</p>
+    </div>
+    <div class="topbar-controls">
+      <fieldset class="seat-switcher" aria-label="Seat view">
+        <legend>Seat view</legend>
+        <button type="button" data-seat="A" class="seat-button">Seat A</button>
+        <button type="button" data-seat="B" class="seat-button">Seat B</button>
+      </fieldset>
+      <div class="status-pill" id="connectionStatus" aria-live="polite">Loading…</div>
+    </div>
+  </header>
+
+  <main id="main" class="layout">
+    <section class="panel panel-wide" aria-labelledby="gameLauncherHeading">
+      <div class="panel-heading">
+        <h2 id="gameLauncherHeading">Start or reopen a game</h2>
+        <p>Choose two members, load a practice deal, or reopen a saved game.</p>
+      </div>
+      <form id="newGameForm" class="form-grid">
+        <label>
+          Seat A
+          <select id="memberA"></select>
+        </label>
+        <label>
+          Seat B
+          <select id="memberB"></select>
+        </label>
+        <label>
+          Game type
+          <select id="gameKind">
+            <option value="normal">Normal game</option>
+            <option value="practice">Practice deal</option>
+          </select>
+        </label>
+        <label>
+          Practice deal
+          <select id="practiceKey"></select>
+        </label>
+        <label>
+          Start score A
+          <input id="startScoreA" type="number" min="0" max="120" step="1" value="0">
+        </label>
+        <label>
+          Start score B
+          <input id="startScoreB" type="number" min="0" max="120" step="1" value="0">
+        </label>
+        <div class="form-actions">
+          <button type="submit" id="createGameButton">Create game</button>
+        </div>
+      </form>
+      <div id="pendingSave" class="pending-save" hidden></div>
+    </section>
+
+    <section class="panel panel-sidebar" aria-labelledby="savedGamesHeading">
+      <div class="panel-heading">
+        <h2 id="savedGamesHeading">Saved games</h2>
+        <p>Playable tables stay here until the match is finished.</p>
+      </div>
+      <div id="gamesList" class="stack"></div>
+    </section>
+
+    <section class="panel panel-main" aria-labelledby="tableHeading">
+      <div class="panel-heading">
+        <h2 id="tableHeading">Current table</h2>
+        <p id="currentGameLabel">No game selected.</p>
+      </div>
+      <div class="table-status">
+        <div><strong>Hand</strong> <span id="handNo">—</span></div>
+        <div><strong>Phase</strong> <span id="phaseLabel">—</span></div>
+        <div><strong>Dealer</strong> <span id="dealerLabel">—</span></div>
+        <div><strong>Turn</strong> <span id="turnLabel">—</span></div>
+        <div><strong>Count</strong> <span id="countLabel">—</span></div>
+        <div><strong>Cut</strong> <span id="cutLabel">—</span></div>
+      </div>
+
+      <div id="announcer" class="announcer" aria-live="polite" tabindex="-1"></div>
+
+      <div class="board-grid">
+        <div class="scoreboard card-surface">
+          <div class="score-row">
+            <div>
+              <p class="score-label" id="nameA">Seat A</p>
+              <p class="score-meta" id="metaA">—</p>
+            </div>
+            <div class="score-value" id="scoreA">0</div>
+          </div>
+          <div class="score-row">
+            <div>
+              <p class="score-label" id="nameB">Seat B</p>
+              <p class="score-meta" id="metaB">—</p>
+            </div>
+            <div class="score-value" id="scoreB">0</div>
+          </div>
+          <div id="pegBoard" class="peg-board" aria-label="Peg board"></div>
+        </div>
+
+        <div class="cards-panel card-surface">
+          <div class="panel-heading compact">
+            <h3>Cards on the table</h3>
+            <p id="cardsHelp">Choose your own cards to discard or play.</p>
+          </div>
+          <div id="handArea" class="hand-area"></div>
+          <div id="tableArea" class="table-area"></div>
+        </div>
+      </div>
+
+      <div class="action-row">
+        <button type="button" id="discardButton">Discard selected</button>
+        <button type="button" id="playButton">Play selected</button>
+        <button type="button" id="goButton">Go</button>
+        <button type="button" id="showButton">Show next</button>
+        <button type="button" id="nextHandButton">Next hand</button>
+        <button type="button" id="refreshButton">Refresh table</button>
+      </div>
+    </section>
+
+    <section class="panel panel-wide" aria-labelledby="benchHeading">
+      <div class="panel-heading">
+        <h2 id="benchHeading">Scoring bench</h2>
+        <p>Score hands, cribs, and pegging piles without touching any game.</p>
+      </div>
+      <div class="bench-grid">
+        <form id="handBenchForm" class="card-surface bench-form">
+          <h3>Hand / crib</h3>
+          <div class="bench-input-grid">
+            <label>Card 1 <input id="handCard1" type="text" maxlength="2" placeholder="5S"></label>
+            <label>Card 2 <input id="handCard2" type="text" maxlength="2" placeholder="5H"></label>
+            <label>Card 3 <input id="handCard3" type="text" maxlength="2" placeholder="5D"></label>
+            <label>Card 4 <input id="handCard4" type="text" maxlength="2" placeholder="JC"></label>
+            <label>Cut <input id="handCut" type="text" maxlength="2" placeholder="5C"></label>
+            <label>
+              <span>Crib</span>
+              <input id="handCrib" type="checkbox">
+            </label>
+          </div>
+          <label>
+            Example hand
+            <select id="handExample"></select>
+          </label>
+          <div class="action-row slim">
+            <button type="submit">Score hand</button>
+            <button type="button" id="loadHandExample">Load example</button>
+          </div>
+          <div id="handBenchResult" class="result-box" aria-live="polite"></div>
+        </form>
+
+        <form id="peggingBenchForm" class="card-surface bench-form">
+          <h3>Pegging pile</h3>
+          <div class="bench-input-grid">
+            <label>
+              Current count
+              <input id="pegCount" type="number" min="0" max="31" step="1" value="0">
+            </label>
+            <label>
+              Next card
+              <input id="pegNext" type="text" maxlength="2" placeholder="7C">
+            </label>
+          </div>
+          <label>
+            Pile cards, oldest to newest
+            <textarea id="pegPile" rows="4" placeholder="7H, TH, 2S"></textarea>
+          </label>
+          <label>
+            Example pile
+            <select id="pegExample"></select>
+          </label>
+          <div class="action-row slim">
+            <button type="submit">Score play</button>
+            <button type="button" id="loadPegExample">Load example</button>
+          </div>
+          <div id="pegBenchResult" class="result-box" aria-live="polite"></div>
+        </form>
+      </div>
+    </section>
+
+    <section class="panel panel-wide" aria-labelledby="ladderHeading">
+      <div class="panel-heading">
+        <h2 id="ladderHeading">Club ladder</h2>
+        <p>The seed members stay put; wins and played counts carry forward.</p>
+      </div>
+      <div id="ladderTable" class="ladder-table"></div>
+    </section>
+
+    <section class="panel panel-wide" aria-labelledby="historyHeading">
+      <div class="panel-heading">
+        <h2 id="historyHeading">Historical summaries</h2>
+        <p>Seeded records and unfinished summaries stay available for reading.</p>
+      </div>
+      <div id="historyList" class="stack"></div>
+    </section>
+  </main>
+
+  <script src="/app.js" type="module"></script>
+</body>
+</html>

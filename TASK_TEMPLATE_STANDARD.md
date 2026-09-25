@@ -1,5 +1,92 @@
 # Current task template standard
 
+## September 15: Common Ground r17 recovery hardening
+
+The old GPT export scored 0.897 overall and 0.9236 Functional. r17 adds a
+substantive staff recovery workflow and missing boundary probes, with matching
+public instructions, golden UI and independent positive-weight criteria. It
+does not cap model scores or change the final dimension formula. There are now
+68 criteria (1/2/49/10/6), Functional weight58 and Polish weight14.
+
+Retain browser attempts before sending; interrupted responses must be tested
+after capturing the actual upstream outcome. Reload during a held response
+distinguishes before-send durability from storage only inside an error handler.
+Grade browser request identity separately from backend receipt calculation.
+Use dedicated recovery profiles so account/restart tests do not invalidate the
+main journey's persistence sessions. Narrow transport faults must have bounded
+release and cleanup, preserved noncredential exchanges, and positive controls.
+Do not manufacture browser state or infer app defects from missing evidence.
+
+The scoped r17 checkers require both recovery documents and six positive binary
+criteria while preserving historical r15/r16 compatibility. Hash the referenced
+recovery addendum as well as the main prompts. Fresh platform scores remain
+required; local browser, mutant and scoring fixtures are not scored Oracle runs.
+
+## September 15: Common Ground r16 coverage correction
+
+Platform v9 passed 52/53 Rubric Source checks but found three ungraded product
+requirements: non-color status text, Observer Members/Audit access, and
+disabled or explained unavailable actions. r16 adds independent positive-weight
+checks for status text and action guidance in Polish, and Observer ballot setup,
+published results, Members and Audit reads in Functional. Existing Observer
+turnout and write-refusal criteria retain their ownership. Require actual
+populated UI/protected reads and positive staff comparisons; a sign-in or denied
+write is not evidence that an Observer can read an authorized workspace.
+
+This is added coverage of existing requirements, not a split of already-scored
+criteria: old criterion weights remain unchanged. Functional now totals 36 and
+Polish 14; the dimension allocation remains 60/20/20 after mandatory gates.
+There are 62 criteria (1/2/43/10/6). Historical r15 files remain immutable and
+checkable. The r16 golden adds lifecycle explanations without changing server
+semantics. Validate each new requirement with an independently defective app
+variant and verify that losing it affects final reward. See the dated r16 report
+for local evidence and pending platform validation.
+
+## September 15: Common Ground r15 and the new TXT rubric
+
+For Common Ground, the newly supplied task-implementation.txt supersedes the
+earlier r14 empty-aggregate interpretation below. reward.toml must contain a
+named [[reward]] with aggregation="weighted_mean" as well as composition roles.
+The sole numeric dimension weights remain in judge.toml. RewardKit writes an
+intermediate aggregate; score.py replaces it with the gated final composition.
+tests/SCORING.md documents these separate roles. Do not reintroduce ignored
+numeric maps or duplicate coefficients. Exercise the actual pinned RewardKit
+writer and the final scorer, not just a hand-written formula.
+
+The same TXT rubric permits external resources. Remove Common Ground's obsolete
+local-resource constraint and keep the global authentication/backend gate free
+of origin restrictions. Runtime assets needed from /assets must be baked into
+/app during implementation; the verifier must not restore a missing embedded
+seed. Split independently requested behaviors into separate verdicts while
+preserving the prior total criterion weight and 60/20/20 dimension composition.
+Render grades requested workspace navigation; Constraints grades health and
+SQLite separately. Historical r14 packages remain immutable.
+
+## September 15: Common Ground platform QC correction
+
+The user's new Common Ground QC findings supersede the old literal reward-file
+and formula-copy requirements below for `projects/common-ground-ballot`.
+Render and Constraints use `all_pass` over independently reported criteria;
+failure of any mandatory runtime requirement must reach the final zero gate.
+Do not combine unrelated health and SQLite requirements, combine theme/touch/
+motion requirements into one verdict, or score a duplicate root-load criterion
+already covered by the shared browser prerequisite.
+
+For this task, `tests/reward.toml` declares `reward = []` plus composition roles:
+Render/Constraints are gates and Functional/Polish/Visual are weighted dimensions.
+The pinned RewardKit emits dimension scores without another aggregate.
+`tests/score.py`, invoked once by `tests/test.sh`, reads the sole numeric dimension
+weights from each `[judge] weight`, checks the mandatory gates, and normalizes
+the three weighted dimensions. Keep those weights at 0.6/0.2/0.2 and the gate
+judge weights at 1.0. Remove redundant zero-weight maps and hardcoded copies
+of the point coefficients. This preserves the intended 60/20/20 composition
+when mandatory gates pass. Verify each individual constraint failure with the
+actual RewardKit aggregator and final scorer, and test weight-source changes.
+
+The remaining task schema, runtime versions, networking, timeouts, shared
+authentication prerequisites, prompt versions, archive rules and golden targets
+below still apply. Other tasks are not migrated by this task-specific correction.
+
 Decision history and evidence: [11 September lessons](TASK_LEARNINGS_2026-09-11.md).
 
 Later corrections: [12 September platform QC lessons](TASK_LEARNINGS_2026-09-12.md).
@@ -14,6 +101,16 @@ Use its top-level `[judge] weight` values: Functional 0.6, Polish 0.2,
 Visual 0.2, Render 1.0 and Constraints 1.0. This supersedes Bazaarbridge's
 judge weights only; the other configuration and timeout rules below remain.
 Criterion weights are independent and are not changed by this update.
+
+Pellmoor corrections, 2026-09-15: the user's static-QC results require both
+strictly positive judge weights and a nonempty named [[reward]] entry. The
+earlier zero-judge-weight and empty-reward-list interpretations were incorrect.
+Use Render/Constraints judge weights of 1.0 and the complete canonical
+reward.toml, without a scoring compatibility patch. Keep the exact final
+formula below in tests/test.sh; it replaces RewardKit's intermediate aggregate
+in the delivered reward files. tests/SCORING.md explains those separate roles.
+All criterion weights, scoring aggregations and timeouts otherwise follow the
+current task. The Common Ground exception above is not a Pellmoor exception.
 
 ## Configuration
 
@@ -46,7 +143,14 @@ Criterion weights are independent and are not changed by this update.
   Their sum is 12000. Run serially with `--max-concurrent-agent 1`, inside the
   reference's 12600-second wrapper and 13200-second verifier limit. The extra
   600 seconds at each level covers overhead; budget sufficiency still needs
-  actual run evidence. Do not increase timeouts independently for new tasks.
+actual run evidence. Do not increase timeouts independently for new tasks.
+
+Launch the app process from the app entry file's directory on initial startup
+and every managed restart, including a relocated runtime. Keep the verifier's
+own working directory separate. A documented `node serve.js` launch from `/app`
+must support ordinary relative paths such as `express.static('www')`. Include a
+relative-path regression fixture: an absolute-path golden implementation can
+hide a broken grading working directory.
 - Keep the task version fixed at `1.0.0` under this standard. Distinguish revisions
   using dated delivery folders, source/ZIP SHA-256 hashes and validation reports,
   outside the task configuration. Do not overwrite historical evidence. Material
@@ -188,6 +292,17 @@ ZIP. Permit only `README.md`, `environment/`, `instruction.md`, `rubrics/`,
 `solution/`, `task.toml` and `tests/` at the task root. Exclude repository-only
 metadata and use one task-named archive wrapper. Check archive entries explicitly;
 passing the local configuration checker alone is not platform static/QC approval.
+
+Run `python references/task-templates/check-upload.py <final-task.zip>` against
+the actual upload archive, in addition to `check-standard.py` against its extracted
+task directory. Every provided `/assets/...` reference must exist under
+`environment/assets/...` in that archive; follow the reference's
+`COPY assets/ /assets/`. An alternative Docker mapping that works at runtime
+does not satisfy the platform's static asset resolver. Require asset directories
+to exist before enumerating them, and check shell executable permissions in ZIP
+metadata. Keep the exact tested archive checksum with the report. The Gambit
+full-preflight regression cases reproduce the rejected unwrapped/misplaced-asset
+archives so these packaging failures cannot silently pass the local audit again.
 
 For surprising oracle failures, inspect action evidence before changing the app
 or rubric. Improve measurement and instructions without reducing requirements:

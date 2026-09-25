@@ -20,7 +20,8 @@ name = "seeded_state_import_and_isolation"
 type = "binary"
 weight = 2.0
 description = """
-Before any game mutation, sign in as Avery. Require revision 7, totals Red 2,
+Before any game mutation, sign in as Avery. Require visible identity Avery
+Morgan and avery@dropline.test, revision 7, totals Red 2,
 Yellow 1, Draws 1, Red at row 6 column 4, Yellow at row 6 column 5, every other
 cell empty, `Red's turn`, two matching applied-history entries, Undo and Redo
 available, and no completed match. Activate Redo and require the workbook's Red
@@ -43,7 +44,9 @@ name = "completed_match_archive_and_replay"
 type = "binary"
 weight = 3.0
 description = """
-As Avery, record the displayed and overall Completed matches counts and totals, start New game, and
+Setup: use the shared Red-win journey in the prompt, recording the separate
+history criterion's checkpoints during the same actions. As Avery, record the
+displayed and overall Completed matches counts and totals, start New game, and
 play 1,7,2,7,3,6,4. Require one new newest archive entry named `Red wins` with
 seven moves. Open it, move Replay step to 7, and require a separate 42-cell
 read-only replay board at step 7 of 7 showing the final position. Move Replay
@@ -53,27 +56,12 @@ position. Throughout replay, the active winning board, totals, history,
 revision, and controls stay unchanged.
 
 Undo the winning move and require active play, the score increment reversed,
-and both archive counts reduced by one. Redo it and require the identical win
+and both archive counts reduced by one. Capture the history/markers checkpoint
+and reload while undone for the shared history leg. Redo it and require the identical win
 and exactly one restored archive entry in both counts, including its original completion ordering.
 A repeated Redo attempt changes nothing. Reload and require the archive entry
 and active terminal state to persist. Start New game and require the archive
 entry to remain while active round state resets.
-"""
-
-[[criterion]]
-id = "authenticated_account_workflow"
-name = "authenticated_account_workflow"
-type = "binary"
-weight = 1.0
-description = """
-Confirm the signed-in workspace identifies Avery Morgan and
-`avery@dropline.test`. Start New game, drop once in column 3, sign out, and
-confirm protected board and totals disappear. Attempt Avery's email with
-`wrong-pass-47` and require visible rejection without protected state. Then
-sign back in with `password123` and require the Red piece at row 6 column 3,
-`Yellow's turn`, and exactly one history entry naming Red, column 3, row 6.
-Network evidence must show the restored game read uses a same-origin request
-with a server-issued `Bearer` credential rather than a browser-supplied user id.
 """
 
 [[criterion]]
@@ -98,11 +86,13 @@ name = "horizontal_and_vertical_wins"
 type = "binary"
 weight = 1.0
 description = """
-Record Red's total, then play 1,7,2,7,3,6,4. Require `Red wins`, exactly row 6
+Use the already captured Red win in the shared competitive journey; do not
+play another horizontal match. Require `Red wins`, exactly row 6
 columns 1-4 marked winning, seven history entries, and Red's total increased by
-one. Start New game, play 1,2,1,2,1,2,1, and require `Red wins`, exactly column
+one from its own captured baseline. After that shared journey finishes,
+record the current Red total, start New game, play 1,2,1,2,1,2,1, and require `Red wins`, exactly column
 1 rows 3-6 marked winning, seven history entries, and Red's total increased by
-one again. Start New game and play 7,1,7,1,6,1,6,1. Require `Yellow wins`,
+one from this new baseline. Start New game and play 7,1,7,1,6,1,6,1. Require `Yellow wins`,
 exactly column 1 rows 3-6 marked winning, and one Yellow score increment.
 No other cell is winning in any game.
 """
@@ -172,7 +162,10 @@ on every Undo and Redo request. Now play column 2. Require a new Red entry at
 column 2 row 6, Redo unavailable, and one revision increment; a Redo attempt,
 if the UI permits one, must change nothing.
 
-Then start New game, record Red's total, and play 1,7,2,7,3,6,4. Require the
+For the terminal leg, use the SAME new match and captured checkpoints as
+completed_match_archive_and_replay in the shared Red-win journey; do not
+replay an already observed leg. Record Red's total before its 1,7,2,7,3,6,4.
+Require the
 Red win and one score increment. Undo once: require an active round with
 `Red's turn`, the last Red piece and every winning marker removed, six history
 entries, and the Red total returned to its baseline. Reload and require the
@@ -187,11 +180,13 @@ name = "new_game_reset_and_persistence"
 type = "binary"
 weight = 1.0
 description = """
-Start New game, play column 4, and Undo. Require Redo available. Record the
+Before the shared competitive win journey, start New game, play column 4,
+and Undo. Require Redo available. Record the
 revision, activate New game, and require exactly one revision increment, all 42
-cells empty, no history, and Redo unavailable. Then create the Red win with
-1,7,2,7,3,6,4, record all three match totals and the revision, and activate New
-game. Require exactly one revision increment, all 42 cells empty, no winning
+cells empty, no history, and Redo unavailable. Use the shared journey's existing
+Red win and its final New game after replay/Undo/Redo/reload; do not create
+another win. Capture all three totals and the current revision immediately
+before that final New game. Require exactly one revision increment, all 42 cells empty, no winning
 markers, no history, Undo and Redo unavailable, status exactly `Red's turn`,
 and recorded totals unchanged. Click column 7 and require Red at row 6 column 7,
 one matching history entry, and `Yellow's turn`. Fully reload the page and
@@ -254,7 +249,8 @@ description = """
 Submit the Avery login form separately in tabs A and B, and use network evidence
 to require two distinct issued bearer tokens. Record the same board, history,
 totals, archive, and revision, and capture tab B's actual protected game-read
-request before signing out. Sign out in tab A. If tab B still shows its game,
+request before signing out. Sign out in tab A and require its protected board
+and totals to disappear. If tab B still shows its game,
 attempt a visible action and require return to sign-in with no mutation.
 Proactive automatic sign-out of tab B is also correct; do not demand a control
 that has already disappeared. In either case replay the captured protected
@@ -268,9 +264,11 @@ name = "accessible_grid_and_winning_names"
 type = "binary"
 weight = 1.0
 description = """
-Sign in as Avery and start New game. Confirm the active board exposes one grid
+Use the shared competitive journey's empty board before its Red win and the
+same board immediately after that win. Do not play another match.
+Confirm the empty active board exposes one grid
 with exactly 42 grid cells and every cell name identifies its row, column, and
-empty state. Play 1,7,2,7,3,6,4.
+empty state.
 Require exactly four winning Red cells; each accessible name must include its
 row, column, Red, and winning, while no other cell name includes winning.
 """
@@ -318,15 +316,16 @@ name = "analysis_nested_continuations"
 type = "binary"
 weight = 1.5
 description = """
-Setup: fresh Red-source analysis at step 6. Play analysis column 5 (B), then
-column 1 (C), Undo to B and play column 2 (D).
-1. Require root -> B -> C and D, four nodes total; C and D are siblings
+Setup: continue the shared branch journey after analysis_sibling_paths_and_navigation,
+with B selected and A retained at the root. Play column 1 (C), Undo to B and
+play column 2 (D). Do not create a second study or replay column 5.
+1. Require root -> A and B, and B -> C and D, five nodes total; C and D are siblings
 under B, not children of root. Their eight-move histories share seven moves.
 2. Select C: Yellow is at row 5 column 1, row 5 column 2 empty, Red to move.
 Select D: Yellow is at row 5 column 2, row 5 column 1 empty, Red to move.
 The other seven pieces follow the source plus Red at row 6 column 5.
 3. Rename through its labelled control, reload and reopen. Require the new
-name, same four node identities and edges, selected D and its exact state.
+name, same five node identities and edges, selected D and its exact state.
 """
 
 [[criterion]]
@@ -372,8 +371,9 @@ name = "analysis_position_comparison"
 type = "binary"
 weight = 2.0
 description = """
-Setup: fresh Red-source analysis at step 6. Play 4 (A), Undo, play 5 then 1
-(C). Capture the saved study and competitive state.
+Setup: continue the shared branch journey after analysis_nested_continuations.
+Use its existing A and C; do not create another study or replay their moves.
+Capture the saved five-node study and competitive state before comparing.
 1. Compare A and C through the labelled selectors. Require two complete
 42-cell boards, common prefix 6, and exactly three differing cells: row 6
 column 4, row 6 column 5 and row 5 column 1. A is the seven-move Red win;
@@ -441,10 +441,12 @@ its 409 response. Make one legal UI move, then replay the exact rejected
 request: require the original conflict response, with fresh current state
 unchanged. Reuse an accepted identifier with a different column: require 409
 and no change, not a stale success response for different input.
-3. In an active position, rapidly repeat the same analysis drop while its
-first real response is pending. A transport delay preserving the real
-request/response is allowed. Require one accepted node/revision, not two
-moves. Do not call two post-completion activations a pending-repeat failure.
+3. In an active position, use the prompt's pending-repeat protocol for the same
+analysis drop. Capture before-revision/node count, first request, second physical
+activation while its response is held, then release and capture after-state.
+Require one accepted node/revision, not two moves. Keep this evidence separate
+from exact receipt replay in steps 1-2. An actionability wait that postpones the
+second click until the response completes is not a valid pending-repeat test.
 """
 
 [[criterion]]
@@ -494,14 +496,20 @@ name = "restart_persistence_and_seed_idempotence"
 type = "binary"
 weight = 1.0
 description = """
-Run this last, after all other Functional criteria. Through the visible UI,
+Run this last, after all other Functional criteria. Follow checkpoints R0-R4
+in order; the game Redo belongs BETWEEN the two restarts, not after both.
+R0. Through the visible UI,
 sign in as Avery, start New game, play columns 4,5,4 and Undo once. Capture a
 fresh server-backed record of board, turn/result, winning cells, totals,
-applied history, redo availability, revision and completed matches. Restart
+applied history, redo availability, revision and completed matches.
+R1. Restart
 the application with bash /tests/app-lifecycle.sh restart, then reload and
 sign in again if required. Require every captured game value and archive
-record unchanged and Redo to restore the third move exactly. Repeat restart
-and require that post-Redo state and archive unchanged, with no duplicate
+record unchanged.
+R2. Activate game Redo through the UI NOW. Require it restores the third move
+exactly and advances the revision once. Capture this new game and archive.
+R3. Repeat restart
+and require that R2 post-Redo state and archive unchanged, with no duplicate
 completed matches or replacement of the captured account state. Do not infer persistence from a browser
 reload alone. A browser-tool disconnection is unverified evidence, not proof
 that the app lost data; do not invent successful post-restart reads.
@@ -514,6 +522,14 @@ require those exact snapshots unchanged, with no duplicate studies or nodes.
 Replay the recorded operation after the second restart: its original response
 must return while a fresh study read stays unchanged. Use captured legitimate
 analysis requests for this receipt observation; do not add a third restart.
+Also retain successful and rejected transplant receipts plus one tactical
+report before restarting. After the same two restarts, exact receipt retries
+and the same node/depth report must return unchanged, without additional study
+writes. Prepare one valid UNCOMMITTED transplant preview before the first
+restart and do not edit its source/destination while verifying snapshots.
+R4. After the second restart and all unchanged-snapshot checks, commit that preview:
+require the previewed merge and exactly one destination revision increment.
+This final intended edit is not a persistence failure. Do not add another restart.
 """
 
 [[criterion]]
@@ -528,5 +544,281 @@ methods/paths used for sign-in, sign-out, reading state, New game, moves, Undo
 and Redo, plus analysis creation/list/read/edit and comparison where it has a
 server route, matching browser requests observed in the preceding journey. Routes
 may be shared; do not require the golden app's URL names. Missing or inaccurate
-route documentation fails this criterion. Do not grade other source files.
+route documentation fails this criterion. Also check the actual transplant
+preview/commit and tactical-report routes if these tools use server routes.
+Do not grade other source files.
+"""
+
+[[criterion]]
+id = "transplant_preview_rederived_positions"
+name = "transplant_preview_rederived_positions"
+type = "binary"
+weight = 2.0
+description = """
+Setup: use the shared Transplant fixture defined in the prompt. Keep full
+source/destination and competitive snapshots before previewing.
+1. Preview copying source branch [1] onto destination root [1]. Require paths
+[1], [1,2], [1,3], [1,3,4] in depth-first ascending-column order. The first
+copied piece is Yellow at row 5 column 1, not the source Red at row 6 column 1.
+Path [1,2] adds Red at row 6 column 2; path [1,3,4] has Red at row 6 column 3
+and Yellow at row 6 column 4. Inspect the exact preview boards.
+2. Require 2 reused and 2 new nodes. Both saved studies and competitive state
+remain byte-equivalent after normalization of response ordering. Preview
+metadata is allowed; no node, cursor, name or revision changes are allowed.
+"""
+
+[[criterion]]
+id = "transplant_atomic_commit_mapping"
+name = "transplant_atomic_commit_mapping"
+type = "binary"
+weight = 2.0
+description = """
+Setup: continue with the same fixture and valid preview just observed for
+transplant_preview_rederived_positions in the shared journey. Keep its exact
+pre-commit snapshots; do not rebuild a successful fixture or re-run its preview.
+1. Commit through the UI. Require exactly two new destination nodes, one
+destination revision increment, unchanged destination selection/name/source
+snapshot, and unchanged source study and competitive state.
+2. Require a complete source-to-destination mapping for all four copied nodes.
+Reused destination node IDs and all original source/destination positions remain
+unchanged. Each mapped new node has the exact derived path/board from the preview.
+"""
+
+[[criterion]]
+id = "transplant_recursive_merge_identity"
+name = "transplant_recursive_merge_identity"
+type = "binary"
+weight = 2.0
+description = """
+Setup: continue immediately after transplant_atomic_commit_mapping's first
+commit on that same shared fixture. Add the unrelated root column 6 specified
+below, then create a NEW preview of the same subtree at the destination ROOT;
+this is not an exact retry. Record the current selected cursor after adding
+that branch as the baseline for the second commit. Do not repeat the first commit.
+1. Require zero new and four reused nodes in the new preview. Commit it with a
+new intended operation: exactly one revision increment, no new nodes, unchanged
+node IDs/edges/positions, and unchanged selected cursor.
+2. Existing destination branches outside the copied paths are retained. Add an
+unrelated root column 6 before the second preview and require it to survive.
+This grades recursive merge and identity reuse, not retry-receipt behavior.
+"""
+
+[[criterion]]
+id = "transplant_same_study_frozen_subtree"
+name = "transplant_same_study_frozen_subtree"
+type = "binary"
+weight = 2.0
+description = """
+Setup: fresh empty-root study; play 1,2. Copy the branch beginning with the
+first 1 onto the selected second node [1,2] IN THE SAME study.
+1. Preview exactly two nodes, relative paths [1] and [1,2]. Commit and require
+five total nodes (root plus four moves), not recursive self-copying.
+2. Require one revision increment, original IDs unchanged and the cursor still
+at [1,2]. Inspect the new [1,2,1,2] position: Red/Yellow at rows 6 and 5 in
+columns 1/2, Red to move, active. No competitive changes.
+"""
+
+[[criterion]]
+id = "transplant_illegal_descendant_rollback"
+name = "transplant_illegal_descendant_rollback"
+type = "binary"
+weight = 2.0
+description = """
+Setup: source empty-root study with branch [1], child [1,3] created first,
+then sibling [1,2] and child [1,2,2]. Destination empty-root study with five
+consecutive drops in column 2, selected at the fifth move.
+1. Preview branch [1] onto that destination. Require illegal relative path
+[1,2,2], column-full reason, no committable partial preview, and unchanged
+entire destination/source snapshots. Checking only the first copied edge fails.
+2. Separately source empty-root [4,1] copied onto a Red-source step-6 root:
+the first 4 wins, so relative [4,1] must be rejected for moving after a win.
+No node/cursor/revision or competitive changes in either case.
+"""
+
+[[criterion]]
+id = "transplant_dual_revision_conflicts"
+name = "transplant_dual_revision_conflicts"
+type = "binary"
+weight = 2.0
+description = """
+Setup: a fresh Transplant fixture and valid preview. Capture the actual commit
+request shape from a separate successful UI example; controlled stale-preview
+commits using that discovered shape are allowed here.
+1. Rename the source after preview. Commit the old preview: require conflict
+and no destination changes, with useful refresh/re-preview feedback.
+2. Fresh preview; rename the destination. Old preview commit also conflicts
+without partial nodes or an additional revision. Fresh preview/commit succeeds.
+Do not compare only destination revision; the source revision matters too.
+"""
+
+[[criterion]]
+id = "transplant_durable_receipts"
+name = "transplant_durable_receipts"
+type = "binary"
+weight = 1.5
+description = """
+Setup: fresh fixture, capture successful UI commit request/response. Captured
+same-origin replay and identifier edits are allowed for this criterion.
+1. After another legitimate destination edit, exact commit retry returns the
+original status/body and changes no nodes/cursor/revision. Reusing its operation
+identifier for a different preview conflicts. A new identifier with the already
+consumed preview conflicts rather than applying a second intended commit.
+2. Capture a stale-preview rejection with a valid identifier. After another
+edit, exact retry returns the original rejection with unchanged current state.
+Retain these receipts for the single existing final restart criterion.
+"""
+
+[[criterion]]
+id = "transplant_private_validation"
+name = "transplant_private_validation"
+type = "binary"
+weight = 1.0
+description = """
+Setup: source/destination studies owned by Avery. Discover real preview/commit
+requests through UI. Controlled invalid-field requests are allowed here.
+1. Reject the source root, a node from the wrong study, unknown nodes and extra
+board/account/mapping fields with controlled 4xx, no 500 and no study changes.
+2. Jordan cannot preview Avery's studies or commit Avery's captured preview ID.
+Reject without returning either private study, preview tree or mapping. Missing
+or malformed commit operation IDs also reject without consuming the preview.
+"""
+
+[[criterion]]
+id = "tactics_immediate_and_horizon"
+name = "tactics_immediate_and_horizon"
+type = "binary"
+weight = 1.5
+description = """
+Setup: a fresh Red-source step-6 study, which has applied columns 1,7,2,7,3,6.
+1. Run depth 1. Require legal columns 1..7: column 4 is a forced Red win in
+1 ply, all other columns not established. Terminal detection precedes the
+depth cutoff. Repeat at depth 3: the overall position still reports a win
+in 1 ply, choosing the shortest proven win. No saved position changes.
+2. Fresh empty-root study at depth 1: every legal column is not established,
+never a forced draw. This grades the distinction between terminal and horizon.
+"""
+
+[[criterion]]
+id = "tactics_forced_fork_search"
+name = "tactics_forced_fork_search"
+type = "binary"
+weight = 2.0
+description = """
+Setup: fresh empty-root study; play 2,7,3,7. Red to move. Share this study with
+tactics_readonly_repeatability, capturing its complete before-snapshots now.
+1. At depth 1 every column is not established. At depth 3 require column 4
+forced win in exactly 3 plies; columns 1,2,3,5,6,7 remain not established.
+2. Browse the proof for first column 4: every legal Yellow reply is present.
+Yellow column 1 leaves Red column 5 winning; Yellow column 5 leaves Red
+column 1 winning. Every other Yellow reply has a winning Red reply. An
+optimistic single line is insufficient evidence of a forced win.
+"""
+
+[[criterion]]
+id = "tactics_opponent_defence_and_loss"
+name = "tactics_opponent_defence_and_loss"
+type = "binary"
+weight = 2.0
+description = """
+Setup: fresh empty-root study; play 7,1,7,2,6,3. Red to move.
+1. At depth 2, column 4 is not established; every other column is a forced
+loss in 2 plies because Yellow can win in column 4. Do not label the required
+blocking move itself a proven win.
+2. Separate fresh study with 7,3,3,7,2,2,6,3,6,6,3,3,4,1,7, Yellow to move.
+At depth 4 all seven columns are forced losses: column 5 in 4 plies, every
+other column in 2. The overall position reports loss in 4 plies (longest
+resistance), not 2. The report/proof consistently names Yellow's perspective.
+"""
+
+[[criterion]]
+id = "tactics_full_columns_and_terminal_draw"
+name = "tactics_full_columns_and_terminal_draw"
+type = "binary"
+weight = 1.5
+description = """
+Setup: fresh empty-root study; play column 1 six times. At depth 2 require
+exactly legal columns 2..7, all not established; never recommend the full column.
+Separately use Jordan's existing 42-move draw replay, fork at step 41.
+1. Depth 1 has only column 7 legal and reports forced draw. Make that one
+practice move: terminal root report says Draw with no legal recommendations.
+2. A fresh Red-source step-7 root reports terminal Red win and no legal
+recommendations. Reports do not create children or advance revisions.
+"""
+
+[[criterion]]
+id = "tactics_complete_bounded_proof"
+name = "tactics_complete_bounded_proof"
+type = "binary"
+weight = 2.0
+description = """
+Setup: fresh empty-root study; request depth 4. Capture the actual report used
+by the UI (or its fully disclosed explanation data). Traverse that complete
+response read-only, returning a compact count and explicit violations for the
+structural assertions below; do not manually expand or print all 2801 nodes.
+Then expand the specified sample path through real visible proof controls.
+1. Require all 7 first moves, each with all 7 replies, through 4 plies: 2801
+proof nodes including root. No line can terminate or fill a column this early.
+All leaves are unresolved horizon, never draw, and all nodes are ordered by
+ascending next column. No source inspection or injected game state is allowed.
+Traverse the whole explanation: every child path must extend its parent by
+exactly its stated column, every node must identify the alternating player,
+and no path may be duplicated or missing. Every internal position is also
+not established, not a fabricated win/loss/draw; no win/loss distance is
+claimed. Accept equivalent report representations and UI-derived positions;
+do not require a particular board/depth field in a JSON response. For positions
+actually disclosed in the proof, verify gravity and exactly one added piece
+per edge throughout, not just that arrays have 42 entries.
+2. Inspect proof path [4,4,2,3] through the visible explanation control: Red at
+row 6 columns 4 and 2, Yellow at row 5 column 4 and row 6 column 3; Red to
+move, four applied drops, and exactly 42 accessible cells. The saved study
+cursor remains at its root. Different paths must not collapse into one tree node.
+Also inspect the second path [3,3,6,5]: Red at row 6 columns 3 and 6,
+Yellow at row 5 column 3 and row 6 column 5, Red to move. Its visible board
+must differ correctly from the first path, not remain a static root/sample.
+"""
+
+[[criterion]]
+id = "tactics_readonly_repeatability"
+name = "tactics_readonly_repeatability"
+type = "binary"
+weight = 1.0
+description = """
+Setup: continue on the shared 2,7,3,7 study from tactics_forced_fork_search.
+Use the complete study/competitive snapshots captured before that journey's
+first request and its already observed depth-3 response as sample one.
+1. Run depth 3 once more, reload/reopen and run it again (three depth-3 samples
+in total, including the fork check's response). Require identical ordered
+outcomes, distances and proof positions for this node/depth, with no study
+selection/revision/nodes, game scores/history/archive or operation-receipt writes.
+Internal computation caches are allowed; do not impose response field names.
+2. Edit/select a different study node through UI: the old report clears or is
+explicitly replaced before another report is presented as current. Every report
+identifies the saved node and revision it analyzed. Retain one report for restart.
+"""
+
+[[criterion]]
+id = "tactics_server_input_boundaries"
+name = "tactics_server_input_boundaries"
+type = "binary"
+weight = 1.0
+description = """
+Setup: capture an actual tactical request from Avery's own saved node. Controlled
+request adaptations are allowed. Require controlled 4xx for missing depth,
+string '3', fractional 1.5, 0, 5, and extra board/account fields. No saved writes.
+Jordan cannot request Avery's report, and a node from another study cannot be
+used under this study identifier. Rejections disclose no foreign proof data.
+Do not hardcode route names; use the observed contract.
+"""
+
+[[criterion]]
+id = "independent_same_name_analyses"
+name = "independent_same_name_analyses"
+type = "binary"
+weight = 0.5
+description = """
+Setup: from the same owned replay step, create two separately intended analyses
+with the same valid name, using the UI each time. Require two distinct study
+identities. Make one move in the first: the second's nodes, selected root and
+revision stay unchanged. A new intended creation is not an exact request retry.
+This tests the existing allowance for duplicate names, not a new naming rule.
 """

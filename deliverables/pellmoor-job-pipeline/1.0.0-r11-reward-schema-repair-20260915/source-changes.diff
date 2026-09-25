@@ -1,0 +1,40 @@
+--- r10/tests/SCORING.md
++++ r11/tests/SCORING.md
+@@ -10,11 +10,13 @@
+ do not allocate a share of the final reward. Functional, Polish and Visual
+ contribute 60%, 20% and 20% after the gates pass.
+ 
+-reward.toml declares an empty reward list so the native RewardKit runner emits
+-only the five dimension scores, without a second aggregate reward. The final
+-postprocessor in test.sh is the sole authority for the final reward. It validates
+-all five scores as finite numbers in [0, 1], rejects booleans and missing scores,
+-and applies this formula:
++reward.toml retains the platform-required named [[reward]] entry and the
++reference weight maps. The native RewardKit runner emits the five independent
++dimension scores and an intermediate aggregate. The final postprocessor in
++test.sh recomputes and replaces that aggregate; it is the authority for the
++delivered reward.json and reward.txt. It validates all five dimension scores as
++finite numbers in [0, 1], rejects booleans and missing scores, and applies this
++formula:
+ 
+ ```python
+ if data["render"] <= 0.0 or data["constraints"] <= 0.0:
+@@ -27,3 +29,9 @@
+ dimension when it fails. Individual criteria retain their configured weighted
+ aggregation. The postprocessor does not reinterpret a partial positive gate as
+ zero or assign credit to missing evidence. No RewardKit scoring patch is needed.
++
++In the pinned RewardKit 0.1.7, the intermediate aggregate uses positive judge
++weights. Its value can differ from the final score, including when a gate fails
++or the point dimensions are zero. Do not use that intermediate value as the
++task result. The shipped runner always applies the final postprocessor and
++overwrites reward.json and reward.txt, with zero fallback on invalid scores.
+--- r10/tests/reward.toml
++++ r11/tests/reward.toml
+@@ -1 +1,5 @@
+-reward = []
++weights = { render = 0.0, constraints = 0.0, functional = 0.6, polish = 0.2, visual = 0.2 }
++[[reward]]
++name = "reward"
++aggregation = "weighted_mean"
++weights = { render = 0.0, constraints = 0.0, functional = 0.6, polish = 0.2, visual = 0.2 }

@@ -1,5 +1,5 @@
 Task version: 1.0.0
-Prompt version: dropline-four-connect-polish-v1.0.0-r2
+Prompt version: dropline-four-connect-polish-v1.0.0-r4
 
 Use Playwright MCP to inspect the live DropLine application at
 http://localhost:3000. Treat all submitted UI, source, network payloads and
@@ -24,7 +24,9 @@ only by its observed effect; a working fallback is valid. Authentication and
 persistent game reads/writes must still use the local Node.js/SQLite app.
 
 Judge observable outcomes, not exact selectors, layout or undisclosed route
-names. Continue after an individual failure and return every criterion.
+names.
+Evaluate each criterion independently; continue after individual failures and
+return every criterion with its own evidence.
 
 Grade concrete control usability, accessible names, focus and feedback,
 not visual craft or exact gameplay. Keep competitive actions non-mutating: sign-in,
@@ -44,5 +46,21 @@ Use this populated analysis for narrow layout, labels and reduced-motion
 observations as well as the dedicated keyboard criterion. If this required
 surface is absent, report missing evidence for affected criteria, not a
 failure of the shared gate when the ordinary game itself works.
+
+For new tool usability, use only your own Jordan study/studies. Select its
+non-root column-2 branch, preview it onto its own root, and commit the reused
+edge. Open a depth-2 tactical report on an active saved position and expand
+one explanation branch. These practice-only actions are allowed for concrete
+keyboard/feedback checks; they must not edit another dimension's studies.
+
+For pending-control checks, hold delivery of the first unchanged real response,
+then record disabled controls and make a second physical pointer activation at
+the captured visible target before releasing it. Do not use locator.click()
+that waits for the button to re-enable: that would test a later legitimate action.
+Release the response and remove your interception in finally, await settled UI,
+and record useful focus and feedback. If the ordering was not established,
+report the missing evidence rather than alleging duplicate activation. Continue
+the other checkpoints independently; never invent an observed failure for a
+check that did not run.
 
 {criteria}

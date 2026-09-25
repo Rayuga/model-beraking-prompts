@@ -1,0 +1,1369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Coursemark</title>
+  <style>
+    * { box-sizing: border-box; }
+    
+    :root {
+      --primary: #2563eb;
+      --success: #16a34a;
+      --danger: #dc2626;
+      --warning: #ea580c;
+      --gray: #6b7280;
+      --bg-light: #f9fafb;
+      --border: #e5e7eb;
+    }
+    
+    html, body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: white;
+      color: #111;
+    }
+    
+    body.prefers-reduced-motion * {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+    
+    header {
+      background: var(--primary);
+      color: white;
+      padding: 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    header h1 {
+      margin: 0;
+      font-size: 1.5rem;
+    }
+    
+    header .header-right {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+    
+    .user-info {
+      font-size: 0.875rem;
+      text-align: right;
+    }
+    
+    .user-info .user-name {
+      font-weight: 600;
+    }
+    
+    .user-info .user-email {
+      opacity: 0.9;
+      font-size: 0.8rem;
+    }
+    
+    button {
+      background: white;
+      color: var(--primary);
+      border: 1px solid var(--border);
+      padding: 0.5rem 1rem;
+      border-radius: 0.375rem;
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+    
+    button:hover:not(:disabled) {
+      background: var(--bg-light);
+    }
+    
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    button.primary {
+      background: white;
+      color: var(--primary);
+    }
+    
+    button.danger {
+      background: var(--danger);
+      color: white;
+      border-color: var(--danger);
+    }
+    
+    button.danger:hover {
+      background: #b91c1c;
+    }
+    
+    nav {
+      background: var(--bg-light);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    nav a {
+      padding: 1rem;
+      text-decoration: none;
+      color: var(--gray);
+      border-bottom: 2px solid transparent;
+      white-space: nowrap;
+    }
+    
+    nav a[aria-current="page"] {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+      font-weight: 600;
+    }
+    
+    nav a:hover {
+      color: var(--primary);
+    }
+    
+    main {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 1rem;
+    }
+    
+    .view {
+      display: none;
+    }
+    
+    .view.active {
+      display: block;
+    }
+    
+    h2 {
+      margin-top: 0;
+      margin-bottom: 1.5rem;
+      font-size: 1.875rem;
+    }
+    
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+    
+    label {
+      display: block;
+      font-weight: 500;
+      margin-bottom: 0.5rem;
+    }
+    
+    input, textarea, select {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 0.375rem;
+      font-size: 1rem;
+      font-family: inherit;
+    }
+    
+    input:focus, textarea:focus, select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+    
+    .error-message {
+      color: var(--danger);
+      font-size: 0.875rem;
+      margin-top: 0.25rem;
+    }
+    
+    .success-message {
+      background: #dcfce7;
+      color: #166534;
+      padding: 1rem;
+      border-radius: 0.375rem;
+      margin-bottom: 1rem;
+    }
+    
+    .card {
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+      background: white;
+    }
+    
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1rem;
+    }
+    
+    .card-title {
+      font-size: 1.125rem;
+      font-weight: 600;
+      margin: 0;
+    }
+    
+    .status-badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 0.25rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    
+    .status-draft {
+      background: #fef08a;
+      color: #78350f;
+    }
+    
+    .status-published {
+      background: #bbf7d0;
+      color: #065f46;
+    }
+    
+    .status-in_progress {
+      background: #dbeafe;
+      color: #0c2d6b;
+    }
+    
+    .status-submitted {
+      background: #d1fae5;
+      color: #065f46;
+    }
+    
+    .status-graded {
+      background: #d1fae5;
+      color: #065f46;
+    }
+    
+    .status-released {
+      background: #bbf7d0;
+      color: #065f46;
+    }
+    
+    .status-hidden {
+      background: #f3f4f6;
+      color: #374151;
+    }
+    
+    .action-group {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    
+    .empty-state {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: var(--gray);
+    }
+    
+    .empty-state svg {
+      width: 4rem;
+      height: 4rem;
+      margin-bottom: 1rem;
+      opacity: 0.5;
+    }
+    
+    .form-section {
+      background: var(--bg-light);
+      padding: 1.5rem;
+      border-radius: 0.5rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    .form-section h3 {
+      margin-top: 0;
+      margin-bottom: 1rem;
+      font-size: 1rem;
+    }
+    
+    .option-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    
+    .option-list li {
+      padding: 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 0.375rem;
+      margin-bottom: 0.5rem;
+      background: white;
+    }
+    
+    .option-input {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    .option-input input {
+      flex: 1;
+    }
+    
+    .option-input button {
+      flex: 0 0 auto;
+    }
+    
+    .question-card {
+      background: var(--bg-light);
+      padding: 1rem;
+      border-radius: 0.375rem;
+      margin-bottom: 1rem;
+      border-left: 4px solid var(--primary);
+    }
+    
+    .question-prompt {
+      font-weight: 500;
+      margin-bottom: 0.75rem;
+    }
+    
+    .question-answer {
+      background: white;
+      padding: 0.75rem;
+      border-radius: 0.25rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    .question-answer input[type="radio"],
+    .question-answer input[type="checkbox"] {
+      width: auto;
+      margin-right: 0.5rem;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 1rem;
+    }
+    
+    th {
+      text-align: left;
+      padding: 0.75rem;
+      border-bottom: 2px solid var(--border);
+      font-weight: 600;
+      background: var(--bg-light);
+    }
+    
+    td {
+      padding: 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    tr:hover td {
+      background: var(--bg-light);
+    }
+    
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      padding: 1rem;
+    }
+    
+    .modal.open {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .modal-content {
+      background: white;
+      border-radius: 0.5rem;
+      padding: 1.5rem;
+      max-width: 600px;
+      max-height: 90vh;
+      overflow-y: auto;
+      width: 100%;
+    }
+    
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+    
+    .modal-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin: 0;
+    }
+    
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: var(--gray);
+      padding: 0;
+    }
+    
+    .modal-close:hover {
+      color: var(--primary);
+    }
+    
+    .sync-status {
+      position: fixed;
+      bottom: 1rem;
+      right: 1rem;
+      padding: 0.75rem 1rem;
+      border-radius: 0.375rem;
+      font-size: 0.875rem;
+      z-index: 999;
+      display: none;
+    }
+    
+    .sync-status.show {
+      display: block;
+    }
+    
+    .sync-status.pending {
+      background: #fef08a;
+      color: #78350f;
+    }
+    
+    .sync-status.success {
+      background: #bbf7d0;
+      color: #065f46;
+    }
+    
+    .sync-status.error {
+      background: #fecaca;
+      color: #7c2d12;
+    }
+    
+    .time-display {
+      font-weight: 500;
+      font-size: 0.875rem;
+      color: var(--gray);
+    }
+    
+    .countdown {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+    
+    .countdown.warning {
+      color: var(--warning);
+    }
+    
+    .countdown.danger {
+      color: var(--danger);
+    }
+    
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    
+    @media (max-width: 640px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+      
+      header {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: flex-start;
+      }
+      
+      header .header-right {
+        width: 100%;
+        justify-content: space-between;
+      }
+      
+      nav {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+      }
+      
+      table {
+        font-size: 0.875rem;
+      }
+      
+      th, td {
+        padding: 0.5rem;
+      }
+      
+      .action-group {
+        flex-direction: column;
+      }
+      
+      button {
+        min-height: 44px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Coursemark</h1>
+    <div class="header-right">
+      <div class="user-info">
+        <div class="user-name" id="userName"></div>
+        <div class="user-email" id="userEmail"></div>
+      </div>
+      <button class="danger" id="signOutBtn" onclick="app.signOut()">Sign Out</button>
+    </div>
+  </header>
+
+  <nav role="navigation">
+    <a href="#" data-view="courses" aria-current="page" onclick="app.switchView('courses')">Courses</a>
+    <a href="#" data-view="assessments" onclick="app.switchView('assessments')">Assessments</a>
+    <a href="#" data-view="attempts" onclick="app.switchView('attempts')">Attempts</a>
+    <a href="#" data-view="gradebook" onclick="app.switchView('gradebook')">Gradebook</a>
+    <a href="#" data-view="audit" onclick="app.switchView('audit')">Audit</a>
+  </nav>
+
+  <main role="main">
+    <!-- Sign In View -->
+    <div id="signInView" class="view active">
+      <div style="max-width: 400px; margin: 3rem auto;">
+        <h2>Coursemark Sign In</h2>
+        <form onsubmit="app.signIn(event)">
+          <div class="form-group">
+            <label for="emailInput">Email Address</label>
+            <input type="email" id="emailInput" required>
+          </div>
+          <div class="form-group">
+            <label for="passwordInput">Password</label>
+            <input type="password" id="passwordInput" required>
+          </div>
+          <div id="signInError" class="error-message" style="margin-bottom: 1rem;"></div>
+          <button type="submit" style="width: 100%; background: var(--primary); color: white; border: none;">Sign In</button>
+        </form>
+        <div style="margin-top: 2rem; padding: 1rem; background: var(--bg-light); border-radius: 0.375rem;">
+          <p style="margin-top: 0; font-weight: 600;">Demo Accounts</p>
+          <ul style="margin: 0; padding-left: 1.5rem; font-size: 0.875rem;">
+            <li>ada.mensah@coursemark.example (Instructor)</li>
+            <li>luis.ortega@coursemark.example (Teaching Assistant)</li>
+            <li>nora.kim@coursemark.example (Student)</li>
+            <li>ben.okafor@coursemark.example (Student)</li>
+          </ul>
+          <p style="margin-bottom: 0; font-size: 0.875rem; color: var(--gray);">Password: <strong>Coursemark!2026</strong></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Courses View -->
+    <div id="coursesView" class="view">
+      <h2>Courses</h2>
+      <div id="coursesList" class="grid"></div>
+    </div>
+
+    <!-- Assessments View -->
+    <div id="assessmentsView" class="view">
+      <h2>Assessments</h2>
+      <div class="form-group">
+        <label for="courseSelect">Select Course</label>
+        <select id="courseSelect" onchange="app.loadAssessments()">
+          <option value="">Choose a course...</option>
+        </select>
+      </div>
+      <div id="instructorActions" style="margin-bottom: 1rem; display: none;">
+        <button onclick="app.showCreateDraftModal()">Create Draft Assessment</button>
+      </div>
+      <div id="assessmentsList"></div>
+    </div>
+
+    <!-- Attempts View -->
+    <div id="attemptsView" class="view">
+      <h2>Attempts</h2>
+      <div class="form-group">
+        <label for="courseSelect2">Select Course</label>
+        <select id="courseSelect2" onchange="app.loadAttempts()">
+          <option value="">Choose a course...</option>
+        </select>
+      </div>
+      <div id="attemptsList"></div>
+    </div>
+
+    <!-- Gradebook View -->
+    <div id="gradebookView" class="view">
+      <h2>Gradebook</h2>
+      <div class="form-group">
+        <label for="courseSelect3">Select Course</label>
+        <select id="courseSelect3" onchange="app.loadGradebook()">
+          <option value="">Choose a course...</option>
+        </select>
+      </div>
+      <div id="gradebookTabs" style="margin-bottom: 1rem; display: none;">
+        <button onclick="app.switchGradebookTab('outcomes')" id="outcomesTabBtn" style="margin-right: 0.5rem;">Outcomes Ledger</button>
+        <button onclick="app.switchGradebookTab('worksheet')" id="worksheetTabBtn" style="margin-right: 0.5rem;">Grading Worksheet</button>
+        <button onclick="app.switchGradebookTab('release')" id="releaseTabBtn">Batch Release</button>
+      </div>
+      <div id="outcomesTab" style="display: none;"></div>
+      <div id="worksheetTab" style="display: none;"></div>
+      <div id="releaseTab" style="display: none;"></div>
+    </div>
+
+    <!-- Audit View -->
+    <div id="auditView" class="view">
+      <h2>Audit Trail</h2>
+      <div class="form-group">
+        <label for="courseSelect4">Select Course</label>
+        <select id="courseSelect4" onchange="app.loadAudit()">
+          <option value="">Choose a course...</option>
+        </select>
+      </div>
+      <div id="auditList"></div>
+    </div>
+  </main>
+
+  <!-- Modals -->
+  <div id="createDraftModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">Create Draft Assessment</h3>
+        <button class="modal-close" onclick="app.closeModal('createDraftModal')">&times;</button>
+      </div>
+      <form onsubmit="app.createDraft(event)">
+        <div class="form-group">
+          <label for="draftTitle">Title</label>
+          <input type="text" id="draftTitle" required>
+        </div>
+        <div class="form-group">
+          <label for="draftOpens">Opens (UTC)</label>
+          <input type="datetime-local" id="draftOpens" required>
+        </div>
+        <div class="form-group">
+          <label for="draftDue">Due (UTC)</label>
+          <input type="datetime-local" id="draftDue" required>
+        </div>
+        <div class="form-group">
+          <label for="draftDuration">Duration (minutes)</label>
+          <input type="number" id="draftDuration" min="1" required>
+        </div>
+        <div class="form-group">
+          <label for="draftAttempts">Max Attempts</label>
+          <input type="number" id="draftAttempts" min="1" required>
+        </div>
+        <div id="draftErrors"></div>
+        <button type="submit" style="background: var(--primary); color: white; border: none; width: 100%;">Create</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="assessmentDetailModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" id="assessmentDetailTitle"></h3>
+        <button class="modal-close" onclick="app.closeModal('assessmentDetailModal')">&times;</button>
+      </div>
+      <div id="assessmentDetailContent"></div>
+    </div>
+  </div>
+
+  <div id="attemptModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" id="attemptModalTitle"></h3>
+        <button class="modal-close" onclick="app.closeModal('attemptModal')">&times;</button>
+      </div>
+      <div id="attemptModalContent"></div>
+    </div>
+  </div>
+
+  <div class="sync-status" id="syncStatus"></div>
+
+  <script>
+    // Global state
+    const app = {
+      token: localStorage.getItem('token'),
+      user: JSON.parse(localStorage.getItem('user') || '{}'),
+      currentCourse: null,
+      currentAssessment: null,
+      currentAttempt: null,
+      currentView: 'courses',
+      pendingOperations: new Map(),
+      courseRevisions: new Map(),
+      referenceMoment: new Date('2026-09-02T12:00:00Z'),
+      
+      async init() {
+        if (this.token) {
+          this.showSignedInUI();
+          await this.loadCourses();
+        } else {
+          this.showSignInUI();
+        }
+      },
+      
+      showSignInUI() {
+        document.getElementById('signInView').classList.add('active');
+        document.querySelectorAll('[data-view]').forEach(nav => nav.style.display = 'none');
+        document.querySelector('header').style.display = 'none';
+        document.querySelectorAll('nav a').forEach(a => a.style.display = 'none');
+      },
+      
+      showSignedInUI() {
+        document.getElementById('signInView').classList.remove('active');
+        document.querySelectorAll('[data-view]').forEach(nav => nav.style.display = 'inline-block');
+        document.querySelector('header').style.display = 'flex';
+        document.getElementById('userName').textContent = this.user.name || '';
+        document.getElementById('userEmail').textContent = this.user.email || '';
+      },
+      
+      async signIn(event) {
+        event.preventDefault();
+        const email = document.getElementById('emailInput').value;
+        const password = document.getElementById('passwordInput').value;
+        
+        try {
+          const response = await fetch('/api/auth/sign-in', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+          });
+          
+          if (!response.ok) {
+            const data = await response.json();
+            document.getElementById('signInError').textContent = data.error || 'Sign in failed';
+            return;
+          }
+          
+          const data = await response.json();
+          this.token = data.token;
+          this.user = data.user;
+          localStorage.setItem('token', this.token);
+          localStorage.setItem('user', JSON.stringify(this.user));
+          
+          this.showSignedInUI();
+          await this.loadCourses();
+          this.switchView('courses');
+        } catch (error) {
+          document.getElementById('signInError').textContent = 'Network error: ' + error.message;
+        }
+      },
+      
+      async signOut() {
+        try {
+          await fetch('/api/auth/sign-out', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${this.token}` }
+          });
+        } catch (error) {
+          console.error('Sign out error:', error);
+        }
+        
+        this.token = null;
+        this.user = {};
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        location.reload();
+      },
+      
+      async api(method, path, body = null) {
+        const opts = {
+          method,
+          headers: { 'Authorization': `Bearer ${this.token}` }
+        };
+        
+        if (body) {
+          opts.headers['Content-Type'] = 'application/json';
+          opts.body = JSON.stringify(body);
+        }
+        
+        const response = await fetch(path, opts);
+        if (response.status === 401) {
+          this.showSignInUI();
+          throw new Error('Not authenticated');
+        }
+        
+        const data = await response.json();
+        return { status: response.status, data };
+      },
+      
+      generateOperationId() {
+        return crypto.getRandomValues(new Uint8Array(16)).reduce((s, b) => s + b.toString(16).padStart(2, '0'), '');
+      },
+      
+      async loadCourses() {
+        try {
+          const { data } = await this.api('GET', '/api/courses');
+          const html = data.length === 0 
+            ? '<div class="empty-state"><p>No courses enrolled</p></div>'
+            : data.map(c => `
+              <div class="card">
+                <h3 class="card-title">${c.title}</h3>
+                <p style="color: var(--gray); font-size: 0.875rem; margin: 0.5rem 0 0 0;">${c.id}</p>
+              </div>
+            `).join('');
+          
+          document.getElementById('coursesList').innerHTML = html;
+          
+          // Populate course selects
+          const selects = ['courseSelect', 'courseSelect2', 'courseSelect3', 'courseSelect4'];
+          for (const selectId of selects) {
+            const select = document.getElementById(selectId);
+            select.innerHTML = '<option value="">Choose a course...</option>';
+            for (const course of data) {
+              select.innerHTML += `<option value="${course.id}">${course.title}</option>`;
+            }
+          }
+        } catch (error) {
+          console.error('Load courses error:', error);
+        }
+      },
+      
+      switchView(view) {
+        this.currentView = view;
+        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        document.getElementById(view + 'View').classList.add('active');
+        document.querySelectorAll('nav a').forEach(a => a.removeAttribute('aria-current'));
+        document.querySelector(`nav a[data-view="${view}"]`).setAttribute('aria-current', 'page');
+      },
+      
+      async loadAssessments() {
+        const courseId = document.getElementById('courseSelect').value;
+        if (!courseId) return;
+        
+        this.currentCourse = courseId;
+        
+        try {
+          const { data } = await this.api('GET', `/api/assessments/${courseId}`);
+          
+          let html = '';
+          if (data.length === 0) {
+            html = '<div class="empty-state"><p>No assessments</p></div>';
+          } else {
+            html = data.map(a => `
+              <div class="card">
+                <div class="card-header">
+                  <h3 class="card-title">${a.title}</h3>
+                  <span class="status-badge status-${a.status}">${a.status}</span>
+                </div>
+                <p><strong>Opens:</strong> ${new Date(a.opens_at).toLocaleString()}</p>
+                <p><strong>Due:</strong> ${new Date(a.due_at).toLocaleString()}</p>
+                <p><strong>Duration:</strong> ${a.duration_minutes} minutes | <strong>Max Attempts:</strong> ${a.max_attempts}</p>
+                <div class="action-group">
+                  <button onclick="app.viewAssessment('${courseId}', '${a.id}')">View Details</button>
+                  ${this.user.role === 'instructor' && a.status === 'draft' 
+                    ? `<button onclick="app.showEditDraftModal('${courseId}', '${a.id}')">Edit</button>` 
+                    : ''}
+                  ${this.user.role === 'student' && a.status === 'published'
+                    ? `<button onclick="app.startAttempt('${courseId}', '${a.id}')">Start Attempt</button>`
+                    : ''}
+                </div>
+              </div>
+            `).join('');
+          }
+          
+          document.getElementById('assessmentsList').innerHTML = html;
+          document.getElementById('instructorActions').style.display = this.user.role === 'instructor' ? 'block' : 'none';
+        } catch (error) {
+          console.error('Load assessments error:', error);
+        }
+      },
+      
+      async viewAssessment(courseId, assessmentId) {
+        try {
+          const { data } = await this.api('GET', `/api/assessments/${courseId}/${assessmentId}`);
+          
+          let itemsHtml = '';
+          for (const item of data.items) {
+            itemsHtml += `
+              <div class="question-card">
+                <div class="question-prompt">${item.prompt}</div>
+                ${item.kind === 'multiple_choice' 
+                  ? `<div style="font-size: 0.875rem; color: var(--gray);">Multiple Choice (${item.points} points)</div>` +
+                    item.options.map(o => `<div class="question-answer">${o}</div>`).join('')
+                  : `<div style="font-size: 0.875rem; color: var(--gray);">Written Response (${item.points} points)</div>`}
+                ${this.user.role !== 'student' && item.kind === 'multiple_choice'
+                  ? `<div style="background: #fee2e2; padding: 0.5rem; border-radius: 0.25rem; margin-top: 0.5rem; font-size: 0.875rem;"><strong>Answer Key:</strong> ${item.answer}</div>`
+                  : ''}
+              </div>
+            `;
+          }
+          
+          document.getElementById('assessmentDetailTitle').textContent = data.title;
+          document.getElementById('assessmentDetailContent').innerHTML = itemsHtml;
+          this.openModal('assessmentDetailModal');
+        } catch (error) {
+          console.error('View assessment error:', error);
+        }
+      },
+      
+      showCreateDraftModal() {
+        document.getElementById('draftTitle').value = '';
+        document.getElementById('draftOpens').value = '';
+        document.getElementById('draftDue').value = '';
+        document.getElementById('draftDuration').value = '';
+        document.getElementById('draftAttempts').value = '';
+        document.getElementById('draftErrors').innerHTML = '';
+        this.openModal('createDraftModal');
+      },
+      
+      async createDraft(event) {
+        event.preventDefault();
+        const courseId = document.getElementById('courseSelect').value;
+        if (!courseId) {
+          alert('Select a course first');
+          return;
+        }
+        
+        const title = document.getElementById('draftTitle').value;
+        const opens_at = new Date(document.getElementById('draftOpens').value).toISOString();
+        const due_at = new Date(document.getElementById('draftDue').value).toISOString();
+        const duration_minutes = parseInt(document.getElementById('draftDuration').value);
+        const max_attempts = parseInt(document.getElementById('draftAttempts').value);
+        
+        const operationId = this.generateOperationId();
+        const body = { operationId, title, opens_at, due_at, duration_minutes, max_attempts };
+        
+        try {
+          const { status, data } = await this.api('POST', `/api/assessments/${courseId}/create-draft`, body);
+          
+          if (status === 201) {
+            this.closeModal('createDraftModal');
+            this.showStatus('Draft created successfully', 'success');
+            await this.loadAssessments();
+          } else {
+            const errors = data.errors || [data.error];
+            document.getElementById('draftErrors').innerHTML = errors.map(e => `<div class="error-message">${e}</div>`).join('');
+          }
+        } catch (error) {
+          console.error('Create draft error:', error);
+        }
+      },
+      
+      async loadAttempts() {
+        const courseId = document.getElementById('courseSelect2').value;
+        if (!courseId) return;
+        
+        try {
+          const { data: assessments } = await this.api('GET', `/api/assessments/${courseId}`);
+          
+          let html = '';
+          for (const assessment of assessments) {
+            const { data: details } = await this.api('GET', `/api/assessments/${courseId}/${assessment.id}`);
+            if (details.items) {
+              html += `
+                <div class="card">
+                  <h3 class="card-title">${assessment.title}</h3>
+                  <div class="action-group">
+                    <button onclick="app.viewAttemptForAssessment('${courseId}', '${assessment.id}')">View Attempts</button>
+                  </div>
+                </div>
+              `;
+            }
+          }
+          
+          if (!html) {
+            html = '<div class="empty-state"><p>No assessments available</p></div>';
+          }
+          
+          document.getElementById('attemptsList').innerHTML = html;
+        } catch (error) {
+          console.error('Load attempts error:', error);
+        }
+      },
+      
+      async viewAttemptForAssessment(courseId, assessmentId) {
+        try {
+          const { data: assessment } = await this.api('GET', `/api/assessments/${courseId}/${assessmentId}`);
+          
+          let html = '<div>';
+          
+          if (this.user.role === 'student') {
+            const allAttempts = [];
+            let page = 0;
+            
+            const attemptList = localStorage.getItem(`attempts_${assessmentId}`) || '[]';
+            const stored = JSON.parse(attemptList);
+            
+            for (const attempt of stored) {
+              try {
+                const { data } = await this.api('GET', `/api/attempts/${attempt.id}`);
+                allAttempts.push(data);
+              } catch (error) {
+                // Skip this attempt
+              }
+            }
+            
+            if (allAttempts.length === 0) {
+              html += '<p>No attempts yet</p>';
+            } else {
+              html += '<table><thead><tr><th>Started</th><th>Status</th><th>Score</th><th>Action</th></tr></thead><tbody>';
+              for (const attempt of allAttempts) {
+                const score = attempt.status === 'in_progress' ? 'In progress' : 
+                  attempt.feedbackStatus === 'released' ? `${(attempt.objectiveScore || 0) + (attempt.rubricScore || 0)}` : 'Not released';
+                html += `<tr><td>${new Date(attempt.startedAt).toLocaleString()}</td><td><span class="status-badge status-${attempt.status}">${attempt.status}</span></td><td>${score}</td><td><button onclick="app.resumeAttempt('${attempt.id}')">View</button></td></tr>`;
+              }
+              html += '</tbody></table>';
+            }
+          }
+          
+          html += '</div>';
+          
+          document.getElementById('attemptModalTitle').textContent = `${assessment.title} - Attempts`;
+          document.getElementById('attemptModalContent').innerHTML = html;
+          this.openModal('attemptModal');
+        } catch (error) {
+          console.error('View attempt error:', error);
+        }
+      },
+      
+      async startAttempt(courseId, assessmentId) {
+        const operationId = this.generateOperationId();
+        const body = { operationId, assessmentId, expectedRevision: this.courseRevisions.get(courseId) || 0 };
+        
+        try {
+          const { status, data } = await this.api('POST', `/api/attempts/${courseId}/start`, body);
+          
+          if (status === 201) {
+            const attempts = JSON.parse(localStorage.getItem(`attempts_${assessmentId}`) || '[]');
+            attempts.push({ id: data.id });
+            localStorage.setItem(`attempts_${assessmentId}`, JSON.stringify(attempts));
+            
+            await this.resumeAttempt(data.id);
+          } else {
+            alert(data.error || 'Failed to start attempt');
+          }
+        } catch (error) {
+          console.error('Start attempt error:', error);
+        }
+      },
+      
+      async resumeAttempt(attemptId) {
+        try {
+          const { data } = await this.api('GET', `/api/attempts/${attemptId}`);
+          this.currentAttempt = data;
+          
+          if (this.user.role === 'student' && data.status === 'in_progress') {
+            await this.showAttemptInterface(attemptId, data);
+          } else {
+            await this.showAttemptSummary(attemptId, data);
+          }
+        } catch (error) {
+          console.error('Resume attempt error:', error);
+        }
+      },
+      
+      async showAttemptInterface(attemptId, attempt) {
+        try {
+          const { data: assessment } = await this.api('GET', `/api/assessments/${attempt.assessmentId}`);
+          
+          let html = '<div>';
+          
+          // Timer
+          const startTime = new Date(attempt.startedAt);
+          const now = this.referenceMoment;
+          const elapsed = (now - startTime) / 1000 / 60;
+          const remaining = assessment.duration_minutes - elapsed;
+          
+          html += `<div style="background: var(--bg-light); padding: 1rem; border-radius: 0.375rem; margin-bottom: 1rem;">`;
+          html += `<p style="margin: 0; font-size: 0.875rem; color: var(--gray);">Time Remaining</p>`;
+          html += `<p class="countdown" style="margin: 0;">${Math.max(0, Math.ceil(remaining))} minutes</p>`;
+          html += `</div>`;
+          
+          // Questions
+          for (const item of assessment.items) {
+            const answer = attempt.answers ? attempt.answers[item.id] : null;
+            
+            html += `<div class="question-card">`;
+            html += `<div class="question-prompt">${item.prompt}</div>`;
+            
+            if (item.kind === 'multiple_choice') {
+              html += `<div>`;
+              for (const option of item.options) {
+                const checked = answer === option ? 'checked' : '';
+                html += `<label style="display: block; margin-bottom: 0.5rem;"><input type="radio" name="item_${item.id}" value="${option}" ${checked} onchange="app.saveAnswer('${attemptId}', '${item.id}', this.value)"> ${option}</label>`;
+              }
+              html += `</div>`;
+            } else {
+              html += `<textarea name="item_${item.id}" style="min-height: 100px;" onchange="app.saveAnswer('${attemptId}', '${item.id}', this.value)">${answer || ''}</textarea>`;
+            }
+            
+            html += `</div>`;
+          }
+          
+          html += `<div class="action-group">`;
+          html += `<button onclick="app.submitAttempt('${attemptId}')" style="background: var(--success); color: white; border: none;">Submit Attempt</button>`;
+          html += `</div>`;
+          html += `</div>`;
+          
+          document.getElementById('attemptModalTitle').textContent = attempt.assessmentTitle;
+          document.getElementById('attemptModalContent').innerHTML = html;
+          this.openModal('attemptModal');
+        } catch (error) {
+          console.error('Show attempt interface error:', error);
+        }
+      },
+      
+      async saveAnswer(attemptId, itemId, value) {
+        const operationId = this.generateOperationId();
+        const body = { operationId, itemId, value };
+        
+        try {
+          await this.api('POST', `/api/attempts/${attemptId}/save-answer`, body);
+          this.currentAttempt.answers = this.currentAttempt.answers || {};
+          this.currentAttempt.answers[itemId] = value;
+        } catch (error) {
+          console.error('Save answer error:', error);
+        }
+      },
+      
+      async submitAttempt(attemptId) {
+        if (!confirm('Are you sure you want to submit your attempt?')) return;
+        
+        const operationId = this.generateOperationId();
+        const body = { operationId };
+        
+        try {
+          const { data } = await this.api('POST', `/api/attempts/${attemptId}/submit`, body);
+          this.showStatus('Attempt submitted successfully', 'success');
+          this.closeModal('attemptModal');
+          await this.loadAttempts();
+        } catch (error) {
+          console.error('Submit attempt error:', error);
+        }
+      },
+      
+      async showAttemptSummary(attemptId, attempt) {
+        let html = '<div>';
+        
+        html += `<p><strong>Status:</strong> ${attempt.status}</p>`;
+        html += `<p><strong>Started:</strong> ${new Date(attempt.startedAt).toLocaleString()}</p>`;
+        
+        if (attempt.submittedAt) {
+          html += `<p><strong>Submitted:</strong> ${new Date(attempt.submittedAt).toLocaleString()}</p>`;
+        }
+        
+        if (attempt.feedbackStatus === 'released') {
+          html += `<p><strong>Score:</strong> ${(attempt.objectiveScore || 0) + (attempt.rubricScore || 0)}</p>`;
+          if (attempt.grades) {
+            html += '<div style="margin-top: 1rem;"><strong>Rubric Grades:</strong>';
+            for (const grade of attempt.grades) {
+              html += `<div style="padding: 0.5rem; background: var(--bg-light); border-radius: 0.25rem; margin-top: 0.5rem;">`;
+              html += `<div><strong>${grade.criterion_id}</strong>: ${grade.score} points</div>`;
+              html += `<div style="color: var(--gray); font-size: 0.875rem;">${grade.feedback}</div>`;
+              html += `</div>`;
+            }
+            html += '</div>';
+          }
+        }
+        
+        html += '</div>';
+        
+        document.getElementById('attemptModalTitle').textContent = attempt.assessmentTitle;
+        document.getElementById('attemptModalContent').innerHTML = html;
+        this.openModal('attemptModal');
+      },
+      
+      async loadGradebook() {
+        const courseId = document.getElementById('courseSelect3').value;
+        if (!courseId) return;
+        
+        this.currentCourse = courseId;
+        
+        if (this.user.role === 'student') {
+          document.getElementById('gradebookTabs').style.display = 'none';
+          // Show student's own outcomes
+          try {
+            const { data } = await this.api('GET', `/api/courses/${courseId}/outcomes`);
+            // Students only see their own row
+            // This is handled by the server
+          } catch (error) {
+            console.error('Load gradebook error:', error);
+          }
+        } else {
+          document.getElementById('gradebookTabs').style.display = 'block';
+          this.switchGradebookTab('outcomes');
+        }
+      },
+      
+      switchGradebookTab(tab) {
+        document.getElementById('outcomesTab').style.display = tab === 'outcomes' ? 'block' : 'none';
+        document.getElementById('worksheetTab').style.display = tab === 'worksheet' ? 'block' : 'none';
+        document.getElementById('releaseTab').style.display = tab === 'release' ? 'block' : 'none';
+        
+        if (tab === 'outcomes') {
+          this.loadOutcomesLedger();
+        } else if (tab === 'worksheet') {
+          this.loadGradingWorksheet();
+        } else if (tab === 'release') {
+          this.loadBatchRelease();
+        }
+      },
+      
+      async loadOutcomesLedger() {
+        const courseId = this.currentCourse;
+        if (!courseId) return;
+        
+        try {
+          const { data } = await this.api('GET', `/api/courses/${courseId}/outcomes`);
+          
+          if (!data || !data.outcomes) {
+            document.getElementById('outcomesTab').innerHTML = '<p>No data</p>';
+            return;
+          }
+          
+          let html = '<table><thead><tr><th>Student</th>';
+          for (const weight of data.weights) {
+            html += `<th>${weight.assessment_id} (${(weight.weight * 100).toFixed(0)}%)</th>`;
+          }
+          html += '<th>Grade</th></tr></thead><tbody>';
+          
+          for (const student of data.outcomes) {
+            html += `<tr><td>${student.name}</td>`;
+            
+            for (const weight of data.weights) {
+              const assess = student.assessments[weight.assessment_id];
+              let cellContent = '—';
+              
+              if (assess.excused) {
+                cellContent = 'Excused';
+              } else if (assess.status === 'missing') {
+                cellContent = 'Missing';
+              } else if (assess.feedbackStatus !== 'released') {
+                cellContent = 'Pending';
+              } else if (assess.objectiveScore !== null) {
+                const max = 10; // TODO: calculate from items
+                cellContent = `${assess.objectiveScore + (assess.rubricScore || 0)}/${max}`;
+              }
+              
+              html += `<td>${cellContent}</td>`;
+            }
+            
+            html += '<td>—</td>';
+            html += '</tr>';
+          }
+          
+          html += '</tbody></table>';
+          document.getElementById('outcomesTab').innerHTML = html;
+        } catch (error) {
+          console.error('Load outcomes error:', error);
+        }
+      },
+      
+      async loadGradingWorksheet() {
+        const courseId = this.currentCourse;
+        if (!courseId) return;
+        
+        try {
+          const { data: assessments } = await this.api('GET', `/api/assessments/${courseId}`);
+          
+          let html = '<div>';
+          
+          for (const assessment of assessments) {
+            if (assessment.status !== 'published') continue;
+            
+            html += `<div class="card">`;
+            html += `<h3 class="card-title">${assessment.title}</h3>`;
+            html += `<button onclick="app.selectSubmissionsForGrading('${courseId}', '${assessment.id}')">Grade Submissions</button>`;
+            html += `</div>`;
+          }
+          
+          html += '</div>';
+          document.getElementById('worksheetTab').innerHTML = html;
+        } catch (error) {
+          console.error('Load worksheet error:', error);
+        }
+      },
+      
+      async selectSubmissionsForGrading(courseId, assessmentId) {
+        // This would show a list of submitted attempts and allow worksheet grading
+        alert('Worksheet grading interface');
+      },
+      
+      async loadBatchRelease() {
+        const courseId = this.currentCourse;
+        if (!courseId) return;
+        
+        try {
+          const { data: assessments } = await this.api('GET', `/api/assessments/${courseId}`);
+          
+          let html = '<div>';
+          html += '<p>Select attempts to release feedback in a batch:</p>';
+          html += '<div id="releaseSelection"></div>';
+          html += '<button onclick="app.previewBatchRelease()">Preview Release</button>';
+          html += '</div>';
+          
+          document.getElementById('releaseTab').innerHTML = html;
+        } catch (error) {
+          console.error('Load batch release error:', error);
+        }
+      },
+      
+      async loadAudit() {
+        const courseId = document.getElementById('courseSelect4').value;
+        if (!courseId) return;
+        
+        try {
+          const { data } = await this.api('GET', `/api/audit/${courseId}`);
+          
+          let html = '<table><thead><tr><th>Timestamp</th><th>Event</th><th>Details</th></tr></thead><tbody>';
+          
+          for (const event of data) {
+            html += `<tr>`;
+            html += `<td>${new Date(event.timestamp).toLocaleString()}</td>`;
+            html += `<td>${event.event_type}</td>`;
+            html += `<td>${event.details}</td>`;
+            html += `</tr>`;
+          }
+          
+          html += '</tbody></table>';
+          
+          if (data.length === 0) {
+            html = '<div class="empty-state"><p>No audit events</p></div>';
+          }
+          
+          document.getElementById('auditList').innerHTML = html;
+        } catch (error) {
+          console.error('Load audit error:', error);
+        }
+      },
+      
+      openModal(modalId) {
+        document.getElementById(modalId).classList.add('open');
+        document.getElementById(modalId).focus();
+      },
+      
+      closeModal(modalId) {
+        document.getElementById(modalId).classList.remove('open');
+      },
+      
+      showStatus(message, type) {
+        const status = document.getElementById('syncStatus');
+        status.textContent = message;
+        status.className = `sync-status show ${type}`;
+        setTimeout(() => {
+          status.classList.remove('show');
+        }, 3000);
+      }
+    };
+    
+    // Initialize on load
+    document.addEventListener('DOMContentLoaded', () => {
+      app.init();
+    });
+    
+    // Handle modal close with Escape
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        document.querySelectorAll('.modal.open').forEach(m => {
+          m.classList.remove('open');
+        });
+      }
+    });
+    
+    // Handle reduced motion preference
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      document.body.classList.add('prefers-reduced-motion');
+    }
+  </script>
+</body>
+</html>

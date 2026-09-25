@@ -190,8 +190,7 @@ function computeTrueup(db, actualCycleId) {
     // a second time and never against zero. A cycle with neither (never estimated, never
     // previously rebilled) has nothing to supersede and mints a plain first-time rebill.
     const priorBill =
-      db.prepare("SELECT * FROM bills WHERE cycle_id=? AND kind='ESTIMATE'").get(c.id) ||
-      db.prepare("SELECT * FROM bills WHERE cycle_id=? AND kind='REBILL' AND superseded=0 ORDER BY created_at DESC, id DESC LIMIT 1").get(c.id) ||
+      db.prepare("SELECT * FROM bills WHERE cycle_id=? AND kind IN ('ESTIMATE','REBILL') AND superseded=0 AND state IN ('ISSUED','BILLED','APPROVED') ORDER BY rowid DESC LIMIT 1").get(c.id) ||
       null;
     const priorTotal = priorBill ? priorBill.total_cents : 0;
     const contra = priorBill ? rebillEnergy - priorTotal : 0;

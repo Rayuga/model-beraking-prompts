@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gambit Hollow</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101820;
+      --panel: #182433;
+      --panel-2: #1f2d40;
+      --line: #30445f;
+      --text: #eef4ff;
+      --muted: #a9bad0;
+      --accent: #6bd4ff;
+      --good: #84e98a;
+      --warn: #ffcb6b;
+      --bad: #ff7b7b;
+      --chip: #24364c;
+      --focus: #ffee58;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: linear-gradient(180deg, #0c141d, var(--bg)); color: var(--text); font: 16px/1.4 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; overflow-x: hidden; }
+    body { padding: 16px; }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+    .app { max-width: 1280px; margin: 0 auto; display: grid; gap: 16px; }
+    header, section, .panel { background: rgba(24, 36, 51, 0.94); border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 10px 30px rgba(0,0,0,0.25); }
+    header { padding: 16px 18px; display: grid; gap: 8px; }
+    h1, h2, h3 { margin: 0; line-height: 1.1; }
+    h1 { font-size: 1.7rem; }
+    h2 { font-size: 1.1rem; color: var(--accent); }
+    h3 { font-size: 1rem; color: var(--accent); }
+    p { margin: 0.4rem 0; color: var(--muted); }
+    .topline { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+    .badge { padding: 0.25rem 0.6rem; border-radius: 999px; background: var(--chip); color: var(--text); border: 1px solid var(--line); }
+    .layout { display: grid; grid-template-columns: 1.35fr 1fr; gap: 16px; align-items: start; }
+    .stack { display: grid; gap: 16px; }
+    .panel { padding: 14px; min-width: 0; }
+    .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+    .field { display: grid; gap: 6px; min-width: 0; }
+    .field label { color: var(--muted); font-size: 0.92rem; }
+    .field input, .field select, .field textarea { width: 100%; background: #101824; color: var(--text); border: 1px solid var(--line); border-radius: 12px; padding: 0.7rem 0.8rem; }
+    .field input::placeholder, .field textarea::placeholder { color: #6f8097; }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .actions button, .actions a { background: #25374d; color: var(--text); border: 1px solid var(--line); border-radius: 12px; padding: 0.65rem 0.9rem; text-decoration: none; }
+    .actions button.primary { background: linear-gradient(180deg, #3a7bd5, #2768b8); }
+    .actions button.good { background: linear-gradient(180deg, #2f7d4a, #245f39); }
+    .actions button.warn { background: linear-gradient(180deg, #8f6a1d, #6d5315); }
+    .actions button.danger { background: linear-gradient(180deg, #922f2f, #6d2323); }
+    .actions button[disabled] { opacity: 0.55; cursor: not-allowed; }
+    .muted { color: var(--muted); }
+    .error { color: var(--bad); }
+    .good-text { color: var(--good); }
+    .status { min-height: 1.4em; }
+    .cards { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; min-width: 0; }
+    .card-btn { border: 0; padding: 0; background: transparent; }
+    .card { width: 70px; height: 98px; }
+    .card.face-down { filter: drop-shadow(0 2px 5px rgba(0,0,0,0.25)); }
+    .card.selected svg { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: 8px; }
+    .chip { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.35rem 0.6rem; border-radius: 999px; background: var(--chip); border: 1px solid var(--line); }
+    .table { display: grid; gap: 12px; }
+    .table-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+    .board-wrap { overflow: hidden; border-radius: 16px; border: 1px solid var(--line); background: linear-gradient(180deg, #0f1722, #121c2a); }
+    .board-wrap svg { display: block; width: 100%; height: auto; }
+    .small { font-size: 0.9rem; }
+    .columns { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .list { display: grid; gap: 8px; max-height: 260px; overflow: auto; padding-right: 4px; }
+    .item { border: 1px solid var(--line); border-radius: 12px; padding: 10px; background: rgba(16, 24, 36, 0.7); display: grid; gap: 6px; }
+    .item.active { border-color: var(--accent); box-shadow: 0 0 0 1px rgba(107,212,255,0.25); }
+    .item button { justify-self: start; }
+    .inline { display: inline-flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+    .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
+    .sep { height: 1px; background: var(--line); margin: 10px 0; }
+    .results { display: grid; gap: 10px; }
+    .result-card { border: 1px solid var(--line); border-radius: 12px; padding: 10px; background: rgba(16, 24, 36, 0.7); }
+    .reasons { margin: 0.4rem 0 0; padding-left: 1.2rem; color: var(--muted); }
+    .reasons li { margin: 0.15rem 0; }
+    .example-list { display: flex; flex-wrap: wrap; gap: 6px; }
+    .example-list button { padding: 0.45rem 0.65rem; }
+    .two-col { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+    .hidden { display: none !important; }
+    @media (max-width: 980px) {
+      .layout, .columns, .two-col, .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="topline">
+        <h1>Gambit Hollow</h1>
+        <span id="connectionBadge" class="badge">Loading…</span>
+        <span id="seatBadge" class="badge">Seat A</span>
+        <span id="gameBadge" class="badge">No game selected</span>
+      </div>
+      <div class="topline">
+        <button id="seatAButton" type="button">View seat A</button>
+        <button id="seatBButton" type="button">View seat B</button>
+        <button id="reloadGameButton" type="button">Reload current game</button>
+      </div>
+      <div id="status" class="status" aria-live="polite"></div>
+    </header>
+
+    <div class="layout">
+      <div class="stack">
+        <section class="panel" id="tablePanel">
+          <div class="table-head">
+            <div>
+              <h2>Table</h2>
+              <p id="tableSubline">Open games, seats, dealer, peg count, and show.</p>
+            </div>
+            <div class="inline">
+              <span class="chip" id="phaseChip">Phase: —</span>
+              <span class="chip" id="dealerChip">Dealer: —</span>
+              <span class="chip" id="turnChip">Turn: —</span>
+            </div>
+          </div>
+          <div class="sep"></div>
+          <div id="gameSummary" class="grid-3"></div>
+          <div class="sep"></div>
+          <div class="board-wrap">
+            <svg id="pegBoard" viewBox="0 0 960 460" role="img" aria-label="Cribbage peg board"></svg>
+          </div>
+          <div class="sep"></div>
+          <div class="columns">
+            <div>
+              <h3>Open games</h3>
+              <div id="gameList" class="list"></div>
+            </div>
+            <div>
+              <h3>Historical summaries</h3>
+              <div id="historyList" class="list"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel" id="gamePanel">
+          <div class="table-head">
+            <div>
+              <h2>Current game</h2>
+              <p id="gameIntro">Choose a game or create a new one.</p>
+            </div>
+            <div class="actions">
+              <button id="pendingRetryButton" type="button" class="warn hidden">Retry pending save</button>
+              <button id="clearPendingButton" type="button">Clear pending save</button>
+            </div>
+          </div>
+          <div class="sep"></div>
+          <div id="playerPanels" class="grid-2"></div>
+          <div class="sep"></div>
+          <div id="currentHandPanel"></div>
+          <div class="sep"></div>
+          <div id="actionPanel" class="actions"></div>
+          <div class="sep"></div>
+          <div>
+            <h3>Commentary</h3>
+            <div id="commentary" class="list"></div>
+          </div>
+        </section>
+      </div>
+
+      <div class="stack">
+        <section class="panel">
+          <div class="table-head">
+            <div>
+              <h2>Start or reopen a game</h2>
+              <p>Pick the players, optional practice deal, and starting scores.</p>
+            </div>
+          </div>
+          <div class="sep"></div>
+          <form id="newGameForm" class="stack">
+            <div class="grid-2">
+              <div class="field">
+                <label for="seatASelect">Seat A member</label>
+                <select id="seatASelect"></select>
+              </div>
+              <div class="field">
+                <label for="seatBSelect">Seat B member</label>
+                <select id="seatBSelect"></select>
+              </div>
+            </div>
+            <div class="grid-3">
+              <div class="field">
+                <label for="modeSelect">Game mode</label>
+                <select id="modeSelect">
+                  <option value="normal">Normal shuffle</option>
+                  <option value="practice">Practice deal</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="practiceSelect">Practice deal</label>
+                <select id="practiceSelect"></select>
+              </div>
+              <div class="field">
+                <label for="viewerSelect">Open as seat</label>
+                <select id="viewerSelect">
+                  <option value="A">Seat A</option>
+                  <option value="B">Seat B</option>
+                </select>
+              </div>
+            </div>
+            <div class="grid-2">
+              <div class="field">
+                <label for="scoreAInput">Starting score for seat A</label>
+                <input id="scoreAInput" type="number" min="0" max="120" value="0">
+              </div>
+              <div class="field">
+                <label for="scoreBInput">Starting score for seat B</label>
+                <input id="scoreBInput" type="number" min="0" max="120" value="0">
+              </div>
+            </div>
+            <div class="actions">
+              <button id="createGameButton" class="primary" type="submit">Create game</button>
+              <button id="reopenSelectedButton" type="button">Reopen selected</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="panel">
+          <div class="table-head">
+            <div>
+              <h2>Scoring bench</h2>
+              <p>Enter four cards and a cut, or a pegging pile and next card.</p>
+            </div>
+          </div>
+          <div class="sep"></div>
+          <div class="two-col">
+            <div>
+              <h3>Hand / crib</h3>
+              <div class="field">
+                <label>Examples</label>
+                <div id="exampleList" class="example-list"></div>
+              </div>
+              <div class="grid-4">
+                <div class="field"><label for="bench1">Card 1</label><input id="bench1" maxlength="2" placeholder="5S"></div>
+                <div class="field"><label for="bench2">Card 2</label><input id="bench2" maxlength="2" placeholder="5H"></div>
+                <div class="field"><label for="bench3">Card 3</label><input id="bench3" maxlength="2" placeholder="5D"></div>
+                <div class="field"><label for="bench4">Card 4</label><input id="bench4" maxlength="2" placeholder="JC"></div>
+              </div>
+              <div class="grid-2" style="margin-top:12px;">
+                <div class="field"><label for="benchCut">Cut</label><input id="benchCut" maxlength="2" placeholder="5C"></div>
+                <div class="field"><label for="benchCrib">Crib?</label><select id="benchCrib"><option value="false">Hand</option><option value="true">Crib</option></select></div>
+              </div>
+              <div class="actions" style="margin-top:12px;">
+                <button id="scoreHandButton" type="button" class="good">Score hand</button>
+              </div>
+              <div id="handBenchResult" class="result-card" style="margin-top:12px;"></div>
+            </div>
+            <div>
+              <h3>Pegging check</h3>
+              <div class="grid-2">
+                <div class="field"><label for="pegPile">Pile cards</label><input id="pegPile" placeholder="7H TH 2S 3S"></div>
+                <div class="field"><label for="pegCount">Current count</label><input id="pegCount" type="number" min="0" max="31" value="0"></div>
+              </div>
+              <div class="grid-2" style="margin-top:12px;">
+                <div class="field"><label for="pegNext">Next card</label><input id="pegNext" maxlength="2" placeholder="4S"></div>
+                <div class="field"><label for="pegHint">Hint</label><input id="pegHint" placeholder="Reasons only" disabled></div>
+              </div>
+              <div class="actions" style="margin-top:12px;">
+                <button id="scorePegButton" type="button" class="good">Check pegging score</button>
+              </div>
+              <div id="pegBenchResult" class="result-card" style="margin-top:12px;"></div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <script src="/shared.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>

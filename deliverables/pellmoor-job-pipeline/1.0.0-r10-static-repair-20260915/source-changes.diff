@@ -1,0 +1,121 @@
+--- r9/tests/Dockerfile
++++ r10/tests/Dockerfile
+@@ -52,6 +52,5 @@
+ COPY pellmoor_seed_data.json /recruitment/records/pellmoor_seed_data.json
+ RUN chmod -R a+rX /recruitment
+ COPY . /tests
+-RUN python3 /tests/rewardkit-compat.py
+ RUN chmod +x /tests/test.sh && chmod -R go-rwx /tests
+ WORKDIR /tests
+--- r9/tests/SCORING.md
++++ r10/tests/SCORING.md
+@@ -0,0 +1,29 @@
++Reward composition
++==================
++
++All five judge configurations use strictly positive weights as required by the
++platform schema. Each dimension has one judge. Its criterion weights and
++configured aggregation determine its independent dimension score.
++
++Render and Constraints are final eligibility gates, not point contributions.
++Their positive judge weights preserve valid independent dimension scores; they
++do not allocate a share of the final reward. Functional, Polish and Visual
++contribute 60%, 20% and 20% after the gates pass.
++
++reward.toml declares an empty reward list so the native RewardKit runner emits
++only the five dimension scores, without a second aggregate reward. The final
++postprocessor in test.sh is the sole authority for the final reward. It validates
++all five scores as finite numbers in [0, 1], rejects booleans and missing scores,
++and applies this formula:
++
++```python
++if data["render"] <= 0.0 or data["constraints"] <= 0.0:
++    reward = 0.0
++else:
++    reward = 0.6 * data["functional"] + 0.2 * data["polish"] + 0.2 * data["visual"]
++```
++
++An explicit shared browser prerequisite still zeros every criterion in its
++dimension when it fails. Individual criteria retain their configured weighted
++aggregation. The postprocessor does not reinterpret a partial positive gate as
++zero or assign credit to missing evidence. No RewardKit scoring patch is needed.
+--- r9/tests/constraints/judge.toml
++++ r10/tests/constraints/judge.toml
+@@ -3,7 +3,7 @@
+ timeout = 600
+ isolated = false
+ temperature = 0
+-weight = 0.0
++weight = 1.0
+ prompt_template = "prompt.md"
+ 
+ [[judge.mcp_servers]]
+--- r9/tests/render/judge.toml
++++ r10/tests/render/judge.toml
+@@ -3,7 +3,7 @@
+ timeout = 600
+ isolated = false
+ temperature = 0
+-weight = 0.0
++weight = 1.0
+ prompt_template = "prompt.md"
+ 
+ [[judge.mcp_servers]]
+--- r9/tests/reward.toml
++++ r10/tests/reward.toml
+@@ -1,5 +1 @@
+-weights = { render = 0.0, constraints = 0.0, functional = 0.6, polish = 0.2, visual = 0.2 }
+-[[reward]]
+-name = "reward"
+-aggregation = "weighted_mean"
+-weights = { render = 0.0, constraints = 0.0, functional = 0.6, polish = 0.2, visual = 0.2 }
++reward = []
+--- r9/tests/rewardkit-compat.py
++++ r10/tests/rewardkit-compat.py
+@@ -1,35 +0,0 @@
+-from importlib.metadata import version
+-from pathlib import Path
+-import sysconfig
+-
+-original = '''        total_w = sum(r.reward_weight for r in rlist)
+-        if total_w == 0:
+-            flat[rname] = 0.0
+-        else:
+-'''
+-replacement = '''        total_w = sum(r.reward_weight for r in rlist)
+-        if len(rlist) == 1:
+-            flat[rname] = round(rlist[0].score, 4)
+-        elif total_w == 0:
+-            flat[rname] = 0.0
+-        else:
+-'''
+-
+-def apply():
+-    if version('harbor-rewardkit') != '0.1.7':
+-        raise RuntimeError('Review the zero-weight dimension compatibility fix for this RewardKit version')
+-    path = Path(sysconfig.get_paths()['purelib']) / 'rewardkit' / 'runner.py'
+-    source = path.read_text(encoding='utf-8')
+-    if source.count(replacement) == 1 and original not in source:
+-        print('RewardKit single-judge dimension compatibility fix already applied')
+-    elif source.count(original) == 1 and replacement not in source:
+-        source = source.replace(original, replacement, 1)
+-        compile(source, str(path), 'exec')
+-        path.write_text(source, encoding='utf-8')
+-        print('Preserved single-judge dimension scores independently of reward weights')
+-    else:
+-        raise RuntimeError('Unexpected RewardKit dimension aggregation source; refusing an unverified edit')
+-
+-
+-if __name__ == '__main__':
+-    apply()
+--- r9/tests/test.sh
++++ r10/tests/test.sh
+@@ -73,7 +73,7 @@
+ record['support_files'] = {
+     name: sha256(root / name) for name in (
+         'functional/capture-loss.js', 'functional/preserve-primary.js',
+-        'functional/receipt-ledger.py', 'rewardkit-compat.py'
++        'functional/receipt-ledger.py'
+     )
+ }
+ Path(sys.argv[1]).write_text(json.dumps(record, indent=2) + '\n')

@@ -7,7 +7,8 @@ totals, current account, and available actions should be easy to understand.
 
 Keep the product focused. It needs sign-in, sign-out, one active game for each
 account, durable match totals, current-round move history, undo and redo, and
-private saved branching analyses of completed matches.
+private saved branching analyses of completed matches, transactional branch
+transplantation and bounded tactical explanation reports.
 It does not need public registration, computer opponents, chat, tournaments,
 spectator mode, or administration screens.
 
@@ -23,7 +24,7 @@ development; deliver the dependencies needed to start the server.
 Leave `APP_MANIFEST.md` beside `server.js`, documenting the start command,
 SQLite path, and the methods and paths used for sign-in, sign-out, reading game
 state and each mutation, including analysis creation, listing, reading,
-editing and comparison. Shared routes are fine. Write the database line as
+editing, comparison, transplant preview/commit and tactical reports. Shared routes are fine. Write the database line as
 `SQLite path: /app/dropline.db`. Normal restarts must retain saved state.
 Honor `DB_PATH` when supplied by the runner; otherwise use `/app/dropline.db`.
 The runner can launch a writable copy of the app as an unprivileged user.

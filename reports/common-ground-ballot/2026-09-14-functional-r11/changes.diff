@@ -1,0 +1,100 @@
+--- r10/environment/instructions/ballots.md
++++ r11/environment/instructions/ballots.md
+@@ -25,6 +25,12 @@
+ outcomes through restart, even if the ballot or roster has changed since then;
+ replaying an old Open must not reopen a closed ballot or recapture its members.
+ 
++Approval choices form an unordered set. Retrying the same operation with the
++same distinct choices in another order is the same submission and must return
++the original receipt, including after publication and restart. Changing a
++choice is different input and must be refused. Repeated copies of a choice
++are invalid input, not another spelling of the set.
++
+ For a well-formed operation from someone allowed to perform it, remember a
+ refusal caused by a stale revision or the wrong ballot state too. A premature
+ Publish must still return its original refusal when retried after Close. To
+--- r10/environment/instructions/privacy.md
++++ r11/environment/instructions/privacy.md
+@@ -4,6 +4,12 @@
+ see who has or has not participated, but no screen, response, result, or audit
+ entry may connect a person with a choice. A successful vote response should
+ confirm participation without returning the submitted choice or choices.
++
++Members may see their own participation and anonymous totals, but never
++another Member's participation status, timestamp, or identified turnout row.
++Apply this boundary to every protected response as well as the screen,
++including nested ballot collections, turnout payloads, and activity data.
++Public demo account names and roles alone are not participation records.
+ 
+ Authority belongs on the server. Derive the person and role from a server-issued
+ unpredictable session, not an account id supplied by the browser. Refuse
+@@ -17,6 +23,12 @@
+ update can succeed. The accepted roster determines who joins the next ballot's
+ opening snapshot; it must not rewrite eligibility on an already-open ballot.
+ 
++Validate membership updates before changing the roster. A missing status or
++an object or array in place of the requested active/paused value is malformed;
++do not silently convert it into an activation or pause. Refusal must preserve
++the member's status, its applicable revision, and audit history. It must also
++leave the next ballot's eligibility snapshot based on the unchanged roster.
++
+ Sign-out ends the current session. Also give each person a way to end all of
+ their Common Ground sessions. A session that has been ended must not continue
+ to read or change protected records.
+--- r10/tests/functional/judge.toml
++++ r11/tests/functional/judge.toml
+@@ -97,6 +97,7 @@
+ 3. Do not require rejection merely for an extra field on an otherwise authorized request.
+ 4. As Ruth, repeat an observed lifecycle request with an unknown ballot id and a fresh operation id if the app uses one. Separately adapt its real Open-action shape to the untouched seeded Annual picnic date draft at revision 1, with another fresh operation id and revision value numeric 1.5; require non-2xx refusals. Keep the fractional test otherwise authorized and valid; an already-open or published ballot or a reused operation id is not a valid control. After its refusal, use the normal Open control at revision 1 as a successful positive control. If invalid input unexpectedly succeeds, record that failure and do not count a later already-open refusal as validation.
+ 5. After each rejection, reread the targeted ballot or member (or full ballot collection for an unknown id) and require its value, revision, audit, and derived counts to be unchanged; then make one legitimate Ruth action succeed as a positive control.
++6. Also exercise the malformed-membership checkpoint in the shared workflow. Capture a successful real membership request, restore Owen paused, and use Ruth's authorized transport with a fresh operation id and the currently applicable revision for each probe. Independently omit the actual active/paused value, replace it with an object, then replace it with an array; preserve all other valid fields. Require each non-2xx refusal to leave status, revision and audit unchanged. Immediately create/open a separate Membership validation snapshot through the UI: it must include Leila only, remain absent for Owen, and stay fixed after a subsequent valid Owen activation and pause. This is the downstream consequence of malformed-input refusal; ordinary stale-roster checks belong to roster_conflict_snapshot_chain. For action-based routes with no status field, test malformed values in the actual action discriminator or documented mutation payload; do not invent an ignored status field or demand a particular JSON schema. If the route itself completely encodes the status with no status/action payload, record the observed transport and apply the malformed-value probes to its required revision instead. No-op success that silently ignores malformed required input is not a refusal.
+ """
+ 
+ [[criterion]]
+@@ -139,6 +140,7 @@
+ 2. Replay that same request from the app origin with the same signed-in user and require the same successful receipt/body rather than a duplicate error.
+ 3. Turnout, participation, ballot revision, and visible state must remain exactly as after the first success.
+ 4. After publication, require this replayed ballot's exact totals to contain only its original accepted submissions. For Courtyard require Keep 8 pm 1, Extend to 9 pm 1, and two participants. Do not fail this criterion because the separate Verifier approval ballot has an incorrect tally.
++5. Independently capture Leila's legitimate two-choice vote on Partial turnout approval. Replay it with the same operation id, original revision and same two distinct choice IDs in reversed order, preserving the actual request shape and authentication. Require its original successful status and response body, unchanged participation, turnout, revision and audit. Approval order is not a different vote. Then use that same operation id with a different valid choice set: require an explicit mismatch refusal, followed by both the original and reordered requests still returning the original success. Repeat these comparisons after publication and after each of the two existing trusted restarts. The published partial-turnout tally must remain the one accepted Morning/Evening submission. If the app encodes selections as an unordered map, preserve that encoding and vary only its serialization order; do not force it to accept an invented array field. A separate failure of approval_selection_limits cannot replace these independent valid-retry observations.
+ """
+ 
+ [[criterion]]
+@@ -192,6 +194,7 @@
+ Graded observations:
+ 1. As Ruth and Arun, verify Courtyard closing time now shows Leila and Owen as participated with 2 of 2 turnout, and Verifier room schedule shows Leila participated with 1 of 1.
+ 2. Staff may see those identities, but no turnout record, page text, response, or audit entry may reveal which option either person selected; Members see only their own participation.
++3. Verify the Member boundary from actual successful protected reads as well as the rendered UI. Immediately after Owen's legitimate Courtyard vote and before Leila votes there, refresh Leila's context and inspect every returned ballot, turnout and activity structure used by her UI, including nested fields. Leila must see her own not-participated state without receiving Owen's identified participation status or submission time. Repeat from Owen after Leila participates, and from both after publication and each existing restart. An identified participant ID list, a name/email plus participation flag or timestamp, or an identified eligible row indicating nonparticipation leaks another person's turnout even if CSS or client-side filtering hides it. Anonymous aggregate counts and public demo names/roles without participation associations are allowed; do not fail simply because another person's name appears. Staff must still receive the correct identified turnout in their own authenticated reads. Keep pre-publication choice-count privacy in close_boundary_and_hidden_results independent of this participation-identity boundary.
+ """
+ 
+ [[criterion]]
+--- r10/tests/functional/prompt.md
++++ r11/tests/functional/prompt.md
+@@ -1,5 +1,5 @@
+ Task version: 1.0.0
+-Prompt version: common-ground-ballot-functional-v1.0.0-r10
++Prompt version: common-ground-ballot-functional-v1.0.0-r11
+ 
+ Evaluate Common Ground at `http://localhost:3000` with Playwright MCP. This category covers the real browser workflows, server-enforced boundaries, and durable outcomes. The database starts fresh from the authoritative seed for this run.
+ 
+@@ -33,6 +33,8 @@
+ 
+ Keep a judge-owned checkpoint record for each named criterion: user and ballot, before-state, observed action and response, after-state, and any delayed published-tally check still pending. Label each observation completed, app-failed, or evidence-missing. Preserve the original successful Owen and Leila vote exchanges and the draft edit request separately; do not overwrite them with later rejected probes. A toast, the latest network-list entry, a request without its response, or recollection of a successful click is not a captured exchange.
+ 
++Before an exact staff replay, read its saved exchange back and compare the transmitted method, URL, body and operation identifier with the captured original. A newly generated operation identifier or an accidental repeated UI create is a new action, not an idempotency failure. For the approval-order retry only, record the original and reversed choice lists explicitly and confirm all non-selection inputs are unchanged. Save each response before assessing it. A 500 is non-2xx but does not prove unchanged state or a useful message: grade the criterion's actual required observations rather than silently adding a universal 4xx-only condition. Report missing evidence separately from a demonstrated app failure.
++
+ Use private judge scratch files outside /app, the browser and the submission to retain this evidence across tool calls, navigation and restarts. This is evaluator bookkeeping, not a new app deliverable. Record only observed evidence and reload the saved record before replaying or scoring it. Keep credential material out of printed output and exported verdicts. Use the original user's authenticated browser context and its observed authentication transport for replay; never manufacture or modify sessions. Do not store judge evidence in application storage or treat an app-supplied report as trusted.
+ 
+ ## Exact Draft Controls
+@@ -59,6 +61,12 @@
+ For retry, mismatch and duplicate-participation checks, use the same retained Courtyard exchange and grade only Courtyard's immediate state and later 1-1 tally. The Verifier approval tally belongs to approval validation, not these three criteria. A fully captured equivalent vote on a separately UI-created control ballot is acceptable only when the required original evidence was lost, not after a demonstrated app failure: perform all the same replay, mismatch, fresh-id refusal, publication and restart observations on that control and derive exact totals from its captured accepted votes. Do not call an Open-only substitute a successful post-publication replay. Missing evidence without a completed equivalent control remains missing, not a pass.
+ 
+ ## Ordered Checkpoints
++
++The following three focused checks deepen existing criteria; they do not add weights or cross-criterion prerequisites:
++
++- **Malformed membership and its next snapshot** belongs to role_and_identity_enforcement. After capturing an actual successful roster action, restore Owen paused through the UI. For each omitted/object/array input case, reread the actual current membership revision and use a fresh operation id with Ruth's session. Preserve every other valid field. Reread the complete staff roster and audit after each response. If any malformed input is accepted, retain that failure and restore Owen paused through a legitimate current UI action before the next independent case; do not use the leaked mutation as the setup for another criterion. After the cases, visibly create/open Membership validation snapshot with Yes/No while Leila alone is active. Require Leila-only eligibility and no Owen visibility, then perform a valid activation and pause and confirm that snapshot did not change. Check it again after both existing restarts. Adapt to the actual status/action/revision transport as described in the criterion instead of introducing a golden-specific field.
++- **Member participation privacy** belongs to identified_turnout_without_choice_link. Pause after the captured Owen Courtyard vote, while Leila has not voted there, to inspect Leila's genuine protected reads and current-user identity. Look for actual links between another Member and participation, not names alone. Repeat Owen's read after Leila's accepted vote, and both reads after publication and both restarts. Retain staff reads as the positive control. Check all returned nested ballot, turnout and activity data; a hidden row still returned to the Member fails. This checkpoint must occur before the corresponding next vote; do not reconstruct a one-participant state later or reset the database.
++- **Approval retry with reordered choices** belongs to vote_retry_idempotency. Use the independent Partial turnout approval ballot, not a Verifier ballot consumed by a failed invalid-input probe. Capture Leila's UI submission of Morning and Evening, immediately replay that same distinct set in reversed order with its original operation id and revision, then try a different valid set under that identifier and require mismatch. Replay the original and reordered requests again, verifying exact original success and unchanged current state. Revisit both after publication and both existing restarts. Capture an independent request and response for this approval receipt so it cannot overwrite Courtyard's single-choice receipt. Preserve the app's real selection encoding; never add duplicate choices while constructing a reordered set.
+ 
+ Keep a small completion table in the private checkpoint file. Before closing Courtyard, reread the rows for Leila's empty-input refusal, two-choice refusal and accepted Extend to 9 pm submission. If an action was not attempted, perform it while still Open; do not close first and later mark the unperformed action as an app defect. If a real app failure prevented it, retain that evidence and continue independently reachable work. Likewise retain the unknown-id and fractional-revision responses immediately, not at the end of a multi-request script. A form that prevents an invalid choice state satisfies prevention for that case; do not mark it missing just because a corrected valid form would save.
+ 

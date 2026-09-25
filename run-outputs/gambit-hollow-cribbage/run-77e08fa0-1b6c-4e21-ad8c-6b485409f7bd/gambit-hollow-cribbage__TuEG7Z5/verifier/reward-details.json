@@ -1,0 +1,652 @@
+{
+  "constraints": {
+    "score": 1.0,
+    "criteria": [
+      {
+        "id": "server_backed_local_application",
+        "name": "server_backed_local_application",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 2.0,
+        "description": "Confirm the app is served at localhost:3000 and that its reads and writes use\nsuccessful same-origin server requests. A static or local-only mock, a missing\nbackend, or a non-local game data service does not pass.\n",
+        "reasoning": "Served at localhost:3000 with successful same-origin API reads. A fresh zero-score game was created; UI discard of 7S and JD returned 200, and a fresh GET retained revision 1, cribCards [7S, JD], and discarded:true. The game was left unfinished."
+      },
+      {
+        "id": "drawn_as_svg_not_images",
+        "name": "drawn_as_svg_not_images",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Confirm the cards and the board are drawn as inline SVG rather than fetched\nimages or a canvas: inspecting a card reveals SVG shapes and text, and no image\nfile is requested for them.\n",
+        "reasoning": "DOM inspection found the board and cards as inline SVG elements containing shapes and text. No canvas or img elements were present, and no image files were requested."
+      }
+    ],
+    "kind": "agent",
+    "judge": {
+      "agent": "codex",
+      "model": "gpt-5.6-luna",
+      "timeout": 600,
+      "cwd": null,
+      "isolated": false,
+      "atif_trajectory": null,
+      "mode": "batched",
+      "mcp_servers": [
+        {
+          "name": "playwright",
+          "transport": "stdio",
+          "url": null,
+          "command": "playwright-mcp",
+          "args": [
+            "--headless",
+            "--isolated",
+            "--executable-path=/usr/local/bin/chromium",
+            "--no-sandbox"
+          ],
+          "allowed_tools": []
+        }
+      ]
+    },
+    "judge_output": "{\"server_backed_local_application\":{\"score\":\"yes\",\"reasoning\":\"Served at localhost:3000 with successful same-origin API reads. A fresh zero-score game was created; UI discard of 7S and JD returned 200, and a fresh GET retained revision 1, cribCards [7S, JD], and discarded:true. The game was left unfinished.\"},\"drawn_as_svg_not_images\":{\"score\":\"yes\",\"reasoning\":\"DOM inspection found the board and cards as inline SVG elements containing shapes and text. No canvas or img elements were present, and no image files were requested.\"}}\n"
+  },
+  "functional": {
+    "score": 1.0,
+    "criteria": [
+      {
+        "id": "seed_ladder_import",
+        "name": "seed_ladder_import",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Setup: before any dimension finishes a game, read the supplied records file and open the ladder.\nRequire all five members with exact stored member numbers, names, played/won counts and all three original game summaries, including unfinished G-1183 with no resumable deal. New games created by other dimensions are allowed; do not require the whole database to contain only seed rows. Historical summaries may be on a separate read route documented in APP_MANIFEST.md; inspect that route if they are absent from the playable list. Absence from the resume chooser is not missing seed storage. The chooser must not offer the incomplete historical summary as playable.\n",
+        "reasoning": "Shared gate passed; all five seed members and three supplied summaries matched, and a UI discard persisted after a fresh read."
+      },
+      {
+        "id": "the_twenty_nine_hand",
+        "name": "the_twenty_nine_hand",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Setup: at the visible hand-scoring bench enter 5S 5H 5D JC, cut 5C, hand mode.\n1. Submit through the UI and observe the real local scorer response and rendered result.\n2. Require total 29, with fifteens 16, pairs 12, runs 0, flush 0 and nobs 1. A displayed constant without a matching working scorer does not establish this observation.\n",
+        "reasoning": "Visible scoring returned 29 with fifteens 16, pairs 12, runs 0, flush 0, and nobs 1."
+      },
+      {
+        "id": "the_app_agrees_with_the_supplied_fixture",
+        "name": "the_app_agrees_with_the_supplied_fixture",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Setup: discover the actual scorer request from a successful visible bench submission. Read all forty supplied records from /assets/club/scored-hands.js.\n1. Submit every record with its four cards, cut and hand/crib mode. All forty totals must equal the supplied totals. Preserve a compact table of input, expected and observed result.\n2. Inspect representative maximum, zero, overlapping-run and crib-flush records through the visible bench too. Batched requests are permitted only after discovery; they may calculate scores but never create or modify games. Eight examples alone do not satisfy this criterion.\n",
+        "reasoning": "All 40 supplied records matched their expected totals, including representative maximum, zero, overlap, and crib-flush cases."
+      },
+      {
+        "id": "a_card_counts_in_every_combination",
+        "name": "a_card_counts_in_every_combination",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Setup: score 4S 5H 5D 6C with cut 9C as a hand through the bench.\nRequire total 14 with fifteens 6, pairs 2 and runs 6, flush/nobs 0. The duplicated fives participate in both fifteens and both three-card runs as well as their pair; no card is consumed by one scoring category.\n",
+        "reasoning": "The required hand returned 14 with fifteens 6, pairs 2, and runs 6."
+      },
+      {
+        "id": "the_crib_flush_needs_five",
+        "name": "the_crib_flush_needs_five",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Setup: score 2S 5S 8S KS, cut 9H, through the bench in hand mode and then crib mode.\nRequire hand total 8, including flush 4 and fifteens 4; crib total 4, with flush 0 and fifteens 4. Preserve each separate result before switching mode.\n",
+        "reasoning": "The hand result was 8 with flush 4; crib mode was 4 with flush 0, while fifteens were 4."
+      },
+      {
+        "id": "a_five_card_flush_counts_in_both",
+        "name": "a_five_card_flush_counts_in_both",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Setup: score 2S 5S 8S KS with cut 9S as both a hand and a crib.\nEach result must be 9, with flush 5 and fifteens 4. Check both mode submissions; do not infer the crib answer from the hand result.\n",
+        "reasoning": "Both hand and crib submissions returned 9 with flush 5 and fifteens 4."
+      },
+      {
+        "id": "the_ace_is_low_and_does_not_wrap",
+        "name": "the_ace_is_low_and_does_not_wrap",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Setup: use the scoring bench for these independent hand-mode examples.\n1. AS 2H 3D JC, cut KC: total 8, runs 3, fifteens 4 and nobs 1.\n2. JS QH KD AC, cut 2C: total 3, runs 3; the ace cannot extend J-Q-K around the top.\n",
+        "reasoning": "The ace-low case returned 8 with runs 3 and nobs 1; the J-Q-K-A case returned 3 with no wrap."
+      },
+      {
+        "id": "nobs_needs_the_matching_suit",
+        "name": "nobs_needs_the_matching_suit",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Setup: score JS 2H 4D 8C with cut 9S, then change only JS to JH.\nRequire first total 3 with nobs 1 and fifteens 2, then total 2 with nobs 0 and fifteens 2. Observe each live result.\n",
+        "reasoning": "Matching-suit jack returned nobs 1 and total 3; changing only its suit returned nobs 0 and total 2."
+      },
+      {
+        "id": "fifteen_in_the_play_is_two",
+        "name": "fifteen_in_the_play_is_two",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Setup: use the named Fifteens, runs and thirty-one practice, both starting scores 0; discard each seat's last two listed cards and cut.\n1. In a fresh such game play B:5S then A:TH. Require count 15 and exactly +2 to A, with a fifteen explanation.\n2. In the separate zero-score P journey defined in the prompt, A:2S takes the count from 29 to 31. Require exactly +2 to A, reset to 0, B leading and no extra go point. These observations must come from actual game moves, not just the scoring bench.\n",
+        "reasoning": "Real play awarded exactly 2 for 15, and the separate 29-to-31 play awarded exactly 2, reset count, and gave B the lead without an extra go."
+      },
+      {
+        "id": "a_run_in_the_play_need_not_be_in_order",
+        "name": "a_run_in_the_play_need_not_be_in_order",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Setup: use the zero-score P journey in the prompt.\nAfter B:5S, A:7H, B:6H, require count 18 and exactly +3 to B for the 5-7-6 run, with A still 0. Observe the score and explanation immediately after the third move.\n",
+        "reasoning": "B:5S, A:7H, B:6H produced count 18 and exactly 3 to B for the run."
+      },
+      {
+        "id": "the_count_cannot_pass_thirty_one",
+        "name": "the_count_cannot_pass_thirty_one",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Setup: in P play B:5S, A:7H, B:6H, A:TH to reach 28, with B to act and 9D still held.\n1. Try B:9D through the visible card control if enabled; require refusal in words. A disabled card with a visible explanation of the count limit is also a valid UI refusal.\n2. Using the actual observed play route and shape, submit that same B:9D request directly from the browser. Require a controlled refusal and a fresh unchanged game read, including count 28, hands/laid cards, turn and scores. The valid following B:AC must still work. A toast alone without server nonmutation is insufficient.\n",
+        "reasoning": "B:9D at count 28 was refused visibly and directly; fresh state remained unchanged, and the following B:AC worked."
+      },
+      {
+        "id": "a_hand_that_is_not_a_hand_is_refused",
+        "name": "a_hand_that_is_not_a_hand_is_refused",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Setup: first establish a valid bench result. Use its actual scorer route/shape for malformed cases that the UI cannot express.\nIndependently submit a non-card ZZ, only three hand cards, a repeated physical card, a null hand-card entry and a missing/invalid cut. Each must return a controlled refusal with a reason, not a total or an unhandled server error. A subsequent valid hand must still score. Submitted fields may follow the app's own schema; test invalid card content rather than golden-only JSON names.\n",
+        "reasoning": "Invalid card, length, duplicate, null, missing-cut, and invalid-cut requests were controlled-refused; a later valid score worked."
+      },
+      {
+        "id": "two_cards_each_go_to_the_crib",
+        "name": "two_cards_each_go_to_the_crib",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Setup: start your own zero-score named P practice, dealer A. Before discarding, view each seat through the actual switcher.\n1. Each receives the six supplied cards, not a reshuffle.\n2. Discard 4S and 6D from A and 8C and KD from B. Each retains exactly its first four supplied cards, crib has four and belongs to A.\n3. Cut only after both discards; require the preset QC and B to lead. Capture seat-filtered before/after states through real UI requests.\n",
+        "reasoning": "The supplied hands were dealt, A discarded 4S/6D, B discarded 8C/KD, four cards entered A\u2019s crib, and QC cut with B leading."
+      },
+      {
+        "id": "the_crib_is_hidden_until_the_show",
+        "name": "the_crib_is_hidden_until_the_show",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Setup: use your own P game before discards and then after both discards, before cut/play.\n1. In each seat view, the other seat's unplayed cards are face down; the response does not contain the other player's unplayed hand or hidden crib contributions in any field.\nThe undealt stock is outside this privacy check; do not reject a response merely\nfor including undealt cards that do not reveal the protected hand or discards. Laid public cards and one's own discards are allowed.\n2. After discards, A may know 4S/6D and B may know 8C/KD; neither seat response reveals the other's contribution before it is shown. Inspect both actual seat responses, not merely hidden DOM.\n3. Continue that game through the show and require the counted crib to reveal its four cards with its breakdown. This is a deliberate shared seat switcher, not an account-authentication boundary; do not demand passwords or forbid switching seats.\n",
+        "reasoning": "Seat-filtered reads hid the other hand and crib contributions before show; the crib was revealed with its breakdown afterward."
+      },
+      {
+        "id": "moves_out_of_order_are_refused",
+        "name": "moves_out_of_order_are_refused",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Setup: create a fresh P game. Discover action shapes from successful UI requests on your own games.\nRequire no cut reveal or heels award before both discards. If cutting is a separate observed action, test its premature server refusal; if cutting is automatic, inspect before/after each discard instead. Also try discarding A twice and a B play while it is A's turn, using fresh request identities and the current revision. Both invalid actions must refuse with unchanged fresh game/ladder reads. Establish the invalid precondition first; do not test against a game already moved past it. Keep positive controls: each first valid discard and an in-turn play must work. UI-disabled actions alone do not establish server refusal.\n",
+        "reasoning": "Premature cut, duplicate discard, and wrong-turn play were refused without mutation; valid controls worked."
+      },
+      {
+        "id": "the_show_counts_in_order",
+        "name": "the_show_counts_in_order",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Setup: complete zero-score P's eight moves in the prompt; pegging ends with A=3, B=3.\nObserve the automatically counted show, or use its visible control if supplied. Require separately labelled entries in order non-dealer B (6), dealer A (4), crib A (0), each with its own cards and scoring breakdown. Final scores are A=7, B=9 and phase is between hands. The application may reveal all three ordered entries in one action or step through them. Keep the entries visible until the next hand is requested.\n",
+        "reasoning": "The show displayed B=6, A=4, and crib=0 in order with cards and breakdowns, ending A=7/B=9."
+      },
+      {
+        "id": "the_game_stops_at_the_target",
+        "name": "the_game_stops_at_the_target",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 2.0,
+        "description": "Setup: start P through the visible practice controls with A=120, B=0, discard and cut normally.\nPlay B:5S then A:TH. The fifteen awards two but A must stop at exactly 121, B=0, with a named winner/game-over state immediately, no further cards or show. Record game and ladder, then submit the winning play again with a NEW action identifier and current revision and try a later ordinary game action with the observed route/shape. Both refuse without another state/counter change; reload preserves the result. Do not play from zero or rely on a random near-finish deal.\n",
+        "reasoning": "From A=120/B=0, the fifteen stopped play at A=121 with no show; new terminal actions refused and reload preserved the result."
+      },
+      {
+        "id": "a_game_is_a_sequence_of_hands",
+        "name": "a_game_is_a_sequence_of_hands",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 2.0,
+        "description": "Setup: complete zero-score P through all three show entries, using the exact P sequence in the prompt.\n1. A=7/B=9 is between hands, not game over; show remains visible until Next hand.\n2. Request the next hand once. Preserve the same game identity and scores, increment hand number to 2, deal six cards each and clear only the previous hand's cut, crib, pile, count, laid cards and show. The game continues until a player reaches 121.\n",
+        "reasoning": "After the show, Next hand preserved identity and scores, advanced to hand 2, dealt new cards, alternated dealer, and cleared prior hand state."
+      },
+      {
+        "id": "the_deal_alternates_between_hands",
+        "name": "the_deal_alternates_between_hands",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Setup: use a completed zero-score P hand with dealer A and record its scores.\nNext hand makes B dealer, A the next play leader and B owner of the crib; show the hand number and dealer clearly. Play that ordinary hand to its show using legal visible cards, then request the following hand: dealer returns to A and hand number becomes 3. Judge alternation and stable seat ownership independently of the prior criterion's exact P totals.\n",
+        "reasoning": "Hand 2 made B dealer and hand 3 returned the dealer to A after a legal intervening hand."
+      },
+      {
+        "id": "a_game_survives_a_reload",
+        "name": "a_game_survives_a_reload",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Setup: create P, complete both discards, cut and play B:5S, A:7H, B:6H. Record game identity, both seat views, crib/own discards, cut QC, laid cards, count 18, scores A=0/B=3, next turn A and hand number 1.\nReload, then use the saved-game chooser in a fresh browser context without the original URL hash/storage to reopen that game. Both seat views must match the saved snapshot, including hidden-card boundaries, and the pegs/turn must agree. Continue with A:TH to prove the saved game is playable, not a static snapshot. Do not require the original browser's chosen seat to transfer to a new device.\n",
+        "reasoning": "A saved P game at count 18 and scores 0/3 reopened in a fresh context with matching seat views and continued legally."
+      },
+      {
+        "id": "the_ladder_updates_when_a_game_ends",
+        "name": "the_ladder_updates_when_a_game_ends",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Setup: record the two chosen players' actual played/won counts and existing game summaries. Start His heels finish with A=120/B=113, perform both discards and cut JC.\nA wins immediately at 121. Both players' played counts increment once; only A's member won count increments once. One finished game summary records the correct members/scores. Submit that cut as a new action with a fresh identifier and current revision, then reload: no second counter increment or summary. Use relative baselines so prior games do not invalidate the result. Inspect server results as well as the visible ladder.\n",
+        "reasoning": "His heels from A=120/B=113 produced one terminal summary and one relative counter increment; an exact repeated cut did not increment again."
+      },
+      {
+        "id": "hand_order_invariance",
+        "name": "hand_order_invariance",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Setup: discover the scorer through the visible bench. Use hand-mode fixtures 4S 5H 5D 6C/cut 9C (14) and AS AH 2D 2C/cut 3C (16).\nSubmit all 24 permutations of each four-card hand with unchanged cut. Every result must retain its expected total and breakdown. Batched discovered scoring requests are allowed; record all 48 outcomes. Do not sort or alter the request before sending it to compensate for an app defect.\n",
+        "reasoning": "All 48 required hand permutations returned their expected totals."
+      },
+      {
+        "id": "pairs_and_last_card_in_real_play",
+        "name": "pairs_and_last_card_in_real_play",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Setup: start the Pairs and pair royal practice at 0/0; keep the first four cards per seat and cut QC.\nPlay B:5S,A:5H,B:5D,A:5C,B:2H,A:2S,B:3H,A:3S.\nAfter the second card A has 2 for a pair; after the third B has 8 (fifteen 2 plus three-of-a-kind 6); after the fourth A has 14 (another 12 for four-of-a-kind). The final card gives A 2 for the pair plus exactly 1 last-card point, ending pegging at A=19/B=8 and proceeding to the show. The final count may remain visible or clear to zero. Capture each checkpoint before continuing; no duplicate last-card bonus.\n",
+        "reasoning": "Real checkpoints showed pair, three-kind, four-kind, final pair, and exactly one last-card point, ending A=19/B=8."
+      },
+      {
+        "id": "go_resets_and_other_player_leads",
+        "name": "go_resets_and_other_player_leads",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Setup: start Go and the next lead at 0/0, keep the first four per seat and cut QS.\nPlay B:TH,A:TS,B:9H. At count 29 neither can lay; require one go point to B, count reset to 0 and A leading, with A=2/B=1. Now A:9S must work. Continue B:8H,A:8S: again neither can lay; A receives pair 2 and go 1, scores A=5/B=1, count 0 and B leading. A labelled Go control is allowed when no legal card remains; it must not require manual point claims or an illegal over-31 move.\n",
+        "reasoning": "Both blocked sequences awarded one go, reset count to zero, and transferred the lead correctly; scores ended A=5/B=1."
+      },
+      {
+        "id": "heels_immediate_and_capped",
+        "name": "heels_immediate_and_capped",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Setup: use His heels finish. In one game start 0/0, discard the last two per seat and cut JC: A receives exactly 2 immediately before any play; no show entry is added. In a separate game start A=120/B=113 and repeat: A finishes at 121/B=113 immediately, before play or show. Later cut/play/show attempts refuse without changing the finished snapshot. Keep those two games distinct.\n",
+        "reasoning": "JC awarded 2 immediately with no show; at A=120/B=113 it capped A at 121 before play, and later actions refused."
+      },
+      {
+        "id": "show_wins_stop_at_each_boundary",
+        "name": "show_wins_stop_at_each_boundary",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Setup: use three separate Pairs and pair royal practices. In each, discard the last two, cut QC and play B:5S,A:5H,B:5D,A:5C,B:2H,A:2S,B:3H,A:3S. This gives pegging increments A=19/B=8; show totals are non-dealer 10, dealer 10, crib 4.\n1. Start A=0/B=104: immediately after non-dealer's count B reaches 121, A remains 19, and no dealer/crib count is awarded.\n2. Start A=93/B=0: non-dealer becomes 18; dealer then reaches 121, with no crib count awarded.\n3. Start A=89/B=0: dealer is 118 after its hand, then crib reaches exactly 121; B remains 18.\nEach result stops at its proper entry and persists after reload; no score exceeds 121. Store checkpoints and judge the three cases independently inside this conjunctive criterion.\n",
+        "reasoning": "Three independent games stopped at the non-dealer, dealer, and crib boundaries respectively, with no later awards or scores above 121."
+      },
+      {
+        "id": "practice_and_scoring_do_not_corrupt_saved_games",
+        "name": "practice_and_scoring_do_not_corrupt_saved_games",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Setup: create a normal zero-score game and a named fixed practice through the visible controls. Record current games and ladder.\n1. Normal game starts at 0/0 with six distinct cards per seat; practice starts accept supplied integer scores from 0 through 120, uses its specified cards/cut and never reshuffles on reload.\n2. Negative, fractional and 121-or-higher starting scores are refused without a new game or ladder change. Use the discovered create request if the UI prevents entry.\n3. Submit valid hand/pegging bench experiments and invalid/duplicate card experiments. The recorded saved games and ladder remain unchanged. Valid scoring still works after a refusal. Successful game creation may add a saved game, but bench calculations must not.\n",
+        "reasoning": "Practice cards persisted across reload; invalid starts were refused, and scoring experiments left saved games and ladder counters unchanged."
+      },
+      {
+        "id": "pegging_scoring_bench",
+        "name": "pegging_scoring_bench",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Use the visible pegging bench for independent pile/next-card experiments. Require the rendered count, added points and meaningful scoring reasons: [5S]/TH gives count 15 and 2 points; [5S,7H]/6D gives count 18 and run 3; [5S,5H]/5D gives count 15 and 8 points (fifteen 2 plus pair royal 6); [5S,TH,6H,7H,AC]/2S gives count 31 and 2 points. Empty pile with AS gives count 1 and zero points. Over-31 [TS,TH,TD]/2S and duplicate [5C]/5C refuse with a reason, then a valid experiment works again. These are independent hypothetical piles, not permission to modify a real game; saved games and ladder must remain unchanged.\n",
+        "reasoning": "All requested fifteen, run, pair-royal, 31, and empty-pile cases matched; over-31 and duplicate cards were refused with reasons."
+      },
+      {
+        "id": "runtime_manifest_routes",
+        "name": "runtime_manifest_routes",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Read only /app/APP_MANIFEST.md as permitted runtime documentation. Require a fenced bash start command containing node serve.js, the documented default SQLite path /app/gambit.db and main read/scoring/game-action routes consistent with browser-observed requests. GET /api/health must succeed. Read the trusted runner metadata /logs/verifier/app-db to locate the active database. Normally it is /app/gambit.db; if the runner relocated the app with DB_PATH, validate that recorded path instead. Require the active database to exist and begin with the SQLite file signature; read only its first 16 bytes, without inspecting tables or altering it. Do not require DB_PATH wording in the manifest or fail a supported relocation because no database was created at the default path. Require the newly documented revision/action-identifier contract and historical-summary route to agree with actual requests and responses. Do not inspect implementation source or require golden-only route names for any other endpoint.\n",
+        "reasoning": "Manifest routes and revision/idempotency contract matched observed requests; health returned 200 and /app/gambit.db began with the SQLite signature."
+      },
+      {
+        "id": "final_restart_persistence",
+        "name": "final_restart_persistence",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Run this last. Record the current full ladder/game summaries, one unfinished playable game's identity and both seat views, and one already finished game's result. Use only the supplied bash /tests/app-lifecycle.sh restart helper to restart the app process, without reseeding or clearing SQLite.\nAfter readiness, reload and reopen the saved game through its chooser; both seat states and ladder summaries must match. The recorded finished game remains finished with unchanged counters. Repeat the process restart once and require the same records with no seed duplication. Continue one legal action on the unfinished game, proving it remains playable. Compare current baselines, not original seed counts.\n",
+        "reasoning": "Run last: two helper-only process restarts preserved the full ladder, unfinished two-seat state, finished result, and exact replay receipts; a legal discard still worked afterward."
+      },
+      {
+        "id": "complete_club_match",
+        "name": "complete_club_match",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 2.0,
+        "description": "Setup: start Club night - complete match at 0/0. Follow recovery.md and the supplied rounds. Each hand's preset a cards belong to its current dealer; b cards belong to its non-dealer. Keep the first four, discard the last two. Use the round sequences in the prompt, swapping actors when B deals.\nPlay all seven hands through the visible UI until the win. Require stable game/member identity, exact deals and cut for every round, alternating dealer, correct pegging/show checkpoints and carried scores. After each completed hand scores A/B are 7/9,25/42,51/53,60/61,82/70,91/77,121/95. Hand seven reaches 120/95 after dealer's show, then stops at 121 in the crib. Preserve the show until Next hand. No manual score edits or injected game state. Starting at zero is required; a near-target substitute does not establish a complete match. The ladder changes only once at the terminal hand, with both played counts +1 and only A's won count +1; historical records and other games remain unchanged.\n",
+        "reasoning": "The supplied seven-hand match completed from 0/0 with exact deals, cuts, alternating dealers, checkpoints, scores through 121/95, and one ladder update."
+      },
+      {
+        "id": "one_player_exhausted_pegging",
+        "name": "one_player_exhausted_pegging",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Setup: start One hand runs out first at 0/0, discard the last two per seat and cut 9S. Play B:AS,A:TS,B:2H,A:JH,B:3D,B:4C,A:QD,A:KC.\nAt count 26 A cannot lay but B can: B plays again. At 30 B receives exactly one go point and the count resets. B is out of cards, so A's QD and KC must both work without requiring a card from B. Final pegging is A=1/B=1, then show totals non-dealer 8, dealer 5, crib 2 yield A=8/B=9. No skipped remaining card, duplicate go or deadlocked turn. A labelled Go acknowledgement is allowed where no legal card remains.\n",
+        "reasoning": "The remaining player continued after the opponent exhausted cards, received one go, and completed pegging at A=1/B=1 without deadlock."
+      },
+      {
+        "id": "last_card_thirty_one",
+        "name": "last_card_thirty_one",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Setup: start Thirty-one on the last card at 0/0, discard the last two per seat and cut QC. Play B:5S,A:6H,B:TD,A:TC,B:8S,A:9H,B:7D,A:7C.\nThe first TC gives A four points (pair and 31) and resets the count with B leading. B's 7D gives three for the 8-9-7 run. The final 7C gives A four (pair and 31), ending pegging A=8/B=3 with no extra last-card/go point. The ordered show totals 6,2,12 yield A=22/B=9. Inspect scoring reasons and fresh server states, not merely a scorer simulation.\n",
+        "reasoning": "TC and final 7C each produced pair plus 31 for A; B\u2019s 7D made the run, and the show ended A=22/B=9 with no extra last-card/go point."
+      },
+      {
+        "id": "independent_saved_games",
+        "name": "independent_saved_games",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Setup: create two distinct zero-score games with the same members: P and Pairs. Record both identities and both seat views. Discard in P, play Pairs to count 15, reopen P from the chooser, then switch back.\nEach game retains its own cards, cut, pile, scores, phase, dealer, revision and turn. An action in either changes only that game's revision/state, not its sibling or ladder. Finish one separate near-target game for the same members; it updates the ladder exactly once without changing either unfinished snapshot. Both unfinished games remain resumable and playable.\n",
+        "reasoning": "Separate P and Pairs games retained independent state through reopen/switching; a separate terminal game changed the ladder without altering them."
+      },
+      {
+        "id": "stale_tabs_and_revisions",
+        "name": "stale_tabs_and_revisions",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 2.0,
+        "description": "Setup: open the same fresh P game in two independent pages at revision 0. Before any mutation, select seat B in page two so both pages retain revision 0. In page one accept A's discard. In page two, still showing revision 0, submit B's otherwise legal discard.\nThe stale action must be refused server-side with no changes to game, revision or ladder. The stale page must explain and refresh to the latest saved state without silently applying its old action. Selecting and submitting B's discard again from the updated view succeeds exactly once. Creation revision is 0; each accepted mutation increments it by exactly one, independently per game. Using an observed action shape with a fresh identifier, also omit the revision, supply a non-integer revision, and supply the previous revision: each refuses unchanged. Preserve a valid-action positive control. Adapt field/header names to the documented actual contract.\n",
+        "reasoning": "Stale, missing, non-integer, and previous revisions were refused unchanged; the refreshed valid action succeeded once."
+      },
+      {
+        "id": "durable_creation_identity",
+        "name": "durable_creation_identity",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 2.0,
+        "description": "Setup: capture a real successful UI create request, including its action identifier and input; record the original status, game identity and creation response. Repeat that exact request twice through the browser request context.\nBoth retries return the same original acceptance and game identity; only one game was created and no ladder counters changed. Now independently start a second game through the UI with identical players/settings: it must have a new action identifier and a different game identity. Preserve the first captured request for recovery_phase_matrix's restart probe. Do not award a pass for suppressing all future games with the same settings.\n",
+        "reasoning": "The captured create request replayed twice to the same game and acceptance without counter changes; a second UI creation got a new identity."
+      },
+      {
+        "id": "accepted_action_replay",
+        "name": "accepted_action_replay",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 2.0,
+        "description": "Setup: in fresh P capture a successful A-discard request and its acceptance, then accept B's discard using the current revision. Replay the exact first request with its original identifier, input and older revision.\nReturn its original acceptance without another mutation or revision increment; fresh reads still show both discards. Repeat with a winning action in a separate near-target game: exact retries return its original acceptance with no extra points, finished summary or ladder increment. A genuinely new post-terminal action must still refuse. Preserve the winning request and result for recovery_phase_matrix's restart probe. Receipt equality means stable original game/acceptance data; incidental transport headers are not compared.\n",
+        "reasoning": "Exact accepted discard and winning-action retries returned the original acceptance without extra mutation; a new terminal action refused."
+      },
+      {
+        "id": "accepted_identifier_binding",
+        "name": "accepted_identifier_binding",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Setup: retain an accepted request from your own game. Reuse its identifier with changed card input, then with another existing game as target, and then with a different observed action route. Keep other metadata appropriate to each probe.\nAll three must return a controlled refusal, not apply a new action or return another game's success. Fresh reads of both games, revisions and ladder remain unchanged. An identical original retry still returns its original acceptance afterward, and a valid new action with a new identifier still works. Only the accepted identity is bound; do not demand a particular policy for identifiers on previously rejected requests.\n",
+        "reasoning": "Reusing an accepted identifier with changed input, another game, or another route was refused without mutation; original replay and fresh action worked."
+      },
+      {
+        "id": "lost_response_retry_ui",
+        "name": "lost_response_retry_ui",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 2.0,
+        "description": "Setup: use a fresh P game and a real UI discard. With browser network interception, forward this exact request to the actual server once, record its successful response, then abort delivery to the page. Do not fabricate a server success or change request fields.\nThe UI must show that save confirmation is missing and offer a labelled safe retry without allowing further game moves. Record the accepted server state and revision. Reload the page, then use the retry control: it sends the original identifier, payload and expected revision, confirms the same acceptance and does not apply the discard twice. Read the latest table after confirmation. For the stale-receipt case, accept the other seat's discard from another page before retrying: the recovered page must display the latest two-discard state, not roll back to the earlier receipt. Valid play remains possible after recovery. If interception failed to forward/abort as specified, record a setup error and repeat once; never retry a demonstrated app defect into a pass.\n",
+        "reasoning": "A real server-accepted discard whose response was aborted produced a Retry save UI; retry after another seat advanced replayed safely without rollback or duplication, and play continued."
+      },
+      {
+        "id": "recovery_phase_matrix",
+        "name": "recovery_phase_matrix",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 2.0,
+        "description": "Setup: prepare separate games paused after one discard; both discards (automatic cut is allowed); a go/reset; and the completed show before Next hand. Also retain a finished game, the accepted create and winning-action requests from the replay checks, and a Club night series paused between hands. Record both seat-filtered states for every game, revisions, ladder, summaries and all identities. If a prerequisite capture is unavailable, build your own independent valid case rather than inheriting another criterion's failure.\nReload/reopen the unfinished games through their chooser and compare every saved phase, cards, privacy, count, turn, score and revision. Use bash /tests/app-lifecycle.sh restart once for this matrix, without reseeding or edits. Reopen and compare again; finished results/counters and all unrelated games remain unchanged. Retry the captured create and winning action with their exact original identities after restart: original acceptance, no duplicates. Continue one legal action in each unfinished game; the series must deal its next prescribed round with the correct alternating dealer. Compare relative current baselines and ignore incidental timestamps. This is a real process restart, not merely page reload.\n",
+        "reasoning": "After one permitted restart, one-discard, both-discard, go/reset, between-hands show, and paused-series games reopened with matching two-seat state; exact retries and legal continuations remained correct."
+      }
+    ],
+    "kind": "agent",
+    "judge": {
+      "agent": "codex",
+      "model": "gpt-5.6-luna",
+      "timeout": 9000,
+      "cwd": null,
+      "isolated": false,
+      "atif_trajectory": null,
+      "mode": "batched",
+      "mcp_servers": [
+        {
+          "name": "playwright",
+          "transport": "stdio",
+          "url": null,
+          "command": "playwright-mcp",
+          "args": [
+            "--headless",
+            "--isolated",
+            "--executable-path=/usr/local/bin/chromium",
+            "--no-sandbox"
+          ],
+          "allowed_tools": []
+        }
+      ]
+    },
+    "judge_output": "{\"seed_ladder_import\":{\"score\":\"yes\",\"reasoning\":\"Shared gate passed; all five seed members and three supplied summaries matched, and a UI discard persisted after a fresh read.\"},\"the_twenty_nine_hand\":{\"score\":\"yes\",\"reasoning\":\"Visible scoring returned 29 with fifteens 16, pairs 12, runs 0, flush 0, and nobs 1.\"},\"the_app_agrees_with_the_supplied_fixture\":{\"score\":\"yes\",\"reasoning\":\"All 40 supplied records matched their expected totals, including representative maximum, zero, overlap, and crib-flush cases.\"},\"a_card_counts_in_every_combination\":{\"score\":\"yes\",\"reasoning\":\"The required hand returned 14 with fifteens 6, pairs 2, and runs 6.\"},\"the_crib_flush_needs_five\":{\"score\":\"yes\",\"reasoning\":\"The hand result was 8 with flush 4; crib mode was 4 with flush 0, while fifteens were 4.\"},\"a_five_card_flush_counts_in_both\":{\"score\":\"yes\",\"reasoning\":\"Both hand and crib submissions returned 9 with flush 5 and fifteens 4.\"},\"the_ace_is_low_and_does_not_wrap\":{\"score\":\"yes\",\"reasoning\":\"The ace-low case returned 8 with runs 3 and nobs 1; the J-Q-K-A case returned 3 with no wrap.\"},\"nobs_needs_the_matching_suit\":{\"score\":\"yes\",\"reasoning\":\"Matching-suit jack returned nobs 1 and total 3; changing only its suit returned nobs 0 and total 2.\"},\"fifteen_in_the_play_is_two\":{\"score\":\"yes\",\"reasoning\":\"Real play awarded exactly 2 for 15, and the separate 29-to-31 play awarded exactly 2, reset count, and gave B the lead without an extra go.\"},\"a_run_in_the_play_need_not_be_in_order\":{\"score\":\"yes\",\"reasoning\":\"B:5S, A:7H, B:6H produced count 18 and exactly 3 to B for the run.\"},\"the_count_cannot_pass_thirty_one\":{\"score\":\"yes\",\"reasoning\":\"B:9D at count 28 was refused visibly and directly; fresh state remained unchanged, and the following B:AC worked.\"},\"a_hand_that_is_not_a_hand_is_refused\":{\"score\":\"yes\",\"reasoning\":\"Invalid card, length, duplicate, null, missing-cut, and invalid-cut requests were controlled-refused; a later valid score worked.\"},\"two_cards_each_go_to_the_crib\":{\"score\":\"yes\",\"reasoning\":\"The supplied hands were dealt, A discarded 4S/6D, B discarded 8C/KD, four cards entered A\u2019s crib, and QC cut with B leading.\"},\"the_crib_is_hidden_until_the_show\":{\"score\":\"yes\",\"reasoning\":\"Seat-filtered reads hid the other hand and crib contributions before show; the crib was revealed with its breakdown afterward.\"},\"moves_out_of_order_are_refused\":{\"score\":\"yes\",\"reasoning\":\"Premature cut, duplicate discard, and wrong-turn play were refused without mutation; valid controls worked.\"},\"the_show_counts_in_order\":{\"score\":\"yes\",\"reasoning\":\"The show displayed B=6, A=4, and crib=0 in order with cards and breakdowns, ending A=7/B=9.\"},\"the_game_stops_at_the_target\":{\"score\":\"yes\",\"reasoning\":\"From A=120/B=0, the fifteen stopped play at A=121 with no show; new terminal actions refused and reload preserved the result.\"},\"a_game_is_a_sequence_of_hands\":{\"score\":\"yes\",\"reasoning\":\"After the show, Next hand preserved identity and scores, advanced to hand 2, dealt new cards, alternated dealer, and cleared prior hand state.\"},\"the_deal_alternates_between_hands\":{\"score\":\"yes\",\"reasoning\":\"Hand 2 made B dealer and hand 3 returned the dealer to A after a legal intervening hand.\"},\"a_game_survives_a_reload\":{\"score\":\"yes\",\"reasoning\":\"A saved P game at count 18 and scores 0/3 reopened in a fresh context with matching seat views and continued legally.\"},\"the_ladder_updates_when_a_game_ends\":{\"score\":\"yes\",\"reasoning\":\"His heels from A=120/B=113 produced one terminal summary and one relative counter increment; an exact repeated cut did not increment again.\"},\"hand_order_invariance\":{\"score\":\"yes\",\"reasoning\":\"All 48 required hand permutations returned their expected totals.\"},\"pairs_and_last_card_in_real_play\":{\"score\":\"yes\",\"reasoning\":\"Real checkpoints showed pair, three-kind, four-kind, final pair, and exactly one last-card point, ending A=19/B=8.\"},\"go_resets_and_other_player_leads\":{\"score\":\"yes\",\"reasoning\":\"Both blocked sequences awarded one go, reset count to zero, and transferred the lead correctly; scores ended A=5/B=1.\"},\"heels_immediate_and_capped\":{\"score\":\"yes\",\"reasoning\":\"JC awarded 2 immediately with no show; at A=120/B=113 it capped A at 121 before play, and later actions refused.\"},\"show_wins_stop_at_each_boundary\":{\"score\":\"yes\",\"reasoning\":\"Three independent games stopped at the non-dealer, dealer, and crib boundaries respectively, with no later awards or scores above 121.\"},\"practice_and_scoring_do_not_corrupt_saved_games\":{\"score\":\"yes\",\"reasoning\":\"Practice cards persisted across reload; invalid starts were refused, and scoring experiments left saved games and ladder counters unchanged.\"},\"pegging_scoring_bench\":{\"score\":\"yes\",\"reasoning\":\"All requested fifteen, run, pair-royal, 31, and empty-pile cases matched; over-31 and duplicate cards were refused with reasons.\"},\"runtime_manifest_routes\":{\"score\":\"yes\",\"reasoning\":\"Manifest routes and revision/idempotency contract matched observed requests; health returned 200 and /app/gambit.db began with the SQLite signature.\"},\"final_restart_persistence\":{\"score\":\"yes\",\"reasoning\":\"Run last: two helper-only process restarts preserved the full ladder, unfinished two-seat state, finished result, and exact replay receipts; a legal discard still worked afterward.\"},\"complete_club_match\":{\"score\":\"yes\",\"reasoning\":\"The supplied seven-hand match completed from 0/0 with exact deals, cuts, alternating dealers, checkpoints, scores through 121/95, and one ladder update.\"},\"one_player_exhausted_pegging\":{\"score\":\"yes\",\"reasoning\":\"The remaining player continued after the opponent exhausted cards, received one go, and completed pegging at A=1/B=1 without deadlock.\"},\"last_card_thirty_one\":{\"score\":\"yes\",\"reasoning\":\"TC and final 7C each produced pair plus 31 for A; B\u2019s 7D made the run, and the show ended A=22/B=9 with no extra last-card/go point.\"},\"independent_saved_games\":{\"score\":\"yes\",\"reasoning\":\"Separate P and Pairs games retained independent state through reopen/switching; a separate terminal game changed the ladder without altering them.\"},\"stale_tabs_and_revisions\":{\"score\":\"yes\",\"reasoning\":\"Stale, missing, non-integer, and previous revisions were refused unchanged; the refreshed valid action succeeded once.\"},\"durable_creation_identity\":{\"score\":\"yes\",\"reasoning\":\"The captured create request replayed twice to the same game and acceptance without counter changes; a second UI creation got a new identity.\"},\"accepted_action_replay\":{\"score\":\"yes\",\"reasoning\":\"Exact accepted discard and winning-action retries returned the original acceptance without extra mutation; a new terminal action refused.\"},\"accepted_identifier_binding\":{\"score\":\"yes\",\"reasoning\":\"Reusing an accepted identifier with changed input, another game, or another route was refused without mutation; original replay and fresh action worked.\"},\"lost_response_retry_ui\":{\"score\":\"yes\",\"reasoning\":\"A real server-accepted discard whose response was aborted produced a Retry save UI; retry after another seat advanced replayed safely without rollback or duplication, and play continued.\"},\"recovery_phase_matrix\":{\"score\":\"yes\",\"reasoning\":\"After one permitted restart, one-discard, both-discard, go/reset, between-hands show, and paused-series games reopened with matching two-seat state; exact retries and legal continuations remained correct.\"}}\n"
+  },
+  "polish": {
+    "score": 1.0,
+    "criteria": [
+      {
+        "id": "keyboard_controls_and_focus",
+        "name": "keyboard_controls_and_focus",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Setup: use the visible game controls, seat switcher and scoring bench with the keyboard.\nRequire labels/accessible names for starting, choosing cards, discarding and any supplied cut/count controls. Automatic cutting/counting does not require an additional manual button. Tab/Shift+Tab show visible focus; Enter/Space operate cards and buttons; focus after a card action remains on a useful reachable control. No keyboard trap or unintended game mutation from moving focus. Inspect landmarks/headings where applicable; do not demand a navigation landmark when the app has no navigation.\n",
+        "reasoning": "All interactive controls had accessible names; visible focus appeared for Tab/Shift+Tab, keyboard card selection/discard, seat switching, cut, and bench scoring worked without a trap."
+      },
+      {
+        "id": "responsive_controls_and_reachability",
+        "name": "responsive_controls_and_reachability",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Inspect at 1280 by 800 and 375 by 760. Through normal vertical scrolling, reach the board, active hand, crib/play controls, saved-game chooser, bench and ladder. No horizontal page overflow, clipped essential label or inaccessible action. Card controls and touch targets remain practical. Grade reachability/operability, not decorative composition.\n",
+        "reasoning": "At 1280\u00d7800 and 375\u00d7760, controls stacked within the viewport with no horizontal overflow; board, cards, ladder, saved games and bench were reachable by scrolling."
+      },
+      {
+        "id": "illegal_move_feedback",
+        "name": "illegal_move_feedback",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Setup: start P at zero and play B:5S,A:7H,B:6H,A:TH to reach 28 with B to act. Try B:9D or inspect its disabled-state explanation.\nRequire a visible textual reason for the over-31 refusal, readable/announced feedback and a still-usable table. Valid B:AC afterward must work. Feedback must not depend solely on red colour or a silent disabled button. Observe actual UI outcomes; exact response codes are not prescribed.\n",
+        "reasoning": "At count 28, B:9D was refused with announced text \u201cthat would take the count past thirty-one\u201d; the table stayed usable and B:AC then succeeded."
+      },
+      {
+        "id": "pending_action_and_empty_state",
+        "name": "pending_action_and_empty_state",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Setup: open the root without selecting a saved game, then start your own zero-score game.\nThe no-game view has a usable, labelled control to start a game; a plain board\nwith a New game button is sufficient. Explanatory empty-state prose is optional. During a real pending game save, rapid repeated activation of that same control must not create duplicate accepted actions/games; show a busy/pending state or suppress repeated activation. Hold the first real game POST pending with browser network interception, confirm it is still pending, then attempt repeated mouse and keyboard activation before releasing it. Record request/response timing, accepted game IDs and observed busy state. Two clicks after separate completed saves do not test this requirement. Do not alter payloads or fabricate success. If the first request was never held, that is a setup error, not proof of a duplicate-action defect. Resume/close controls and any supplied panels leave the surrounding table usable. Do not require dialogs the app does not have.\n",
+        "reasoning": "The no-game view had a labelled start control. A held first POST showed Saving/disabled controls; repeated mouse and keyboard activation created no duplicate, and one accepted game G-5C5E50 was returned."
+      },
+      {
+        "id": "readable_state_and_reduced_motion",
+        "name": "readable_state_and_reduced_motion",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Setup: inspect an active zero-score P game, its show and scoring bench, then emulate reduced motion.\nNames, active seat, dealer, turn, hand number, cut, count, scores and scoring commentary are available as text alongside the SVG. Bench totals and separate scoring categories remain readable and clearly separate from ranked game points. Show entries remain readable until Next hand. Nonessential motion is reduced or already absent; no information is lost. Grade semantic clarity and motion support, not visual taste or rechecking score arithmetic.\n",
+        "reasoning": "Active seat, dealer, turn, scores, count, cut, show commentary and bench category totals were textual and separate. Reduced-motion emulation matched reduce with no visible animation/transition candidates."
+      }
+    ],
+    "kind": "agent",
+    "judge": {
+      "agent": "codex",
+      "model": "gpt-5.6-luna",
+      "timeout": 900,
+      "cwd": null,
+      "isolated": false,
+      "atif_trajectory": null,
+      "mode": "batched",
+      "mcp_servers": [
+        {
+          "name": "playwright",
+          "transport": "stdio",
+          "url": null,
+          "command": "playwright-mcp",
+          "args": [
+            "--headless",
+            "--isolated",
+            "--executable-path=/usr/local/bin/chromium",
+            "--no-sandbox"
+          ],
+          "allowed_tools": []
+        }
+      ]
+    },
+    "judge_output": "{\"keyboard_controls_and_focus\":{\"score\":\"yes\",\"reasoning\":\"All interactive controls had accessible names; visible focus appeared for Tab/Shift+Tab, keyboard card selection/discard, seat switching, cut, and bench scoring worked without a trap.\"},\"responsive_controls_and_reachability\":{\"score\":\"yes\",\"reasoning\":\"At 1280\u00d7800 and 375\u00d7760, controls stacked within the viewport with no horizontal overflow; board, cards, ladder, saved games and bench were reachable by scrolling.\"},\"illegal_move_feedback\":{\"score\":\"yes\",\"reasoning\":\"At count 28, B:9D was refused with announced text \u201cthat would take the count past thirty-one\u201d; the table stayed usable and B:AC then succeeded.\"},\"pending_action_and_empty_state\":{\"score\":\"yes\",\"reasoning\":\"The no-game view had a labelled start control. A held first POST showed Saving/disabled controls; repeated mouse and keyboard activation created no duplicate, and one accepted game G-5C5E50 was returned.\"},\"readable_state_and_reduced_motion\":{\"score\":\"yes\",\"reasoning\":\"Active seat, dealer, turn, scores, count, cut, show commentary and bench category totals were textual and separate. Reduced-motion emulation matched reduce with no visible animation/transition candidates.\"}}\n"
+  },
+  "render": {
+    "score": 1.0,
+    "criteria": [
+      {
+        "id": "board_renders",
+        "name": "board_renders",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 2.0,
+        "description": "Open the application and confirm a substantive board renders: a peg board with\ntwo tracks, the ladder, and a control to start a game, without a fatal browser\nerror or broken page.\n",
+        "reasoning": "A substantive two-track peg board, club ladder, and working New game control render correctly. The local game flow works; only a non-fatal favicon 404 appeared."
+      },
+      {
+        "id": "cards_render_as_cards",
+        "name": "cards_render_as_cards",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Start a game and confirm the hand renders as recognisable playing cards showing\nrank and suit, not as text codes. Confirm ranks and suit symbols are legible\nand distinguishable. Suit colours are an implementation choice; a monochrome\nor four-colour deck can pass when its ranks and suits remain identifiable.\n",
+        "reasoning": "The new game shows six individual card visuals with legible ranks and suit symbols, e.g. A/\u2663, K/\u2665, 3/\u2665, 2/\u2666, K/\u2660, and 7/\u2663. Selecting and discarding two cards persisted after a fresh server-backed read."
+      }
+    ],
+    "kind": "agent",
+    "judge": {
+      "agent": "codex",
+      "model": "gpt-5.6-luna",
+      "timeout": 600,
+      "cwd": null,
+      "isolated": false,
+      "atif_trajectory": null,
+      "mode": "batched",
+      "mcp_servers": [
+        {
+          "name": "playwright",
+          "transport": "stdio",
+          "url": null,
+          "command": "playwright-mcp",
+          "args": [
+            "--headless",
+            "--isolated",
+            "--executable-path=/usr/local/bin/chromium",
+            "--no-sandbox"
+          ],
+          "allowed_tools": []
+        }
+      ]
+    },
+    "judge_output": "{\"board_renders\":{\"score\":\"yes\",\"reasoning\":\"A substantive two-track peg board, club ladder, and working New game control render correctly. The local game flow works; only a non-fatal favicon 404 appeared.\"},\"cards_render_as_cards\":{\"score\":\"yes\",\"reasoning\":\"The new game shows six individual card visuals with legible ranks and suit symbols, e.g. A/\u2663, K/\u2665, 3/\u2665, 2/\u2666, K/\u2660, and 7/\u2663. Selecting and discarding two cards persisted after a fresh server-backed read.\"}}\n"
+  },
+  "visual": {
+    "score": 0.9167,
+    "criteria": [
+      {
+        "id": "visual_typography",
+        "name": "visual_typography",
+        "value": 1.0,
+        "raw": 5,
+        "weight": 1.0,
+        "description": "Assess rendered table, game, scoring bench, ladder and show typography at desktop size.\n5: deliberate, readable type sizes and weights distinguish product title,\nseat, turn/result, totals and secondary history; alignment is consistent.\n4: readable with one or two minor sizing or alignment imperfections.\n3: noticeable inconsistent sizing, crowding or awkward text truncation.\n2: several important labels or history entries are difficult to read.\n1: broadly illegible, misaligned or undifferentiated text.\n0: no coherent typographic rendering on the reviewed surfaces.\nDo not grade move correctness or exact seed values here.\n",
+        "reasoning": "Readable serif title and section headings contrast well with compact uppercase labels, seat/status text, totals, ladder history, show breakdowns, and counting-bench results."
+      },
+      {
+        "id": "visual_color_and_contrast",
+        "name": "visual_color_and_contrast",
+        "value": 1.0,
+        "raw": 5,
+        "weight": 1.0,
+        "description": "Assess the supplied theme; a theme switcher is not required. Suit colours are\nnot prescribed: monochrome, two-colour and four-colour decks are all permitted.\n5: cohesive palette with clearly distinguishable suit symbols and both peg tracks, face-down\ncards, legible text and purposeful accents across game, scoring bench and show.\n4: one or two minor contrast or palette imperfections.\n3: some low-contrast text or conflicting accents distract from the board.\n2: substantial legibility or piece-distinction problems.\n1: widespread low contrast or harsh, incoherent color treatment.\n0: no readable color treatment renders.\nJudge appearance, not actual winner detection or accessible-name behavior.\n",
+        "reasoning": "The deep green theme, gold accents, distinct gold/mint peg tracks, white card faces, red/black suits, and outlined face-down cards form a cohesive, legible palette."
+      },
+      {
+        "id": "visual_spacing_and_layout",
+        "name": "visual_spacing_and_layout",
+        "value": 0.75,
+        "raw": 4,
+        "weight": 1.0,
+        "description": "Assess spacing on desktop table, peg board, cards, scoring bench, ladder and show.\n5: consistent margins and alignment, deliberate board/control grouping and\nbalanced spacing between totals, history and show.\n4: minor uneven spacing or alignment.\n3: several crowded, drifting or excessively separated elements.\n2: frequent collisions, clipping or inconsistent gutters.\n1: broadly unbalanced or broken layout.\n0: no coherent spaced layout renders.\nDo not require a specific arrangement or the reference's pixels.\n",
+        "reasoning": "Desktop board/sidebar grouping, card rows, score tiles, show dividers, and mobile stacking are well organized; a few larger blank transitions and compressed mobile controls are minor imperfections."
+      },
+      {
+        "id": "visual_hierarchy_and_scanability",
+        "name": "visual_hierarchy_and_scanability",
+        "value": 1.0,
+        "raw": 5,
+        "weight": 1.0,
+        "description": "Assess how easily the board, turn/result, seat, scores, commentary and scoring breakdown can be\nvisually located on desktop without reading all surrounding text.\n5: clear visual order with primary game state prominent and related secondary\ninformation grouped; the scoring bench is clearly distinct from the active game.\n4: mostly clear with minor competing emphasis.\n3: several competing sections or important information visually buried.\n2: headings, controls and content are difficult to distinguish.\n1: little usable visual order.\n0: no scannable hierarchy renders.\nFunctional correctness and keyboard traversal are outside this criterion.\n",
+        "reasoning": "The active board, status, totals, and turn state lead the desktop view, while the right rail clearly separates recent scoring, show breakdowns, and ladder history; the bench is distinctly grouped below."
+      },
+      {
+        "id": "visual_overall_craft",
+        "name": "visual_overall_craft",
+        "value": 1.0,
+        "raw": 5,
+        "weight": 1.0,
+        "description": "Assess visual consistency across table, game, scoring bench, ladder and show.\n5: one deliberate component language, integrated board-game identity and\nfinished treatment of history, empty states and secondary controls.\n4: one or two minor inconsistent details.\n3: noticeable default styling or inconsistent components between surfaces.\n2: much of the interface looks unfinished or disconnected.\n1: little considered component styling.\n0: no crafted presentation renders.\nDo not require branding, decorative assets or features absent from the brief.\n",
+        "reasoning": "Rounded green panels, consistent borders, gold active controls, serif headings, themed cards, empty states, scoring history, ladder, show, and bench results read as one deliberate component system."
+      },
+      {
+        "id": "visual_responsive_consistency",
+        "name": "visual_responsive_consistency",
+        "value": 0.75,
+        "raw": 4,
+        "weight": 1.0,
+        "description": "Compare screenshots at 1280 by 800 and 375 by 760 for table, game, scoring bench, ladder and show.\n5: typography, palette, component styling and hierarchy remain visually\ncoherent while the layout adapts naturally to each viewport.\n4: minor visual inconsistency at one size.\n3: visible uneven scaling, crowding or loss of hierarchy between sizes.\n2: substantial visual fragmentation at the narrow size.\n1: barely coherent presentation at one size.\n0: no reviewable presentation at either size.\nScore visual adaptation only; control reachability/overflow is graded by\nPolish. Ordinary vertical scrolling is allowed; missing required surfaces\nare not waived or treated as full-credit evidence.\n",
+        "reasoning": "At 375px the palette, typography, cards, show, ladder, and bench remain coherent and stack naturally without visible horizontal breakage; dense controls and a shortened practice-deal label show minor mobile compression."
+      }
+    ],
+    "kind": "agent",
+    "judge": {
+      "agent": "codex",
+      "model": "gpt-5.6-luna",
+      "timeout": 900,
+      "cwd": null,
+      "isolated": false,
+      "atif_trajectory": null,
+      "mode": "batched",
+      "mcp_servers": [
+        {
+          "name": "playwright",
+          "transport": "stdio",
+          "url": null,
+          "command": "playwright-mcp",
+          "args": [
+            "--headless",
+            "--isolated",
+            "--executable-path=/usr/local/bin/chromium",
+            "--no-sandbox"
+          ],
+          "allowed_tools": []
+        }
+      ]
+    },
+    "judge_output": "{\"visual_typography\":{\"score\":5,\"reasoning\":\"Readable serif title and section headings contrast well with compact uppercase labels, seat/status text, totals, ladder history, show breakdowns, and counting-bench results.\"},\"visual_color_and_contrast\":{\"score\":5,\"reasoning\":\"The deep green theme, gold accents, distinct gold/mint peg tracks, white card faces, red/black suits, and outlined face-down cards form a cohesive, legible palette.\"},\"visual_spacing_and_layout\":{\"score\":4,\"reasoning\":\"Desktop board/sidebar grouping, card rows, score tiles, show dividers, and mobile stacking are well organized; a few larger blank transitions and compressed mobile controls are minor imperfections.\"},\"visual_hierarchy_and_scanability\":{\"score\":5,\"reasoning\":\"The active board, status, totals, and turn state lead the desktop view, while the right rail clearly separates recent scoring, show breakdowns, and ladder history; the bench is distinctly grouped below.\"},\"visual_overall_craft\":{\"score\":5,\"reasoning\":\"Rounded green panels, consistent borders, gold active controls, serif headings, themed cards, empty states, scoring history, ladder, show, and bench results read as one deliberate component system.\"},\"visual_responsive_consistency\":{\"score\":4,\"reasoning\":\"At 375px the palette, typography, cards, show, ladder, and bench remain coherent and stack naturally without visible horizontal breakage; dense controls and a shortened practice-deal label show minor mobile compression.\"}}\n"
+  }
+}

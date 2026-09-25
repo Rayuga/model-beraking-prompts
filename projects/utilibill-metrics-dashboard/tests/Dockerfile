@@ -10,7 +10,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PLAYWRIGHT_BROWSERS_PATH=/opt/playwright-browsers
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      ca-certificates python3 python3-pip procps util-linux fonts-liberation fonts-noto-color-emoji \
+      ca-certificates curl python3 python3-pip procps util-linux fonts-liberation fonts-noto-color-emoji \
     && rm -rf /var/lib/apt/lists/*
 
 RUN npm install -g --no-audit --no-fund \
@@ -22,38 +22,30 @@ RUN npm install -g --no-audit --no-fund \
 
 RUN mkdir -p /root/.codex \
     && printf '%s\n' \
-      'model_provider = "openrouter"' \
       'model_reasoning_effort = "max"' \
       'approval_policy = "never"' \
       'sandbox_mode = "danger-full-access"' \
-      '' \
-      '[model_providers.openrouter]' \
-      'name = "OpenRouter"' \
-      'base_url = "https://openrouter.ai/api/v1"' \
-      'env_key = "OPENROUTER_API_KEY"' \
-      'wire_api = "responses"' \
-      'supports_websockets = false' \
-      '' \
-      '[mcp_servers.playwright]' \
-      'command = "playwright-mcp"' \
-      'args = ["--headless", "--isolated", "--executable-path=/usr/local/bin/chromium", "--no-sandbox"]' \
-      'default_tools_approval_mode = "approve"' \
       > /root/.codex/config.toml
 
 RUN pip3 install --no-cache-dir \
       pyyaml==6.0.2 openai==2.30.0 python-dotenv==1.0.1 harbor-rewardkit==0.1.7
 
 RUN mkdir -p /opt/playwright-browsers \
-    && PW_CLI="$(npm root -g)/playwright/cli.js" \
-    && if [ ! -f "$PW_CLI" ]; then PW_CLI="$(npm root -g)/@playwright/mcp/node_modules/playwright/cli.js"; fi \
+    && PW_CLI="$(npm root -g)/@playwright/mcp/node_modules/playwright/cli.js" \
     && node "$PW_CLI" install --with-deps chromium \
     && chmod -R a+rX /opt/playwright-browsers \
     && CHROMIUM_BIN="$(find /opt/playwright-browsers -type f -name 'chrome' | head -n 1)" \
     && ln -sf "$CHROMIUM_BIN" /usr/local/bin/chromium \
     && rm -rf /var/lib/apt/lists/*
 
-COPY assets /assets
-RUN chmod -R a+rX /assets
+RUN python3 -c "from pathlib import Path; p=Path('/usr/local/lib/python3.12/site-packages/rewardkit/agents.py'); s=p.read_text(); old='            \"--skip-git-repo-check\",\n'; new=old+'            \"--dangerously-bypass-approvals-and-sandbox\",\n'; assert old in s and new not in s; p.write_text(s.replace(old,new,1))"
+
+LABEL org.codearena.task="utilibill-metrics-dashboard" \
+      org.turing.task="utilibill-metrics-dashboard" \
+      org.codearena.verifier-version="1.0.0" \
+      org.turing.verifier-version="1.0.0" \
+      org.codearena.verifier-image="codearena/utilibill-metrics-dashboard-verifier:1.0.0"
+
 COPY . /tests
 RUN chmod +x /tests/test.sh && chmod -R go-rwx /tests
 WORKDIR /tests

@@ -1,0 +1,45 @@
+--- before/check-upload.py
++++ after/check-upload.py
+@@ -38,6 +38,13 @@
+         for n in REQUIRED: check('Required nonempty file '+n,bool(files.get(n)))
+         config=tomllib.loads(files['task.toml'].decode('utf-8'))
+         check('Wrapper matches task slug',wrapper==config['task']['name'].split('/')[-1])
++        if wrapper=='pellmoor-job-pipeline':
++            seed_path='environment/assets/recruitment/records/pellmoor_seed_data.json'
++            check('Pellmoor generated verifier seed matches canonical input',files.get(seed_path)==files.get('tests/pellmoor_seed_data.json') and bool(files.get(seed_path)))
++            reward_config=tomllib.loads(files['tests/reward.toml'].decode('utf-8'))
++            for dimension,weight in reward_config['weights'].items():
++                judge_config=tomllib.loads(files[f'tests/{dimension}/judge.toml'].decode('utf-8'))
++                check('Pellmoor judge weight matches reward config '+dimension,judge_config['judge']['weight']==weight)
+         for i in infos:
+             if i.is_dir(): continue
+             name=i.filename.split('/',1)[1]
+@@ -92,6 +99,12 @@
+                     check('Local Docker COPY source '+docker+' -> '+src,exists(context+'/'+src.lstrip('./').rstrip('/')) if src!='.' else exists(context))
+                     copy_steps.append({'dockerfile':docker,'source':src,'destination':args[-1]})
+         ids=[];gates=[]
++        reward_config=tomllib.loads(texts['tests/reward.toml'])
++        composition=reward_config.get('composition')
++        if composition is not None:
++            check('Single declared composition',reward_config=={'reward':[],'composition':{'gates':['render','constraints'],'weighted_dimensions':['functional','polish','visual']}})
++            check('Final scorer exists',bool(files.get('tests/score.py')))
++            check('Runner invokes final scorer','python3 /tests/score.py "$LOG_DIR/reward.json" "$LOG_DIR/reward.txt" "$LOG_DIR/ctrf.json"' in texts['tests/test.sh'])
+         for d in DIMS:
+             judge='tests/'+d+'/judge.toml';prompt='tests/'+d+'/prompt.md'
+             check('Dimension files exist '+d,bool(files.get(judge)) and bool(files.get(prompt)))
+@@ -108,6 +121,15 @@
+             gates.append(gate)
+             allowed_aggregations={'weighted_mean','all_pass'} if d in ('render','constraints') else {'weighted_mean'}
+             check('Correct dimension aggregation '+d,j['scoring']['aggregation'] in allowed_aggregations)
++            if composition is not None:
++                expected='all_pass' if d in composition['gates'] else 'weighted_mean'
++                check('Composition role aggregation '+d,j['scoring']['aggregation']==expected)
++                check('Positive authoritative dimension weight '+d,type(j['judge']['weight']) in (int,float) and math.isfinite(j['judge']['weight']) and j['judge']['weight']>0)
++                if wrapper=='common-ground-ballot':
++                    criterion_ids={c['id'] for c in j['criterion']}
++                    if d=='render':check('No duplicate root-load criterion',criterion_ids=={'public_control_responds'})
++                    if d=='constraints':check('Independent mandatory runtime criteria',criterion_ids=={'same_origin_shell','health_endpoint','sqlite_persistence'})
++                    if d=='polish':check('Independent theme touch and motion criteria',criterion_ids=={'responsive_workspace_navigation','accessible_keyboard_forms','persistent_action_feedback','theme_switch_preserves_workspace','comfortable_touch_targets','reduced_motion_preference'})
+             for c in j['criterion']:
+                 ids.append(c['id'])
+                 check('Finite positive criterion weight '+c['id'],type(c['weight']) in (int,float) and math.isfinite(c['weight']) and c['weight']>0)

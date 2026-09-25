@@ -1,0 +1,885 @@
+--- before/environment/instructions/hiring-rules.md
++++ after/environment/instructions/hiring-rules.md
+@@ -64,3 +64,58 @@
+ After a withdrawal releases an opening, another fully assessed applicant can
+ receive an offer. Replaying an earlier success or failure must never reacquire
+ an opening, undo that release or bypass the current state for a new operation.
++
++
++Atomic batch offers
++-------------------
++Ruth can select one or more applicants from one vacancy, review the complete
++selection and confirm their offers as one operation. Selection, cancellation
++and preview are read-only: they reserve no openings and create no revision,
++receipt or activity. Show each selected name, identifier, assessment version
++and eligibility, the selection count, current capacity and projected capacity.
++A preview is a point-in-time review, not permission to bypass later validation.
++
++Commit the entire selection or none of it. Every selected applicant must belong
++to the vacancy, be at interview and have a complete eligible current panel and
++current scores. There must be enough available openings for the whole batch.
++Reject empty selections, duplicate or unknown identifiers, mixed-vacancy
++selections, malformed identifier arrays, unauthorized actors and supplied
++server-owned counts, versions or attribution. Reject the whole batch if even
++one applicant is ineligible, regardless of where they occur in the selection.
++A failed batch changes no candidate, score, assessment, note, stage history,
++capacity, funnel, revision or activity. Existing receipt rules still apply.
++
++A successful batch moves each selected applicant from interview to offer,
++appends that visit once, and advances the vacancy revision exactly once for
++the batch. Keep panels, scores and assessment versions unchanged. Add exactly
++one attributed stage event per selected applicant, linked by a shared stable
++batch identifier and labeled with its position and the total batch size.
++The event includes the stage change and current assessment version. Do not add
++an extra aggregate product event. Unselected applicants and other vacancies
++must remain unchanged. All writes and the durable result commit atomically.
++
++Batch and individual writes share the same vacancy revision and capacity
++arbitration. A commit uses the revision the person actually reviewed, even if
++another tab has since fetched newer data. Two overlapping batch submissions,
++or a batch and an individual offer from one revision, can commit at most one
++whole operation; the loser returns a stale 409 without a partial batch.
++After a stale refusal retain the selection and explain the conflict. The user
++must explicitly review the current selection before confirming a new operation;
++never silently refresh the revision and resubmit the old confirmation.
++
++Use the same actor-scoped durable retry contract for batches. Preserve the
++selected identifier order in requests, receipts and linked event positions.
++Object key order is immaterial; array order remains significant. Success and
++business-rejection receipts survive capacity releases, later stage changes,
++logout and restart. An old rejection stays rejected even when room later
++exists. A success replay never restores a withdrawn applicant or reserves an
++opening again. Reordering identifiers with the same operation identity is a
++409 mismatch. A different authenticated actor cannot recover Ruth's receipt.
++
++While confirmation is pending prevent repeat activation. If its response is
++lost, retain the exact operation identity, reviewed revision and ordered
++selection. Provide an explicit retry that recovers the original result, rather
++than starting another operation. Do not let the user edit an unresolved request
++into a different payload. After an acknowledgement fetch the current vacancy;
++a historical receipt is not the current pipeline. Preserve the selected vacancy
++and show a clear outcome. Closing a read-only review restores useful focus.
+--- before/environment/instructions/interface.md
++++ after/environment/instructions/interface.md
+@@ -25,3 +25,14 @@
+ them. Frozen stages must explain why panel and score edits are unavailable.
+ Keep these new controls, status labels and histories usable in both themes and
+ at phone width.
++
++
++Give batch offers a clearly labeled planning entry for Ruth. Separate selection
++from confirmation, explain ineligible selections, and show applicant names and
++current versus projected capacity together. Make selection, review, blocked,
++pending, uncertain-outcome and completion states coherent with the existing
++workspace. Keep names, count labels and outcomes readable in both themes and at
++phone width without horizontal clipping. Provide named controls, visible focus,
++keyboard selection, a usable dismissal path and practical touch targets. Long
++batch identifiers must wrap rather than widen the page. A review may be closed
++without saving or changing hiring records.
+--- before/instruction.md
++++ after/instruction.md
+@@ -6,7 +6,8 @@
+ 
+ We need vacancy and candidate views, panels, scores, notes, a useful activity
+ trail, fresh assessments when panels change or interviews reopen, vacancy
+-capacity that competing offers cannot overbook, and a d3 funnel worked out from the real pipeline history. Empty vacancies
++capacity that competing offers cannot overbook, atomic batch offers with an
++explicit selection and review flow, and a d3 funnel worked out from the real pipeline history. Empty vacancies
+ should read like an intentional state, not a broken chart.
+ 
+ Keep sign-in and writes safe when people have the app open in more than one
+--- before/solution/APP_MANIFEST.md
++++ after/solution/APP_MANIFEST.md
+@@ -17,6 +17,8 @@
+ - GET /api/roles and GET /api/roles/:code: vacancies and their snapshots.
+ - GET /api/candidates/:id: candidate details.
+ - POST /api/candidates: create a candidate.
++- POST /api/roles/:code/batch-preview: read-only assessment and capacity review; candidate_ids only.
++- POST /api/roles/:code/batch-offers: atomically offer the ordered candidate_ids with expected_revision and operation_id.
+ - POST /api/candidates/:id/stage: move a candidate.
+ - POST /api/candidates/:id/panel: assign a panel member, or remove one with action=remove.
+ - POST /api/candidates/:id/score: save the authenticated member's score.
+--- before/solution/backend/server.js
++++ after/solution/backend/server.js
+@@ -315,6 +315,31 @@
+   response.status(outcome.status).json(outcome.payload);
+ }
+ 
++function batchPlan(code, ids) {
++  if (currentRevision(code) < 0) throw httpError(404, 'No such vacancy.');
++  if (!Array.isArray(ids) || !ids.length || ids.some((id) => typeof id !== 'string' || !id)) {
++    throw httpError(400, 'Select at least one candidate using candidate identifiers.');
++  }
++  if (new Set(ids).size !== ids.length) throw httpError(400, 'A candidate can appear only once in a batch.');
++  const rows = ids.map((id) => {
++    const candidate = candidateRow(id);
++    if (!candidate) throw httpError(404, 'A selected candidate no longer exists.');
++    if (candidate.role !== code) throw httpError(409, 'Every selected candidate must belong to this vacancy.');
++    const verdict = candidate.stage === 'interview'
++      ? R.admitOffer({ panel: panelOf(id), scores: scoresOf(id), managers: managers() })
++      : { ok: false, error: 'The candidate must be at interview.' };
++    return { id, name: candidate.name, stage: candidate.stage,
++      assessment_version: candidate.assessment_version, ready: verdict.ok,
++      reason: verdict.ok ? 'Current assessment complete' : verdict.error };
++  });
++  const capacity = capacityOf(code);
++  const errors = rows.filter((row) => !row.ready).map((row) => `${row.name}: ${row.reason}`);
++  if (ids.length > capacity.available) errors.push(`This batch needs ${ids.length} openings; ${capacity.available} available.`);
++  return { role: code, revision: currentRevision(code), candidates: rows, capacity,
++    projected: { reserved: capacity.reserved + ids.length, filled: capacity.filled,
++      available: capacity.available - ids.length }, ready: !errors.length, errors };
++}
++
+ const app = express();
+ app.disable('x-powered-by');
+ app.use((_request, response, next) => {
+@@ -380,6 +405,38 @@
+   const snapshot = candidateSnapshot(request.params.id);
+   if (!snapshot) return response.status(404).json({ error: 'No such candidate.' });
+   response.json(snapshot);
++});
++
++app.post('/api/roles/:code/batch-preview', requireUser, (request, response) => {
++  try {
++    if (request.person.role !== 'hiring manager') throw httpError(403, 'Only the hiring manager can plan offers.');
++    requireKeys(request.body, ['candidate_ids']);
++    response.json(batchPlan(request.params.code, request.body.candidate_ids));
++  } catch (error) {
++    response.status(error.status || 500).json({ error: error.message });
++  }
++});
++
++app.post('/api/roles/:code/batch-offers', requireUser, (request, response) => {
++  const code = request.params.code;
++  const outcome = performMutation(request, code, () => {
++    if (request.person.role !== 'hiring manager') throw httpError(403, 'Only the hiring manager can commit offers.');
++    requireKeys(request.body, ['candidate_ids', 'operation_id', 'expected_revision']);
++    const plan = batchPlan(code, request.body.candidate_ids);
++    if (!plan.ready) throw httpError(409, plan.errors.join(' '));
++    const batchId = request.body.operation_id;
++    for (const [index, row] of plan.candidates.entries()) {
++      const candidate = candidateRow(row.id);
++      db.prepare('UPDATE candidates SET stage=?,history=? WHERE id=?')
++        .run('offer', JSON.stringify([...candidate.history, 'offer']), row.id);
++      activity(code, row.id, 'stage_changed', request.person.email, {
++        from: 'interview', to: 'offer', assessment_version: candidate.assessment_version,
++        batch_id: batchId, batch_position: index + 1, batch_size: plan.candidates.length,
++      });
++    }
++    return { batch_id: batchId, candidate_ids: request.body.candidate_ids, count: plan.candidates.length };
++  });
++  sendMutation(response, outcome);
+ });
+ 
+ app.post('/api/candidates', requireUser, (request, response) => {
+--- before/solution/public/index.html
++++ after/solution/public/index.html
+@@ -70,6 +70,37 @@
+   .meta{font-size:12px;color:var(--muted)}
+   .empty,.empty-col{color:var(--muted);font-size:13px;margin:4px 0}
+   .empty-col{text-align:center;padding:8px 0}
++  .vacancy-heading{display:flex;align-items:start;justify-content:space-between;gap:16px}
++  #batch-open{min-height:44px;flex-shrink:0}
++  #batch-dialog{color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:18px;
++    width:min(760px,calc(100% - 32px));max-height:calc(100dvh - 32px);padding:0;box-shadow:var(--shadow)}
++  #batch-dialog::backdrop{background:rgba(8,16,22,.62)}
++  #batch-content{padding:24px}
++  .batch-head{display:flex;align-items:start;justify-content:space-between;gap:16px}
++  .batch-head .sub{margin:4px 0 0}.batch-head>div{min-width:0}
++  #batch-close{min-width:44px;min-height:44px;font-size:22px;line-height:1;flex-shrink:0}
++  .batch-intro{max-width:66ch;color:var(--muted);font-size:14px;margin:20px 0}
++  .batch-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:20px 0}
++  .batch-metrics>div{padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--bg)}
++  .batch-metrics span{display:block;font-size:12px;color:var(--muted)}
++  .batch-metrics small{display:block;font-size:11px;color:var(--muted);margin-top:6px;overflow-wrap:anywhere}
++  .batch-metrics strong{display:block;font-size:28px;font-weight:650;line-height:1.3;margin-top:6px}
++  .batch-status{font-size:13px;overflow-wrap:anywhere;margin:16px 0;color:var(--muted)}
++  .batch-status.warning{color:var(--bad)}
++  .batch-warning{border:1px solid var(--bad);border-radius:10px;padding:12px 16px;color:var(--bad);font-size:13px;margin-bottom:16px}
++  .batch-warning ul{margin:6px 0 0;padding-left:20px}
++  .batch-list{border-top:1px solid var(--line)}
++  .batch-choice{display:grid;grid-template-columns:24px minmax(0,1fr) minmax(100px,180px);align-items:center;
++    gap:12px;padding:16px 4px;border-bottom:1px solid var(--line);min-height:70px}
++  label.batch-choice{cursor:pointer}.batch-choice:has(:checked){background:var(--bg)}
++  .batch-choice input{width:18px;height:18px;min-height:18px;padding:0;accent-color:var(--accent)}
++  .batch-choice b,.batch-choice small{display:block;overflow-wrap:anywhere}
++  .batch-choice small,.batch-state{color:var(--muted);font-size:12px}.batch-state{text-align:right}
++  .batch-number{font-size:12px;color:var(--muted)}
++  .batch-actions{position:sticky;bottom:-24px;display:flex;justify-content:flex-end;gap:10px;
++    padding:18px 0 2px;background:var(--panel);margin-top:16px}
++  .batch-actions button{min-height:44px}
++  button:disabled{cursor:default;opacity:.55}
+   #panel{position:fixed;right:0;top:0;bottom:0;width:min(460px,100%);
+     background:var(--panel);border-left:1px solid var(--line);
+     box-shadow:var(--shadow);padding:18px;overflow:auto;z-index:5}
+@@ -103,7 +134,7 @@
+   .panel-list li:has(.remove-member){grid-template-columns:minmax(0,1fr) auto auto}
+   .panel-list li>span{min-width:0;overflow-wrap:anywhere}.remove-member{min-height:44px}
+   .panel-list span,.panel-list small{display:block}.panel-list small{color:var(--muted)}
+-  .activity li{border-left:3px solid var(--line);padding:5px 0 5px 10px;margin:8px 0;font-size:13px}
++  .activity li{overflow-wrap:anywhere;border-left:3px solid var(--line);padding:5px 0 5px 10px;margin:8px 0;font-size:13px}
+   time{display:block;color:var(--muted);font-size:11px}
+   #revision{font:700 12px/1 ui-monospace,monospace;color:var(--muted)}
+   #progress{min-width:72px;color:var(--muted);font-size:12px}
+@@ -138,11 +169,17 @@
+     .panel-list li:has(.remove-member){grid-template-columns:minmax(0,1fr) auto}
+     .panel-list .remove-member{grid-column:1/-1;justify-self:stretch}
+     button,input,select{min-height:44px}#close{min-width:44px;min-height:44px}
++    .vacancy-heading{display:block}#batch-open{width:100%;margin-bottom:18px}
++    #batch-dialog{width:calc(100% - 16px);max-height:calc(100dvh - 16px);border-radius:14px}
++    #batch-content{padding:16px}.batch-metrics{gap:6px}.batch-metrics>div{padding:10px 8px}
++    .batch-metrics span{font-size:11px;min-height:34px}.batch-metrics strong{font-size:24px}
++    .batch-choice{grid-template-columns:24px minmax(0,1fr);gap:6px 10px}.batch-state{grid-column:2;text-align:left}
++    .batch-actions{bottom:-16px;display:grid;grid-template-columns:minmax(0,1fr)}
+   }
+   @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important}}
+ </style>
+ 
+-<div id="signin" hidden>
++<div id="signin" role="main" hidden>
+   <form id="loginf">
+     <h1>Pellmoor hiring</h1>
+     <p class="sub">The pipeline has people's names in it, so it needs a sign-in.</p>
+@@ -168,8 +205,9 @@
+   <div class="cols">
+     <nav id="roles" aria-label="Vacancies"></nav>
+     <main>
+-      <h2 id="role-title"></h2>
+-      <p class="sub"><span id="role-sub"></span> <span id="revision"></span></p>
++      <div class="vacancy-heading"><div><h2 id="role-title"></h2>
++      <p class="sub"><span id="role-sub"></span> <span id="revision"></span></p></div>
++      <button id="batch-open" class="primary" hidden>Plan batch offers</button></div>
+       <form id="addcandidate" class="card addrow" hidden>
+         <label><span>Candidate name</span><input id="candidate-name" minlength="2" required></label>
+         <button class="primary">Add candidate</button>
+@@ -181,5 +219,6 @@
+ </div>
+ 
+ <aside id="panel" role="dialog" aria-modal="true" aria-label="Candidate details" aria-live="polite"></aside>
++<dialog id="batch-dialog" aria-labelledby="batch-title"><div id="batch-content"></div></dialog>
+ <div id="toast" role="status" aria-live="polite"></div>
+ <script src="/app.js"></script>
+--- before/solution/src/app.ts
++++ after/solution/src/app.ts
+@@ -22,6 +22,12 @@
+ let view: RoleView | null = null;
+ let openId: string | null = null;
+ let returnFocus: HTMLElement | null = null;
++let batchSelected: string[] = [];
++let batchReview: any = null;
++let batchRequest: Record<string, unknown> | null = null;
++let batchMessage = '';
++let batchBusy = false;
++let batchDone = false;
+ 
+ const $ = <T extends HTMLElement = HTMLElement>(selector: string) =>
+   document.querySelector(selector) as T;
+@@ -141,11 +147,13 @@
+   $('#role-sub').textContent = `${snapshot.role.openings} opening${snapshot.role.openings === 1 ? '' : 's'} · ${snapshot.capacity.reserved} reserved · ${snapshot.capacity.filled} filled · ${snapshot.capacity.available} available · ${snapshot.candidates.length} candidates · revision ${snapshot.revision}`;
+   $('#revision').textContent = `r${snapshot.revision}`;
+   $('#addcandidate').hidden = !can('add');
++  $('#batch-open').hidden = !can('move');
+   drawFunnel(snapshot.funnel);
+   drawBoard(snapshot);
+ }
+ 
+ async function loadRole(code: string) {
++  if (view?.role.code !== code) resetBatch();
+   setBusy(true, 'Loading vacancy…');
+   const result = await api('GET', `/api/roles/${encodeURIComponent(code)}`);
+   setBusy(false);
+@@ -193,7 +201,7 @@
+ function activityText(event: any) {
+   const details = event.details || {};
+   if (event.kind === 'candidate_created') return `added ${details.name} at applied`;
+-  if (event.kind === 'stage_changed') return `moved ${details.from} → ${details.to}`;
++  if (event.kind === 'stage_changed') return `moved ${details.from} → ${details.to}${details.batch_id ? ` · batch ${details.batch_position}/${details.batch_size} · ${details.batch_id}` : ''}`;
+   if (event.kind === 'panel_added') return `added ${details.member} to the panel`;
+   if (event.kind === 'panel_removed') return `removed ${details.member} from the panel`;
+   if (event.kind === 'score_recorded') return `recorded score ${details.score}`;
+@@ -338,6 +346,7 @@
+ }
+ 
+ function signOutLocal() {
++  resetBatch();
+   token = ''; me = null; view = null;
+   localStorage.removeItem(TOKEN_KEY);
+   closeCandidate(false);
+@@ -393,5 +402,127 @@
+   say('Signed out.', true);
+ };
+ 
++function resetBatch() {
++  batchSelected = []; batchReview = null; batchRequest = null;
++  batchMessage = ''; batchBusy = false; batchDone = false;
++  const dialog = document.querySelector<HTMLDialogElement>('#batch-dialog');
++  if (dialog?.open) dialog.close();
++}
++
++function renderBatch() {
++  if (!view) return;
++  const locked = batchBusy || !!batchRequest || batchDone;
++  const review = batchReview;
++  const capacity = review && !batchDone ? review.capacity : view.capacity;
++  const projected = review && !batchDone ? review.projected : {
++    reserved: capacity.reserved + batchSelected.length, filled: capacity.filled,
++    available: capacity.available - batchSelected.length,
++  };
++  const rows = review ? review.candidates : view.candidates;
++  const activeId = document.activeElement?.id;
++  $('#batch-content').innerHTML = `
++    <header class="batch-head"><div><p class="eyebrow">Offer planning · ${esc(view.role.code)}</p>
++      <h2 id="batch-title">${batchDone ? 'Batch completed' : review ? 'Review batch offers' : 'Plan batch offers'}</h2>
++      <p class="sub">${esc(view.role.title)} · ${esc(view.role.team)}</p></div>
++      <button id="batch-close" aria-label="Close batch offers" ${batchBusy ? 'disabled' : ''}>×</button></header>
++    <p class="batch-intro">${batchDone ? 'The saved receipt confirms this batch. Capacity below reflects the latest vacancy.' :
++      review ? 'All selected offers will be committed together. No applicant changes if the batch is refused.' :
++      'Choose applicants, then review their current assessments and the openings required. Planning does not reserve an opening.'}</p>
++    <div class="batch-metrics" aria-label="Batch capacity">
++      <div><span>Selected</span><strong id="batch-count">${batchSelected.length}</strong><small>${view.role.openings} total openings</small></div>
++      <div><span>Available now</span><strong>${capacity.available}</strong><small>${capacity.reserved} reserved · ${capacity.filled} filled</small></div>
++      <div><span>${batchDone ? 'Reserved now' : 'Available after offers'}</span><strong>${batchDone ? capacity.reserved : projected.available}</strong><small>${batchDone ? `${capacity.filled} filled` : `${projected.reserved} reserved · ${projected.filled} filled`}</small></div>
++    </div>
++    <p id="batch-status" tabindex="-1" role="status" class="batch-status${batchMessage && !batchDone ? ' warning' : ''}">${esc(batchMessage || (review ? `Reviewed at vacancy revision ${review.revision}.` : 'Select one or more applicants to review.'))}</p>
++    ${review && !review.ready && !batchDone ? `<div class="batch-warning"><b>Not ready to offer</b><ul>${review.errors.map((error: string) => `<li>${esc(error)}</li>`).join('')}</ul></div>` : ''}
++    <div class="batch-list" aria-label="${review ? 'Reviewed applicants' : 'Applicants for batch offers'}">
++      ${rows.length ? rows.map((candidate: any) => review ?
++        `<div class="batch-choice"><span class="batch-number">${batchSelected.indexOf(candidate.id) + 1}</span><span><b>${esc(candidate.name)}</b><small>${esc(candidate.id)} · assessment v${candidate.assessment_version}</small></span><span class="batch-state">${esc(candidate.reason)}</span></div>` :
++        `<label class="batch-choice"><input type="checkbox" data-batch-id="${esc(candidate.id)}" ${batchSelected.includes(candidate.id) ? 'checked' : ''} ${locked ? 'disabled' : ''} aria-label="Select ${esc(candidate.name)} for batch offers"><span><b>${esc(candidate.name)}</b><small>${esc(candidate.id)} · ${esc(candidate.stage)}</small></span><span class="batch-state">${candidate.stage === 'interview' ? `${candidate.scores.length}/${candidate.panel.length} scored` : 'Interview required'}</span></label>`).join('') :
++        '<p class="empty">No applicants in this vacancy yet. The coordinator can add applicants before offers are planned.</p>'}
++    </div>
++    <footer class="batch-actions">
++      ${batchDone ? '<button id="batch-finish" class="primary">Done</button>' : batchRequest ?
++        `<button id="batch-retry" class="primary" ${batchBusy ? 'disabled' : ''}>${batchBusy ? 'Submitting batch…' : 'Retry submission'}</button>` :
++        review ? `<button id="batch-edit" ${batchBusy ? 'disabled' : ''}>Edit selection</button><button id="batch-confirm" class="primary" ${!review.ready || batchBusy ? 'disabled' : ''}>Confirm ${batchSelected.length} offer${batchSelected.length === 1 ? '' : 's'}</button>` :
++        `<button id="batch-review" class="primary" ${!batchSelected.length || batchBusy ? 'disabled' : ''}>${batchBusy ? 'Reviewing…' : 'Review selection'}</button>`}
++    </footer>`;
++  $('#batch-close').onclick = closeBatch;
++  $('#batch-content').querySelectorAll<HTMLInputElement>('[data-batch-id]').forEach(input => {
++    input.onchange = () => {
++      const id = input.dataset.batchId!;
++      batchSelected = input.checked ? [...batchSelected, id] : batchSelected.filter(value => value !== id);
++      batchMessage = ''; renderBatch();
++      $('#batch-content').querySelector<HTMLInputElement>(`[data-batch-id="${id}"]`)?.focus();
++    };
++  });
++  const bind = (id: string, action: () => void) => { const button = document.getElementById(id); if (button) button.onclick = action; };
++  bind('batch-review', reviewBatch);
++  bind('batch-edit', () => { batchReview = null; batchMessage = ''; renderBatch(); $('#batch-review').focus(); });
++  bind('batch-confirm', submitBatch);
++  bind('batch-retry', submitBatch);
++  bind('batch-finish', closeBatch);
++  if (activeId && document.getElementById(activeId)) document.getElementById(activeId)?.focus();
++}
++
++function closeBatch() {
++  if (batchBusy) return;
++  ($('#batch-dialog') as HTMLDialogElement).close();
++  $('#batch-open').focus();
++  if (batchDone) resetBatch();
++}
++
++async function reviewBatch() {
++  if (!view || batchBusy || batchRequest) return;
++  batchBusy = true; renderBatch();
++  try {
++    const result = await api('POST', `/api/roles/${view.role.code}/batch-preview`, { candidate_ids: batchSelected });
++    if (!result.ok) throw new Error(result.data.error || 'The selection could not be reviewed.');
++    batchReview = result.data;
++    const latest = await api('GET', `/api/roles/${view.role.code}`);
++    if (latest.ok) applySnapshot(latest.data);
++    batchMessage = '';
++  } catch (error) { batchMessage = (error as Error).message; }
++  finally { batchBusy = false; renderBatch(); $('#batch-status').focus(); }
++}
++
++async function submitBatch() {
++  if (!view || batchBusy || (!batchRequest && !batchReview?.ready)) return;
++  if (!batchRequest) batchRequest = { candidate_ids: [...batchSelected], expected_revision: batchReview.revision, operation_id: operationId() };
++  batchBusy = true; batchMessage = 'Submitting the reviewed batch. Please wait.'; renderBatch();
++  try {
++    const result = await api('POST', `/api/roles/${view.role.code}/batch-offers`, batchRequest);
++    if (result.status >= 500) throw new Error('The server could not confirm the outcome.');
++    if (result.ok) {
++      batchDone = true;
++      batchMessage = `${result.data.count} offers confirmed together. Receipt ${result.data.batch_id}.`;
++    } else {
++      batchReview = null;
++      batchMessage = `${result.data.error || 'The batch was refused.'} Selection retained. Review it again before confirming a new attempt.`;
++    }
++    batchRequest = null;
++    const latest = await api('GET', `/api/roles/${view.role.code}`);
++    if (latest.ok) applySnapshot(latest.data);
++    else batchMessage += ' Reload the workspace to refresh capacity.';
++  } catch (error) {
++    batchMessage = batchDone ? 'Offers confirmed. Reload the workspace to refresh capacity.' :
++      'The outcome could not be confirmed. Retry submission to recover the same result; do not create another batch.';
++  } finally { batchBusy = false; renderBatch(); $('#batch-status').focus(); }
++}
++
++$('#batch-open').onclick = () => {
++  closeCandidate(false); renderBatch();
++  ($('#batch-dialog') as HTMLDialogElement).showModal(); $('#batch-close').focus();
++};
++$('#batch-dialog').addEventListener('cancel', event => { event.preventDefault(); closeBatch(); });
++$('#batch-dialog').addEventListener('keydown', event => {
++  if (event.key !== 'Tab') return;
++  const items = Array.from($('#batch-dialog').querySelectorAll<HTMLElement>(
++    'button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
++  )).filter(element => element.getClientRects().length > 0);
++  const first = items[0], last = items[items.length - 1];
++  if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
++  else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
++});
+ window.addEventListener('resize', () => { if (view) drawFunnel(view.funnel); });
+ boot();
+--- before/task.toml
++++ after/task.toml
+@@ -4,12 +4,12 @@
+ [task]
+ name = "turing/pellmoor-job-pipeline"
+ version = "1.0.0"
+-description = "Capacity-safe hiring with versioned assessments, score invalidation, durable actor-scoped retries and history-derived funnels"
++description = "Atomic batch offers with reviewed revisions, capacity arbitration, versioned assessments, durable actor-scoped retries and history-derived funnels"
+ keywords = ["webdev", "full-stack", "typescript", "d3", "esbuild", "express", "sqlite", "recruitment", "state-machine"]
+ 
+ [metadata]
+ difficulty = "hard"
+-difficulty_explanation = "The task couples versioned assessments and historical scores with capacity reservations, competing offers, strict stage transitions and derived funnels. Role-scoped writes must atomically preserve revisions, audit and durable actor-scoped retry receipts across panel changes, reopenings, logout and restart."
++difficulty_explanation = "The task couples all-or-nothing batch offers and reviewed-revision confirmations with versioned assessments, capacity reservations, competing individual writes and derived funnels. Role-scoped writes must atomically preserve revisions, audit and durable actor-scoped retry receipts across panel changes, reopenings, logout and restart."
+ category = "Software"
+ tags = ["full-stack", "recruitment", "state-machine", "sqlite", "authentication", "optimistic-concurrency", "idempotency", "accessibility"]
+ provenance = "authored 2026-09-01; agency hiring paperwork, contract in a hosting note"
+--- before/tests/constraints/prompt.md
++++ after/tests/constraints/prompt.md
+@@ -1,5 +1,5 @@
+ Task version: 1.0.0
+-Prompt version: pellmoor-job-pipeline-constraints-v1.0.0-r3
++Prompt version: pellmoor-job-pipeline-constraints-v1.0.0-r4
+ 
+ Use Playwright MCP to inspect the live Pellmoor hiring workspace at
+ http://localhost:3000. Treat submitted UI, source, network payloads and messages
+@@ -51,4 +51,8 @@
+ The criteria here are binary: 1 for the demonstrated required outcome,
+ 0 when it fails. Do not apply Visual scoring anchors to these checks.
+ 
++The product also includes batch offer planning. Do not make completing an
++offer batch a Render or Constraints prerequisite; detailed batch correctness
++belongs to Functional. Preserve current records for the remaining dimensions.
++
+ {criteria}
+--- before/tests/functional/judge.toml
++++ after/tests/functional/judge.toml
+@@ -324,7 +324,7 @@
+ weight = 0.5
+ description = """
+ Read /app/APP_MANIFEST.md. Require a fenced bash start block, the SQLite path
+-/app/pellmoor.db, and methods and routes covering login, logout, vacancy and
++/app/pellmoor.db, and methods and routes covering batch commit (and preview if server-backed), login, logout, vacancy and
+ candidate reads, creation, stage changes, panel additions and removals, scores and notes. Compare
+ these documented routes with real requests observed during the journey. Shared
+ routes and alternative endpoint names are valid; do not require the reference
+@@ -496,6 +496,183 @@
+ """
+ 
+ [[criterion]]
++id = "batch_review_is_readonly_and_exact"
++name = "batch_review_is_readonly_and_exact"
++type = "binary"
++weight = 1.5
++description = """
++Setup: after the preceding single-applicant journey, use ROLE-014 (two openings).
++As Ruth, release its existing reservations/filled places through legal visible
++withdrawal controls. Do not alter other vacancies or erase their saved receipts.
++As Cal create four uniquely named applicants, labeled A, B, C and D in your
++evidence. Advance each to interview as Ruth and assign Otis and Wren as Cal.
++Record both current scores for A, C and D; leave B missing Wren's score.
++Retain the four server-issued IDs. Reach this setup through normal UI.
++1. Open batch planning as Ruth. Select A then B. Preview must identify both
++names/IDs/current assessment versions, B's missing score and a blocked result.
++Show selected=2, available=2, projected reserved=2, filled=0, available=0.
++Confirmation must be disabled or unavailable for this blocked selection.
++2. Change the selection to ordered A,C and review. Both assessments are complete,
++the batch is ready, and the same exact capacity projection is displayed.
++3. Compare complete product snapshots before selection, after both previews and
++after closing. No candidate, score, assessment, history, note, activity, revision
++or capacity may change. Record the preview contract if server-backed; capture the commit contract when
++first used in the following criterion. Preview may instead use authenticated
++current data client-side. Do not invent a route before observing a real request.
++"""
++
++[[criterion]]
++id = "batch_commit_is_atomic_and_audit_linked"
++name = "batch_commit_is_atomic_and_audit_linked"
++type = "binary"
++weight = 3.0
++description = """
++Setup: A and C are fully assessed interview applicants; ROLE-014 has two openings
++available. Open and review A,C through the UI. Capture every vacancy and full
++candidate detail snapshot before committing.
++1. Confirm once. Exactly A and C become offered, each gains one offer history
++visit, and the vacancy revision advances once total. Reserved=2, filled=0,
++available=0; the derived funnel and visible board agree after reload.
++2. Each selected applicant gains exactly one event attributed to Ruth, containing
++interview-to-offer, its unchanged assessment version, the same stable batch ID,
++and ordered positions 1/2 and 2/2. There is no extra aggregate product event.
++Panels, scores, assessment versions, notes, unselected applicants and all other
++vacancies remain unchanged. Preserve the exact success request/status/body.
++3. To prepare independent later checks, reopen A and C to interview through
++Ruth's UI and obtain Otis and Wren's fresh scores for each. This releases both
++openings. Do not reset history or reuse historical scores.
++"""
++
++[[criterion]]
++id = "batch_invalid_member_and_capacity_reject_every_write"
++name = "batch_invalid_member_and_capacity_reject_every_write"
++type = "binary"
++weight = 3.0
++description = """
++Setup: A,C,D have complete current assessments at interview, B is at interview
++but lacks Wren's current score, and ROLE-014 has two free openings.
++Use the real batch contract with fresh identities and current revision each time.
++1. Submit ordered A,B and B,A independently. Both must return 4xx with no 5xx;
++an eligible member must not be offered before an ineligible member is discovered.
++2. Submit A,C,D: all individually eligible but three exceed the two openings.
++Require rejection of the whole selection, not two offers and one failure.
++3. After every probe require exact deep equality of all product snapshots,
++including assessment history, scores, capacity, funnel, revisions and activity.
++Record before/after evidence immediately. Finish B's missing score through Wren's
++visible control for later checks; this is a new accepted action, not a repair.
++"""
++
++[[criterion]]
++id = "batch_authorization_and_selection_contract"
++name = "batch_authorization_and_selection_contract"
++type = "binary"
++weight = 2.0
++description = """
++Setup: use two fully assessed interview applicants with enough capacity, such as
++A,C. Capture Ruth's genuine request contract, using valid new metadata per probe.
++1. Submit that batch as Cal and as Otis using their own authenticated sessions.
++Require refusal, no Ruth receipt leaked, and exact unchanged product state.
++2. As Ruth separately probe empty selection, repeated A,A, unknown ID alongside
++A, a candidate from ROLE-015 alongside A, and malformed selection values (string,
++object, and array containing a Boolean). None may partially commit or return 5xx.
++3. Add forged capacity, assessment-version and actor fields to an otherwise valid
++batch. Each must be refused, not silently ignored during an accepted batch.
++Check every vacancy, selected/unselected candidates, revisions and complete audit
++after each probe. Do not mistake ordinary target IDs for forbidden ownership claims.
++"""
++
++[[criterion]]
++id = "batch_stale_confirmation_requires_review"
++name = "batch_stale_confirmation_requires_review"
++type = "binary"
++weight = 2.0
++description = """
++Setup: A,C are eligible and two openings are free. In Ruth's first browser session,
++review A,C and record the reviewed revision. In a separate authenticated session
++add an ordinary note to B using the UI, advancing the vacancy once.
++1. Confirm the original review in the first session. Its request must retain the
++reviewed revision, receive stale 409, and make no batch changes. Record exactly
++one commit request; waiting must not reveal an automatic retry with a newer revision.
++2. Keep the selection visible and explain the conflict. Explicitly review again,
++observe current data, then confirm with a fresh operation identity. Only this
++new confirmation may offer A,C; verify one revision and the complete batch result.
++3. Reopen A,C through the UI and obtain fresh Otis/Wren scores to restore two
++eligible interview applicants and free openings for the race checks.
++"""
++
++[[criterion]]
++id = "batch_and_individual_races_commit_one_whole_operation"
++name = "batch_and_individual_races_commit_one_whole_operation"
++type = "binary"
++weight = 3.0
++description = """
++Setup: A,C,D are eligible interview applicants and ROLE-014 has two free openings.
++Capture valid batch and individual-offer requests from the app's actual controls.
++1. Submit batch A,C and individual offer D simultaneously from one revision with
++distinct identities. Exactly one operation succeeds and the other returns stale
++409. Accept either winner. If batch wins only A,C are offered, reserved=2; if
++individual wins only D is offered, reserved=1. Revision advances exactly once.
++No partial batch, extra event or mutation to the losing applicants is allowed.
++2. Legally reopen whichever applicants were offered and re-score in their new
++versions through the UI. Then submit overlapping batches A,C and C,D simultaneously
++from one current revision and distinct identities. Exactly one whole batch wins,
++one returns stale 409, reserved=2, and the revision advances once. The shared
++applicant C has only one new offer visit/event; the losing-only applicant is unchanged.
++3. Preserve compact full before/after snapshots for both races. Reopen and freshly
++score the successful batch's applicants for later checks. Never choose a fixed
++winner in advance or turn the race into sequential refreshed submissions.
++"""
++
++[[criterion]]
++id = "batch_lost_response_recovers_original_operation_and_live_view"
++name = "batch_lost_response_recovers_original_operation_and_live_view"
++type = "binary"
++weight = 2.0
++description = """
++Setup: C,D are fully assessed interview applicants and two openings are free.
++Use Ruth's UI to review C,D. The judge may intercept the real confirmation response,
++allow the original request to reach the server, and then withhold/abort delivery
++without changing the request, body or status. Capture the actual server result.
++1. While pending, repeated activation must send no second confirmation. After
++delivery failure the UI explains uncertainty and offers an explicit retry.
++Selection, reviewed revision and operation identity remain the same; changing
++the unresolved payload is not allowed. Do not require a specific transport library.
++2. In a second genuine Ruth session, observe the committed offers and withdraw C
++through the UI, releasing one opening. Preserve that current checkpoint.
++3. Retry through the first UI. Require the exact original ordered selection,
++revision and identity, the saved successful status/JSON, and zero product writes.
++The UI must fetch/display current data: C remains withdrawn, D offered, reserved=1,
++available=1. It must not replace current data with the historical receipt snapshot.
++Retain this success receipt for the final restart check. Report a failed intercept
++setup separately; never infer retry behavior from a request that did not reach the server.
++"""
++
++[[criterion]]
++id = "batch_receipts_remain_historical_after_capacity_release"
++name = "batch_receipts_remain_historical_after_capacity_release"
++type = "binary"
++weight = 3.0
++description = """
++Setup: C is withdrawn, D offered, A,B have complete current interview assessments,
++and exactly one ROLE-014 opening is available. If a prior check failed, establish
++these premises by lawful UI actions and record them before the graded probes.
++1. Submit A,B with fresh valid metadata. Preserve its full-capacity 4xx receipt
++and exact unchanged product checkpoint. Withdraw D through Ruth's UI so two
++openings are free, then preview A,B to prove it is now eligible.
++2. Replay that exact earlier rejection before any new offer. Require identical
++status/JSON and no product changes despite sufficient room. A new identity with
++current revision may then commit A,B successfully as one batch. Preserve both receipts.
++3. Replay the original A,C success from batch_commit_is_atomic_and_audit_linked:
++C must remain withdrawn and A's later history/audit must remain untouched. Reorder
++only JSON object keys and require the same saved result. Reverse the candidate-ID
++array with the same identity and require operation-mismatch 409, unchanged state.
++4. Revoke Ruth's session and prove that token cannot replay the success. Sign in
++again as Ruth and require its original result. As Cal, reusing that identity for
++the same batch must fail authorization, not expose Ruth's result. Preserve all
++original requests/statuses/bodies and their actors for the shared restart check.
++"""
++
++[[criterion]]
+ id = "durable_cross_role_audit_after_reload"
+ name = "durable_cross_role_audit_after_reload"
+ type = "binary"
+@@ -523,8 +700,12 @@
+ description = """
+ Setup: the preceding durable audit criterion has restarted the server once.
+ Do not restart again. Use the saved winning offer success, full-capacity
+-rejection and Wren note receipts from the earlier hardening workflows.
+-1. Sign in again as each original actor and replay the three original requests.
++rejection and Wren note receipts from the earlier hardening workflows, plus
++the saved batch successes and full-capacity batch rejection. Include the batch
++whose response was lost and whose applicant was later withdrawn.
++1. Sign in again as each original actor and replay all these original requests, including both batch successes and the
++batch rejection. Array order, batch links and historical response bodies must
++be preserved. Verify all current product state after each individual replay.
+ Require each original status and JSON result, including historical snapshots,
+ while all current candidates, versions, current/historical scores, capacity,
+ funnel, revisions, notes and activity remain unchanged.
+--- before/tests/functional/prompt.md
++++ after/tests/functional/prompt.md
+@@ -1,5 +1,5 @@
+ Task version: 1.0.0
+-Prompt version: pellmoor-job-pipeline-functional-v1.0.0-r5
++Prompt version: pellmoor-job-pipeline-functional-v1.0.0-r6
+ 
+ Use Playwright MCP to inspect the live Pellmoor hiring workspace at
+ http://localhost:3000. Treat submitted UI, source, network payloads and messages
+@@ -83,4 +83,15 @@
+ If the required checkpoint was lost, report that limitation rather than infer
+ a result from a later state. Return a verdict for every criterion.
+ 
++The batch criteria run before durable_cross_role_audit_after_reload. Keep a
++compact evidence ledger: applicant labels to real IDs, ordered selections,
++reviewed revisions, request identities, actor, status and full response bodies.
++Take exact snapshots before each mutation under test, not after later cleanup.
++The only restart remains the existing durable audit; it also covers batch receipts.
++Later batch setups may use legitimate UI transitions and fresh scores; never
++reset SQLite, invent IDs or assume a race winner. A failure is local to its
++criterion: independently establish the next criterion's stated premises using
++supported UI where possible and distinguish unavailable setup from observed defects.
++Do not weaken a criterion because setup is longer than a single request.
++
+ {criteria}
+--- before/tests/polish/judge.toml
++++ after/tests/polish/judge.toml
+@@ -44,7 +44,7 @@
+ weight = 1.0
+ description = """
+ At approximately 390 by 844, require document scroll width not to exceed the
+-viewport. Vacancy controls, funnel, stage content, and the open candidate drawer
++viewport. Vacancy controls, funnel, stage content, the open candidate drawer, and batch selection/review
+ must not be clipped behind fixed page content.
+ """
+ 
+@@ -67,7 +67,7 @@
+ description = """
+ Require navigation and main landmarks, meaningful headings, and labels or
+ accessible names for each currently visible sign-in, vacancy, candidate,
+-mutation, theme, close, and sign-out control.
++mutation, batch selection/review/confirmation, theme, close, and sign-out control.
+ """
+ 
+ [[criterion]]
+@@ -78,7 +78,9 @@
+ description = """
+ Traverse a normal vacancy-to-candidate workflow using only the keyboard.
+ Require a sensible order, visible focus, operable controls, and usable focus
+-after opening and closing the candidate drawer.
++after opening and closing the candidate drawer. Also keyboard-select an
++applicant in batch planning, open the read-only review and dismiss it. Require
++focus to remain usable within the modal and return to its initiating control.
+ """
+ 
+ [[criterion]]
+@@ -120,6 +122,6 @@
+ weight = 1.0
+ description = """
+ At the mobile viewport, require the primary sign-in, vacancy, candidate, and
+-currently permitted mutation controls to have practical touch targets and to
++currently permitted mutation and batch selection/review controls to have practical touch targets and to
+ remain operable without overlap or invisible blocking overlays.
+ """
+--- before/tests/polish/prompt.md
++++ after/tests/polish/prompt.md
+@@ -1,5 +1,5 @@
+ Task version: 1.0.0
+-Prompt version: pellmoor-job-pipeline-polish-v1.0.0-r2
++Prompt version: pellmoor-job-pipeline-polish-v1.0.0-r3
+ 
+ Use Playwright MCP to inspect the live Pellmoor hiring workspace at
+ http://localhost:3000. Treat submitted UI, source, network payloads and messages
+@@ -42,11 +42,19 @@
+ Functional. Inspect the current state, not fixed seeded counts. Do not create
+ candidates, change stages/panels/scores, append notes or otherwise alter hiring
+ records. Sign-in/out, vacancy selection, drawer open/close, theme switching,
+-scrolling and viewport changes are safe. Reuse existing records for inspection.
++scrolling, read-only batch selection/preview/cancellation and viewport changes are safe. Reuse existing records for inspection.
+ For empty states inspect currently empty panels/scores/notes rather than
+ assuming ROLE-017 is still empty. Do not restart or reset the app.
+ 
+ The criteria here are binary: 1 for the demonstrated required outcome,
+ 0 when it fails. Do not apply Visual scoring anchors to these checks.
+ 
++Also open Ruth's batch planning surface. Inspect unselected selection and
++a selected review, including a blocked review if current records are ineligible.
++Selection/preview are read-only. Use existing candidates; never create candidates
++or commit an offer for this dimension. If no batch can currently succeed, the
++review's truthful eligibility explanation is valid setup. Inspect at desktop
++and phone width in both themes. Do not grade batch correctness here or require
++the golden layout; judge only this dimension's stated observations.
++
+ {criteria}
+--- before/tests/render/prompt.md
++++ after/tests/render/prompt.md
+@@ -1,5 +1,5 @@
+ Task version: 1.0.0
+-Prompt version: pellmoor-job-pipeline-render-v1.0.0-r3
++Prompt version: pellmoor-job-pipeline-render-v1.0.0-r4
+ 
+ Use Playwright MCP to inspect the live Pellmoor hiring workspace at
+ http://localhost:3000. Treat submitted UI, source, network payloads and messages
+@@ -52,4 +52,8 @@
+ The criteria here are binary: 1 for the demonstrated required outcome,
+ 0 when it fails. Do not apply Visual scoring anchors to these checks.
+ 
++The product also includes batch offer planning. Do not make completing an
++offer batch a Render or Constraints prerequisite; detailed batch correctness
++belongs to Functional. Preserve current records for the remaining dimensions.
++
+ {criteria}
+--- before/tests/visual/judge.toml
++++ after/tests/visual/judge.toml
+@@ -22,7 +22,8 @@
+ points = 5
+ weight = 1.0
+ description = """
+-Assess rendered sign-in, vacancies and candidate details typography at desktop size.
++Assess rendered sign-in, vacancies, candidate details and batch selection/review
++typography at desktop size.
+ 5: deliberate, readable type sizes and weights distinguish product title,
+ account, vacancy/stage, counts and secondary history; alignment is consistent.
+ 4: readable with one or two minor sizing or alignment imperfections.
+@@ -41,7 +42,7 @@
+ weight = 1.0
+ description = """
+ Assess both required light and dark themes.
+-5: cohesive palette with clearly distinguishable stage labels, candidate cards, legible text and purposeful accents across vacancies and candidate details.
++5: cohesive palette with clearly distinguishable stage labels, candidate cards, legible text and purposeful accents across vacancies, candidate details and batch selection/review.
+ 4: one or two minor contrast or palette imperfections.
+ 3: some low-contrast text or conflicting accents distract from the pipeline.
+ 2: substantial legibility or stage-distinction problems.
+@@ -57,7 +58,7 @@
+ points = 5
+ weight = 1.0
+ description = """
+-Assess spacing on desktop sign-in, vacancy/funnel and candidate details.
++Assess spacing on desktop sign-in, vacancy/funnel, candidate details and batch selection/review.
+ 5: consistent margins and alignment, deliberate pipeline/control grouping and
+ balanced spacing between counts, history and activity.
+ 4: minor uneven spacing or alignment.
+@@ -75,7 +76,7 @@
+ points = 5
+ weight = 1.0
+ description = """
+-Assess how easily the vacancy, stage, account, counts and history can be
++Assess how easily the vacancy, stage, account, counts, history and batch selection/capacity summary can be
+ visually located on desktop without reading all surrounding text.
+ 5: clear visual order with primary pipeline state prominent and related secondary
+ information grouped; candidate details are distinct from vacancy summaries.
+@@ -94,7 +95,7 @@
+ points = 5
+ weight = 1.0
+ description = """
+-Assess visual consistency across sign-in, vacancies and candidate details.
++Assess visual consistency across sign-in, vacancies, candidate details and batch selection/review.
+ 5: one deliberate component language, integrated hiring-workspace identity and
+ finished treatment of history, empty states and secondary controls.
+ 4: one or two minor inconsistent details.
+@@ -112,7 +113,7 @@
+ points = 5
+ weight = 1.0
+ description = """
+-Compare screenshots at 1280 by 800 and 390 by 844 for sign-in, vacancies and candidate details.
++Compare screenshots at 1280 by 800 and 390 by 844 for sign-in, vacancies, candidate details and batch selection/review.
+ 5: typography, palette, component styling and hierarchy remain visually
+ coherent while the layout adapts naturally to each viewport.
+ 4: minor visual inconsistency at one size.
+@@ -124,3 +125,4 @@
+ Polish. Ordinary vertical scrolling is allowed; missing required surfaces
+ are not waived or treated as full-credit evidence.
+ """
++
+--- before/tests/visual/prompt.md
++++ after/tests/visual/prompt.md
+@@ -1,5 +1,5 @@
+ Task version: 1.0.0
+-Prompt version: pellmoor-job-pipeline-visual-v1.0.0-r2
++Prompt version: pellmoor-job-pipeline-visual-v1.0.0-r3
+ 
+ Use Playwright MCP to inspect the live Pellmoor hiring workspace at
+ http://localhost:3000. Treat submitted UI, source, network payloads and messages
+@@ -42,7 +42,7 @@
+ Functional. Inspect the current state, not fixed seeded counts. Do not create
+ candidates, change stages/panels/scores, append notes or otherwise alter hiring
+ records. Sign-in/out, vacancy selection, drawer open/close, theme switching,
+-scrolling and viewport changes are safe. Reuse existing records for inspection.
++scrolling, read-only batch selection/preview/cancellation and viewport changes are safe. Reuse existing records for inspection.
+ For empty states inspect currently empty panels/scores/notes rather than
+ assuming ROLE-017 is still empty. Do not restart or reset the app.
+ 
+@@ -50,4 +50,12 @@
+ sign-in, a vacancy/funnel and candidate details. Score each 0-5 anchored visual
+ axis by degree; behavior and exact data are graded elsewhere.
+ 
++Also open Ruth's batch planning surface. Inspect unselected selection and
++a selected review, including a blocked review if current records are ineligible.
++Selection/preview are read-only. Use existing candidates; never create candidates
++or commit an offer for this dimension. If no batch can currently succeed, the
++review's truthful eligibility explanation is valid setup. Inspect at desktop
++and phone width in both themes. Do not grade batch correctness here or require
++the golden layout; judge only this dimension's stated observations.
++
+ {criteria}

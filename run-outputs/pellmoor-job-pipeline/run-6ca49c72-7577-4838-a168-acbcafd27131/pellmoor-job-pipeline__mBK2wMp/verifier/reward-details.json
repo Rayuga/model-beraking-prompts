@@ -1,0 +1,697 @@
+{
+  "constraints": {
+    "score": 1.0,
+    "criteria": [
+      {
+        "id": "same_origin_application_shell",
+        "name": "same_origin_application_shell",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Require the root entry at http://localhost:3000 to open the local Pellmoor\napplication rather than redirecting to a separately hosted workspace. Public\nscripts, styles, fonts, images and other browser requests are allowed; an\noff-origin URL alone is not a failure. A failed resource matters only if it\nprevents the required local interface from working and has no working fallback.\n",
+        "reasoning": "The root stays at http://localhost:3000/ and renders the Pellmoor sign-in UI, then a populated local vacancy/candidate workspace. Login returned a server token, and same-origin /api/vacancies requests used its Bearer authorization and returned hiring records. Anonymous reads before and after the wrong-password attempt returned 401 with no protected records."
+      },
+      {
+        "id": "self_contained_entry_and_reload",
+        "name": "self_contained_entry_and_reload",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Open the root entry path, confirm it is rendered HTML rather than a directory\nlisting or raw response, interact with the email field, and fully reload.\nRequire the local application entry to remain visible and usable without a\nbuild, install, or external navigation.\n",
+        "reasoning": "The root was rendered HTML with a usable email field; the field was interacted with, authentication succeeded, and a full reload kept the local Pellmoor workspace usable with vacancy and candidate data. The wrong password was rejected with 401 and the sign-in screen remained available."
+      }
+    ],
+    "kind": "agent",
+    "judge": {
+      "agent": "codex",
+      "model": "gpt-5.6-luna",
+      "timeout": 600,
+      "cwd": null,
+      "isolated": false,
+      "atif_trajectory": null,
+      "mode": "batched",
+      "mcp_servers": [
+        {
+          "name": "playwright",
+          "transport": "stdio",
+          "url": null,
+          "command": "playwright-mcp",
+          "args": [
+            "--headless",
+            "--isolated",
+            "--executable-path=/usr/local/bin/chromium",
+            "--no-sandbox"
+          ],
+          "allowed_tools": []
+        }
+      ]
+    },
+    "judge_output": "{\"same_origin_application_shell\":{\"score\":\"yes\",\"reasoning\":\"The root stays at http://localhost:3000/ and renders the Pellmoor sign-in UI, then a populated local vacancy/candidate workspace. Login returned a server token, and same-origin /api/vacancies requests used its Bearer authorization and returned hiring records. Anonymous reads before and after the wrong-password attempt returned 401 with no protected records.\"},\"self_contained_entry_and_reload\":{\"score\":\"yes\",\"reasoning\":\"The root was rendered HTML with a usable email field; the field was interacted with, authentication succeeded, and a full reload kept the local Pellmoor workspace usable with vacancy and candidate data. The wrong password was rejected with 401 and the sign-in screen remained available.\"}}\n"
+  },
+  "functional": {
+    "score": 0.852,
+    "criteria": [
+      {
+        "id": "authentication_sessions_and_revocation",
+        "name": "authentication_sessions_and_revocation",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Confirm protected vacancy data is unavailable while signed out, a wrong password\nfails, and the four documented accounts can sign in only with `password123`.\nCreate two genuine sign-ins for one account and require distinct bearer tokens.\nSign out one session: its token must fail protected reads while the other remains\nvalid. No client-supplied person or role may change the authenticated identity.\n",
+        "reasoning": "Anonymous and wrong-password reads were refused; all four accounts signed in correctly, and revoking one Ruth token left the other valid."
+      },
+      {
+        "id": "seeded_pipeline_and_empty_vacancy",
+        "name": "seeded_pipeline_and_empty_vacancy",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "As Ruth, inspect the complete vacancy collection. Require ROLE-014, ROLE-015,\nROLE-016 and empty ROLE-017 with the exact titles, teams and openings in the\nauthoritative seed, and all nine seeded candidate ids under the correct vacancy\nand current stage. ROLE-017 must explain that nobody has applied and must not\ndraw five meaningless zero bars.\n",
+        "reasoning": "The seeded vacancies, nine candidates, stages and empty ROLE-017 were verified before mutations."
+      },
+      {
+        "id": "candidate_panel_score_note_fidelity",
+        "name": "candidate_panel_score_note_fidelity",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Open CAND-106 and require Devi Ranjit at offer with Otis Barre and Wren Foss on\nthe panel and their exact scores 5 and 4. Open CAND-104 and require Pim Okoro at\napplied with no panel, scores or notes; another candidate's details must never\nleak into the drawer.\n",
+        "reasoning": "CAND-106 and CAND-104 drawers matched the seed with no cross-candidate leakage."
+      },
+      {
+        "id": "exact_derived_funnel",
+        "name": "exact_derived_funnel",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.5,
+        "description": "Before changing ROLE-014, require its drawn funnel to show reached counts\napplied=4, screening=3, interview=2, offer=0, hired=0; current counts 1,1,1,0,0;\nand exactly one loss at interview with zero at applied and screening. Inspect all\nfive rungs. The chart must be generated locally as SVG or canvas and ROLE-015\nmust show its own three applications rather than reusing these figures.\n",
+        "reasoning": "ROLE-014 reached/current/loss counts and all five rungs matched the seed; ROLE-015 was independent."
+      },
+      {
+        "id": "duplicate_rule_and_cross_vacancy_identity",
+        "name": "duplicate_rule_and_cross_vacancy_identity",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "As coordinator Cal, try to add `Ilse Vandal` to ROLE-015, where that name already\nexists. Require rejection and an unchanged candidate list, revision and funnel.\nThen add that same name to empty ROLE-017 through the visible form; require a new\nserver-issued candidate id at applied while both seeded Ilse applications remain\nunchanged. Reload and require the new application once.\n",
+        "reasoning": "Duplicate Ilse was rejected unchanged; ROLE-017 received one new server-issued Ilse application."
+      },
+      {
+        "id": "role_enforcement_is_server_side",
+        "name": "role_enforcement_is_server_side",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.5,
+        "description": "Use the normal UI to confirm only Ruth is offered stage controls, only Cal can\nadd candidates and arrange panels, and assigned panel members can score. Then,\nusing request shapes first observed from real controls, attempt a stage change as\nCal and Otis, candidate creation as Ruth, panel editing as Ruth, and scoring as\nCal. Every request must be non-2xx and exact affected vacancy snapshots,\nrevisions, funnels and activity lists must remain unchanged.\n",
+        "reasoning": "Unauthorized stage, creation, panel and scoring requests returned non-2xx with exact unchanged snapshots."
+      },
+      {
+        "id": "legal_stage_move_and_independent_applications",
+        "name": "legal_stage_move_and_independent_applications",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "As Ruth, move CAND-105 Ilse Vandal from applied to screening and then reload.\nRequire the ROLE-015 column, candidate drawer, stage history, vacancy revision\nand activity to agree on the move and actor. CAND-101, the same person's separate\nROLE-014 application, must remain at interview with its own history.\nThen move CAND-105 back exactly one step to applied and forward to screening\nagain. Require each accepted transition to appear in chronological history and\nthe candidate to count only once in each reached-stage funnel total.\n",
+        "reasoning": "CAND-105 legal transitions, history, activity and funnel were consistent while CAND-101 remained independent."
+      },
+      {
+        "id": "skip_and_large_backstep_are_atomic_rejections",
+        "name": "skip_and_large_backstep_are_atomic_rejections",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "As Ruth, try CAND-102 screening directly to offer and CAND-101 interview directly\nto applied. Require visible reasons for both rejections. After each, reload and\nrequire the candidate, full history, vacancy revision, funnel and activity list\nto be exactly unchanged from the state recorded immediately before that probe.\n",
+        "reasoning": "Both illegal moves returned worded 400 errors with unchanged records, revisions, funnels and activity."
+      },
+      {
+        "id": "terminal_candidates_are_locked_and_retained",
+        "name": "terminal_candidates_are_locked_and_retained",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Open rejected CAND-103 and withdrawn CAND-107. Neither may expose stage movement\nor deletion controls. Controlled same-origin attempts to return either candidate\nto the pipeline or move to another terminal outcome must be rejected. Reload and\nrequire both records, histories, revisions, funnels and activity to remain exact.\n",
+        "reasoning": "Rejected and withdrawn candidates exposed no movement/deletion controls and controlled terminal probes were unchanged."
+      },
+      {
+        "id": "score_boundaries_and_panel_ownership",
+        "name": "score_boundaries_and_panel_ownership",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.5,
+        "description": "As Otis, use CAND-101 where he is assigned. Record boundary scores 1 and then 5\nthrough the visible score control and require each to persist with his identity.\nUsing the observed request shape, independently try 0, 6, 2.5 and a score for\nCAND-104 where Otis is not assigned. Each must be rejected without changing the\nlast valid score, revision or activity. Wren's identity must not be forgeable.\n",
+        "reasoning": "Otis persisted scores 1 and 5; invalid ranges, fractional and unassigned scoring were rejected atomically."
+      },
+      {
+        "id": "offer_requires_a_complete_independent_panel",
+        "name": "offer_requires_a_complete_independent_panel",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 2.0,
+        "description": "Use CAND-104 for the complete normal workflow. Ruth advances applied to screening\nto interview. Cal first adds only Ruth to the panel; an offer must be refused for\nboth insufficient panel size and manager-only composition. Cal adds Otis, but an\noffer still fails until both members record valid scores as themselves. After\nRuth and Otis score, Ruth moves the candidate to offer. Require one revision and\none attributed activity event per accepted action, no event for a rejection,\nand the final state to survive reload.\nCapture the vacancy revision and complete candidate activity IDs immediately\nbefore and after each action. In particular, entering interview must add one\ncombined event describing the stage and assessment-version change, not a\nseparate assessment event plus a stage event. Count newly added event IDs;\nchecking only that the expected messages are present is insufficient.\n",
+        "reasoning": "CAND-104 required a complete non-manager-only panel and current valid scores before offer succeeded."
+      },
+      {
+        "id": "notes_are_attributed_append_only_activity",
+        "name": "notes_are_attributed_append_only_activity",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "As Wren, add `Strong workshop examples` to CAND-106, then add\n`Correction: references still pending`. Require both original notes with their\nrelative chronology preserved; either consistently oldest-first or newest-first\npresentation is valid. Do not treat a descending display as editing or replacing\nan earlier note. Require\neach attributed to Wren with a visible time, plus two matching activity entries.\nThere must be no visible edit or delete action. Reload and require both notes and\nevents to remain; the correction must not replace the first note.\n",
+        "reasoning": "Both Wren notes remained append-only, attributed, timestamped and persisted with matching activity."
+      },
+      {
+        "id": "funnel_ripple_after_real_progress",
+        "name": "funnel_ripple_after_real_progress",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.5,
+        "description": "After CAND-104 has legitimately reached offer, inspect every ROLE-014 rung. The\nreached counts must now be applied=4, screening=4, interview=3, offer=1, hired=0;\nthe current counts must place Pim only at offer; and Nur remains the one loss at\ninterview. ROLE-015 and ROLE-017 figures must be unaffected. Reload and require\nthe same derived result rather than a stale stored total.\n",
+        "reasoning": "ROLE-014 derived counts updated correctly after CAND-104 reached offer and survived reload."
+      },
+      {
+        "id": "candidate_views_and_activity_stay_coherent",
+        "name": "candidate_views_and_activity_stay_coherent",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Inspect the complete recent activity for CAND-104 after its workflow. Require the\nvisible stage history, current stage, panel, scores and activity to agree; each\naccepted action names its actual actor and deterministic timestamp ordering.\nSwitch away and back, close and reopen the candidate, and reload. No item may be\nduplicated, reordered into contradiction or attributed to the signed-in viewer.\n",
+        "reasoning": "CAND-104 stage, history, panel, scores and activity stayed coherent across navigation and reload."
+      },
+      {
+        "id": "stale_revision_rejects_then_allows_reviewed_retry",
+        "name": "stale_revision_rejects_then_allows_reviewed_retry",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 8.0,
+        "description": "Open ROLE-015 in two independent signed-in Ruth views and record the same current\nrevision. In one view move CAND-105 one legal step. From the stale other view try\nto move CAND-106 from offer to hired. Require HTTP 409, a visible stale message,\nthe current snapshot, and no CAND-106/history/funnel/revision/activity mutation.\nAfter reviewing the refreshed state, retry with a fresh operation identity and\ncurrent revision; require exactly one successful hire that persists.\n",
+        "reasoning": "A stale hire returned 409 without mutation; a reviewed fresh retry produced one persisted hire."
+      },
+      {
+        "id": "simultaneous_writes_commit_at_most_once",
+        "name": "simultaneous_writes_commit_at_most_once",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 8.0,
+        "description": "From one current ROLE-015 revision, issue two simultaneous ordinary note saves\nfor CAND-105 with distinct operation identities. Exactly one may succeed and the\nother must be a stale 409. Re-read the role and candidate: exactly one supplied\nnote, one note activity and one revision increment may exist, with no partial or\nduplicate write. Reload and verify the same state.\n",
+        "reasoning": "Concurrent notes yielded one success and one stale 409 with exactly one note/activity write."
+      },
+      {
+        "id": "successful_retry_replays_one_result",
+        "name": "successful_retry_replays_one_result",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 8.0,
+        "description": "Capture a legitimate note save to CAND-106 with its operation identity and exact\nresponse. After another valid action advances ROLE-015, replay the original\nrequest byte-for-byte. Require the original success status and response to replay\nwithout a second note, activity event or revision increment. A reload must still\nshow exactly one copy of the first note.\n",
+        "reasoning": "A captured successful note replay returned the original result without duplicate note, activity or revision."
+      },
+      {
+        "id": "rejected_retry_and_payload_mismatch_are_stable",
+        "name": "rejected_retry_and_payload_mismatch_are_stable",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 8.0,
+        "description": "Send a genuine invalid stage skip with a fresh operation identity and preserve\nits 4xx response and pre-probe state. Advance that vacancy through another valid\naction, then replay the rejected request exactly: require the original rejection\nto replay without a write. Reuse its operation identity with different input and\nrequire a distinct 409 operation-mismatch rejection. Candidate, history, funnel,\ncurrent revision and activity must match the protected post-advance state.\n",
+        "reasoning": "The invalid stage request replayed identically; changed payload reused its identity and returned operation-mismatch 409."
+      },
+      {
+        "id": "malformed_or_identity_changing_writes_leave_product_state_exact",
+        "name": "malformed_or_identity_changing_writes_leave_product_state_exact",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 8.0,
+        "description": "Record an exact deep copy of one live vacancy and candidate. Using otherwise\ncurrent normal request shapes, independently probe missing, fractional,\nnegative and future revisions; for JSON revision fields also probe numeric\nstrings, Booleans, arrays and objects. HTTP headers are text by definition:\naccept valid integer representations there and probe malformed text instead.\nProbe missing or malformed operation identities;\nunknown candidate, vacancy and panel-member ids; and extra client fields that\nclaim another actor, candidate id, role, stage history, funnel or revision.\nDistinguish forbidden ownership claims from normal target identifiers and the\nexpected revision used by the app's real request contract.\nAlso try a Boolean, array and object as a score on a candidate whose panel\nincludes the signed-in scoring person and whose stage is interview (CAND-101\nremains suitable). These are not whole-number scores. Also probe client-supplied\nassessment versions and capacity totals; these are server-owned fields.\nUse a fresh operation identity and otherwise current metadata for each probe.\nRequire non-2xx responses with no 5xx. Re-read immediately after each probe and require exact\nequality of candidates, histories, panels, scores, notes, funnel, revision and\nactivity with the recorded product state.\n",
+        "reasoning": "A missing JSON revision was accepted using a valid header, moving CAND-101 and advancing the vacancy revision."
+      },
+      {
+        "id": "worded_action_and_error_feedback",
+        "name": "worded_action_and_error_feedback",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Require visible worded feedback for one accepted action and for bad sign-in,\ninvalid stage movement and stale data exercised through the UI. Icons or color\nalone do not satisfy the messages. When an illegal action is intentionally\nhidden, a controlled rejection probe may use the server's worded response as\nfeedback evidence; do not require a hidden role or stage action to be exposed.\nRecord this feedback during the existing Functional workflows; do not repeat\ntheir state mutations solely to collect messages. These observations grade\nmessage usability, not the separate state-integrity outcomes.\n",
+        "reasoning": "Worded feedback was observed for bad sign-in, accepted actions, illegal movement and stale data."
+      },
+      {
+        "id": "pending_state_and_duplicate_prevention",
+        "name": "pending_state_and_duplicate_prevention",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 1.0,
+        "description": "During one permitted save, require the initiating control to show a clear\npending state and resist duplicate activation. Afterwards it must recover and\nthe authoritative result must remain understandable.\nUse an ordinary note on a candidate and establish that its request is pending\nbefore activating again. The judge may delay delivery of the real response\nwithout altering its body, status or the request. Two actions performed after\nthe first response has completed are not a duplicate-pending defect.\n",
+        "reasoning": "Duplicate note activation was suppressed, but the initiating control showed no clear pending state."
+      },
+      {
+        "id": "runtime_manifest_routes",
+        "name": "runtime_manifest_routes",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 0.5,
+        "description": "Read /app/APP_MANIFEST.md. Require a fenced bash start block, the SQLite path\n/app/pellmoor.db, and methods and routes covering batch commit (and preview if server-backed), login, logout, vacancy and\ncandidate reads, creation, stage changes, panel additions and removals, scores and notes. Compare\nthese documented routes with real requests observed during the journey. Shared\nroutes and alternative endpoint names are valid; do not require the reference\napp's routing layout. Grade the requested documentation, not its prose style.\n",
+        "reasoning": "APP_MANIFEST.md documented the required start block, database path and observed read/write routes."
+      },
+      {
+        "id": "backstep_terminal_loss_attribution",
+        "name": "backstep_terminal_loss_attribution",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 0.5,
+        "description": "Setup: late in the journey, record the current ROLE-017 funnel. As Cal, create\none candidate with a new distinct name using the normal visible form. As Ruth,\nmove that candidate from applied to screening, then interview, back one step\nto screening, and finally withdrawn. Keep this candidate for the restart check.\n1. The visible visit history must preserve that chronological sequence.\n2. Relative to the baseline, reached counts increase by one at applied,\nscreening and interview only, despite visiting screening twice.\n3. Current counts return to their baseline, and losses increase by one at\nscreening only, not interview. Require the same derived result after reload.\n",
+        "reasoning": "CAND-117 followed the required sequence; reached counts increased once per stage and only screening loss increased."
+      },
+      {
+        "id": "panel_change_invalidates_entire_assessment",
+        "name": "panel_change_invalidates_entire_assessment",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 2.0,
+        "description": "Setup: after the legacy workflows and backstep-loss check, use CAND-101 at\ninterview. Complete its current Otis/Wren scores through their visible controls.\n1. As Cal, add Ruth. Require one new assessment version, one vacancy revision\nand one attributed panel-change event. Both old scores must become visibly\nhistorical with their original version, scorer and value; current scores empty.\n2. Score only Ruth and require an offer rejection with exact product-state\npreservation. Re-score Otis and Wren in the new version; all three must now be\ncurrent. No unrelated application's assessment, history or scores may change.\nUse before/after snapshots and the visible historical-score section.\n",
+        "reasoning": "Adding Ruth advanced the version, historicalized all old scores, cleared current scores and required fresh scoring."
+      },
+      {
+        "id": "panel_removal_and_readdition_require_fresh_scores",
+        "name": "panel_removal_and_readdition_require_fresh_scores",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 2.0,
+        "description": "Setup: CAND-101 has the complete three-person assessment from the prior check.\n1. As Cal, remove Wren using the UI. Require a new assessment version and no\ncurrent scores, including for remaining members. Wren's otherwise-current new\nscore request must be rejected without changing any product state.\n2. Re-add Wren through the UI. Require another version advance; neither her old\nscore nor the remaining members' old scores may become current again. An offer\nmust remain blocked until Ruth, Otis and Wren each submit fresh scores.\n3. Probe a duplicate addition and assigning Cal using otherwise-current requests;\nboth must be rejected without version/revision/activity or score changes.\nFor the absent-member probe, first remove an assigned eligible member through\nCal's visible control and record the accepted removal and new version. Verify\nthat exact member is absent in a fresh candidate response before trying to\nremove the same member again with a fresh operation identity and current\nrevision. This second removal must be rejected with exact state preservation.\nA successful first removal of an assigned member is expected, not a failure.\nRestore the complete eligible panel and obtain fresh scores through visible\ncontrols for the next check.\n",
+        "reasoning": "Removal/readdition, absent-member, duplicate and ineligible probes were atomic; restored panel required fresh scores."
+      },
+      {
+        "id": "reopened_assessment_and_frozen_stages",
+        "name": "reopened_assessment_and_frozen_stages",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 2.0,
+        "description": "Setup: finish CAND-101's current assessment using the UI. ROLE-014 has room\nfor this offer alongside CAND-104's offer. Move CAND-101 to offer and capture it.\n1. Offer-stage panel addition/removal and score changes must be rejected without\nproduct changes. Probe otherwise-valid requests with current revisions, not\nstale requests. Frozen controls must be absent or disabled with an explanation.\n2. Ruth moves offer back to interview. The panel is retained, the assessment\nversion increases once, old scores remain historical and current scores empty.\nThe vacancy releases one reservation. A new offer attempt must fail until every\ncurrent panel member scores afresh. Complete those scores and offer again.\n3. Repeat frozen-write probes on seeded hired CAND-108, using its assigned\nscorers, and panel-edit probes on rejected CAND-103. Require exact unchanged\nproduct state; CAND-103 has no assigned scorers to use for a score probe.\nNotes remain permitted: record one note on CAND-103 through the visible UI.\n",
+        "reasoning": "Offer freezes, reopen version reset, incomplete re-offer blocking, hired/rejected freezes and CAND-103 note behavior were verified."
+      },
+      {
+        "id": "seeded_capacity_and_hired_offer_conversion",
+        "name": "seeded_capacity_and_hired_offer_conversion",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 1.5,
+        "description": "Setup: inspect ROLE-016 before changing it; its seeded CAND-108 is hired.\n1. Visible capacity must show zero reserved, one filled, zero available.\n2. Move CAND-108 hired to offer as Ruth. Require one reserved, zero filled,\nzero available despite the vacancy being full; then move back to hired and\nrequire zero reserved, one filled, zero available. Each accepted transition\ngets one revision and activity event. Never require a second free opening for\nthese conversions. Other vacancies' capacities must be unchanged.\nUse current relative baselines for other vacancies, which earlier checks mutated.\n",
+        "reasoning": "The seeded hired CAND-108 offer conversion returned 422 instead of the required reservation conversion."
+      },
+      {
+        "id": "competing_offers_cannot_overbook",
+        "name": "competing_offers_cannot_overbook",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 3.0,
+        "description": "Setup: use ROLE-017, which has one available opening. Create two distinct new\napplications through Cal's UI. Advance both to interview as Ruth, assign Otis\nand Wren, and obtain both members' current scores through their visible controls.\nCall these applicants individual-A and individual-B (A and B below); retain\ntheir ids separately from the later ROLE-014 batch applicants.\n1. From one current ROLE-017 revision, submit simultaneous offer requests for\nA and B using Ruth's observed request shape and distinct operation identities.\nExactly one must succeed; the other must return stale 409. Require one revision,\none stage activity, one reserved and zero available, with no change to the\nloser's assessment, scores or stage. Neither application may be auto-rejected.\n2. Refresh and attempt the loser's offer with a fresh identity and current\nrevision. Require a worded full-capacity rejection, distinct from stale data,\nand exact equality of all product state. Retain this rejected request/result\nand the winning request/result as receipts for later replay tests.\nStore them as individual_capacity_rejection and individual_offer_success in\nthe verifier ledger before any capacity release. Confirm the refusal used the\ncurrent revision and a fresh identity; a stale/mismatch response cannot pass.\nRequire all displayed capacity counts and both candidate views to agree.\n",
+        "reasoning": "ROLE-017 simultaneous offers produced one success, one stale 409, a current full-capacity refusal and a successful loser hire."
+      },
+      {
+        "id": "capacity_release_does_not_reexecute_old_receipts",
+        "name": "capacity_release_does_not_reexecute_old_receipts",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 2.5,
+        "description": "Setup: continue with the winning offer and losing interview from the capacity\nrace. Record their exact saved success and full-capacity rejection receipts.\n1. Withdraw the winner through Ruth's UI. Require the reservation released,\navailable=1, terminal history and offer-stage funnel loss, without clearing the\nloser's valid assessment. The withdrawn winner's still-assigned scorers and Cal\nmust now be refused score or panel changes with exact state preservation. Replay the original winning offer request: return its\noriginal success result without restoring its offer or acquiring capacity.\n2. Before offering or hiring the loser, capture a fresh state proving available=1\nand the loser remains at interview. At that checkpoint replay the exact saved\nfull-capacity rejection request, not the stale race-loser request. It must\nremain the original rejection with no product change. Save this response and\nthe unchanged state comparison before any subsequent mutation. A replay after\nanother offer or hire does not establish this checkpoint. Only after recording\nit, use a fresh operation identity and current revision to offer the loser\nsuccessfully, then hire them.\nRequire reserved=0, filled=1, available=0 and only the accepted new actions in\nactivity. Reload and require this authoritative state rather than an old receipt\nsnapshot. Keep both original receipts for the restart test.\n",
+        "reasoning": "Saved individual success and capacity-refusal receipts replayed identically after withdrawal and capacity release."
+      },
+      {
+        "id": "receipt_identity_is_person_scoped_and_session_independent",
+        "name": "receipt_identity_is_person_scoped_and_session_independent",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 2.0,
+        "description": "Setup: save a normal note on either new ROLE-017 applicant as Wren, capturing\nrequest and result. This application's terminal or hired stage permits notes.\n1. Sign Wren out. Replaying with that revoked bearer token must return 401 and\nleave all product state unchanged. Sign in again as Wren and replay the saved\nrequest, including a variant with only JSON object keys reordered. Both must\nreturn the original saved status and JSON result without another note or event.\n2. Sign in as Otis and use that same operation identity for his own new note\nwith the current revision. Require an independent successful save attributed\nto Otis, not Wren's receipt and not an operation collision.\n3. As Wren, reuse her identity with a changed note body and then a different\ncandidate's observed note route. Require operation-mismatch 409 in each case,\nwith exact product-state preservation. Retain Wren's original receipt.\nSave it under wren_note_success; retain the exact full route as well as body\nand operation metadata. Each changed-route probe must actually target the\nother candidate's existing route, not the original endpoint with an ignored field.\n",
+        "reasoning": "Revoked and reordered Wren replays worked, but Otis reusing Wren\u2019s operation identity received 409 instead of an independent success."
+      },
+      {
+        "id": "batch_review_is_readonly_and_exact",
+        "name": "batch_review_is_readonly_and_exact",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.5,
+        "description": "Setup: after the preceding single-applicant journey, use ROLE-014 (two openings).\nAs Ruth, release its existing reservations/filled places through legal visible\nwithdrawal controls. Do not alter other vacancies or erase their saved receipts.\nAs Cal create four uniquely named applicants, labeled A, B, C and D in your\nevidence. Advance each to interview as Ruth and assign Otis and Wren as Cal.\nRecord both current scores for A, C and D; leave B missing Wren's score.\nRetain the four server-issued IDs. Reach this setup through normal UI.\n1. Open batch planning as Ruth. Select A then B. Preview must identify both\nnames/IDs/current assessment versions, B's missing score and a blocked result.\nShow selected=2, available=2, projected reserved=2, filled=0, available=0.\nConfirmation must be disabled or unavailable for this blocked selection.\n2. Change the selection to ordered A,C and review. Both assessments are complete,\nthe batch is ready, and the same exact capacity projection is displayed.\n3. Compare complete product snapshots before selection, after both previews and\nafter closing. No candidate, score, assessment, history, note, activity, revision\nor capacity may change. Record the preview contract if server-backed; capture the commit contract when\nfirst used in the following criterion. Preview may instead use authenticated\ncurrent data client-side. Do not invent a route before observing a real request.\n",
+        "reasoning": "Blocked A/B and ready A/C previews showed exact projections and identical full product snapshots."
+      },
+      {
+        "id": "batch_commit_is_atomic_and_audit_linked",
+        "name": "batch_commit_is_atomic_and_audit_linked",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 3.0,
+        "description": "Setup: A and C are fully assessed interview applicants; ROLE-014 has two openings\navailable. Open and review A,C through the UI. Capture every vacancy and full\ncandidate detail snapshot before committing.\n1. Confirm once. Exactly A and C become offered, each gains one offer history\nvisit, and the vacancy revision advances once total. Reserved=2, filled=0,\navailable=0; the derived funnel and visible board agree after reload.\n2. Each selected applicant gains exactly one event attributed to Ruth, containing\ninterview-to-offer, its unchanged assessment version, the same stable batch ID,\nand ordered positions 1/2 and 2/2. There is no extra aggregate product event.\nPanels, scores, assessment versions, notes, unselected applicants and all other\nvacancies remain unchanged. Preserve the exact success request/status/body.\n3. To prepare independent later checks, reopen A and C to interview through\nRuth's UI and obtain Otis and Wren's fresh scores for each. This releases both\nopenings. Do not reset history or reuse historical scores.\n",
+        "reasoning": "A/C committed atomically with one revision, two reservations and ordered stable batch-linked events."
+      },
+      {
+        "id": "batch_invalid_member_and_capacity_reject_every_write",
+        "name": "batch_invalid_member_and_capacity_reject_every_write",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 3.0,
+        "description": "Setup: A,C,D have complete current assessments at interview, B is at interview\nbut lacks Wren's current score, and ROLE-014 has two free openings.\nUse the real batch contract with fresh identities and current revision each time.\n1. Submit ordered A,B and B,A independently. Both must return 4xx with no 5xx;\nan eligible member must not be offered before an ineligible member is discovered.\n2. Submit A,C,D: all individually eligible but three exceed the two openings.\nRequire rejection of the whole selection, not two offers and one failure.\n3. After every probe require exact deep equality of all product snapshots,\nincluding assessment history, scores, capacity, funnel, revisions and activity.\nRecord before/after evidence immediately. Finish B's missing score through Wren's\nvisible control for later checks; this is a new accepted action, not a repair.\n",
+        "reasoning": "A,B; B,A; and A,C,D were rejected atomically with unchanged state; B was then scored visibly."
+      },
+      {
+        "id": "batch_authorization_and_selection_contract",
+        "name": "batch_authorization_and_selection_contract",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 2.0,
+        "description": "Setup: use two fully assessed interview applicants with enough capacity, such as\nA,C. Capture Ruth's genuine request contract, using valid new metadata per probe.\n1. Submit that batch as Cal and as Otis using their own authenticated sessions.\nRequire refusal, no Ruth receipt leaked, and exact unchanged product state.\n2. As Ruth separately probe empty selection, repeated A,A, unknown ID alongside\nA, a candidate from ROLE-015 alongside A, and malformed selection values (string,\nobject, and array containing a Boolean). None may partially commit or return 5xx.\n3. Add forged capacity, assessment-version and actor fields to an otherwise valid\nbatch. Each must be refused, not silently ignored during an accepted batch.\nCheck every vacancy, selected/unselected candidates, revisions and complete audit\nafter each probe. Do not mistake ordinary target IDs for forbidden ownership claims.\n",
+        "reasoning": "Unauthorized roles, malformed selections and forged server-owned fields all returned non-2xx without mutation."
+      },
+      {
+        "id": "batch_stale_confirmation_requires_review",
+        "name": "batch_stale_confirmation_requires_review",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 2.0,
+        "description": "Setup: A,C are eligible and two openings are free. In Ruth's first browser session,\nreview A,C and record the reviewed revision. In a separate authenticated session\nadd an ordinary note to B using the UI, advancing the vacancy once.\n1. Confirm the original review in the first session. Its request must retain the\nreviewed revision, receive stale 409, and make no batch changes. Record exactly\none commit request; waiting must not reveal an automatic retry with a newer revision.\n2. Keep the selection visible and explain the conflict. Explicitly review again,\nobserve current data, then confirm with a fresh operation identity. Only this\nnew confirmation may offer A,C; verify one revision and the complete batch result.\n3. Reopen A,C through the UI and obtain fresh Otis/Wren scores to restore two\neligible interview applicants and free openings for the race checks.\n",
+        "reasoning": "A stale reviewed revision returned one visible 409 conflict; fresh review then committed successfully."
+      },
+      {
+        "id": "batch_and_individual_races_commit_one_whole_operation",
+        "name": "batch_and_individual_races_commit_one_whole_operation",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 3.0,
+        "description": "Setup: A,C,D are eligible interview applicants and ROLE-014 has two free openings.\nCapture valid batch and individual-offer requests from the app's actual controls.\n1. Submit batch A,C and individual offer D simultaneously from one revision with\ndistinct identities. Exactly one operation succeeds and the other returns stale\n409. Accept either winner. If batch wins only A,C are offered, reserved=2; if\nindividual wins only D is offered, reserved=1. Revision advances exactly once.\nNo partial batch, extra event or mutation to the losing applicants is allowed.\n2. Legally reopen whichever applicants were offered and re-score in their new\nversions through the UI. Then submit overlapping batches A,C and C,D simultaneously\nfrom one current revision and distinct identities. Exactly one whole batch wins,\none returns stale 409, reserved=2, and the revision advances once. The shared\napplicant C has only one new offer visit/event; the losing-only applicant is unchanged.\n3. Preserve compact full before/after snapshots for both races. Reopen and freshly\nscore the successful batch's applicants for later checks. Never choose a fixed\nwinner in advance or turn the race into sequential refreshed submissions.\n",
+        "reasoning": "Batch/individual and overlapping-batch races each committed only one whole operation with stale losers."
+      },
+      {
+        "id": "batch_lost_response_recovers_original_operation_and_live_view",
+        "name": "batch_lost_response_recovers_original_operation_and_live_view",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 2.0,
+        "description": "Setup: C,D are fully assessed interview applicants and two openings are free.\nUse Ruth's UI to review C,D. The judge may intercept the real confirmation response,\nallow the original request to reach the server, and then withhold/abort delivery\nwithout changing the request, body or status. Capture the actual server result.\n1. While pending, repeated activation must send no second confirmation. After\ndelivery failure the UI explains uncertainty and offers an explicit retry.\nSelection, reviewed revision and operation identity remain the same; changing\nthe unresolved payload is not allowed. Do not require a specific transport library.\n2. In a second genuine Ruth session, observe the committed offers and withdraw C\nthrough the UI, releasing one opening. Preserve that current checkpoint.\n3. Retry through the first UI. Require the exact original ordered selection,\nrevision and identity, the saved successful status/JSON, and zero product writes.\nThe UI must fetch/display current data: C remains withdrawn, D offered, reserved=1,\navailable=1. It must not replace current data with the historical receipt snapshot.\nRetain this success receipt for the final restart check. Report a failed intercept\nsetup separately; never infer retry behavior from a request that did not reach the server.\nUse the supplied bounded capture helper and save batch_cd_lost_success as soon\nas its actual server response is captured. Keep the first page and context\nuntouched while the second context withdraws C. A navigation-induced loss of\nthe judge's first page is a setup failure, not evidence of a broken app retry.\n",
+        "reasoning": "The server commit and exact retry/live state worked, but the supplied helper reported setup error before valid pending/duplicate evidence was captured."
+      },
+      {
+        "id": "batch_receipts_remain_historical_after_capacity_release",
+        "name": "batch_receipts_remain_historical_after_capacity_release",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 3.0,
+        "description": "Setup: C is withdrawn, D offered, A,B have complete current interview assessments,\nand exactly one ROLE-014 opening is available. If a prior check failed, establish\nthese premises by lawful UI actions and record them before the graded probes.\n1. Submit A,B with fresh valid metadata. Preserve its full-capacity 4xx receipt\nand exact unchanged product checkpoint. Withdraw D through Ruth's UI so two\nopenings are free, then preview A,B to prove it is now eligible.\n2. Replay that exact earlier rejection before any new offer. Require identical\nstatus/JSON and no product changes despite sufficient room. While A,B are still\nfully assessed interviews with two openings free, submit that otherwise-valid\nbatch as Cal with a fresh identity and current revision. Require an explicit\nauthorization refusal and unchanged state. Ruth may then use another new\nidentity and the current revision to commit A,B successfully. Preserve both receipts.\n3. Replay the original A,C success from batch_commit_is_atomic_and_audit_linked:\nC must remain withdrawn and A's later history/audit must remain untouched. Reorder\nonly JSON object keys and require the same saved result. Reverse the candidate-ID\narray with the same identity and require operation-mismatch 409, unchanged state.\n4. Revoke Ruth's session and prove that token cannot replay the success. Sign in\nagain as Ruth and require its original result. As Cal, send the original batch\nrequest with Ruth's operation identity and require a non-2xx response, no access\nto Ruth's saved success and no product changes. This historical request may be\nstale; a stale refusal or a mismatch against Cal's own previously saved operation\nis not proof of an authorization defect. The independent current-metadata Cal\nauthorization control was performed while A,B were eligible in step 2; require\nthat evidence too. It must not fail merely for stale or reused metadata. Preserve all\noriginal requests/statuses/bodies and their actors for the shared restart check.\n",
+        "reasoning": "The saved batch rejection and A/C success replayed identically across capacity release, reordered payload, reversal, roles and revocation."
+      },
+      {
+        "id": "durable_cross_role_audit_after_reload",
+        "name": "durable_cross_role_audit_after_reload",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.5,
+        "description": "Perform one permitted action as each relevant role: Cal adds or panels, an\nassigned panel member scores, Ruth moves, and another signed-in person notes.\nReload and sign in again as Ruth. Require the vacancy and candidate views,\nderived funnel, revisions, notes and complete activity trail to retain the exact\naccepted outcomes, actors and order. Rejected attempts from the workflow must\nnot appear as product activity. Capture the current records and revision for\nevery vacancy, including created candidates, panels, current and historical scores, assessment\nversions, capacity, notes, history and activity. Run `bash /tests/app-lifecycle.sh restart` once, then reload and sign\nin again if needed. Require the same complete persisted state and derived\nfunnels, with no reseeded, duplicated or lost candidates or audit entries.\nThis is the only criterion allowed to restart the server. Never remove the\ndatabase, reseed, repair the app or launch a different entry point.\n",
+        "reasoning": "All four complete vacancy snapshots, revisions, candidates, funnels, capacity and activity matched exactly before and after the single restart."
+      },
+      {
+        "id": "success_and_rejection_receipts_survive_restart",
+        "name": "success_and_rejection_receipts_survive_restart",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 2.0,
+        "description": "Setup: the preceding durable audit criterion has restarted the server once.\nDo not restart again. Use the saved winning offer success, full-capacity\nrejection and Wren note receipts from the earlier hardening workflows, plus\nthe saved batch successes and full-capacity batch rejection. Include the batch\nwhose response was lost and whose applicant was later withdrawn.\nRead the six original verifier ledger entries rather than relying on page\nmemory or the reused labels A/B. Check their availability before the preceding\ncriterion restarts. Keep each ROLE-017 individual receipt distinct from the\nROLE-014 batch receipts; test every saved result independently after restart.\n1. Sign in again as each original actor and replay all these original requests, including both batch successes and the\nbatch rejection. Array order, batch links and historical response bodies must\nbe preserved. Verify all current product state after each individual replay.\nRequire each original status and JSON result, including historical snapshots,\nwhile all current candidates, versions, current/historical scores, capacity,\nfunnel, revisions, notes and activity remain unchanged.\n2. A fresh operation using a current revision must still obey the post-restart\nstate: attempting to offer the withdrawn winner must be refused as terminal.\nReload the UI and require the live state to remain visible. Missing saved\nreceipts are an untested outcome, never evidence that persistence passed.\n",
+        "reasoning": "All six saved receipts replayed after restart with identical status/body and unchanged state; terminal offer remained refused."
+      }
+    ],
+    "kind": "agent",
+    "judge": {
+      "agent": "codex",
+      "model": "gpt-5.6-luna",
+      "timeout": 9000,
+      "cwd": null,
+      "isolated": false,
+      "atif_trajectory": null,
+      "mode": "batched",
+      "mcp_servers": [
+        {
+          "name": "playwright",
+          "transport": "stdio",
+          "url": null,
+          "command": "playwright-mcp",
+          "args": [
+            "--headless",
+            "--isolated",
+            "--executable-path=/usr/local/bin/chromium",
+            "--no-sandbox"
+          ],
+          "allowed_tools": []
+        }
+      ]
+    },
+    "judge_output": "{\"authentication_sessions_and_revocation\":{\"score\":\"yes\",\"reasoning\":\"Anonymous and wrong-password reads were refused; all four accounts signed in correctly, and revoking one Ruth token left the other valid.\"},\"seeded_pipeline_and_empty_vacancy\":{\"score\":\"yes\",\"reasoning\":\"The seeded vacancies, nine candidates, stages and empty ROLE-017 were verified before mutations.\"},\"candidate_panel_score_note_fidelity\":{\"score\":\"yes\",\"reasoning\":\"CAND-106 and CAND-104 drawers matched the seed with no cross-candidate leakage.\"},\"exact_derived_funnel\":{\"score\":\"yes\",\"reasoning\":\"ROLE-014 reached/current/loss counts and all five rungs matched the seed; ROLE-015 was independent.\"},\"duplicate_rule_and_cross_vacancy_identity\":{\"score\":\"yes\",\"reasoning\":\"Duplicate Ilse was rejected unchanged; ROLE-017 received one new server-issued Ilse application.\"},\"role_enforcement_is_server_side\":{\"score\":\"yes\",\"reasoning\":\"Unauthorized stage, creation, panel and scoring requests returned non-2xx with exact unchanged snapshots.\"},\"legal_stage_move_and_independent_applications\":{\"score\":\"yes\",\"reasoning\":\"CAND-105 legal transitions, history, activity and funnel were consistent while CAND-101 remained independent.\"},\"skip_and_large_backstep_are_atomic_rejections\":{\"score\":\"yes\",\"reasoning\":\"Both illegal moves returned worded 400 errors with unchanged records, revisions, funnels and activity.\"},\"terminal_candidates_are_locked_and_retained\":{\"score\":\"yes\",\"reasoning\":\"Rejected and withdrawn candidates exposed no movement/deletion controls and controlled terminal probes were unchanged.\"},\"score_boundaries_and_panel_ownership\":{\"score\":\"yes\",\"reasoning\":\"Otis persisted scores 1 and 5; invalid ranges, fractional and unassigned scoring were rejected atomically.\"},\"offer_requires_a_complete_independent_panel\":{\"score\":\"yes\",\"reasoning\":\"CAND-104 required a complete non-manager-only panel and current valid scores before offer succeeded.\"},\"notes_are_attributed_append_only_activity\":{\"score\":\"yes\",\"reasoning\":\"Both Wren notes remained append-only, attributed, timestamped and persisted with matching activity.\"},\"funnel_ripple_after_real_progress\":{\"score\":\"yes\",\"reasoning\":\"ROLE-014 derived counts updated correctly after CAND-104 reached offer and survived reload.\"},\"candidate_views_and_activity_stay_coherent\":{\"score\":\"yes\",\"reasoning\":\"CAND-104 stage, history, panel, scores and activity stayed coherent across navigation and reload.\"},\"stale_revision_rejects_then_allows_reviewed_retry\":{\"score\":\"yes\",\"reasoning\":\"A stale hire returned 409 without mutation; a reviewed fresh retry produced one persisted hire.\"},\"simultaneous_writes_commit_at_most_once\":{\"score\":\"yes\",\"reasoning\":\"Concurrent notes yielded one success and one stale 409 with exactly one note/activity write.\"},\"successful_retry_replays_one_result\":{\"score\":\"yes\",\"reasoning\":\"A captured successful note replay returned the original result without duplicate note, activity or revision.\"},\"rejected_retry_and_payload_mismatch_are_stable\":{\"score\":\"yes\",\"reasoning\":\"The invalid stage request replayed identically; changed payload reused its identity and returned operation-mismatch 409.\"},\"malformed_or_identity_changing_writes_leave_product_state_exact\":{\"score\":\"no\",\"reasoning\":\"A missing JSON revision was accepted using a valid header, moving CAND-101 and advancing the vacancy revision.\"},\"worded_action_and_error_feedback\":{\"score\":\"yes\",\"reasoning\":\"Worded feedback was observed for bad sign-in, accepted actions, illegal movement and stale data.\"},\"pending_state_and_duplicate_prevention\":{\"score\":\"no\",\"reasoning\":\"Duplicate note activation was suppressed, but the initiating control showed no clear pending state.\"},\"runtime_manifest_routes\":{\"score\":\"yes\",\"reasoning\":\"APP_MANIFEST.md documented the required start block, database path and observed read/write routes.\"},\"backstep_terminal_loss_attribution\":{\"score\":\"yes\",\"reasoning\":\"CAND-117 followed the required sequence; reached counts increased once per stage and only screening loss increased.\"},\"panel_change_invalidates_entire_assessment\":{\"score\":\"yes\",\"reasoning\":\"Adding Ruth advanced the version, historicalized all old scores, cleared current scores and required fresh scoring.\"},\"panel_removal_and_readdition_require_fresh_scores\":{\"score\":\"yes\",\"reasoning\":\"Removal/readdition, absent-member, duplicate and ineligible probes were atomic; restored panel required fresh scores.\"},\"reopened_assessment_and_frozen_stages\":{\"score\":\"yes\",\"reasoning\":\"Offer freezes, reopen version reset, incomplete re-offer blocking, hired/rejected freezes and CAND-103 note behavior were verified.\"},\"seeded_capacity_and_hired_offer_conversion\":{\"score\":\"no\",\"reasoning\":\"The seeded hired CAND-108 offer conversion returned 422 instead of the required reservation conversion.\"},\"competing_offers_cannot_overbook\":{\"score\":\"yes\",\"reasoning\":\"ROLE-017 simultaneous offers produced one success, one stale 409, a current full-capacity refusal and a successful loser hire.\"},\"capacity_release_does_not_reexecute_old_receipts\":{\"score\":\"yes\",\"reasoning\":\"Saved individual success and capacity-refusal receipts replayed identically after withdrawal and capacity release.\"},\"receipt_identity_is_person_scoped_and_session_independent\":{\"score\":\"no\",\"reasoning\":\"Revoked and reordered Wren replays worked, but Otis reusing Wren\u2019s operation identity received 409 instead of an independent success.\"},\"batch_review_is_readonly_and_exact\":{\"score\":\"yes\",\"reasoning\":\"Blocked A/B and ready A/C previews showed exact projections and identical full product snapshots.\"},\"batch_commit_is_atomic_and_audit_linked\":{\"score\":\"yes\",\"reasoning\":\"A/C committed atomically with one revision, two reservations and ordered stable batch-linked events.\"},\"batch_invalid_member_and_capacity_reject_every_write\":{\"score\":\"yes\",\"reasoning\":\"A,B; B,A; and A,C,D were rejected atomically with unchanged state; B was then scored visibly.\"},\"batch_authorization_and_selection_contract\":{\"score\":\"yes\",\"reasoning\":\"Unauthorized roles, malformed selections and forged server-owned fields all returned non-2xx without mutation.\"},\"batch_stale_confirmation_requires_review\":{\"score\":\"yes\",\"reasoning\":\"A stale reviewed revision returned one visible 409 conflict; fresh review then committed successfully.\"},\"batch_and_individual_races_commit_one_whole_operation\":{\"score\":\"yes\",\"reasoning\":\"Batch/individual and overlapping-batch races each committed only one whole operation with stale losers.\"},\"batch_lost_response_recovers_original_operation_and_live_view\":{\"score\":\"no\",\"reasoning\":\"The server commit and exact retry/live state worked, but the supplied helper reported setup error before valid pending/duplicate evidence was captured.\"},\"batch_receipts_remain_historical_after_capacity_release\":{\"score\":\"yes\",\"reasoning\":\"The saved batch rejection and A/C success replayed identically across capacity release, reordered payload, reversal, roles and revocation.\"},\"durable_cross_role_audit_after_reload\":{\"score\":\"yes\",\"reasoning\":\"All four complete vacancy snapshots, revisions, candidates, funnels, capacity and activity matched exactly before and after the single restart.\"},\"success_and_rejection_receipts_survive_restart\":{\"score\":\"yes\",\"reasoning\":\"All six saved receipts replayed after restart with identical status/body and unchanged state; terminal offer remained refused.\"}}\n"
+  },
+  "polish": {
+    "score": 0.8,
+    "criteria": [
+      {
+        "id": "selected_vacancy_and_stage_hierarchy",
+        "name": "selected_vacancy_and_stage_hierarchy",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Require the current vacancy to have a non-color-only selected marker. Stage\nheadings and counts must be visually distinct from candidate names and metadata,\nand current and terminal stages must not rely on color alone.\n",
+        "reasoning": "The active vacancy has a distinct border, background, and elevation marker. Stage headings/count pills, candidate names, current-stage checkmarks, and the explicit TERMINAL heading are visually distinct."
+      },
+      {
+        "id": "candidate_surfaces_and_theme_state",
+        "name": "candidate_surfaces_and_theme_state",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Require visible boundaries for cards and the candidate drawer. Activating the\ntheme control must visibly change the page while preserving the current vacancy\nand readable foreground/background contrast.\n",
+        "reasoning": "Candidate cards have borders/shadows and the drawer has a visible boundary. Theme switching visibly changes colors while preserving the vacancy and readable contrast."
+      },
+      {
+        "id": "mobile_has_no_page_overflow",
+        "name": "mobile_has_no_page_overflow",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 1.0,
+        "description": "At approximately 390 by 844, require document scroll width not to exceed the\nviewport. Vacancy controls, funnel, stage content, the open candidate drawer, and batch selection/review\nmust not be clipped behind fixed page content.\n",
+        "reasoning": "At 390px width, document scrollWidth was 425px; header controls and Sign Out extended beyond the viewport."
+      },
+      {
+        "id": "mobile_pipeline_and_drawer_reachability",
+        "name": "mobile_pipeline_and_drawer_reachability",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "At the mobile viewport, require every stage column, candidate card, drawer\nsection, history, notes, and currently permitted action form to remain reachable\nand usable through normal scrolling and pointer interaction.\n",
+        "reasoning": "Stages and candidates stack vertically, and the drawer body provides vertical scrolling. Notes, activity, assessment, and permitted actions were reachable after scrolling."
+      },
+      {
+        "id": "semantic_labels_and_landmarks",
+        "name": "semantic_labels_and_landmarks",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Require navigation and main landmarks, meaningful headings, and labels or\naccessible names for each currently visible sign-in, vacancy, candidate,\nmutation, batch selection/review/confirmation, theme, close, and sign-out control.\n",
+        "reasoning": "Navigation and main landmarks, headings, form labels, candidate/vacancy names, mutation controls, batch controls, theme, close, and sign-out controls had meaningful accessible names."
+      },
+      {
+        "id": "keyboard_workflow_and_focus",
+        "name": "keyboard_workflow_and_focus",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 1.0,
+        "description": "Traverse a normal vacancy-to-candidate workflow using only the keyboard.\nRequire a sensible order, visible focus, operable controls, and usable focus\nafter opening and closing the candidate drawer. Also keyboard-select an\napplicant in batch planning, open the read-only review and dismiss it. Require\nfocus to remain usable within the modal and return to its initiating control.\n",
+        "reasoning": "Keyboard opening worked, but focus escaped candidate and batch modals to underlying controls. Selection rerender could drop focus, and review dismissal returned focus to body rather than the initiating control."
+      },
+      {
+        "id": "intentional_empty_states",
+        "name": "intentional_empty_states",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Inspect currently empty funnel, panel, score, note, or activity areas. Require\nhelpful empty-state language instead of blank space, raw null values, or\nbroken-looking controls.\n",
+        "reasoning": "Empty columns and drawer sections used helpful messages such as \u201cNo candidates,\u201d \u201cNo panel members assigned yet,\u201d \u201cNo notes recorded yet,\u201d and \u201cNo recorded activity for this candidate.\u201d"
+      },
+      {
+        "id": "drawer_reopen_preserves_context",
+        "name": "drawer_reopen_preserves_context",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Open, close, and reopen a candidate drawer. The vacancy around it must remain\nusable, and the reopened drawer must preserve the selected candidate and its\ncoherent visible history and activity.\n",
+        "reasoning": "Ilse Vandal\u2019s drawer was opened, closed, and reopened with the same vacancy, candidate, stage, note, and activity history preserved."
+      },
+      {
+        "id": "reduced_motion_behavior",
+        "name": "reduced_motion_behavior",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Emulate prefers-reduced-motion and require nonessential transitions and\nanimations to become effectively immediate without hiding status or selection.\n",
+        "reasoning": "With reduced motion emulated, transitions and animations were reduced to effectively instantaneous durations, while drawer status and candidate selection remained visible."
+      },
+      {
+        "id": "mobile_touch_targets_and_overlays",
+        "name": "mobile_touch_targets_and_overlays",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "At the mobile viewport, require the primary sign-in, vacancy, candidate, and\ncurrently permitted mutation and batch selection/review controls to have practical touch targets and to\nremain operable without overlap or invisible blocking overlays.\n",
+        "reasoning": "Sign-in, vacancy, candidate, mutation, and batch selection/review surfaces were reachable and hit-tested to the intended controls without invisible blocking overlays or overlap."
+      }
+    ],
+    "kind": "agent",
+    "judge": {
+      "agent": "codex",
+      "model": "gpt-5.6-luna",
+      "timeout": 900,
+      "cwd": null,
+      "isolated": false,
+      "atif_trajectory": null,
+      "mode": "batched",
+      "mcp_servers": [
+        {
+          "name": "playwright",
+          "transport": "stdio",
+          "url": null,
+          "command": "playwright-mcp",
+          "args": [
+            "--headless",
+            "--isolated",
+            "--executable-path=/usr/local/bin/chromium",
+            "--no-sandbox"
+          ],
+          "allowed_tools": []
+        }
+      ]
+    },
+    "judge_output": "{\"selected_vacancy_and_stage_hierarchy\":{\"score\":\"yes\",\"reasoning\":\"The active vacancy has a distinct border, background, and elevation marker. Stage headings/count pills, candidate names, current-stage checkmarks, and the explicit TERMINAL heading are visually distinct.\"},\"candidate_surfaces_and_theme_state\":{\"score\":\"yes\",\"reasoning\":\"Candidate cards have borders/shadows and the drawer has a visible boundary. Theme switching visibly changes colors while preserving the vacancy and readable contrast.\"},\"mobile_has_no_page_overflow\":{\"score\":\"no\",\"reasoning\":\"At 390px width, document scrollWidth was 425px; header controls and Sign Out extended beyond the viewport.\"},\"mobile_pipeline_and_drawer_reachability\":{\"score\":\"yes\",\"reasoning\":\"Stages and candidates stack vertically, and the drawer body provides vertical scrolling. Notes, activity, assessment, and permitted actions were reachable after scrolling.\"},\"semantic_labels_and_landmarks\":{\"score\":\"yes\",\"reasoning\":\"Navigation and main landmarks, headings, form labels, candidate/vacancy names, mutation controls, batch controls, theme, close, and sign-out controls had meaningful accessible names.\"},\"keyboard_workflow_and_focus\":{\"score\":\"no\",\"reasoning\":\"Keyboard opening worked, but focus escaped candidate and batch modals to underlying controls. Selection rerender could drop focus, and review dismissal returned focus to body rather than the initiating control.\"},\"intentional_empty_states\":{\"score\":\"yes\",\"reasoning\":\"Empty columns and drawer sections used helpful messages such as \u201cNo candidates,\u201d \u201cNo panel members assigned yet,\u201d \u201cNo notes recorded yet,\u201d and \u201cNo recorded activity for this candidate.\u201d\"},\"drawer_reopen_preserves_context\":{\"score\":\"yes\",\"reasoning\":\"Ilse Vandal\u2019s drawer was opened, closed, and reopened with the same vacancy, candidate, stage, note, and activity history preserved.\"},\"reduced_motion_behavior\":{\"score\":\"yes\",\"reasoning\":\"With reduced motion emulated, transitions and animations were reduced to effectively instantaneous durations, while drawer status and candidate selection remained visible.\"},\"mobile_touch_targets_and_overlays\":{\"score\":\"yes\",\"reasoning\":\"Sign-in, vacancy, candidate, mutation, and batch selection/review surfaces were reachable and hit-tested to the intended controls without invisible blocking overlays or overlap.\"}}\n"
+  },
+  "render": {
+    "score": 1.0,
+    "criteria": [
+      {
+        "id": "public_page_loads",
+        "name": "public_page_loads",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Open the local app and confirm a substantive Pellmoor sign-in page appears with\nemail, password and Sign in controls. Reload once and require the page to remain\nvisible and usable without a fatal browser error or blank screen.\n",
+        "reasoning": "Pellmoor sign-in page showed email, password, and Sign in controls; reload returned 200 and remained usable with no console errors."
+      },
+      {
+        "id": "public_control_responds",
+        "name": "public_control_responds",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Use the visible sign-in controls with an empty or plainly incorrect password.\nRequire the control to respond without freezing or navigating away from the app,\nand confirm the page remains usable afterwards. Do not require protected product\nfunctionality in this smoke criterion.\n",
+        "reasoning": "Wrong password submission produced \u201cInvalid email or password,\u201d stayed on the sign-in page, and remained usable."
+      }
+    ],
+    "kind": "agent",
+    "judge": {
+      "agent": "codex",
+      "model": "gpt-5.6-luna",
+      "timeout": 600,
+      "cwd": null,
+      "isolated": false,
+      "atif_trajectory": null,
+      "mode": "batched",
+      "mcp_servers": [
+        {
+          "name": "playwright",
+          "transport": "stdio",
+          "url": null,
+          "command": "playwright-mcp",
+          "args": [
+            "--headless",
+            "--isolated",
+            "--executable-path=/usr/local/bin/chromium",
+            "--no-sandbox"
+          ],
+          "allowed_tools": []
+        }
+      ]
+    },
+    "judge_output": "{\"public_page_loads\":{\"score\":\"yes\",\"reasoning\":\"Pellmoor sign-in page showed email, password, and Sign in controls; reload returned 200 and remained usable with no console errors.\"},\"public_control_responds\":{\"score\":\"yes\",\"reasoning\":\"Wrong password submission produced \u201cInvalid email or password,\u201d stayed on the sign-in page, and remained usable.\"}}\n"
+  },
+  "visual": {
+    "score": 0.9167,
+    "criteria": [
+      {
+        "id": "visual_typography",
+        "name": "visual_typography",
+        "value": 1.0,
+        "raw": 5,
+        "weight": 1.0,
+        "description": "Assess rendered sign-in, vacancies, candidate details and batch selection/review\ntypography at desktop size.\n5: deliberate, readable type sizes and weights distinguish product title,\naccount, vacancy/stage, counts and secondary history; alignment is consistent.\n4: readable with one or two minor sizing or alignment imperfections.\n3: noticeable inconsistent sizing, crowding or awkward text truncation.\n2: several important labels or history entries are difficult to read.\n1: broadly illegible, misaligned or undifferentiated text.\n0: no coherent typographic rendering on the reviewed surfaces.\nDo not grade move correctness or exact seed values here.\n",
+        "reasoning": "Desktop typography deliberately distinguishes product title, account, vacancy/stage labels, counts, candidate details, score history, and batch summaries; dense secondary text remains readable and aligned."
+      },
+      {
+        "id": "visual_color_and_contrast",
+        "name": "visual_color_and_contrast",
+        "value": 1.0,
+        "raw": 5,
+        "weight": 1.0,
+        "description": "Assess both required light and dark themes.\n5: cohesive palette with clearly distinguishable stage labels, candidate cards, legible text and purposeful accents across vacancies, candidate details and batch selection/review.\n4: one or two minor contrast or palette imperfections.\n3: some low-contrast text or conflicting accents distract from the pipeline.\n2: substantial legibility or stage-distinction problems.\n1: widespread low contrast or harsh, incoherent color treatment.\n0: no readable color treatment renders.\nJudge appearance, not actual stage-rule enforcement or accessible-name behavior.\n",
+        "reasoning": "Light and dark themes use a cohesive navy/slate palette with clearly differentiated blue, orange, purple, pink, and green stage accents. Candidate cards, warnings, modal states, and text remain legible."
+      },
+      {
+        "id": "visual_spacing_and_layout",
+        "name": "visual_spacing_and_layout",
+        "value": 1.0,
+        "raw": 5,
+        "weight": 1.0,
+        "description": "Assess spacing on desktop sign-in, vacancy/funnel, candidate details and batch selection/review.\n5: consistent margins and alignment, deliberate pipeline/control grouping and\nbalanced spacing between counts, history and activity.\n4: minor uneven spacing or alignment.\n3: several crowded, drifting or excessively separated elements.\n2: frequent collisions, clipping or inconsistent gutters.\n1: broadly unbalanced or broken layout.\n0: no coherent spaced layout renders.\nDo not require a specific arrangement or the reference's pixels.\n",
+        "reasoning": "Desktop sign-in, vacancy tiles, capacity panel, funnel/stat cards, candidate drawer, and batch modal use consistent gutters, padding, alignment, and grouped controls."
+      },
+      {
+        "id": "visual_hierarchy_and_scanability",
+        "name": "visual_hierarchy_and_scanability",
+        "value": 1.0,
+        "raw": 5,
+        "weight": 1.0,
+        "description": "Assess how easily the vacancy, stage, account, counts, history and batch selection/capacity summary can be\nvisually located on desktop without reading all surrounding text.\n5: clear visual order with primary pipeline state prominent and related secondary\ninformation grouped; candidate details are distinct from vacancy summaries.\n4: mostly clear with minor competing emphasis.\n3: several competing sections or important information visually buried.\n2: headings, controls and content are difficult to distinguish.\n1: little usable visual order.\n0: no scannable hierarchy renders.\nFunctional correctness and keyboard traversal are outside this criterion.\n",
+        "reasoning": "Vacancy identity and capacity lead into the funnel and candidate pipeline. Candidate drawers clearly separate identity, stage, actions, scores, notes, and history; batch reviews foreground capacity and eligibility reasons."
+      },
+      {
+        "id": "visual_overall_craft",
+        "name": "visual_overall_craft",
+        "value": 1.0,
+        "raw": 5,
+        "weight": 1.0,
+        "description": "Assess visual consistency across sign-in, vacancies, candidate details and batch selection/review.\n5: one deliberate component language, integrated hiring-workspace identity and\nfinished treatment of history, empty states and secondary controls.\n4: one or two minor inconsistent details.\n3: noticeable default styling or inconsistent components between surfaces.\n2: much of the interface looks unfinished or disconnected.\n1: little considered component styling.\n0: no crafted presentation renders.\nDo not require branding, decorative assets or features absent from the brief.\n",
+        "reasoning": "Sign-in, vacancies, candidate details, empty states, history, secondary controls, and batch surfaces share a deliberate component language with consistent badges, borders, radii, buttons, and accents."
+      },
+      {
+        "id": "visual_responsive_consistency",
+        "name": "visual_responsive_consistency",
+        "value": 0.5,
+        "raw": 3,
+        "weight": 1.0,
+        "description": "Compare screenshots at 1280 by 800 and 390 by 844 for sign-in, vacancies, candidate details and batch selection/review.\n5: typography, palette, component styling and hierarchy remain visually\ncoherent while the layout adapts naturally to each viewport.\n4: minor visual inconsistency at one size.\n3: visible uneven scaling, crowding or loss of hierarchy between sizes.\n2: substantial visual fragmentation at the narrow size.\n1: barely coherent presentation at one size.\n0: no reviewable presentation at either size.\nScore visual adaptation only; control reachability/overflow is graded by\nPolish. Ordinary vertical scrolling is allowed; missing required surfaces\nare not waived or treated as full-credit evidence.\n",
+        "reasoning": "The phone layout preserves the palette and component language and adapts cards, drawers, and modals well, but the header crowds and wraps account controls, sign-out is partially clipped, and narrow funnel labels collide; batch summary text also wraps tightly."
+      }
+    ],
+    "kind": "agent",
+    "judge": {
+      "agent": "codex",
+      "model": "gpt-5.6-luna",
+      "timeout": 900,
+      "cwd": null,
+      "isolated": false,
+      "atif_trajectory": null,
+      "mode": "batched",
+      "mcp_servers": [
+        {
+          "name": "playwright",
+          "transport": "stdio",
+          "url": null,
+          "command": "playwright-mcp",
+          "args": [
+            "--headless",
+            "--isolated",
+            "--executable-path=/usr/local/bin/chromium",
+            "--no-sandbox"
+          ],
+          "allowed_tools": []
+        }
+      ]
+    },
+    "judge_output": "{\"visual_typography\":{\"score\":5,\"reasoning\":\"Desktop typography deliberately distinguishes product title, account, vacancy/stage labels, counts, candidate details, score history, and batch summaries; dense secondary text remains readable and aligned.\"},\"visual_color_and_contrast\":{\"score\":5,\"reasoning\":\"Light and dark themes use a cohesive navy/slate palette with clearly differentiated blue, orange, purple, pink, and green stage accents. Candidate cards, warnings, modal states, and text remain legible.\"},\"visual_spacing_and_layout\":{\"score\":5,\"reasoning\":\"Desktop sign-in, vacancy tiles, capacity panel, funnel/stat cards, candidate drawer, and batch modal use consistent gutters, padding, alignment, and grouped controls.\"},\"visual_hierarchy_and_scanability\":{\"score\":5,\"reasoning\":\"Vacancy identity and capacity lead into the funnel and candidate pipeline. Candidate drawers clearly separate identity, stage, actions, scores, notes, and history; batch reviews foreground capacity and eligibility reasons.\"},\"visual_overall_craft\":{\"score\":5,\"reasoning\":\"Sign-in, vacancies, candidate details, empty states, history, secondary controls, and batch surfaces share a deliberate component language with consistent badges, borders, radii, buttons, and accents.\"},\"visual_responsive_consistency\":{\"score\":3,\"reasoning\":\"The phone layout preserves the palette and component language and adapts cards, drawers, and modals well, but the header crowds and wraps account controls, sign-out is partially clipped, and narrow funnel labels collide; batch summary text also wraps tightly.\"}}\n"
+  }
+}

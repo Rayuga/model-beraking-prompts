@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DropLine</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="page-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">DropLine</p>
+        <h1>Connect Four, saved and shareable on one screen</h1>
+      </div>
+      <div class="topbar-actions">
+        <div id="sessionBadge" class="session-badge" aria-live="polite">Not signed in</div>
+        <button id="signOutBtn" class="secondary hidden" type="button">Sign out everywhere</button>
+      </div>
+    </header>
+
+    <main id="app" class="app-grid">
+      <section id="loginPanel" class="panel auth-panel">
+        <h2>Sign in</h2>
+        <p class="muted">Use a seeded demo account to restore its own board, totals, archive, and practice studies.</p>
+        <form id="loginForm" class="form-grid">
+          <label>
+            <span>Email</span>
+            <input id="emailInput" name="email" type="email" autocomplete="username" required />
+          </label>
+          <label>
+            <span>Password</span>
+            <input id="passwordInput" name="password" type="password" autocomplete="current-password" required />
+          </label>
+          <button class="primary" type="submit">Sign in</button>
+        </form>
+        <div class="demo-card">
+          <h3>Seeded accounts</h3>
+          <ul>
+            <li>avery@dropline.test / password123</li>
+            <li>jordan@dropline.test / password123</li>
+          </ul>
+        </div>
+      </section>
+
+      <section id="dashboard" class="dashboard hidden" aria-live="polite">
+        <section class="panel status-panel">
+          <div class="status-grid">
+            <div>
+              <p class="eyebrow">Signed in as</p>
+              <h2 id="accountName">—</h2>
+              <p id="accountEmail" class="muted">—</p>
+            </div>
+            <div>
+              <p class="eyebrow">Competitive record</p>
+              <div id="scoreSummary" class="scoreline">—</div>
+              <p id="gameMeta" class="muted">—</p>
+            </div>
+            <div>
+              <p class="eyebrow">Practice record</p>
+              <div id="analysisSummary" class="scoreline">—</div>
+              <p class="muted">Practice studies stay separate from match totals.</p>
+            </div>
+          </div>
+        </section>
+
+        <section id="messageBar" class="message-bar" aria-live="polite"></section>
+
+        <section class="panel" id="gamePanel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Competitive game</p>
+              <h2>Live match</h2>
+            </div>
+            <div class="panel-actions">
+              <button id="gameUndoBtn" class="secondary" type="button">Undo</button>
+              <button id="gameRedoBtn" class="secondary" type="button">Redo</button>
+            </div>
+          </div>
+          <div class="game-layout">
+            <div>
+              <div id="gameBoardWrap"></div>
+              <p id="gameResult" class="result-line"></p>
+            </div>
+            <div class="side-card">
+              <h3>Move history</h3>
+              <ol id="gameHistory" class="history-list"></ol>
+              <h3>Redo stack</h3>
+              <ol id="gameRedo" class="history-list muted-list"></ol>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel" id="archivePanel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Completed-match archive</p>
+              <h2>Read-only replay</h2>
+            </div>
+          </div>
+          <div class="archive-layout">
+            <div>
+              <label>
+                <span>Archive match</span>
+                <select id="archiveSelect"></select>
+              </label>
+              <div id="archiveMeta" class="muted"></div>
+              <div id="archiveBoardWrap" class="archive-board"></div>
+              <label>
+                <span>Replay step</span>
+                <input id="archiveStep" type="range" min="0" max="0" value="0" />
+              </label>
+              <div class="row-actions">
+                <button id="createAnalysisFromReplay" class="primary" type="button">Create analysis from this position</button>
+              </div>
+            </div>
+            <div>
+              <h3>Replay history</h3>
+              <ol id="archiveHistory" class="history-list"></ol>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel" id="analysisListPanel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Saved practice analyses</p>
+              <h2>Your study workspace</h2>
+            </div>
+          </div>
+          <div id="analysisList" class="analysis-list"></div>
+        </section>
+
+        <section id="analysisPanel" class="panel hidden">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Practice analysis</p>
+              <h2 id="analysisTitle">Open an analysis</h2>
+              <p id="analysisSource" class="muted"></p>
+            </div>
+            <div class="panel-actions">
+              <button id="closeAnalysisBtn" class="secondary" type="button">Return to game</button>
+            </div>
+          </div>
+
+          <div class="analysis-toolbar">
+            <label>
+              <span>Rename analysis</span>
+              <input id="analysisNameInput" type="text" maxlength="60" />
+            </label>
+            <button id="renameAnalysisBtn" class="secondary" type="button">Save name</button>
+            <div id="analysisRevision" class="revision-pill"></div>
+          </div>
+
+          <div class="analysis-layout">
+            <div class="analysis-main">
+              <div id="analysisBoardWrap"></div>
+              <div class="row-actions">
+                <button id="analysisUndoBtn" class="secondary" type="button">Undo</button>
+                <div class="redo-choice">
+                  <button id="analysisRedoBtn" class="secondary" type="button">Redo</button>
+                  <select id="analysisRedoChoice" class="hidden"></select>
+                </div>
+              </div>
+              <p id="analysisResult" class="result-line"></p>
+              <h3>Selected path</h3>
+              <ol id="analysisHistory" class="history-list"></ol>
+            </div>
+            <div class="analysis-sidebar">
+              <h3>Tree of continuations</h3>
+              <div id="analysisTree" class="tree"></div>
+            </div>
+          </div>
+
+          <div class="subgrid">
+            <section class="card">
+              <h3>Compare two positions</h3>
+              <div class="form-grid compact">
+                <label>
+                  <span>Left node</span>
+                  <select id="compareLeft"></select>
+                </label>
+                <label>
+                  <span>Right node</span>
+                  <select id="compareRight"></select>
+                </label>
+                <button id="compareBtn" class="secondary" type="button">Compare</button>
+              </div>
+              <div id="compareResult"></div>
+            </section>
+
+            <section class="card">
+              <h3>Copy a branch safely</h3>
+              <div class="form-grid compact">
+                <label>
+                  <span>Source analysis</span>
+                  <select id="branchSourceAnalysis"></select>
+                </label>
+                <label>
+                  <span>Source node</span>
+                  <select id="branchSourceNode"></select>
+                </label>
+                <label>
+                  <span>Destination analysis</span>
+                  <select id="branchDestinationAnalysis"></select>
+                </label>
+                <label>
+                  <span>Destination node</span>
+                  <select id="branchDestinationNode"></select>
+                </label>
+                <button id="branchPreviewBtn" class="secondary" type="button">Preview branch</button>
+                <button id="branchCommitBtn" class="primary" type="button">Commit preview</button>
+              </div>
+              <div id="branchPreviewResult"></div>
+            </section>
+
+            <section class="card">
+              <h3>Tactical report</h3>
+              <div class="form-grid compact">
+                <label>
+                  <span>Depth</span>
+                  <input id="reportDepth" type="number" min="1" max="4" value="2" />
+                </label>
+                <label>
+                  <span>Report node</span>
+                  <select id="reportNode"></select>
+                </label>
+                <button id="reportBtn" class="secondary" type="button">Generate report</button>
+              </div>
+              <div id="reportResult"></div>
+            </section>
+          </div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast" class="toast" aria-live="polite"></div>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

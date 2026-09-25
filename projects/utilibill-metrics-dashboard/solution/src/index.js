@@ -313,7 +313,11 @@ app.post('/api/reads/:cycleId/trueup', auth('meter_analyst'), (req, res) => {
     return fail(res, 409, `cycle ${c.id} is ${c.status}; a re-bill cannot be raised against a locked/remitted cycle`, { cycle_id: c.id, status: c.status });
   const t = R.computeTrueup(db, c.id);
   if (!t) return fail(res, 409, `cycle ${c.id} has no actual true-up read`, { cycle_id: c.id });
-  const already = one("SELECT * FROM bills WHERE cycle_id=? AND kind='REBILL'", c.id);
+  const locked = t.legs.find(leg => ['FINALIZED', 'REMITTED'].includes(one('SELECT status FROM cycles WHERE id=?', leg.cycle_id).status));
+  if (locked) return fail(res, 409, `accrual cycle ${locked.cycle_id} is locked`, { cycle_id: locked.cycle_id });
+  const held = t.legs.find(leg => one("SELECT id FROM bills WHERE cycle_id=? AND state='PENDING_APPROVAL'", leg.cycle_id));
+  if (held) return fail(res, 409, `accrual cycle ${held.cycle_id} has a pending correction`, { cycle_id: held.cycle_id });
+  const already = one("SELECT * FROM bills WHERE kind='REBILL' AND json_extract(breakdown,'$.trueup_actual_cycle')=?", c.id);
   if (already) return fail(res, 409, `cycle ${c.id} has already been trued up (${already.id})`, { cycle_id: c.id, bill_id: already.id });
 
   const state = t.needs_approval ? 'PENDING_APPROVAL' : 'BILLED';
@@ -328,6 +332,7 @@ app.post('/api/reads/:cycleId/trueup', auth('meter_analyst'), (req, res) => {
           req.user.id, JSON.stringify({ trueup_actual_cycle: c.id, allocated_kwh: leg.allocated_kwh,
             contra_cents: leg.contra_cents, estimate_bill_id: leg.estimate_bill_id, weight: leg.weight, tiers: leg.tiers }), now());
       created.push(rebillId);
+      if (!t.needs_approval) db.prepare("UPDATE cycles SET status='BILLED' WHERE id=?").run(leg.cycle_id);
       if (!t.needs_approval && leg.has_estimate) {
         db.prepare('UPDATE bills SET superseded=1, superseded_by_id=?, state=? WHERE id=?').run(rebillId, 'SUPERSEDED', leg.estimate_bill_id);
         db.prepare('INSERT INTO contras (id,account_id,bill_id,cycle_id,amount_cents,note,created_by,created_at) VALUES (?,?,?,?,?,?,?,?)')
@@ -350,6 +355,8 @@ app.post('/api/reads/:cycleId/trueup/approve', auth('settlement_controller'), (r
   if (!c) return bad(res, 'no such cycle', 404);
   const pending = all("SELECT * FROM bills WHERE kind='REBILL' AND state='PENDING_APPROVAL' AND json_extract(breakdown,'$.trueup_actual_cycle')=?", c.id);
   if (!pending.length) return fail(res, 409, `no pending true-up is awaiting approval on cycle ${c.id}`, { cycle_id: c.id });
+  const locked = pending.find(rb => ['FINALIZED', 'REMITTED'].includes(one('SELECT status FROM cycles WHERE id=?', rb.cycle_id).status));
+  if (locked) return fail(res, 409, `accrual cycle ${locked.cycle_id} is locked`, { cycle_id: locked.cycle_id });
   const raiser = pending[0].raised_by;
   if (req.user.id === raiser)
     return fail(res, 409, 'the person who raised a re-bill may not approve it (dual control requires a distinct settlement controller)',
@@ -358,6 +365,7 @@ app.post('/api/reads/:cycleId/trueup/approve', auth('settlement_controller'), (r
   db.transaction(() => {
     for (const rb of pending) {
       const bd = JSON.parse(rb.breakdown || '{}');
+      db.prepare("UPDATE cycles SET status='BILLED' WHERE id=?").run(rb.cycle_id);
       db.prepare("UPDATE bills SET state='BILLED', approved_by=?, approved_at=? WHERE id=?").run(req.user.id, now(), rb.id);
       if (bd.estimate_bill_id) {
         db.prepare('UPDATE bills SET superseded=1, superseded_by_id=?, state=? WHERE id=?').run(rb.id, 'SUPERSEDED', bd.estimate_bill_id);
@@ -367,7 +375,7 @@ app.post('/api/reads/:cycleId/trueup/approve', auth('settlement_controller'), (r
       }
     }
   })();
-  audit(req.user.id, 'TRUEUP_APPROVED', c.id, String(req.user.id));
+  audit(req.user.id, 'TRUEUP_APPROVED', c.id, JSON.stringify({ contra_cents: pending.reduce((sum, rb) => sum + JSON.parse(rb.breakdown).contra_cents, 0), approver_id: req.user.id, raiser_id: raiser }));
   res.json({ approved: true, cycle_id: c.id, approver_id: req.user.id,
     cycle: cycleView(one('SELECT * FROM cycles WHERE id=?', c.id)) });
 });
@@ -400,17 +408,23 @@ app.post('/api/periods/:id/finalize', auth('billing_operator'), (req, res) => {
   if (p.status === 'REMITTED') return fail(res, 409, `period ${p.id} is already remitted`, { period_id: p.id });
   const ids = Array.isArray((req.body || {}).cycle_ids) ? req.body.cycle_ids : [];
   if (!ids.length) return bad(res, 'cycle_ids (billed cycles to finalize into this period) required', 400);
+  if (new Set(ids).size !== ids.length || ids.some(cid => typeof cid !== 'string')) return bad(res, 'select distinct cycle IDs', 400);
+  const invalid = ids.find(cid => {
+    const cycle = one('SELECT * FROM cycles WHERE id=?', cid);
+    return !cycle || cycle.status !== 'BILLED' || one("SELECT id FROM bills WHERE cycle_id=? AND state='PENDING_APPROVAL'", cid) || one('SELECT id FROM period_cycles WHERE cycle_id=?', cid);
+  });
+  if (invalid) return fail(res, 409, `cycle ${invalid} is not available for finalization`, { cycle_id: invalid });
   const finalized = [];
   db.transaction(() => {
     for (const cid of ids) {
       const c = one('SELECT * FROM cycles WHERE id=?', cid);
-      if (!c || c.status !== 'BILLED') continue;
+      if (!c || c.status !== 'BILLED') throw new Error('cycle changed during finalization');
       db.prepare('INSERT INTO period_cycles (id,period_id,cycle_id,created_at) VALUES (?,?,?,?)').run(uid('PC'), p.id, cid, now());
       db.prepare("UPDATE cycles SET status='FINALIZED' WHERE id=?").run(cid);
       finalized.push(cid);
     }
   })();
-  audit(req.user.id, 'PERIOD_FINALIZED', p.id, finalized.join(','));
+  audit(req.user.id, 'PERIOD_FINALIZED', p.id, JSON.stringify({ cycle_ids: finalized, cycle_count: finalized.length }));
   res.json({ finalized, period: periodView(one('SELECT * FROM settlement_periods WHERE id=?', p.id)) });
 });
 
@@ -442,7 +456,7 @@ app.get('/api/audit', auth(), (_req, res) => res.json({ audit: all('SELECT * FRO
 // path-to-regexp v8 bare-wildcard rejection at boot. Any request under /api/audit that
 // the GET route above did not already answer (any write, at the list path or a sub-path)
 // lands here and is refused: the trail is append-only for every role, including finance.
-app.use('/api/audit', (req, res) => fail(res, 405, 'the audit trail is append-only; entries cannot be edited or deleted'));
+app.use('/api/audit', auth(), (req, res) => fail(res, 405, 'the audit trail is append-only; entries cannot be edited or deleted'));
 
 // ================================================================= fallthrough
 app.use('/api', (_req, res) => res.status(404).json({ error: 'no such endpoint' }));

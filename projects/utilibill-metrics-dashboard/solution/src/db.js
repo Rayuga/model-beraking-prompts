@@ -7,15 +7,9 @@ const fs = require('fs');
 const path = require('path');
 const Database = require('better-sqlite3');
 
-const DATA_DIR = process.env.UTILIBILL_DATA_DIR || path.join(__dirname, '..', 'data');
+const DATA_DIR = path.dirname(process.env.DB_PATH || path.join(__dirname, '..', 'utilibill.db'));
 const DB_PATH = process.env.DB_PATH || path.join(DATA_DIR, 'utilibill.db');
-const SEED_PATH =
-  process.env.SEED_PATH ||
-  (fs.existsSync(path.join(__dirname, 'seed_data.json'))
-    ? path.join(__dirname, 'seed_data.json')
-    : fs.existsSync(path.join(__dirname, '..', 'seed_data.json'))
-    ? path.join(__dirname, '..', 'seed_data.json')
-    : '/assets/artifacts/utilibill_seed.json');
+const SEED_PATH = path.join(__dirname, 'seed_data.json');
 const ROSTER = JSON.parse(fs.readFileSync(SEED_PATH, 'utf8'));
 
 // The synthetic tariff constants and the reference moment are STATED reference data —

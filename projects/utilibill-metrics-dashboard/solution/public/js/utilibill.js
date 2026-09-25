@@ -21,7 +21,7 @@ function kv(k, v, decoy) {
     el('div', { class: 'k', text: k }),
     el('div', { class: 'v' }, [
       el('span', { text: v == null ? '—' : String(v) }),
-      decoy ? el('span', { class: 'decoy', text: `not this — ${decoy}` }) : null,
+
     ]),
   ]);
 }
@@ -76,7 +76,7 @@ function renderDashboard(boot, H) {
       ]),
     ]),
     el('section', { class: 'panel' }, [
-      el('h2', { text: 'Desk tables (stated synthetic constants)' }),
+      el('h2', { text: 'Tariffs and contract rates' }),
       el('div', { class: 'form-grid' }, [
         el('div', {}, [
           el('div', { class: 'section-title', text: 'Inclining tier bands' }),
@@ -116,7 +116,22 @@ function renderDashboard(boot, H) {
 function billNodes(b, label) {
   const nodes = [el('div', { class: 'section-title', text: label || `${b.kind} bill · ${b.id}` })];
   nodes.push(el('div', { class: 'row' }, [el('span', { class: badgeClass(b.state), text: b.state })]));
+  const detail = b.breakdown || {};
+  if (detail.tou) {
+    nodes.push(kv(`Peak (${detail.tou.peak_old_kwh} kWh @ ${detail.tou.peak_old_rate}¢ + ${detail.tou.peak_new_kwh} kWh @ ${detail.tou.peak_new_rate}¢)`, money(detail.tou.peak_cents)));
+    nodes.push(kv('Rate change effective', detail.tou.rate_change_effective_at));
+    nodes.push(kv('Usage exactly at change (new rate)', `${detail.tou.peak_boundary_kwh} kWh`));
+    nodes.push(kv('Shoulder', money(detail.tou.shoulder_cents)));
+    nodes.push(kv('Off-peak', money(detail.tou.offpeak_cents)));
+  }
+  for (const t of detail.tiers || []) nodes.push(kv(`Tier ${t.tier} (${t.kwh} kWh @ ${t.rate}¢)`, money(t.cents)));
   nodes.push(kv('Energy charge', b.energy_display));
+  if (detail.net_metering) {
+    nodes.push(kv('Export credit earned (6.50¢/kWh)', money(detail.export_credit_cents)));
+    nodes.push(kv('Prior bank', money(detail.prior_bank_cents)));
+    nodes.push(kv('Available credit', money(detail.available_credit_cents)));
+    nodes.push(kv('New bank after this bill', money(detail.new_bank_cents)));
+  }
   if (b.credit_cents) {
     nodes.push(kv('Export credit applied', b.credit_display, notThis(b.credit_display, [money(b.breakdown && b.breakdown.decoy_credit_at_retail_cents), 'at the retail tier-1 rate'])));
     nodes.push(kv('Energy after credit', b.energy_net_display));
@@ -186,8 +201,8 @@ function trueupBillNodes(b) {
   nodes.push(kv('Re-billed energy (this period’s own fresh blocks)', b.total_display));
   if (b.superseded) nodes.push(kv('This bill’s own status', `superseded by ${b.superseded_by_id}`));
   if (bd.estimate_bill_id) {
-    nodes.push(kv('Superseded prior bill', `${bd.estimate_bill_id} (retained on file, figure intact)`));
-    nodes.push(kv('Contra posted', money(bd.contra_cents)));
+    nodes.push(kv(b.state === 'PENDING_APPROVAL' ? 'Prior bill awaiting supersession' : 'Superseded prior bill', `${bd.estimate_bill_id} (retained on file, figure intact)`));
+    nodes.push(kv(b.state === 'PENDING_APPROVAL' ? 'Proposed contra (held)' : 'Contra posted', money(bd.contra_cents)));
   }
   if (b.raiser) nodes.push(kv('Raised by', `${b.raiser.name} (${b.raiser.role})`));
   if (b.approver) nodes.push(kv('Approved by', `${b.approver.name} (${b.approver.role})`));
@@ -206,6 +221,9 @@ function cycleCard(cycle, H, role) {
   const read = cycle.read;
   nodes.push(kv('Meter read', read ? `${read.kind}${read.trueup_total_kwh != null ? ` · reveals ${read.trueup_total_kwh} kWh across ${read.accrual_cycle_ids.length} period(s)` : ` · ${read.delivered_kwh} kWh delivered${read.exported_kwh ? ` · ${read.exported_kwh} kWh exported` : ''}`}` : 'no read on file'));
 
+  for (const prior of (cycle.bills || []).filter(b => b.kind === 'ESTIMATE')) {
+    nodes.push(kv(`Retained estimate · ${prior.id}`, `${prior.total_display} · ${prior.state}`));
+  }
   const cycleBills = (cycle.bills || []).filter((b) => b.kind === 'CYCLE');
   const rebills = (cycle.bills || []).filter((b) => b.kind === 'REBILL');
   const isTrigger = !!(read && read.trueup_total_kwh != null);
@@ -246,10 +264,11 @@ function budgetSection(account, H, role) {
   nodes.push(kv('Deferred balance (summed from movement rows)', b.deferred_balance_display));
   nodes.push(el('div', { class: 'section-title', text: 'Per-cycle movements' }));
   for (const m of b.movements) {
-    nodes.push(kv(`Cycle ${m.cycle_no} · actual ${m.actual_display} − levelized ${m.movement_display ? b.current_levelized_display : ''}`, m.movement_display));
+    nodes.push(kv(`Cycle ${m.cycle_no} · actual ${m.actual_display} − levelized ${money(m.levelized_cents)}`, m.movement_display));
   }
   nodes.push(el('div', { class: 'section-title', text: 'Annual true-up' }));
   const plan = b.trueup_plan;
+  nodes.push(kv('Trailing twelve actual bills (sum)', plan.trailing_total_display));
   nodes.push(kv('Anniversary', plan.anniversary_at));
   nodes.push(kv('Reference moment', plan.reference_moment));
   nodes.push(kv('Due now (half-open, at/after anniversary)', plan.due ? 'yes' : 'no'));
@@ -299,7 +318,10 @@ function renderAccounts(boot, H) {
   const role = (boot.user || {}).role;
 
   function openAccount(a) {
-    openDetail(`${a.id} · ${a.name}`, accountDrawerNodes(a, H, role));
+    openDetail(`${a.id} · ${a.name}`, () => {
+      const current = STATE.boot.accounts.find(item => item.id === a.id);
+      return accountDrawerNodes(current, H, STATE.user.role);
+    });
   }
 
   function accountRow(a) {
@@ -316,7 +338,7 @@ function renderAccounts(boot, H) {
 
   const searchInput = el('input', { type: 'search', 'aria-label': 'Search accounts', placeholder: 'Search accounts (id, name, tariff)' });
   const tbody = el('tbody', {}, accounts.map(accountRow));
-  searchInput.addEventListener('keyup', () => {
+  searchInput.addEventListener('input', () => {
     const q = searchInput.value.trim().toLowerCase();
     tbody.innerHTML = '';
     const filtered = !q ? accounts : accounts.filter((a) => [a.id, a.name, a.tariff].filter(Boolean).some((v) => String(v).toLowerCase().includes(q)));
@@ -379,16 +401,11 @@ function renderSettlement(boot, H) {
     if (p.status !== 'REMITTED' && role === 'billing_operator') {
       nodes.push(el('div', { class: 'section-title', text: 'Finalize billed cycles into this period' }));
       nodes.push(...checklist);
-      nodes.push(el('div', { class: 'row' }, [el('button', {
-        type: 'button', class: 'action small',
-        onclick: async () => {
-          const cycle_ids = Object.keys(checks).filter((k) => checks[k]);
-          if (!cycle_ids.length) { flash('Select at least one billed cycle to finalize.', 'error'); return; }
-          const r = await api('POST', `/api/periods/${p.id}/finalize`, { cycle_ids });
-          flash(r.data || `${r.status}`, r.ok ? 'ok' : 'error');
-          await refresh();
-        },
-      }, ['Finalize selected (billing operator)'])]));
+      nodes.push(el('div', { class: 'row' }, [actionButton('Finalize selected (billing operator)', 'POST', `/api/periods/${p.id}/finalize`, () => {
+        const cycle_ids = Object.keys(checks).filter(k => checks[k]);
+        if (!cycle_ids.length) { flash('Select at least one billed cycle to finalize.', 'error'); return false; }
+        return { cycle_ids };
+      })]));
     }
     if (p.status === 'OPEN' && p.finalized_cycle_ids.length && role === 'settlement_controller') {
       nodes.push(el('div', { class: 'row', style: 'margin-top:8px' }, [actionButton('Run remittance (settlement controller)', 'POST', `/api/periods/${p.id}/remit`)]));
