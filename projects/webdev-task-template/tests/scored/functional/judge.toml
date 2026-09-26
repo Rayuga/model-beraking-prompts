@@ -1,0 +1,48 @@
+[judge]
+judge = "claude-code"
+mode = "batched"
+timeout = 9000
+isolated = false
+prompt_template = "prompt.md"
+
+[[judge.mcp_servers]]
+name = "playwright"
+transport = "stdio"
+command = "playwright-mcp"
+args = ["--headless", "--isolated", "--executable-path=/usr/local/bin/chromium", "--no-sandbox"]
+
+[[judge.mcp_servers]]
+name = "verifier"
+transport = "stdio"
+command = "/usr/local/bin/python3"
+args = ["/tests/tools/restart_mcp.py", "$APP_RESTART_HELPER"]
+
+[scoring]
+aggregation = "weighted_mean"
+
+[[criterion]]
+id = "change_me"
+name = "change_me"
+type = "binary"
+weight = 1.0
+description = """
+CHANGE_ME: write numbered steps the judge performs in the browser, starting
+with a positive control, and end with "Pass only if all legs hold."
+"""
+
+[[criterion]]
+id = "persistence"
+name = "persistence"
+type = "binary"
+weight = 1.0
+description = """
+1. Call the verifier MCP tool restart_app once to stop the running
+   application process and start it again over the same database. Wait for
+   the tool to report the restart is complete. A page reload or a fresh
+   sign-in without that tool is not a process restart.
+2. Open a fresh browser page and sign in against the restarted process.
+3. Confirm the changes made by earlier criteria persist: CHANGE_ME.
+4. Confirm seeding was idempotent across the restart: no seeded record
+   appears twice.
+Pass only if all legs hold.
+"""
