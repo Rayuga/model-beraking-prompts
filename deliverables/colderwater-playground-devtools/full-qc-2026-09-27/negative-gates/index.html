@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Colderwater QC negative fixture</title><style>
+body{font:15px system-ui;background:#101720;color:#e7edf3;margin:0;padding:28px}main{max-width:1100px;margin:auto}h1{font-size:26px}p{color:#aabccc}button,input{font:inherit;padding:9px;border:1px solid #6b8499;border-radius:5px}button{background:#28475d;color:white;cursor:pointer}button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid #efbd6a;outline-offset:3px}label{display:inline-flex;gap:8px;align-items:center}.toolbar{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px}.panes{display:grid;grid-template-columns:1fr 1fr;gap:20px}.panel{background:#172532;border:1px solid #355066;padding:16px;border-radius:8px}textarea{box-sizing:border-box;width:100%;height:240px;background:#0f1b26;color:#c1e3d8;line-height:1.7;padding:12px;font:14px monospace}iframe{width:100%;height:240px;background:white;border:0}.console{min-height:120px;white-space:pre-wrap;font:14px monospace}.library{display:flex;gap:10px;flex-wrap:wrap;min-height:35px}#status{color:#c5e3d1}@media(max-width:700px){.panes{grid-template-columns:1fr}body{padding:15px}}
+</style></head><body><main>
+<h1>Colderwater Playground</h1><p>Local QC negative control: <span id="mode"></span>. This server never stores a snippet.</p>
+<div class="toolbar"><label>Title <input id="title" value="Example"></label><label>Filename <input id="filename" value="example.js"></label><button id="run">Run</button><button id="save">Save</button><button id="clear">Clear console</button></div>
+<div class="panes"><section class="panel"><h2>Editor</h2><textarea id="source" aria-label="Source code">document.body.innerHTML = '&lt;p&gt;Starter preview&lt;/p&gt;';
+console.log('Starter message');</textarea></section><section class="panel"><h2>Preview</h2><iframe id="preview" title="Preview output" sandbox="allow-scripts" srcdoc="<p>Starter preview</p>"></iframe></section></div>
+<section class="panel"><h2>Console</h2><div id="console" class="console">Starter message</div></section>
+<section class="panel"><h2>Saved snippets</h2><div id="library" class="library"></div><p id="status" role="status">Ready</p></section>
+</main><script>
+const fixtureMode='__FIXTURE_MODE__';document.querySelector('#mode').textContent=fixtureMode;
+const el=id=>document.getElementById(id);const storageKey='cw-qc-client-only-records';
+let snippets=[];
+function draw(){el('library').replaceChildren();if(!snippets.length){el('library').textContent='No saved snippets';return;}for(const s of snippets){const b=document.createElement('button');b.textContent=s.title;b.onclick=async()=>{await (await fetch('/api/snippets/'+encodeURIComponent(s.id))).json();el('title').value=s.title;el('filename').value=s.filename;el('source').value=s.source;el('status').textContent='Loaded '+s.title+' from browser memory';};el('library').append(b);}}
+async function load(){await (await fetch('/api/snippets')).json();snippets=JSON.parse(localStorage.getItem(storageKey)||'[]');draw();}
+el('run').onclick=()=>{if(fixtureMode==='inert'){el('status').textContent='Run button acknowledged';return;}const bridge="const console={log:(...v)=>parent.postMessage({qcConsole:v.join(' ')},'*')};";el('preview').srcdoc='<html><body><script>'+bridge+el('source').value+'<\/script></body></html>';el('status').textContent='Run requested';};
+window.addEventListener('message',event=>{if(event.source===el('preview').contentWindow&&typeof event.data?.qcConsole==='string')el('console').textContent+='\n'+event.data.qcConsole;});
+el('clear').onclick=()=>{el('console').textContent='';};
+el('save').onclick=async()=>{const record={id:crypto.randomUUID(),title:el('title').value,filename:el('filename').value,source:el('source').value};const response=await fetch('/api/snippets',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(record)});const echoed=await response.json();snippets.push(echoed);localStorage.setItem(storageKey,JSON.stringify(snippets));draw();el('status').textContent='Saved '+record.title;};
+load();
+</script></body></html>

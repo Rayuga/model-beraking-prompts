@@ -1,0 +1,89 @@
+{
+  "started_at": "2026-09-27T06:15:00Z",
+  "paid_provider": false,
+  "network": "none; browser and server in one disposable container",
+  "source_binding": {
+    "public/index.html": "cc2e75d6b3a8f0a76b60b744daf0a4c923aa238dabd07548bc628cbc23f8064d",
+    "public/runner.html": "ed4a5811f8bd03a48fd256dbb15ee967b1afd6ff20633d77fff33b3491b03a09",
+    "src/app.tsx": "753899e50e53f3393090a2554b02e18364f40100f0bda4e0dc4b6bf4e5ea8057",
+    "src/runtime.ts": "d2fc0471003dd6a2107918be7a2d69f3a96027ec4c56266e6dd9b035a30efd86",
+    "public/assets/index-C_1hOHr1.css": "cbfa10c893727b30ffa575ebe5befb26043074162af99b24384c2864fe58b05d",
+    "public/assets/index-XwoWsDAE.js": "7b8997263bb1fdab556c00198bfaa540507517fc5b12b6b5df35b2c56904c88e"
+  },
+  "chromium_version": "Google Chrome for Testing 152.0.7977.8",
+  "mcp_version": "Version 0.0.79",
+  "command": [
+    "playwright-mcp",
+    "--headless",
+    "--isolated",
+    "--executable-path=/usr/local/bin/chromium",
+    "--no-sandbox"
+  ],
+  "initialize": {
+    "protocolVersion": "2025-06-18",
+    "capabilities": {
+      "tools": {}
+    },
+    "serverInfo": {
+      "name": "Playwright",
+      "version": "1.63.0-alpha-2026-08-05"
+    }
+  },
+  "tool": {
+    "name": "browser_run_code_unsafe",
+    "description": "Run a Playwright code snippet. Unsafe: executes arbitrary JavaScript in the Playwright server process and is RCE-equivalent.",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "code": {
+          "description": "A JavaScript function containing Playwright code to execute. It will be invoked with a single argument, page, which you can use for any page interaction. For example: `async (page) => { await page.getByRole('button', { name: 'Submit' }).click(); return await page.title(); }`",
+          "type": "string"
+        },
+        "filename": {
+          "description": "Load code from the specified file. If both code and filename are provided, code will be ignored.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "annotations": {
+      "title": "Run Playwright code (unsafe)",
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "openWorldHint": true
+    }
+  },
+  "raw_tool_results": [
+    {
+      "content": [
+        {
+          "type": "text",
+          "text": "### Result\n{\"running\":false,\"passed\":true,\"observations\":[{\"name\":\"language_dispatch_late_click_and_css_handler_removal\",\"passed\":true,\"wait_after_observed_completion_ms\":6102,\"focused_input_wait_before_typing_ms\":6107,\"late_handler_entries\":{\"click\":1,\"keyboard\":1,\"input\":1},\"css_preserved_handler\":false,\"new_js_global\":\"undefined\",\"duration_ms\":13562}]}\n### Ran Playwright code\n```js\nawait (async (page) => {\n  page.setDefaultTimeout(8000);\n  const observations = [];\n  page.__interactionProof = {running: true, observations};\n  const assert = (value, message) => { if (!value) throw new Error(message); };\n  const editor = page.getByRole('textbox', {name: 'Code editor', exact: true});\n  const status = () => page.getByRole('status').innerText();\n  const logs = () => page.getByRole('log').innerText();\n  const preview = () => page.frameLocator('iframe[title=\"Live preview\"]');\n  const body = () => preview().locator('body').innerText();\n  const complete = async () => {\n    await page.waitForFunction(() => document.querySelector('[role=\"status\"]')?.textContent.startsWith('Complete'), null, {timeout: 8000});\n  };\n  const enter = async (code, filename) => {\n    await page.getByRole('textbox', {name: 'Filename', exact: true}).fill(filename);\n    await editor.click();\n    await page.keyboard.press('Control+A');\n    await page.keyboard.insertText(code);\n    assert(await editor.innerText() === code, 'Entered source differs');\n  };\n  const run = async (code, filename = 'proof.js', wait = true) => {\n    await enter(code, filename);\n    const started = Date.now();\n    await page.getByRole('button', {name: /^Run /}).click();\n    if (wait) await complete();\n    return started;\n  };\n  const test = async (name, action) => {\n    const started = Date.now();\n    try { observations.push({name, passed: true, ...await action(), duration_ms: Date.now() - started}); }\n    catch (error) { observations.push({name, passed: false, error: String(error), duration_ms: Date.now() - started}); }\n  };\n  await complete();\n  await page.getByRole('checkbox', {name: 'Auto-run', exact: true}).uncheck();\n  await test('language_dispatch_late_click_and_css_handler_removal', async () => {\n    await page.getByRole('button', {name: 'Clear console', exact: true}).click();\n    await run(\"document.body.innerHTML = '<p id=\\\"dispatch-mark\\\">js-dispatch-ok</p>';\\nconsole.log('js-dispatch-log');\", 'dispatch.JS');\n    assert((await body()).includes('js-dispatch-ok') && (await logs()).includes('js-dispatch-log'), 'JS positive control');\n    const html = `<!doctype html><html><body><h1 id=\"dispatch-mark\">html-dispatch-ok</h1><button id=\"dispatch-button\">Try handler</button><input id=\"dispatch-input\" aria-label=\"Handler input\"><script>window.oldGlobal='do-not-carry'; console.log('html-once-marker'); document.getElementById('dispatch-button').addEventListener('click', () => console.log('dispatch-handler-marker')); document.getElementById('dispatch-input').addEventListener('keydown', () => console.log('dispatch-keyboard-marker')); document.getElementById('dispatch-input').addEventListener('input', () => console.log('dispatch-input-marker'));</script></body></html>`;\n    await run(html, 'dispatch.html');\n    const completed = Date.now();\n    await page.waitForTimeout(6100);\n    const clicked = Date.now();\n    await preview().getByRole('button', {name: 'Try handler'}).click();\n    await page.waitForFunction(() => document.querySelector('[role=\"log\"]').textContent.includes('dispatch-handler-marker'));\n    await complete();\n    await preview().getByRole('textbox', {name: 'Handler input'}).click();\n    await complete();\n    const keyboardReady = Date.now();\n    await page.waitForTimeout(6100);\n    const typed = Date.now();\n    await preview().getByRole('textbox', {name: 'Handler input'}).press('a');\n    await complete();\n    assert((await logs()).includes('dispatch-keyboard-marker') && (await logs()).includes('dispatch-input-marker'), 'Late keyboard/input handlers did not both execute');\n    const count = text => (text.match(/dispatch-handler-marker/g) || []).length;\n    const before = await logs();\n    assert(count(before) === 1, 'Late handler must execute exactly once');\n    await run('#dispatch-mark { color: rgb(255, 0, 0); }', 'dispatch.CSS');\n    assert(await preview().locator('#dispatch-mark').evaluate(el => getComputedStyle(el).color) === 'rgb(255, 0, 0)', 'CSS did not style retained heading');\n    await preview().getByRole('button', {name: 'Try handler'}).click();\n    await preview().getByRole('textbox', {name: 'Handler input'}).press('b');\n    await page.waitForTimeout(200);\n    const after = await logs();\n    assert(count(after) === 1, 'CSS copied old live handler');\n    assert((after.match(/dispatch-keyboard-marker/g) || []).length === 1 && (after.match(/dispatch-input-marker/g) || []).length === 1, 'CSS copied old keyboard/input handlers');\n    assert((after.match(/html-once-marker/g) || []).length === 1, 'CSS reran old script');\n    await run(\"document.body.innerHTML = '<p>fresh-' + typeof window.oldGlobal + '</p>';console.log('fresh-js-log');\", 'dispatch.js');\n    assert((await body()).includes('fresh-undefined') && !(await body()).includes('html-dispatch-ok'), 'JS carried old document/global');\n    return {wait_after_observed_completion_ms: clicked - completed, focused_input_wait_before_typing_ms: typed - keyboardReady, late_handler_entries: {click: 1, keyboard: 1, input: 1}, css_preserved_handler: false, new_js_global: 'undefined'};\n  });\n\n  page.__interactionProof = {running:false,passed:observations.every(item=>item.passed),observations};return page.__interactionProof;\n})(page);\n```"
+        }
+      ]
+    }
+  ],
+  "observations": {
+    "running": false,
+    "passed": true,
+    "observations": [
+      {
+        "name": "language_dispatch_late_click_and_css_handler_removal",
+        "passed": true,
+        "wait_after_observed_completion_ms": 6102,
+        "focused_input_wait_before_typing_ms": 6107,
+        "late_handler_entries": {
+          "click": 1,
+          "keyboard": 1,
+          "input": 1
+        },
+        "css_preserved_handler": false,
+        "new_js_global": "undefined",
+        "duration_ms": 13562
+      }
+    ]
+  },
+  "passed": true,
+  "finished_at": "2026-09-27T06:15:17Z"
+}

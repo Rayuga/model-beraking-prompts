@@ -1,0 +1,64 @@
+const fs = require('node:fs');
+const assert = require('node:assert/strict');
+const { chromium } = require('/usr/local/lib/node_modules/@playwright/mcp/node_modules/playwright');
+const report = { kind:'Actual Chromium negative witness, not a paid judge result or a complete mock scoring run', checks:[], requests:[], same_browser_lookup:null, clean_browser_lookup:null };
+const out = '/evidence';
+function record(name, passed, evidence) { report.checks.push({name,passed:!!passed,evidence}); fs.writeFileSync(out+'/mock_probe_progress.json',JSON.stringify(report,null,2)+'\n'); console.log(name+': '+passed); assert(passed,name); }
+(async()=>{
+ const browser=await chromium.launch({headless:true,executablePath:'/usr/local/bin/chromium',args:['--no-sandbox']});
+ report.browser=browser.version();
+ const context=await browser.newContext();
+ context.setDefaultTimeout(10000);
+ const page=await context.newPage();
+ page.on('request',r=>{if(r.method()==='POST')report.requests.push({method:r.method(),url:r.url(),body:r.postData()});});
+ try {
+  const health=await page.goto('http://localhost:3000/api/health');
+  record('old constraints health prerequisite passes',health.status()===200,{status:health.status()});
+  const productResponse=page.waitForResponse(r=>r.url().endsWith('/api/prints'));
+  await page.goto('http://localhost:3000/');
+  const response=await productResponse, data=await response.json();
+  await page.getByRole('button',{name:'Open Kiln',exact:true}).click();
+  record('old render and product-data observations pass',await page.getByRole('heading',{name:'Kiln',exact:true}).isVisible()&&response.status()===200&&data.variants.some(v=>v.title==='Kiln'),{variantCount:data.variants.length,status:response.status()});
+  await page.getByRole('button',{name:'Buy one A3',exact:true}).click();
+  const marker='QC recipient '+crypto.randomUUID();
+  await page.getByLabel('Recipient',{exact:true}).fill(marker);
+  await page.getByLabel('Address',{exact:true}).fill('14 Sample Lane');
+  await page.getByLabel('City',{exact:true}).fill('Exampleton');
+  await page.getByLabel('Postcode',{exact:true}).fill('EX1 2AB');
+  const write=page.waitForResponse(r=>r.url().endsWith('/api/orders')&&r.request().method()==='POST');
+  await page.getByRole('button',{name:'Place order',exact:true}).click();
+  const writeResponse=await write;
+  await page.locator('#receipt').filter({hasText:marker}).waitFor();
+  const order=JSON.parse(await page.locator('#receipt').textContent());
+  report.created_reference=order.reference;report.unique_recipient=marker;
+  record('mock displays a new receipt and successful no-op HTTP write',order.recipient===marker&&writeResponse.status()===200,{reference:order.reference,status:writeResponse.status()});
+  await page.reload();
+  await page.getByRole('button',{name:'Look up an order',exact:true}).click();
+  await page.getByLabel('Reference',{exact:true}).fill(order.reference);
+  await page.getByRole('button',{name:'Find order',exact:true}).click();
+  await page.locator('#receipt').filter({hasText:marker}).waitFor();
+  report.same_browser_lookup=JSON.parse(await page.locator('#receipt').textContent());
+  record('same-browser reload and lookup falsely resemble durability',report.same_browser_lookup.recipient===marker&&report.same_browser_lookup.reference===order.reference,{reference:order.reference,recipient:marker});
+  await page.screenshot({path:out+'/mock-original-browser.png',fullPage:true});
+  const fresh=await browser.newContext();
+  fresh.setDefaultTimeout(10000);
+  const clean=await fresh.newPage();
+  await clean.goto('http://localhost:3000/');
+  record('independent context starts with empty client storage',await clean.evaluate(()=>localStorage.length===0&&sessionStorage.length===0),{});
+  await clean.getByRole('button',{name:'Look up an order',exact:true}).click();
+  await clean.getByLabel('Reference',{exact:true}).fill(order.reference);
+  const read=clean.waitForResponse(r=>r.url().includes('/api/orders/'));
+  await clean.getByRole('button',{name:'Find order',exact:true}).click();
+  const readResponse=await read;
+  await clean.getByRole('heading',{name:'Order not found',exact:true}).waitFor();
+  report.clean_browser_lookup={status:readResponse.status(),visibleResult:await clean.locator('#receipt').textContent()};
+  record('stronger independent lookup rejects browser-only order',report.clean_browser_lookup.status===404&&!(await clean.locator('#receipt').textContent()).includes(marker),report.clean_browser_lookup);
+  await clean.screenshot({path:out+'/mock-independent-browser.png',fullPage:true});
+  await fresh.close();
+  report.negative_witness_passed=true;
+  report.old_gate_observations_satisfied=true;
+  report.new_server_backing_prerequisite_satisfied=false;
+ } catch(error) { report.failure=error.stack;process.exitCode=1; }
+ finally { fs.writeFileSync(out+'/mock_gate_evidence.json',JSON.stringify(report,null,2)+'\n');await browser.close(); }
+ console.log(JSON.stringify(report,null,2));
+})();

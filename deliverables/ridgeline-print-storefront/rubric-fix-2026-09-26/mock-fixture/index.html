@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>QC negative fixture — browser-only print shop</title>
+<style>
+[hidden]{display:none!important}
+body{font:16px system-ui;max-width:1100px;margin:32px auto;padding:0 20px;color:#18362c;background:#f5f2e8}button,input{font:inherit;padding:9px;border:1px solid #87998d;border-radius:3px}button{cursor:pointer;background:#e9f0e8}label{display:block;margin:12px 0}input{display:block;min-width:270px}article{padding:15px;border:1px solid #aaa;margin:10px 0}#catalogue{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}#receipt{white-space:pre-wrap;background:white;padding:18px}nav{display:flex;gap:15px;margin-bottom:24px}@media(max-width:700px){#catalogue{grid-template-columns:1fr 1fr}}
+</style>
+<h1>Ridgeline Press</h1>
+<p>Deliberate local QC negative fixture: the server serves seed data but never stores an order.</p>
+<nav><button id="browse">Browse prints</button><button id="lookup-nav">Look up an order</button></nav>
+<main>
+<section id="catalogue"></section>
+<section id="detail" hidden><h2 id="print-title"></h2><p id="variant"></p><button id="buy">Buy one A3</button></section>
+<section id="checkout" hidden><h2>Checkout</h2><p>One Kiln A3: £37.95 + £1.75 postage = £39.70.</p><form id="order-form"><label>Recipient<input id="recipient" required></label><label>Address<input id="address" required></label><label>City<input id="city" required></label><label>Postcode<input id="postcode" required></label><button>Place order</button></form></section>
+<section id="lookup" hidden><h2>Look up a reference</h2><label>Reference<input id="reference"></label><button id="lookup-button">Find order</button></section>
+<section id="result" hidden><h2 id="status"></h2><pre id="receipt"></pre></section>
+</main>
+<script>
+const sections=['catalogue','detail','checkout','lookup','result'];
+const show=id=>sections.forEach(name=>document.getElementById(name).hidden=name!==id);
+const orders=()=>JSON.parse(localStorage.getItem('fixture-orders')||'{}');
+let selected;
+function display(record){document.getElementById('status').textContent=record?'Order '+record.reference:'Order not found';document.getElementById('receipt').textContent=record?JSON.stringify(record,null,2):'This browser has no saved order for that reference.';show('result');}
+document.getElementById('browse').onclick=()=>show('catalogue');
+document.getElementById('lookup-nav').onclick=()=>show('lookup');
+document.getElementById('buy').onclick=()=>show('checkout');
+document.getElementById('order-form').onsubmit=async event=>{event.preventDefault();const record={reference:'MOCK-'+crypto.randomUUID(),sku:'RP-105',title:'Kiln',size:'A3',quantity:1,total_pence:3970,recipient:document.getElementById('recipient').value,address:document.getElementById('address').value,city:document.getElementById('city').value,postcode:document.getElementById('postcode').value};await fetch('/api/orders',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(record)});const saved=orders();saved[record.reference]=record;localStorage.setItem('fixture-orders',JSON.stringify(saved));display(record);};
+document.getElementById('lookup-button').onclick=async()=>{const ref=document.getElementById('reference').value;await fetch('/api/orders/'+encodeURIComponent(ref));display(orders()[ref]);};
+fetch('/api/prints').then(r=>r.json()).then(data=>{const unique=[...new Map(data.variants.map(v=>[v.sku,v])).values()];for(const item of unique){const card=document.createElement('article');const title=document.createElement('h2');title.textContent=item.title;const button=document.createElement('button');button.textContent='Open '+item.title;button.onclick=()=>{selected=item;document.getElementById('print-title').textContent=item.title;document.getElementById('variant').textContent='A3 print, available to preview';show('detail');};card.append(title,button);document.getElementById('catalogue').append(card);}});
+</script>
+</html>

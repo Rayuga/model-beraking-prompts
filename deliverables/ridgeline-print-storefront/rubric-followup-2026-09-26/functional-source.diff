@@ -1,0 +1,101 @@
+--- functional-before.toml
++++ tests/scored/functional/judge.toml
+@@ -45,21 +45,48 @@
+ """
+ 
+ [[criterion]]
+-id = "ridgeline_catalogue_search_and_filter_membership"
+-name = "ridgeline_catalogue_search_and_filter_membership"
+-type = "binary"
+-weight = 0.3
+-description = """
+-Start from all eight prints and clear prior search/filters. Search for "hArBoUr": only Harbour Mouth remains. Clear search and confirm the full collection returns. The A2 filter leaves Harbour Mouth, Long Field, Night Ferry, Slack Water and Two Weathers, including Harbour's sold-out A2; it excludes Kiln, Nine Windows and Allotment. Clear it. Munken Pure Rough 240gsm leaves Harbour Mouth, Slack Water and Two Weathers. Clear that filter and confirm all eight are available to browse again. Judge membership and clearing only; do not require a particular control layout or regrade sorting/detail content.
+-"""
+-
+-[[criterion]]
+-id = "ridgeline_catalogue_price_and_title_ordering"
+-name = "ridgeline_catalogue_price_and_title_ordering"
+-type = "binary"
+-weight = 0.3
+-description = """
+-Independently clear search and filters so all eight prints are visible. Price ascending places the five GBP 37.95-from prints before the three GBP 42.50-from prints; descending reverses those groups. Equal-price ties can use any stable order. Title ascending is Allotment, Harbour Mouth, Kiln, Long Field, Night Ferry, Nine Windows, Slack Water, Two Weathers; title descending is the reverse. Exercise the actual ordering controls and compare the whole collection. Do not regrade filtering or static product details.
++id = "ridgeline_catalogue_title_search"
++name = "ridgeline_catalogue_title_search"
++type = "binary"
++weight = 0.1
++description = """
++Independently start from all eight prints with no search or filters applied. Use the title-search control to enter "hArBoUr": only Harbour Mouth remains. Clear the search and confirm all eight prints return. Judge this case-insensitive search and its clearing only; do not make passing a size filter, paper filter, sort or detail check a prerequisite. No particular control layout is required.
++"""
++
++[[criterion]]
++id = "ridgeline_catalogue_size_filter"
++name = "ridgeline_catalogue_size_filter"
++type = "binary"
++weight = 0.1
++description = """
++Independently start from all eight prints with no search or filters applied. Select the A2 size filter. Exactly Harbour Mouth, Long Field, Night Ferry, Slack Water and Two Weathers remain, including Harbour Mouth's sold-out A2; Kiln, Nine Windows and Allotment are absent. Clear this size filter and confirm all eight prints return. Judge size membership and clearing only; search, paper filtering, sorting and detail content are separate outcomes. No particular control layout is required.
++"""
++
++[[criterion]]
++id = "ridgeline_catalogue_paper_filter"
++name = "ridgeline_catalogue_paper_filter"
++type = "binary"
++weight = 0.1
++description = """
++Independently start from all eight prints with no search or filters applied. Select the Munken Pure Rough 240gsm stock-sheet filter. Exactly Harbour Mouth, Slack Water and Two Weathers remain. Clear this paper filter and confirm all eight prints return. Judge stock-sheet membership and clearing only; search, size filtering, sorting and detail content are separate outcomes. No particular control layout is required.
++"""
++
++[[criterion]]
++id = "ridgeline_catalogue_regular_price_ordering"
++name = "ridgeline_catalogue_regular_price_ordering"
++type = "binary"
++weight = 0.15
++description = """
++Independently start from all eight prints with no search or filters applied. Select price ascending: the five GBP 37.95-from prints (Allotment, Harbour Mouth, Kiln, Long Field and Slack Water) precede the three GBP 42.50-from prints (Night Ferry, Nine Windows and Two Weathers). Select price descending: those groups reverse. Equal-price ties can use any stable order. Exercise the actual price-ordering control and compare the whole collection in both directions. Judge price order only, without requiring alphabetical ordering, filter behavior or regrading detail content.
++"""
++
++[[criterion]]
++id = "ridgeline_catalogue_alphabetical_title_ordering"
++name = "ridgeline_catalogue_alphabetical_title_ordering"
++type = "binary"
++weight = 0.15
++description = """
++Independently start from all eight prints with no search or filters applied. Select title ascending: the order is Allotment, Harbour Mouth, Kiln, Long Field, Night Ferry, Nine Windows, Slack Water, Two Weathers. Select title descending: the order is exactly the reverse. Exercise the actual title-ordering control and compare the whole collection in both directions. Judge alphabetical title order only, without requiring price ordering, filter behavior or regrading detail content.
+ """
+ 
+ [[criterion]]
+@@ -83,6 +110,8 @@
+ 2. Perform a genuine full page reload, so browser JavaScript restarts. The same unplaced variant, quantity and figures must return; a nonempty but different basket or a placed receipt is not evidence.
+ 3. Open a separate clean browser context without copying storage or cookies. Its basket starts empty. Add one available Long Field A3 there and observe its own one-unit basket. Return to the first context and reload: it still has only its original two Night Ferry A2, while the second context retains only its own Long Field A3 after its reload. Two tabs sharing browser storage are not separate visitors. Neither browser may inherit or overwrite the other's basket.
+ 4. Clear both unplaced baskets as cleanup. Judge browser-local persisted contents above; zero-quantity removal has its own criterion. Do not place an order or change durable stock.
++
++Browser-tool recipe: perform the two-context leg within one browser_run_code_unsafe invocation, whose input is an async (page) => { ... } function. The supplied page is visitor A. Use const browser = page.context().browser(); const contextB = await browser.newContext(); then try { const pageB = await contextB.newPage(); ... } finally { await contextB.close(); await page.bringToFront(); }. Before navigating pageB to http://localhost:3000, inspect await contextB.storageState(): its cookies and origins must be empty. Use the already observed app controls on pageB to establish B's empty basket and add its one Long Field A3. While contextB remains open, reload and inspect page for A, then reload and inspect pageB for B, and clear both through their app controls. Close only the added context in finally; do not close the original page, its context or the browser. A second tab in page.context(), copied storageState, clearing A's storage or replacing A with B is not this test. This recipe uses browser automation only, requires no shell or package installation, and does not prescribe the app's selectors or storage implementation.
+ """
+ 
+ [[criterion]]
+@@ -111,6 +140,7 @@
+ type = "binary"
+ weight = 1.0
+ description = """
++Use the derived weights below to select the expected postage. The app must show the charge and any collection-only status; it need not display grams or a postage-band name.
+ 1. Empty the basket. One Nine Windows A3 weighs 90 g and costs GBP 1.75 postage.
+ 2. Replace it with two Nine Windows A3 and two Long Field A2: 500 g exactly must cost GBP 3.20, not GBP 4.95.
+ 3. Replace that basket with eight Nine Windows A3, four Long Field A2 and four Night Ferry A2. This is exactly 2,000 g and costs GBP 4.95 postage. All quantities fit the untouched starting stock.
+@@ -145,7 +175,7 @@
+ weight = 2.5
+ description = """
+ 1. Empty the basket and record current Long Field A3, Kiln A3 and Two Weathers A3 stock. Add two Long Field A3, one Kiln A3 and five Two Weathers A3. Long Field and Kiln have the same three-unit trade rule but neither individually reaches it: each stays GBP 37.95. Two Weathers alone qualifies at GBP 36.25 each.
+-2. Before placing the order, the basket and checkout show gross subtotal GBP 326.35, trade saving GBP 31.25, Small parcel postage GBP 4.95 for 720 g, and total GBP 300.05. Enter a valid recipient name, address line, city and postcode. The entered address and all four amounts must be visible before commitment. A single checkout screen with the summary is sufficient; no separate review step is required. No payment or card form is part of checkout.
++2. Before placing the order, the basket and checkout show gross subtotal GBP 326.35, trade saving GBP 31.25, postage GBP 4.95 and total GBP 300.05. Enter a valid recipient name, address line, city and postcode. The entered address and all four amounts must be visible before commitment. A single checkout screen with the summary is sufficient; no separate review step is required. No payment or card form is part of checkout.
+ 3. Place the order through the UI, record its reference, and reload or look it up fresh. Its saved address, variant quantities, charged prices, trade saving and complete figures must match. Fresh stock must fall by exactly two Long Field A3, one Kiln A3 and five Two Weathers A3 from the recorded baseline. With prior controls completed normally, the resulting quantities are nine, five and nine respectively: the constraints gate already bought one Kiln A3. Use observed before/after quantities if an earlier criterion failed. Do not cancel this order.
+ """
+ 
+@@ -249,7 +279,7 @@
+ weight = 2.5
+ description = """
+ 1. Empty the basket. Long Field A2 has five available. Place two: stored unit price GBP 56.50, line total/gross GBP 113.00, zero saving, postage GBP 3.20 and total GBP 116.20. Fresh stock is three.
+-2. Start a separate checkout for exactly those remaining three. It succeeds at the three-unit trade price GBP 50.75. Reload or look up this second reference: charged line total GBP 152.25, gross GBP 169.50, saving GBP 17.25, postage GBP 3.20 for 480 g and total GBP 155.45. Fresh stock is zero.
++2. Start a separate checkout for exactly those remaining three. It succeeds at the three-unit trade price GBP 50.75. Reload or look up this second reference: charged line total GBP 152.25, gross GBP 169.50, saving GBP 17.25, postage GBP 3.20 and total GBP 155.45. Fresh stock is zero.
+ 3. Look up the first reference again. Its two-unit regular price and GBP 116.20 total remain unchanged; the second order's trade break must not retroactively discount it. Both references are distinct and the original addresses remain correct. Do not cancel either order.
+ """
+ 

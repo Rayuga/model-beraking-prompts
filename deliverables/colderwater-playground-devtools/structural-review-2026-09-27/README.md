@@ -1,0 +1,21 @@
+# Colderwater: independence and workload repair
+
+The platform rejected release `5d0f1d74ae48e36183c5110aee5b414fb5912aa30361401950e8a248e1e4e78b` for `timeouts_fit_the_work` and `criteria_are_independent_and_noncontradictory`. This directory records the redesign and its evidence. A draft or a completed local check is not platform acceptance.
+
+The independence failure is concrete. File import and server filename validation can work independently; trimming, collisions and case-sensitive titles can work independently; automatic startup and unchanged built-in examples can work independently; language dispatch and removal of old CSS-preview handlers can work independently. The previous review treated too many independently useful outcomes as one flow. Its Pass on independence is superseded.
+
+The timeout finding is a source-review risk, not an observed timed-out Oracle. The allowance is 9,000 seconds (150 minutes). Installed RewardKit 0.1.7 really does discard a timed-out batch's results; three local CLI probes establish this. Keeping incomplete evaluations ungraded is correct. Switching to individual mode does not add checkpoints and can increase work.
+
+The applied repair separates independent binary credit while sharing observed setup and browser scenarios. The 37 former bundles now have 88 independently scored outcomes, with each original feature budget conserved and a total Functional weight of 49.5. The 60/20/20 reward formula remains fixed. A failed sibling outcome must not erase other observed successes. Reusing an observation is permitted; inheriting a verdict or inventing missing evidence is not.
+
+The seven-phase plan performs the restart early and reduces the nominal successful-path manual Runs from 60 to 50. Actual failure fallbacks may require more work. All 23 golden files, public instructions, task metadata, harness, scorer and provider configuration remain unchanged. Only the Functional judge, its prompt and shared app context changed inside the task.
+
+Current review candidate: [ZIP](review-candidate/colderwater-playground-devtools.zip), SHA256 `7d693e9cde4585aebfc2f1bd1678e8a36b644cbc5e8113def1e606b1c0406823`, 50 files. This is **not a claim of platform acceptance or measured full judge timing**.
+
+Local source checks pass 95/95 on both the workspace and extracted archive. The current source guard passes 33 checks and rejects the previous bundled release. Installed RewardKit accepts the new 88-row schema and produces the correct weighted results in three local transport fixtures. The final resolved prompt is 102,689 bytes and passes an actual local command-line launch; a larger preliminary draft was rejected before application. The rebuilt verifier's 15 shipped test files match the frozen candidate.
+
+Four actual incomplete-app witnesses preserve the intended independent behavior: import versus server extension validation, title trimming versus case policy, dispatch versus inherited CSS handlers, and process restart without Duplicate/Delete. These are tests of expected partial failures, not Oracle scores.
+
+Fresh browser evidence now covers all 88 Functional outcomes across the 37 shared protocols. The complete run observed 86 passes; targeted reruns corrected two driver capture mistakes and supplied the remaining observations. The original results are retained. See [runtime evidence](golden/RUNTIME_PROOF_SUMMARY.md), [all 53 quality and 48 deterministic check dispositions](QC_FINAL.md), and [final candidate integrity validation](final_candidate_validation.json). Full LLM judge timing is still unmeasured; the QC report keeps that finding open.
+
+The exact reviewed inputs and complete outcome mapping live under `semantics`. Architecture findings and CLI probes live under `harness`. The `golden` directory preserves original failed driver attempts, fresh workflow results, targeted corrections and separately identified historical evidence. Do not turn composite evidence into a claim that one raw run passed everything. No provider call or platform attempt is authorized by creating these artifacts. Full judge timing and a hosted Oracle score remain unmeasured until explicitly recorded with a source fingerprint and run result.

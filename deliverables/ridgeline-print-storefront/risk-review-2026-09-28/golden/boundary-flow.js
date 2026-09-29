@@ -1,0 +1,127 @@
+async (page) => {
+  const seed=__SEED_JSON__;
+  const report={scope:'Fresh continuous golden boundary supplement, with exact gate and keyboard observations',startedAt:new Date().toISOString(),browserVersion:page.context().browser().version(),checks:[],network:[],keyboard:[],pageErrors:[]};
+  const require=(ok,message)=>{if(!ok)throw new Error(message);};
+  const equal=(a,b,message)=>require(JSON.stringify(a)===JSON.stringify(b),message+'; actual '+JSON.stringify(a)+' expected '+JSON.stringify(b));
+  const money=n=>(n/100).toFixed(2),lines=(...rows)=>rows.map(([sku,size,qty])=>({sku,size,qty}));
+  const title=sku=>seed.variants.find(v=>v.sku===sku).title;
+  page.on('pageerror',e=>report.pageErrors.push(e.message));
+  async function request(url,body,p=page){const result=await p.evaluate(async({url,body})=>{const r=await fetch(url,body===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});return{status:r.status,body:await r.json()};},{url,body});report.network.push({url,request:body,...result});return result;}
+  const stocks=async()=>Object.fromEntries((await request('/api/prints')).body.prints.flatMap(p=>p.sizes.map(v=>[p.sku+':'+v.size,v.in_stock])));
+  const order=async ref=>(await request('/api/orders/'+ref)).body;
+  const fresh=body=>({...JSON.parse(JSON.stringify(body)),checkout_id:'second-'+Date.now()+'-'+Math.random().toString(16).slice(2)});
+  function figures(entries){let gross=0,saving=0,grams=0;for(const l of entries){const v=seed.variants.find(v=>v.sku===l.sku&&v.size===l.size);gross+=v.price_pence*l.qty;saving+=(v.price_pence-(l.qty>=v.tier_qty?v.tier_price_pence:v.price_pence))*l.qty;grams+=seed.size_weights.find(w=>w.size===l.size).grams*l.qty;}const band=seed.postage_bands.find(b=>b.up_to_grams>0&&grams<=b.up_to_grams);const postage=entries.length?(band?.price_pence||0):0;return[gross,saving,postage,gross-saving+postage];}
+  async function summary(expected,p=page){await p.waitForFunction(values=>JSON.stringify([...document.querySelectorAll('.summary dd')].map(e=>Number(e.textContent.replace(/[^0-9.]/g,''))))===JSON.stringify(values.map(v=>v/100)),expected,{timeout:8000});}
+  async function grid(p=page){await p.getByRole('button',{name:'The prints',exact:true}).click();await p.locator('.print-card').first().waitFor();}
+  async function clear(p=page){await p.getByRole('button',{name:/Open basket,/}).click();while(await p.getByRole('button',{name:/^Remove /}).count())await p.getByRole('button',{name:/^Remove /}).first().click();require(await p.locator('.basket-line').count()===0,'basket cleanup');}
+  async function add(sku,size,qty,p=page){await grid(p);await p.getByRole('button',{name:'View '+title(sku),exact:true}).click();await p.getByRole('button',{name:new RegExp('^'+size)}).click();const q=p.getByRole('spinbutton',{name:'Quantity for '+title(sku)+' '+size+' to add',exact:true});await q.fill(String(qty));await q.blur();await p.getByRole('button',{name:'Add to basket',exact:true}).click();await p.getByRole('status').filter({hasText:'added to your basket'}).waitFor();}
+  async function basket(entries){await clear();for(const l of entries)await add(l.sku,l.size,l.qty);await page.getByRole('button',{name:/Open basket,/}).click();await summary(figures(entries));}
+  async function prepare(entries,label){await basket(entries);await page.getByRole('button',{name:'Continue to checkout',exact:true}).click();const address={name:'Second '+label+' '+Date.now(),line1:'48 Paper Street',line2:'Studio 2',city:'York',postcode:'YO1 7AA',country:'United Kingdom'};for(const[key,value]of[['Full name',address.name],['Address line 1',address.line1],['Address line 2 (optional)',address.line2],['Town or city',address.city],['Postcode',address.postcode]])await page.getByLabel(key,{exact:true}).fill(value);await page.getByRole('button',{name:'Review order',exact:true}).click();await summary(figures(entries));for(const value of Object.values(address))require((await page.locator('address').innerText()).includes(value),'complete review address '+value);return address;}
+  async function buy(entries,label){const address=await prepare(entries,label);const promise=page.waitForResponse(r=>r.url().endsWith('/api/orders')&&r.request().method()==='POST');await page.getByRole('button',{name:'Place order',exact:true}).click();const response=await promise;require(response.status()===201,'fresh UI checkout succeeds');const saved=await response.json(),body=response.request().postDataJSON();report.network.push({purpose:'actual UI checkout',url:response.url(),request:body,status:response.status(),body:saved});await page.getByText(saved.reference,{exact:true}).waitFor();await summary(figures(entries));for(const[k,v]of Object.entries(address))equal(saved['address_'+k],v,'stored address '+k);equal(await order(saved.reference),saved,'fresh server receipt');return{saved,body};}
+  async function lookup(p,ref){await p.getByRole('button',{name:'Track an order',exact:true}).click();await p.getByLabel('Order reference',{exact:true}).fill(ref);await p.getByRole('button',{name:'Find order',exact:true}).click();await p.getByText(ref,{exact:true}).waitFor();}
+  async function cancel(p=page){
+    async function activate(name){for(let i=0;i<80;i++){await p.keyboard.press('Tab');if(await p.evaluate(n=>document.activeElement.tagName==='BUTTON'&&document.activeElement.textContent.trim()===n,name)){await p.keyboard.press('Enter');return;}}throw new Error('keyboard cancellation control unreachable: '+name);}
+    await activate('Cancel order');await p.getByRole('alertdialog').waitFor();await activate('Confirm cancellation');await p.getByRole('heading',{name:'Order cancelled.',exact:true}).waitFor();
+  }
+  async function check(id,fn){const detail=await fn();report.checks.push({id,passed:true,...detail});}
+  async function fitScreenshot(name,p=page){require(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'page fits '+name);await p.screenshot({path:'/work/'+name+'.png',fullPage:true});}
+  try{
+    await page.setViewportSize({width:1440,height:1000});await page.locator('.print-card').first().waitFor();
+    const initial=await stocks();report.initialStock=initial;equal(Object.keys(initial).length,13,'thirteen initial variants');
+    let gate;
+    await check('fresh_gate_order_and_clean_context_lookup',async()=>{
+      require((await request('/api/health')).status===200,'health');gate=await buy(lines(['RP-105','A3',1]),'Gate');require((await stocks())['RP-105:A3']===6,'gate leaves six Kiln');
+      const independent=await page.context().browser().newContext();equal(await independent.storageState(),{cookies:[],origins:[]},'clean context');const p=await independent.newPage();
+      try{await p.goto('http://localhost:3000');await lookup(p,gate.saved.reference);await p.reload();await p.getByText(gate.saved.reference,{exact:true}).waitFor();require((await p.locator('.receipt-address').innerText()).includes(gate.saved.address_name),'fresh receipt recipient');require((await p.locator('.receipt-lines').innerText()).includes('Kiln'),'fresh receipt line');await summary([3795,0,175,3970],p);await fitScreenshot('fresh-gate-receipt',p);}finally{await independent.close();await page.bringToFront();}
+      return{reference:gate.saved.reference,cleanContextReload:true,stock:6};
+    });
+    await check('combined_discovery_empty_reset_and_native_sort',async()=>{
+      await grid();const names=()=>page.locator('.print-card h2').allTextContents();const search=page.getByRole('searchbox',{name:'Search prints'});
+      await page.getByLabel('Size',{exact:true}).selectOption('A2');await page.getByLabel('Paper',{exact:true}).selectOption('Munken Pure Rough 240gsm');equal(await names(),['Harbour Mouth','Slack Water','Two Weathers'],'intersecting filters keep sold-out offered sizes');
+      await search.fill('hArBoUr');equal(await names(),['Harbour Mouth'],'case insensitive search with both filters');
+      await search.fill('not-a-print');await page.getByRole('heading',{name:'No prints found',exact:true}).waitFor();await page.getByRole('button',{name:'Clear filters',exact:true}).click();equal((await names()).length,8,'empty-result reset restores full list');
+      for(const direction of ['title_asc','title_desc','price_asc','price_desc']){await page.getByLabel('Sort',{exact:true}).selectOption(direction);const actual=await names();if(direction.startsWith('title')){const sorted=['Allotment','Harbour Mouth','Kiln','Long Field','Night Ferry','Nine Windows','Slack Water','Two Weathers'];equal(actual,direction==='title_asc'?sorted:sorted.reverse(),'full title order');}else{const prices=await page.locator('.print-name>span').allTextContents();const numbers=prices.map(t=>Number(t.replace(/[^0-9.]/g,'')));equal(numbers,[...numbers].sort((a,b)=>direction==='price_asc'?a-b:b-a),'full price order');}}
+      await page.getByLabel('Paper',{exact:true}).selectOption('Colorplan Pristine White 270gsm');const pristine=await names();equal([...pristine].sort(),['Allotment','Long Field','Nine Windows'],'Pristine filter includes entirely sold-out edition');require((await page.locator('.print-card').filter({has:page.getByRole('button',{name:'View Allotment',exact:true})}).innerText()).includes('Sold out'),'Allotment remains sold out');await fitScreenshot('pristine-paper-includes-sold-out-allotment');await page.getByLabel('Paper',{exact:true}).selectOption('');equal((await names()).length,8,'paper reset restores eight');
+      equal(await stocks(),{...initial,'RP-105:A3':6},'discovery no stock effects');return{combinedFilters:true,emptyReset:true,fourCompleteOrders:true,pristinePaperMembers:pristine,pristineResetToEight:true};
+    });
+    await check('exact_keyboard_route_and_focus',async()=>{
+      await add('RP-108','A2',1);await grid();const before=await stocks();
+      async function key(k){await page.keyboard.press(k);const s=await page.evaluate(()=>{const e=document.activeElement,c=getComputedStyle(e);return{tag:e.tagName,type:e.getAttribute('type'),aria:e.getAttribute('aria-label'),text:e.textContent?.trim().slice(0,120),focus:e.matches(':focus-visible'),outline:c.outlineStyle,width:c.outlineWidth};});report.keyboard.push({key:k,focused:s});return s;}
+      async function reach(test){for(let i=0;i<100;i++){const s=await key('Tab');if(test(s)){require(s.focus&&s.outline!=='none'&&parseFloat(s.width)>0,'visible focus '+JSON.stringify(s));return s;}}throw new Error('Keyboard target not reached');}
+      const named=[];
+      for(const match of[s=>s.type==='search',s=>s.aria==='Size',s=>s.aria==='Paper',s=>s.aria==='Sort',s=>s.aria?.startsWith('Switch to'),s=>s.aria?.startsWith('Open basket')])named.push(await reach(match));
+      await reach(s=>s.aria?.startsWith('Switch to'));const light=await page.locator('html').getAttribute('data-theme');await key('Enter');require(await page.locator('html').getAttribute('data-theme')!==light,'keyboard theme toggles');
+      await reach(s=>s.aria==='View Harbour Mouth');await key('Enter');await page.getByRole('heading',{name:'Harbour Mouth',exact:true}).waitFor();await reach(s=>s.tag==='BUTTON'&&s.text?.includes('All prints'));await key('Enter');await page.locator('.print-card').first().waitFor();
+      await reach(s=>s.aria?.startsWith('Open basket'));await key('Enter');await page.getByRole('heading',{name:'The basket.',exact:true}).waitFor();equal(await page.locator('.basket-line').count(),1,'own prepared basket reached');await fitScreenshot('keyboard-basket-dark');await reach(s=>s.tag==='BUTTON'&&s.text?.startsWith('Continue browsing'));await key('Enter');await page.locator('.print-card').first().waitFor();
+      require(report.keyboard.length>10,'real keyboard trace');equal(await stocks(),before,'keyboard route no stock writes');await fitScreenshot('keyboard-return-catalogue-dark');await clear();
+      return{namedControls:named,actualKeyEvents:report.keyboard.length,route:'catalogue → detail → catalogue → own unplaced basket → catalogue',onlyKeyEventsDuringRoute:true,unplacedBasketCleared:true};
+    });
+
+    await check('all_shop_controls_have_keyboard_focus',async()=>{
+      const before=await stocks(),surfaces=[];
+      async function inspect(surface){
+        const selector='button,a[href],input,select,textarea';
+        const expected=await page.locator(selector).evaluateAll(es=>es.map((e,index)=>({index,tag:e.tagName,type:e.type,name:e.getAttribute('aria-label')||[...(e.labels||[])].map(l=>l.textContent.trim()).join(' ')||e.textContent.trim(),visible:!!(e.getClientRects().length&&getComputedStyle(e).visibility!=='hidden'),disabled:e.disabled||e.getAttribute('aria-disabled')==='true'})).filter(e=>e.visible&&!e.disabled&&e.type!=='hidden'));
+        require(expected.every(e=>e.name),'all visible controls labelled '+surface);
+        const seen=new Map();
+        for(let i=0;i<expected.length*3+5;i++){
+          await page.keyboard.press('Tab');
+          const e=await page.evaluate(sel=>{const el=document.activeElement;const css=getComputedStyle(el);return{index:[...document.querySelectorAll(sel)].indexOf(el),visibleFocus:el.matches(':focus-visible'),outline:css.outlineStyle,width:css.outlineWidth};},selector);
+          if(e.index>=0)seen.set(e.index,e);
+          if(expected.every(e=>seen.has(e.index)))break;
+        }
+        const missing=expected.filter(e=>!seen.has(e.index));
+        require(!missing.length,'keyboard unreachable on '+surface+': '+JSON.stringify(missing));
+        require(expected.every(e=>seen.get(e.index).visibleFocus&&seen.get(e.index).outline!=='none'&&parseFloat(seen.get(e.index).width)>0),'visible focus '+surface);
+        surfaces.push({surface,controls:expected,observedFocus:[...seen.values()]});
+      }
+      await grid();await inspect('catalogue');
+      await add('RP-108','A2',1);await inspect('product size quantity add and return');
+      await page.getByRole('button',{name:/Open basket,/}).click();await summary([6450,0,320,6770]);await inspect('basket quantity remove checkout');
+      await page.getByRole('button',{name:'Continue to checkout',exact:true}).click();
+      for(const[label,value]of[['Full name','Keyboard Review'],['Address line 1','82 Paper Street'],['Town or city','York'],['Postcode','YO1 7AA']])await page.getByLabel(label,{exact:true}).fill(value);
+      await inspect('delivery fields and review');
+      await page.getByRole('button',{name:'Review order',exact:true}).click();await inspect('final review and unactivated submit');
+      await page.getByRole('button',{name:'Track an order',exact:true}).click();await inspect('reference lookup');
+      await lookup(page,'RP-100001');await inspect('historical receipt return');
+      await clear();equal(await stocks(),before,'keyboard inspection creates no order and changes no stock');
+      return{surfaces,allReachable:true,allLabelled:true,noDurableMutation:true};
+    });
+
+    await check('basket_invalid_edit_reload_and_zero_independent_context',async()=>{
+      await basket(lines(['RP-108','A2',2]));const q=page.getByRole('spinbutton',{name:'Quantity for Night Ferry A2',exact:true});await q.fill('1.5');await q.blur();equal(await q.inputValue(),'2','fractional edit retains last valid basket');await q.fill('5');await q.blur();await page.getByRole('alert').filter({hasText:'Only 4'}).waitFor();equal(await q.inputValue(),'2','excess retains valid basket');await page.reload();await summary([12900,0,320,13220]);equal(await q.inputValue(),'2','reload retains correct prior quantity');
+      const context=await page.context().browser().newContext();equal(await context.storageState(),{cookies:[],origins:[]},'second basket context empty');const second=await context.newPage();try{await second.goto('http://localhost:3000');await second.getByRole('button',{name:/Open basket,/}).click();require((await second.locator('main').innerText()).includes('Your basket is empty'),'other visitor empty');await add('RP-101','A3',1,second);await second.getByRole('button',{name:/Open basket,/}).click();await summary([3795,0,175,3970],second);await page.reload();await summary([12900,0,320,13220]);await second.reload();await summary([3795,0,175,3970],second);await clear(second);}finally{await context.close();await page.bringToFront();}
+      await q.fill('0');await q.blur();await page.reload();require((await page.locator('main').innerText()).includes('Your basket is empty'),'zero remains empty');require(await page.locator('.summary').count()===0,'empty has no remaining postage/payable');return{fractionalAndExcessPreserveTwo:true,twoVisitorsIsolated:true,zeroEmptyAfterReload:true};
+    });
+    await check('whitespace_address_refusals_and_valid_recovery',async()=>{
+      const before=await stocks(),responses=[];for(const key of ['name','line1','city','postcode']){const body=fresh(gate.body);body.address[key]=' \t\n ';const r=await request('/api/orders',body);require(r.status>=400&&r.status<500&&!r.body.reference,'server refuses blank '+key);equal(await stocks(),before,'blank address no stock change '+key);equal(await order(gate.saved.reference),gate.saved,'gate receipt unchanged '+key);responses.push({key,status:r.status,code:r.body.code});}
+      const valid=await buy(lines(['RP-105','A3',1]),'After blank refusals');require(valid.saved.reference!==gate.saved.reference,'fresh valid control');require((await stocks())['RP-105:A3']===5,'second valid Kiln consumes once');return{responses,newValidReference:valid.saved.reference};
+    });
+    await check('collection_checkout_multiline_cancel_and_duplicate_cancel_race',async()=>{
+      const before=await stocks(),entries=lines(['RP-103','A3',9],['RP-101','A2',4],['RP-108','A2',4]);
+      const p=await buy(entries,'Collection');equal([p.saved.subtotal_pence,p.saved.trade_saving_pence,p.saved.postage_pence,p.saved.total_pence],[86650,7925,0,78725],'collection charged values');require(p.saved.collection_only===true&&p.saved.weight_grams===2090,'collection-only flag');require((await page.locator('main').innerText()).includes('collection only'),'collection UI remains clear');
+      for(const x of entries)equal((await stocks())[x.sku+':'+x.size],before[x.sku+':'+x.size]-x.qty,'per-line decrement');await page.reload();await page.getByText(p.saved.reference,{exact:true}).waitFor();await summary([86650,7925,0,78725]);
+      await page.getByRole('button',{name:'Cancel order',exact:true}).click();await page.getByRole('alertdialog').waitFor();await page.keyboard.press('Escape');require(await page.getByRole('alertdialog').count()===0,'Escape dismisses non-destructively');equal((await order(p.saved.reference)).status,'placed','dismiss did not cancel');
+      await cancel();const cancelled=await order(p.saved.reference);equal(await stocks(),before,'multi-line cancellation restores exact stocks');for(const k of ['lines','address_name','address_line1','address_line2','address_city','address_postcode','subtotal_pence','trade_saving_pence','postage_pence','total_pence'])equal(cancelled[k],p.saved[k],'cancel preserves '+k);
+      const race=await page.evaluate(async ref=>Promise.all([1,2].map(async()=>{const r=await fetch('/api/orders/'+ref+'/cancel',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});return{status:r.status,body:await r.json()};})),p.saved.reference);for(const r of race)equal(r.body,cancelled,'concurrent repeated cancel unchanged');equal(await stocks(),before,'concurrent repeated cancel restores zero extra');
+      const replay=await request('/api/orders',p.body);equal(replay.body,cancelled,'collection checkout retry stays cancelled');return{reference:p.saved.reference,figures:[86650,7925,0,78725],weight:2090,exactRestoration:true,twoConcurrentCancelReplays:true};
+    });
+    await check('lost_last_unit_response_cancelled_elsewhere_then_ui_recovery',async()=>{
+      const entries=lines(['RP-104','A2',1]);await prepare(entries,'Lost response');let original,body;
+      await page.route('http://localhost:3000/api/orders',async route=>{body=route.request().postDataJSON();const r=await route.fetch();require(r.status()===201,'real commit before network failure');original=await r.json();await route.abort('failed');},{times:1});
+      await page.getByRole('button',{name:'Place order',exact:true}).click();await page.getByRole('alert').filter({hasText:'retrying will not place'}).waitFor();equal((await stocks())['RP-104:A2'],0,'dropped response committed last unit once');
+      const clean=await page.context().browser().newContext();equal(await clean.storageState(),{cookies:[],origins:[]},'cancelling context clean');const second=await clean.newPage();try{await second.goto('http://localhost:3000');await lookup(second,original.reference);await cancel(second);equal((await stocks())['RP-104:A2'],1,'independent cancellation restores one');}finally{await clean.close();await page.bringToFront();}
+      await page.reload();await page.getByRole('button',{name:'Recover saved order',exact:true}).waitFor();require((await page.locator('address').innerText()).includes(body.address.name),'recovery retains address');await fitScreenshot('pending-cancelled-recovery-desktop');
+      const response=page.waitForResponse(r=>r.url().endsWith('/api/orders')&&r.request().method()==='POST');await page.getByRole('button',{name:'Recover saved order',exact:true}).click();const r=await response;equal(r.request().postDataJSON(),body,'UI retries original request exactly');require(r.status()===200,'UI recovery returns existing order');const recovered=await r.json();equal(recovered.reference,original.reference,'original reference');equal(recovered.status,'cancelled','does not resurrect');await page.getByRole('heading',{name:'Order cancelled.',exact:true}).waitFor();equal((await stocks())['RP-104:A2'],1,'recovery leaves restored stock');await summary([5650,0,320,5970]);
+      const changed=JSON.parse(JSON.stringify(body));changed.address.city='Bath';const conflict=await request('/api/orders',changed);require(conflict.status>=400&&!conflict.body.reference,'cancelled identity cannot change address');equal((await stocks())['RP-104:A2'],1,'conflict no stock change');
+      const genuinelyNew=await buy(entries,'New purchase after terminal recovery');require(genuinelyNew.saved.reference!==original.reference,'new checkout buys same basket with different identity');equal((await stocks())['RP-104:A2'],0,'new purchase consumes once');return{originalReference:original.reference,recoveredCancelledReference:recovered.reference,newReference:genuinelyNew.saved.reference,originalBodyReplayed:true};
+    });
+    await check('changed_stock_catalogue_and_readonly_presentation',async()=>{
+      const before=await stocks();await grid();await page.getByLabel('Size',{exact:true}).selectOption('A2');require((await page.locator('.print-card h2').allTextContents()).includes('Slack Water'),'sold-out A2 still in filter');const card=page.locator('.print-card').filter({has:page.getByRole('button',{name:'View Slack Water',exact:true})});require((await card.innerText()).includes('37.95'),'remaining A3 still lowest regular price');require((await card.innerText()).includes('In stock'),'other size keeps print available');
+      const views=[];for(const width of [1440,390])for(const theme of ['light','dark']){await page.setViewportSize({width,height:width===390?844:1000});if(await page.locator('html').getAttribute('data-theme')!==theme)await page.getByRole('button',{name:'Switch to '+theme+' theme',exact:true}).click();await grid();await fitScreenshot('catalogue-'+theme+'-'+width);await page.getByRole('button',{name:'View Slack Water',exact:true}).click();await fitScreenshot('detail-'+theme+'-'+width);await page.getByRole('button',{name:/Open basket,/}).click();await fitScreenshot('empty-basket-'+theme+'-'+width);await lookup(page,gate.saved.reference);await fitScreenshot('receipt-'+theme+'-'+width);views.push({width,theme,surfaces:['catalogue','detail','empty basket','receipt']});}
+      equal(await stocks(),before,'presentation preserves stock');return{views,stockAwareFilter:true};
+    });
+    equal(report.pageErrors,[],'no runtime errors');report.finalStock=await stocks();report.passed=true;
+  }catch(e){report.passed=false;report.error=e.stack||String(e);await page.screenshot({path:'/work/boundary-failure.png',fullPage:true}).catch(()=>{});}
+  report.finishedAt=new Date().toISOString();return report;
+}

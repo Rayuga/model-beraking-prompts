@@ -1,0 +1,25 @@
+const fs = require('node:fs');
+const assert = require('node:assert/strict');
+const { chromium } = require('/usr/local/lib/node_modules/@playwright/mcp/node_modules/playwright');
+(async () => {
+  const browser = await chromium.launch({headless:true,executablePath:'/usr/local/bin/chromium'});
+  const page = await browser.newPage({viewport:{width:1440,height:1000}});
+  await page.goto('http://localhost:3000');
+  const editor = page.getByRole('textbox',{name:'Code editor',exact:true});
+  await editor.waitFor();
+  await page.waitForFunction(()=>document.querySelector('[role=status]')?.textContent.startsWith('Complete'));
+  await editor.click();
+  const original = await editor.innerText();
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Tab');
+  const active = await page.evaluate(()=>({tag:document.activeElement.tagName,text:document.activeElement.textContent,aria:document.activeElement.getAttribute('aria-label')}));
+  assert.equal(active.text,'New');
+  assert.equal(await editor.innerText(),original);
+  const footer = await page.locator('footer').innerText();
+  assert(!/Escape|Esc|leave editor/i.test(footer));
+  const report={chromium:browser.version(),escapeTabWorks:true,active,codeUnchanged:true,footer,escapeHintPresent:false,defect:'Existing editor escape sequence works, but the UI describes Tab as indent without documenting how to leave the editor.'};
+  fs.writeFileSync('/work/keyboard-baseline-results.json',JSON.stringify(report,null,2)+'\n');
+  await page.screenshot({path:'/work/keyboard-baseline.png',fullPage:true});
+  await browser.close();
+  console.log(JSON.stringify(report));
+})().catch(e=>{console.error(e);process.exit(1)});

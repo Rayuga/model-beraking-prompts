@@ -1,0 +1,77 @@
+--- 63a05-baseline/tests/scored/functional/judge.toml
++++ revised-workspace/tests/scored/functional/judge.toml
+@@ -115,9 +115,10 @@
+ weight = 0.5
+ description = """
+ 1. Through the UI, run ordinary .js source that renders confidentiality-control-preview and logs confidentiality-control-log. Confirm both. This working control prevents a broken server from passing a denial check.
+-2. Open each of the three publicly reserved addresses /app.db, /server.js and /package.json on the application's origin in a separate browser page. Use ordinary browser navigation and its response/download events. These paths are explicitly reserved in the security note; no other filenames, traversal variants or source paths are in scope.
+-3. Each address must produce a missing/denied HTTP response (for example 401, 403, 404 or 410; equivalent clear denial outcomes are valid), or display the actual working playground workspace with usable editor, preview and console. A redirect to that workspace or a normal SPA fallback is valid. Allow ordinary navigation redirects; use the final visible page and final HTTP response. A download or a successful response displaying a different file does not meet this reserved-address requirement. Do not read or classify implementation source, package fields, database bytes or response bodies. Do not require any particular error wording, MIME type or framework. If a navigation is deliberately refused/closed, retry once and confirm the normal workspace still works; a reproducible refusal with a healthy control counts as denial. Tool crashes or unavailable browser observations use the incomplete-evaluation protocol instead.
+-4. Close only these probe pages and confirm a fresh ordinary Run still produces preview and console output on the original page. Record the three starting paths and observed denial/fallback/download outcomes. This tests the stated reserved URLs, not every possible disclosure route.
++2. Use ordinary browser navigation and response/download events to probe these nine representative application-origin paths in separate probe pages: /app.db, /app.db-wal, /app.db-shm, /server.js, /package.json, /package-lock.json, /npm-shrinkwrap.json, /.git/config and /.git/HEAD. They sample working databases and their companion files, backend/project files and repository metadata. Attempt every candidate; a nonexistent file can correctly return missing. Do not stop after checking only the main database or server entry. This is a bounded sample of the public privacy requirement, not a public reserved-name rule or permission to expose unprobed internal files. Do not add traversal variants, source-tree enumeration or an unbounded path catalogue.
++3. Before judging any successful candidate response, distinguish an intended public role from private working-file delivery. A path actually used by the working playground as a browser asset or public product-data endpoint is allowed, even if its name matches a candidate. Establish that role from normal rendered UI and observed browser requests during ordinary use, without reading implementation text or the candidate response body. Record the observed public role; do not fail an asset because of its filename, MIME type or origin, and do not treat a file becoming reachable only because of this probe as evidence of an intended public role. A credible public-role ambiguity that the permitted browser observations cannot resolve is unavailable evidence under the incomplete-evaluation protocol, not a filename-based product failure.
++4. For candidates without an established public role, accept a missing/denied HTTP response (for example 401, 403, 404 or 410), a no-content response, an equivalent clear refusal, or the actual working playground workspace with usable editor, preview and console. Redirects and normal SPA fallback are valid; use the final response and visible result. An established denial takes precedence over an attachment/download event on that denial response. A successful standalone file response or download without an established public role, denial or working-workspace fallback is an exposure outcome and fails this criterion. Do not read or classify implementation source, package fields, database bytes or probe response bodies, inspect downloaded contents or require a particular error wording or framework. If navigation is deliberately refused/closed, retry once and confirm the normal workspace still works; a reproducible refusal with a healthy control counts as denial. Tool crashes or unavailable browser observations use the incomplete-evaluation protocol instead.
++5. Close only these probe pages and confirm a fresh ordinary Run still produces preview and console output on the original page. Record every candidate and its observed denial, no-content, working fallback, intended public role or exposure outcome. These representative observations check the working-file boundary; they do not prove absence of every possible disclosure route.
+ """
+ 
+ [[criterion]]
+@@ -341,10 +342,10 @@
+ type = "binary"
+ weight = 2.5
+ description = """
+-1. Establish this criterion's own durable controls. Save QC Restart Primary (qc-restart.js, console.log('restart-original');) and make an independent duplicate QC Restart Copy. Edit and save only Copy to console.log('restart-copy-edited');. Create QC Restart Deleted and delete it through confirmation. Record the current full list of stable identities/titles and the primary/copy exact fields and revisions.
++1. Establish two independent records using only New and ordinary Save. Save QC Restart Primary (qc-restart.js, console.log('restart-original');). Start another new draft and save QC Restart Second (qc-second.js, console.log('restart-second');). Update Primary through ordinary Save to console.log('restart-before-restart'); and record its advanced revision. Record the current complete library identities/titles and both records' exact fields and revisions. Duplicate, Delete and execution of either snippet are not prerequisites or graded actions here.
+ 2. Call the verifier MCP tool restart_app exactly once, wait for its completed restart, then open a fresh browser page at http://localhost:3000. A browser reload alone is insufficient.
+-3. The recorded library identities/titles remain exactly once each, with no resurrected QC Restart Deleted. Primary and Copy load with their own exact saved filenames, source and revisions. Run each and observe its matching console marker.
+-4. Edit Primary to console.log('restart-after-save'); and save with its loaded current revision. This succeeds; a fresh read shows the new source and advanced revision, while Copy is still exactly unchanged.
++3. The recorded library identities/titles remain exactly once each. Primary and Second load with their own exact saved titles, filenames, source and revisions, including Primary's pre-restart update. Observe the actual loaded fields and server-provided records; do not require running their source.
++4. Edit Primary to console.log('restart-after-save'); and save with its loaded current revision. This succeeds; a fresh read shows the new source and advanced revision, while Second and every unrelated recorded library entry remain unchanged.
+ All legs must be observed. Do not depend on another criterion's reference or verdict, reset the database, enumerate hidden files, or add an authentication step.
+ """
+ [[criterion]]
+@@ -403,14 +404,38 @@
+ id = "delete_confirm"
+ name = "delete_confirm"
+ type = "binary"
+-weight = 3.0
+-description = """
+-1. Save QC Delete Target (qc-delete.js, console.log('delete-original');), QC Delete Sibling (qc-sibling.js, console.log('keep-sibling');) and QC Delete Control (qc-control.js, console.log('valid-delete-control');). Record the current list and Target's identity/revision.
+-2. Start deleting Target, then cancel its confirmation. Reload and verify all three remain with unchanged fields. Delete Control through the normal confirmation and record that actual successful delete request; only Control disappears.
+-3. Preserve Target's old revision, then load Target and save new source console.log('newer-work-to-keep'); with its current revision. Fresh read confirms the newer content and revision.
+-4. Replay the real delete operation against Target using its old revision. The server must refuse and retain the newer Target and unchanged Sibling. The UI/response explains the conflict; merely hiding a delete button is not evidence.
+-5. Reload the latest Target and confirm its deletion normally using that current revision. Only Target disappears, Sibling remains exact, and a browser reload preserves this result.
+-6. Attempt to save the previously loaded Target back to its deleted identity using the actual update format. It must refuse instead of recreating/upserting the deleted record. The library remains the prior list minus Control and Target. Other criteria's unrelated snippets must remain untouched.
++weight = 1.0
++description = """
++1. Independently save QC Delete Target (qc-delete.js, console.log('delete-original');) and QC Delete Sibling (qc-sibling.js, console.log('keep-sibling');). Record their identities, exact fields/revisions and the current library list.
++2. Start deleting Target. The app asks for confirmation before removing it. Cancel that confirmation. Reload and verify both records and the complete list remain unchanged.
++3. Load Target again, request deletion and confirm it. Only Target disappears; Sibling keeps its exact fields/revision and all unrelated records remain unchanged. Reload and confirm the same result.
++This criterion owns normal confirmation, cancellation and selected-record deletion. Do not test stale revisions or updates to a deleted identity here, and do not withhold its credit because either independently scored protection fails.
++"""
++
++[[criterion]]
++id = "cw_stale_delete_preserves_newer_record"
++name = "cw_stale_delete_preserves_newer_record"
++type = "binary"
++weight = 1.0
++description = """
++1. Create this criterion's own QC Stale Delete Target (qc-stale-delete.js, console.log('stale-delete-original');), QC Stale Delete Sibling (qc-stale-sibling.js, console.log('stale-delete-keep');) and QC Stale Delete Control (qc-stale-control.js, console.log('current-delete-control');). Record their exact fields/revisions and the current library list.
++2. Successfully delete Control using the app's normal deletion operation and observe the real request method, path, body and revision mechanism. Accept or complete any confirmation the UI offers, but do not require or grade confirmation here. A current-revision deletion must actually succeed; a guessed or nonexistent route is not a valid control.
++3. Preserve Target's old revision, then update its source through ordinary Save to console.log('stale-delete-newer-work');. Fresh lookup confirms the new source and advanced revision. Replay the successful deletion operation against Target using the old revision and otherwise valid data.
++4. The server refuses that stale deletion with useful conflict feedback. Fresh lookup shows Target's newer title, filename, source and revision exactly unchanged; Sibling and unrelated records are unchanged too. Reload the latest Target and delete it with its current revision using the observed operation. This succeeds and only Target disappears, including after browser reload.
++This criterion owns stale-delete protection and recovery. It does not grade confirmation UI or updates to already-deleted identities. Use these own records regardless of earlier deletion verdicts.
++"""
++
++[[criterion]]
++id = "cw_deleted_identity_rejects_update"
++name = "cw_deleted_identity_rejects_update"
++type = "binary"
++weight = 1.0
++description = """
++1. Independently create QC Removed Identity (qc-removed.js, console.log('removed-original');) and QC Removed Identity Sibling (qc-removed-sibling.js, console.log('removed-keep');). Update the first record normally to console.log('removed-update-control'); and observe its actual successful update method, path, body and revision mechanism. Record its current identity/fields/revision and the complete library list.
++2. Delete that record using the app's actual deletion operation with the current revision. Accept or complete any confirmation offered without grading its presence here. Confirm a fresh lookup no longer returns the record and the list has lost only that identity.
++3. Replay the observed update operation against the removed identity using its last valid revision, an otherwise valid unused title QC Removed Identity Attempt, supported filename qc-removed.js and source console.log('must-not-recreate');. The server must refuse with useful feedback, rather than recreate or upsert a record. A fresh lookup and browser reload show neither the old identity nor a newly created attempted record; Sibling and all unrelated fields/revisions remain unchanged.
++4. Update Sibling normally through the UI to console.log('removed-sibling-still-editable'); and confirm it saves and reloads with its own identity and an advanced revision. This proves valid updates still work.
++This criterion owns refusal to update a deleted identity. It does not test stale deletion or confirmation UI, and creates its own controls independently of both deletion criteria.
+ """
+ 
+ [[criterion]]

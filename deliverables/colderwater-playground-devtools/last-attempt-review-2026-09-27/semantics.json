@@ -1,0 +1,1563 @@
+{
+  "review": "Independent final-attempt semantics cold review",
+  "date": "2026-09-27",
+  "recommendation": "Hold",
+  "archive": "deliverables/colderwater-playground-devtools/positive-controls-fix-2026-09-27/review-candidate/colderwater-playground-devtools.zip",
+  "archive_sha256": "663e4d6df66f951662e13d4a365cd2c72f83fba29c9e42998b58cd2bf023013e",
+  "archive_bytes": 858726,
+  "functional_count": 88,
+  "functional_weight": "49.50",
+  "scope": "All public instructions, all 88 Functional descriptions, complete Functional protocol, shared context and all dimension prompts/descriptors. QC 26-33. Read-only artifact review; no task edits, no provider calls, no runtime mutants.",
+  "input_sha256": {
+    "instruction.md": "682f89791b9da733e7e09a0a06c308778279f48849c05504e555ceccb74884ab",
+    "tests/app_context.md": "9a7adbb41362fd6d43d4c90f07de1f0bd35c8aa54d961788a57277f0d92aa513",
+    "environment/instructions/behaviour.md": "b20fb10d3eb372cd2b77fc247a3c37fe364a227737742eaa93704e5938c2902a",
+    "environment/instructions/integration.md": "c4dd6bfa079fbff2612fcd7c1f9fc0026b12a95c1ab9dfdd0a9b59d1896ac3ad",
+    "environment/instructions/overview.md": "bc0ab072537f806209c64e996a3b9d25a587f664ecf59bc049fae71a3807daa3",
+    "environment/instructions/policy.md": "680a0c2592fdfe28bd5750a7e00028c26a60b152871ac9ba60d39f50c4499387",
+    "environment/instructions/security.md": "b4f7dfae034ce2096d6dc829c4ee224e0801c699f076a0a7b011e8df0254fbce",
+    "environment/instructions/ui.md": "c4520d69f39060513018e29647f5b5105837f5c3ae1dd9ceed5400c05a2d3dc1",
+    "tests/gates/constraints/judge.toml": "567cefe837c0a2368f50fea5828ad67960c385f31fcaa975b8efe1dfea8a9208",
+    "tests/gates/constraints/prompt.md": "c41d45a944cecf6864a8a2e5384d34f62e39475a28f44463e8ae0e440e3bdff2",
+    "tests/gates/render/judge.toml": "f900f262df402a4ec2fc7b1bc19e08729a33a0c9cac5132c3b54d00405ee86e6",
+    "tests/gates/render/prompt.md": "3f19f0812f940410bcc1368cdeba54e0205b87beafac9bf568e9f02a4a33e660",
+    "tests/scored/functional/judge.toml": "b07629f4a5ae10c72c6965616c8b62032073fb6564c07d7ef82b4b7e39a358fd",
+    "tests/scored/functional/prompt.md": "7e170579c7421714bf551d6cc5750de18e0b5a067ac00627fc2b3bebfb34186e",
+    "tests/scored/polish/judge.toml": "3857df7dea9184865c20f6e8af723fc9c0cdad64d0104aa96c47bd8192ba2117",
+    "tests/scored/polish/prompt.md": "8b4cbddd758a5ee980553dc41c047f4908213bb0608ac1693d537def38fc79f0",
+    "tests/scored/visual/judge.toml": "10ffbd7b0c1f4ef32af13f014a2563b7d9679fb4678a2e8b667dba4c23f8c515",
+    "tests/scored/visual/prompt.md": "b3e2afae83ba420f1c301c706da8488e9b4c5fc7546149f28fa5d2abaee251fe"
+  },
+  "findings": [
+    {
+      "id": "C1",
+      "severity": "P1",
+      "classification": "material coverage defect",
+      "confidence": "high",
+      "qc": [
+        26
+      ],
+      "title": "CSS global-state exclusion has no observation during the CSS run",
+      "public": [
+        "environment/instructions/behaviour.md:5"
+      ],
+      "rubric": [
+        "tests/scored/functional/judge.toml:57",
+        "tests/scored/functional/judge.toml:71",
+        "tests/scored/functional/judge.toml:78",
+        "tests/scored/functional/prompt.md:135",
+        "tests/scored/functional/prompt.md:140",
+        "tests/scored/functional/prompt.md:142",
+        "tests/scored/functional/prompt.md:148",
+        "tests/scored/functional/prompt.md:179"
+      ],
+      "requirement": "CSS must use a fresh isolated copy and must not carry old globals, timers or event handlers.",
+      "observed_probe": "S02 installs window.oldGlobal, observes old script and click-handler markers, then checks retained CSS DOM/style and absence of those markers. It reads typeof oldGlobal only in the later JavaScript Run. S04 separately proves JavaScript global freshness.",
+      "wrong_implementation_witness": "For CSS only, reuse the old Window, replace its document with an inert DOM clone, remove old listeners and apply the new CSS without rerunning scripts, but leave window.oldGlobal intact. Use a fresh Window for each later JavaScript Run. CSS content/style, script and handler checks pass; the later fresh-undefined and S04 checks pass. The CSS run nonetheless carried an old global.",
+      "why_material": "Globals are an explicitly named excluded state category, wholly unobserved in the CSS phase. This is not merely another spelling of a tested input or an exhaustive-security demand.",
+      "valid_alternative_impact": "No particular iframe, cloning library or sandbox architecture should be required. Observe only the authored global being present before and absent during the CSS result. A fresh context or another mechanism giving the same observable isolation is valid.",
+      "repair_direction_only": "A future revision could observe the authored global in the preview before and immediately after CSS, before replacing it with JavaScript. Keep this browser-state observation separate from implementation-source inspection. No repair was applied in this review.",
+      "runtime_status": "Logical counterexample only; no mutant or provider execution in this review."
+    },
+    {
+      "id": "C2",
+      "severity": "P1",
+      "classification": "material coverage defect",
+      "confidence": "high",
+      "qc": [
+        26
+      ],
+      "title": "Stale Rename/Delete do not test retention of the actual dirty editor",
+      "public": [
+        "environment/instructions/behaviour.md:31"
+      ],
+      "rubric": [
+        "tests/scored/functional/judge.toml:407",
+        "tests/scored/functional/judge.toml:449",
+        "tests/scored/functional/judge.toml:491",
+        "tests/scored/functional/prompt.md:397",
+        "tests/scored/functional/prompt.md:399",
+        "tests/scored/functional/prompt.md:419",
+        "tests/scored/functional/prompt.md:422",
+        "tests/scored/functional/prompt.md:446",
+        "tests/scored/functional/prompt.md:448",
+        "tests/scored/functional/prompt.md:449",
+        "tests/app_context.md:12"
+      ],
+      "requirement": "Saving, renaming or deleting uses the loaded revision; refuse stale operations and keep unsaved work so the user can compare, reload and deliberately reapply it.",
+      "observed_probe": "S23 uses two real dirty editors for stale Save. S25 permits a captured old request and expressly limits its ownership to the saved-state invariant. S28 replays an old-revision delete. Neither creates and checks a dirty second editor through the Rename/Delete conflict UI.",
+      "wrong_implementation_witness": "The server correctly rejects all stale writes and preserves fields/revisions. The Save conflict handler retains the dirty draft. Rename and Delete conflict handlers automatically reload the latest saved record, dropping unsaved title/filename/source. All specified stale-server and Save-draft probes can pass while Rename/Delete discard work.",
+      "why_material": "The public paragraph names three user operations and then promises unsaved-work retention. A server replay has no editor draft and cannot establish that promise for distinct UI handlers. S30 replacement warnings do not exercise conflict handling.",
+      "valid_alternative_impact": "Both an actual rejected UI request and proactive stale-conflict prevention remain valid if they explain the conflict and preserve the draft. Do not force disabled controls or require a particular conflict dialog.",
+      "repair_direction_only": "A future revision should obtain live dirty-editor evidence for each operation while retaining separate server-refusal evidence. No task changes made.",
+      "runtime_status": "Logical counterexample only; no mutant or provider execution in this review."
+    },
+    {
+      "id": "C3",
+      "severity": "P1",
+      "classification": "material coverage defect",
+      "confidence": "high",
+      "qc": [
+        26
+      ],
+      "title": "HTML and CSS supported-file import are never exercised",
+      "public": [
+        "instruction.md:1",
+        "environment/instructions/behaviour.md:27",
+        "environment/instructions/behaviour.md:37"
+      ],
+      "rubric": [
+        "tests/scored/functional/judge.toml:540",
+        "tests/scored/functional/judge.toml:575",
+        "tests/scored/functional/prompt.md:467",
+        "tests/scored/functional/prompt.md:493",
+        "tests/scored/functional/prompt.md:497",
+        "tests/scored/functional/prompt.md:501"
+      ],
+      "requirement": "Supported source filenames are .js, .html and .css, case-insensitively; import brings a supported file filename and exact text into an editable draft that can be saved.",
+      "observed_probe": "The dirty-import probe uses cw-dirty-import.js. S33 imports import-me.js and import-me.JS, then refuses notes.txt. No HTML or CSS file is imported. Language execution and editor highlighting are separate paths.",
+      "wrong_implementation_witness": "An otherwise correct importer accepts only .js (case-insensitively) and refuses .html/.css. Manual HTML/CSS editor execution and all other product features work. Every guaranteed import fixture succeeds or refuses as expected.",
+      "why_material": "Two members of the brief's explicit three-language supported-file set are entirely absent from import observations. Executing HTML/CSS entered manually does not prove importing them.",
+      "valid_alternative_impact": "Any normal browser-file UI and exact-text representation are valid. Test support, not a prescribed input accept attribute, route or editor package.",
+      "repair_direction_only": "A future bounded shared import scenario could include each supported source language without repeating every rejection, timeout or persistence test.",
+      "runtime_status": "Logical counterexample only; no mutant or provider execution in this review."
+    },
+    {
+      "id": "N1",
+      "severity": "P2",
+      "classification": "remaining independence interpretation risk",
+      "confidence": "medium",
+      "qc": [
+        28
+      ],
+      "title": "Uppercase import acceptance and uppercase server-save acceptance still share one binary row",
+      "public": [
+        "environment/instructions/behaviour.md:27",
+        "environment/instructions/behaviour.md:37"
+      ],
+      "rubric": [
+        "tests/scored/functional/judge.toml:575",
+        "tests/scored/functional/prompt.md:501"
+      ],
+      "detail": "cw_source_file_extension_case awards one 0.20 result for uppercase .JS import AND save. The protocol itself separately isolates those layers and explicitly recovers if either fails. An importer-only uppercase bug and a server-only uppercase bug lose the same entire row despite the other layer working. This resembles the earlier platform demand for separate useful outcomes, but the exact granularity for one cross-layer case-insensitivity rule is interpretive. It is a risk, not an additional demonstrated platform rejection or the reason Hold is already necessary.",
+      "runtime_status": "Source interpretation only."
+    },
+    {
+      "id": "N2",
+      "severity": "P2",
+      "classification": "coverage and permitted-observation design limitation",
+      "confidence": "high",
+      "qc": [
+        26,
+        32
+      ],
+      "title": "Invisible backend evaluation and named internal technologies are not established by browser evidence",
+      "public": [
+        "environment/instructions/behaviour.md:39",
+        "environment/instructions/security.md:11",
+        "environment/instructions/integration.md:3",
+        "environment/instructions/integration.md:11"
+      ],
+      "rubric": [
+        "tests/gates/constraints/judge.toml:29",
+        "tests/gates/constraints/prompt.md:6",
+        "tests/scored/functional/prompt.md:7"
+      ],
+      "detail": "The constraint gate expressly proves basic shared server read/write, not SQLite or Express. A backend that evaluates source and discards every effect can be browser-indistinguishable from one that never evaluates it. Source/database inspection is prohibited. This is a contract-versus-observability design limit, not a demand to enumerate all attacks and not an observed backend execution. It must not be represented as fully proved. C1-C3 are observable coverage defects and independently justify Hold.",
+      "runtime_status": "Indistinguishability argument only; no backend inspection or execution."
+    }
+  ],
+  "qc_26_33": [
+    {
+      "number": 26,
+      "verdict": "Fail",
+      "severity": "P1",
+      "evidence": [
+        "C1",
+        "C2",
+        "C3"
+      ],
+      "reason": "Asked observable behaviours can be wrong while all current guaranteed observations pass. Prior caveat-only treatment did not satisfy this coverage check."
+    },
+    {
+      "number": 27,
+      "verdict": "Pass",
+      "scope": "static review only",
+      "reason": "No new concrete unrequired-obligation counterexample found. Current wording allows provisional-preview hiding, blocked pending input, static rollback, proactive conflict prevention, arbitrary labels/layout and genuine public-asset filename overlap."
+    },
+    {
+      "number": 28,
+      "verdict": "Note",
+      "severity": "P2",
+      "evidence": [
+        "N1"
+      ],
+      "reason": "The 88-outcome decomposition and fact-sharing contract materially reduce the earlier bundles. One remaining cross-layer case-acceptance row warrants scrutiny under the platform interpretation; no additional incompatible-product bar found."
+    },
+    {
+      "number": 29,
+      "verdict": "Pass",
+      "scope": "static review only",
+      "reason": "Render requires authored DOM/log output; Constraints requires new server write and independent clean-context retrieval. All three scored prompts restate usable/server-backed gate and zero their dimension after observed product-gate failure, while preserving external assets and no-auth contract."
+    },
+    {
+      "number": 30,
+      "verdict": "Pass",
+      "scope": "static review only",
+      "reason": "Read all 88 descriptions against the actual shared mandatory-control contract and protocols. Enabled Auto-run and retained clickable CSS control are explicit; the final HTML-to-JS CSS fallback matches the descriptor. No additional concrete vacuous-pass control omission found. This does not cure unprobed required behaviours in #26."
+    },
+    {
+      "number": 31,
+      "verdict": "Pass",
+      "scope": "defined observed collections; static review only",
+      "reason": "Specified multi-operation collections are enumerated: nine privacy candidates, four parent accesses, five unsupported families, four dirty transitions and complete relevant library lists. No additional concrete within-probe collection omission found. The omitted supported import categories are reported under #26, not concealed by this scoped result."
+    },
+    {
+      "number": 32,
+      "verdict": "Note",
+      "severity": "P2",
+      "evidence": [
+        "N2"
+      ],
+      "reason": "The scored protocols ask for browser-visible facts and product-data evidence, not implementation reads. S06 explicitly represents its narrow unresolved-public-role observation as incomplete. That bounded design cannot establish every private file or invisible backend/internal-stack requirement."
+    },
+    {
+      "number": 33,
+      "verdict": "Pass",
+      "scope": "static review only",
+      "reason": "Current S06 terminal ordering no longer calls the same response both exposure and incomplete. Accepted denial/public role, narrowly unresolved affirmative role evidence, and ordinary no-role exposure are mutually exclusive in the text. No other concrete conflicting full-credit bar found."
+    }
+  ],
+  "all_88_row_ledger": [
+    {
+      "id": "cw_startup_ready",
+      "type": "binary",
+      "weight": "0.2",
+      "criterion_ref": "tests/scored/functional/judge.toml:25",
+      "scenario": "S01",
+      "public_refs": [
+        "environment/instructions/overview.md:3",
+        "environment/instructions/overview.md:9"
+      ],
+      "description": "S01.startup_ready: Useful starting source automatically produces preview and console output without Run.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_usable_examples",
+      "type": "binary",
+      "weight": "0.15",
+      "criterion_ref": "tests/scored/functional/judge.toml:32",
+      "scenario": "S01",
+      "public_refs": [
+        "environment/instructions/overview.md:3",
+        "environment/instructions/overview.md:9"
+      ],
+      "description": "S01.usable_examples: A chosen built-in example supplies editable source and working output; an authored edit actually executes.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_example_separate",
+      "type": "binary",
+      "weight": "0.15",
+      "criterion_ref": "tests/scored/functional/judge.toml:39",
+      "scenario": "S01",
+      "public_refs": [
+        "environment/instructions/overview.md:3",
+        "environment/instructions/overview.md:9"
+      ],
+      "description": "S01.example_separate: The edited example saves as a separate exact user record; reloading the built-in example preserves its original filename/source.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_js_html_filename_dispatch",
+      "type": "binary",
+      "weight": "0.4",
+      "criterion_ref": "tests/scored/functional/judge.toml:46",
+      "scenario": "S02",
+      "public_refs": [
+        "environment/instructions/overview.md:5",
+        "environment/instructions/behaviour.md:5"
+      ],
+      "description": "S02.js_html_filename_dispatch: JS and complete HTML execute in the mode selected by filename alone. Lowercase fallback isolates case handling.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_css_apply_snapshot",
+      "type": "binary",
+      "weight": "0.3",
+      "criterion_ref": "tests/scored/functional/judge.toml:53",
+      "scenario": "S02",
+      "public_refs": [
+        "environment/instructions/overview.md:5",
+        "environment/instructions/behaviour.md:5"
+      ],
+      "description": "S02.css_apply_snapshot: CSS applies to a fresh copy of the last successful document, preserving its content and prior authored style.",
+      "review_disposition": "Read with shared contract and scenario; see linked scope finding",
+      "finding_links": [
+        "C1"
+      ],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_extension_case",
+      "type": "binary",
+      "weight": "0.15",
+      "criterion_ref": "tests/scored/functional/judge.toml:60",
+      "scenario": "S02",
+      "public_refs": [
+        "environment/instructions/overview.md:5",
+        "environment/instructions/behaviour.md:5"
+      ],
+      "description": "S02.extension_case: Uppercase .JS, .HTML and .CSS dispatch correctly without selecting a separate language.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_js_fresh_document",
+      "type": "binary",
+      "weight": "0.25",
+      "criterion_ref": "tests/scored/functional/judge.toml:67",
+      "scenario": "S02",
+      "public_refs": [
+        "environment/instructions/overview.md:5",
+        "environment/instructions/behaviour.md:5"
+      ],
+      "description": "S02.js_fresh_document: After the observed prior document, the later JS Run produces its own fresh-undefined preview and fresh-js-log without the old heading. Global freshness also requires S04's executed A setter/start and B DOM/log showing typeof window.__cancelLeak is undefined; cancellation timing need not pass.",
+      "review_disposition": "Read with shared contract and scenario; see linked scope finding",
+      "finding_links": [
+        "C1"
+      ],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_css_inert_copy",
+      "type": "binary",
+      "weight": "0.4",
+      "criterion_ref": "tests/scored/functional/judge.toml:74",
+      "scenario": "S02",
+      "public_refs": [
+        "environment/instructions/overview.md:5",
+        "environment/instructions/behaviour.md:5"
+      ],
+      "description": "S02.css_inert_copy: After the S02 control script and button handler have actually produced their markers, CSS retains that document and its visible enabled button. The permitted HTML or fallback JS control is valid. An ordinary click on that retained button succeeds as a browser action, but neither old marker count increases during CSS Run or the click. A removed, blank, hidden or disabled button cannot establish inert copying. CSS colour/style correctness is scored separately.",
+      "review_disposition": "Read with shared contract and scenario; see linked scope finding",
+      "finding_links": [
+        "C1"
+      ],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_later_interactions",
+      "type": "binary",
+      "weight": "0.6",
+      "criterion_ref": "tests/scored/functional/judge.toml:81",
+      "scenario": "S03",
+      "public_refs": [
+        "environment/instructions/behaviour.md:11",
+        "environment/instructions/security.md:3"
+      ],
+      "description": "S03.later_interactions: After each six-second idle interval, the completed preview handles the click and later focused key/input without rerunning source.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_completed_stop",
+      "type": "binary",
+      "weight": "0.4",
+      "criterion_ref": "tests/scored/functional/judge.toml:88",
+      "scenario": "S03",
+      "public_refs": [
+        "environment/instructions/behaviour.md:11",
+        "environment/instructions/security.md:3"
+      ],
+      "description": "S03.completed_stop: After a completed preview and at least one of its authored handlers actually works, Stop reports stopped, prevents further old-handler output and permits a new Run. Removed/static/disabled controls after Stop are valid.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_supersede_pending",
+      "type": "binary",
+      "weight": "0.9",
+      "criterion_ref": "tests/scored/functional/judge.toml:95",
+      "scenario": "S04",
+      "public_refs": [
+        "environment/instructions/behaviour.md:7",
+        "environment/instructions/behaviour.md:13"
+      ],
+      "description": "S04.supersede_pending: B supersedes genuinely pending A: A's delayed output, DOM and success never become current. Fresh globals are owned by S02.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_stop_pending_execution",
+      "type": "binary",
+      "weight": "0.9",
+      "criterion_ref": "tests/scored/functional/judge.toml:102",
+      "scenario": "S04",
+      "public_refs": [
+        "environment/instructions/behaviour.md:7",
+        "environment/instructions/behaviour.md:13"
+      ],
+      "description": "S04.stop_pending_execution: Stop reports cancellation, prevents the active timer's late output and permits a new Run. Rollback is separate.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_stop_pending_rollback",
+      "type": "binary",
+      "weight": "0.7",
+      "criterion_ref": "tests/scored/functional/judge.toml:109",
+      "scenario": "S04",
+      "public_refs": [
+        "environment/instructions/behaviour.md:7",
+        "environment/instructions/behaviour.md:13"
+      ],
+      "description": "S04.stop_pending_rollback: Stopping the active timer retains/restores B's completed render; provisional candidate display is optional.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_preview_origin_boundary",
+      "type": "binary",
+      "weight": "1.25",
+      "criterion_ref": "tests/scored/functional/judge.toml:116",
+      "scenario": "S05",
+      "public_refs": [
+        "environment/instructions/security.md:3"
+      ],
+      "description": "S05.preview_origin_boundary: All four parent-document/storage operations are blocked, actual host state is unchanged, and own-document execution remains usable.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_working_files_private",
+      "type": "binary",
+      "weight": "0.5",
+      "criterion_ref": "tests/scored/functional/judge.toml:123",
+      "scenario": "S06",
+      "public_refs": [
+        "environment/instructions/security.md:11"
+      ],
+      "description": "S06.working_files_private: Healthy controls succeed and all nine candidates reach S06's accepted denial/no-content/fallback/public-role outcomes. A confirmed exposure is a local no. Only the narrowly defined unresolved public-role observation or failed evaluator tooling uses EVALUATION_INCOMPLETE; neither can simultaneously be an exposure verdict.",
+      "review_disposition": "Read with shared contract and scenario; see linked scope finding",
+      "finding_links": [
+        "N2"
+      ],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_snippet_network_boundary",
+      "type": "binary",
+      "weight": "0.5",
+      "criterion_ref": "tests/scored/functional/judge.toml:130",
+      "scenario": "S07",
+      "public_refs": [
+        "environment/instructions/security.md:9"
+      ],
+      "description": "S07.snippet_network_boundary: With matching transport controls, separate fetch/Image runs visibly refuse access with no extra deliveries/content; ordinary execution recovers.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_harmless_scope_words",
+      "type": "binary",
+      "weight": "0.25",
+      "criterion_ref": "tests/scored/functional/judge.toml:137",
+      "scenario": "S08",
+      "public_refs": [
+        "environment/instructions/security.md:7"
+      ],
+      "description": "S08.harmless_scope_words: The HTML control's ordinary strings/comments/text containing unsupported-family words renders and logs successfully.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_unsupported_execution_refused",
+      "type": "binary",
+      "weight": "1.5",
+      "criterion_ref": "tests/scored/functional/judge.toml:144",
+      "scenario": "S08",
+      "public_refs": [
+        "environment/instructions/security.md:7"
+      ],
+      "description": "S08.unsupported_execution_refused: Each of the five separate unsupported-family probes is clearly refused, preserves the good render and permits ordinary recovery.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_literal_loop_deadline",
+      "type": "binary",
+      "weight": "2.75",
+      "criterion_ref": "tests/scored/functional/judge.toml:151",
+      "scenario": "S09",
+      "public_refs": [
+        "environment/instructions/behaviour.md:9",
+        "environment/instructions/behaviour.md:13"
+      ],
+      "description": "S09.literal_loop_deadline: Both literal loops terminate within the allowed budget margin with a time-limit reason, early logs preserved and successful recovery.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_literal_loop_rollback",
+      "type": "binary",
+      "weight": "0.75",
+      "criterion_ref": "tests/scored/functional/judge.toml:158",
+      "scenario": "S09",
+      "public_refs": [
+        "environment/instructions/behaviour.md:9",
+        "environment/instructions/behaviour.md:13"
+      ],
+      "description": "S09.literal_loop_rollback: Each loop timeout retains/restores recorded currentLastGood rather than a failed or empty candidate.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_js_error_message",
+      "type": "binary",
+      "weight": "0.25",
+      "criterion_ref": "tests/scored/functional/judge.toml:165",
+      "scenario": "S10",
+      "public_refs": [
+        "environment/instructions/behaviour.md:13",
+        "environment/instructions/behaviour.md:15"
+      ],
+      "description": "S10.js_error_message: The console identifies the not-a-function error involving forEeach.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_js_error_line",
+      "type": "binary",
+      "weight": "0.25",
+      "criterion_ref": "tests/scored/functional/judge.toml:172",
+      "scenario": "S10",
+      "public_refs": [
+        "environment/instructions/behaviour.md:13",
+        "environment/instructions/behaviour.md:15"
+      ],
+      "description": "S10.js_error_line: The error identifies line 4 of the exact entered JS source, without wrapper offsets.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_js_error_rollback",
+      "type": "binary",
+      "weight": "0.5",
+      "criterion_ref": "tests/scored/functional/judge.toml:179",
+      "scenario": "S10",
+      "public_refs": [
+        "environment/instructions/behaviour.md:13",
+        "environment/instructions/behaviour.md:15"
+      ],
+      "description": "S10.js_error_rollback: The JS failure restores recorded currentLastGood, not failed-partial-dom; an ordinary recovery Run works.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_html_error_message",
+      "type": "binary",
+      "weight": "0.25",
+      "criterion_ref": "tests/scored/functional/judge.toml:186",
+      "scenario": "S11",
+      "public_refs": [
+        "environment/instructions/behaviour.md:13",
+        "environment/instructions/behaviour.md:15"
+      ],
+      "description": "S11.html_error_message: The console identifies undefinedFunctionCall from the complete HTML source.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_html_error_line",
+      "type": "binary",
+      "weight": "0.25",
+      "criterion_ref": "tests/scored/functional/judge.toml:193",
+      "scenario": "S11",
+      "public_refs": [
+        "environment/instructions/behaviour.md:13",
+        "environment/instructions/behaviour.md:15"
+      ],
+      "description": "S11.html_error_line: The error identifies line 6 of the exact complete HTML document, including its markup.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_html_error_rollback",
+      "type": "binary",
+      "weight": "0.5",
+      "criterion_ref": "tests/scored/functional/judge.toml:200",
+      "scenario": "S11",
+      "public_refs": [
+        "environment/instructions/behaviour.md:13",
+        "environment/instructions/behaviour.md:15"
+      ],
+      "description": "S11.html_error_rollback: The HTML failure restores recorded currentLastGood, not Failed HTML candidate; an ordinary recovery Run works.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_timer_error_message",
+      "type": "binary",
+      "weight": "0.25",
+      "criterion_ref": "tests/scored/functional/judge.toml:207",
+      "scenario": "S12",
+      "public_refs": [
+        "environment/instructions/behaviour.md:13",
+        "environment/instructions/behaviour.md:15"
+      ],
+      "description": "S12.timer_error_message: The timer callback's thrown async-error-marker is reported as a failure.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_timer_error_line",
+      "type": "binary",
+      "weight": "0.25",
+      "criterion_ref": "tests/scored/functional/judge.toml:214",
+      "scenario": "S12",
+      "public_refs": [
+        "environment/instructions/behaviour.md:13",
+        "environment/instructions/behaviour.md:15"
+      ],
+      "description": "S12.timer_error_line: The timer error identifies entered user-source line 2.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_timer_error_rollback",
+      "type": "binary",
+      "weight": "0.5",
+      "criterion_ref": "tests/scored/functional/judge.toml:221",
+      "scenario": "S12",
+      "public_refs": [
+        "environment/instructions/behaviour.md:13",
+        "environment/instructions/behaviour.md:15"
+      ],
+      "description": "S12.timer_error_rollback: The timer failure restores recorded currentLastGood, not async-failed-candidate; an ordinary recovery Run works.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_promise_error_message",
+      "type": "binary",
+      "weight": "0.25",
+      "criterion_ref": "tests/scored/functional/judge.toml:228",
+      "scenario": "S13",
+      "public_refs": [
+        "environment/instructions/behaviour.md:13",
+        "environment/instructions/behaviour.md:15"
+      ],
+      "description": "S13.promise_error_message: The unhandled promise-error-marker rejection is reported as a failure.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_promise_error_line",
+      "type": "binary",
+      "weight": "0.25",
+      "criterion_ref": "tests/scored/functional/judge.toml:235",
+      "scenario": "S13",
+      "public_refs": [
+        "environment/instructions/behaviour.md:13",
+        "environment/instructions/behaviour.md:15"
+      ],
+      "description": "S13.promise_error_line: The unhandled rejection identifies entered user-source line 2.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_promise_error_rollback",
+      "type": "binary",
+      "weight": "0.5",
+      "criterion_ref": "tests/scored/functional/judge.toml:242",
+      "scenario": "S13",
+      "public_refs": [
+        "environment/instructions/behaviour.md:13",
+        "environment/instructions/behaviour.md:15"
+      ],
+      "description": "S13.promise_error_rollback: The rejection restores recorded currentLastGood, not promise-failed-candidate; an ordinary recovery Run works.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_console_level_stream",
+      "type": "binary",
+      "weight": "1.0",
+      "criterion_ref": "tests/scored/functional/judge.toml:249",
+      "scenario": "S14",
+      "public_refs": [
+        "environment/instructions/behaviour.md:19"
+      ],
+      "description": "S14.console_level_stream: The four authored console levels have their exact values, order and unambiguous level indicators; console.error alone is a log.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_console_value_inspection",
+      "type": "binary",
+      "weight": "1.5",
+      "criterion_ref": "tests/scored/functional/judge.toml:256",
+      "scenario": "S15",
+      "public_refs": [
+        "environment/instructions/behaviour.md:19"
+      ],
+      "description": "S15.console_value_inspection: App controls expose object properties, nested deep value and array elements rather than opaque summaries.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_console_history",
+      "type": "binary",
+      "weight": "0.3",
+      "criterion_ref": "tests/scored/functional/judge.toml:263",
+      "scenario": "S16",
+      "public_refs": [
+        "environment/instructions/behaviour.md:19"
+      ],
+      "description": "S16.console_history: Previously observed log entries remain while subsequent Runs actually append their distinct new markers, until Clear is used.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_console_duration",
+      "type": "binary",
+      "weight": "0.3",
+      "criterion_ref": "tests/scored/functional/judge.toml:270",
+      "scenario": "S16",
+      "public_refs": [
+        "environment/instructions/behaviour.md:19"
+      ],
+      "description": "S16.console_duration: The completed Run shows a measured duration, not a blank or placeholder.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_console_scroll_policy",
+      "type": "binary",
+      "weight": "0.6",
+      "criterion_ref": "tests/scored/functional/judge.toml:277",
+      "scenario": "S16",
+      "public_refs": [
+        "environment/instructions/behaviour.md:19"
+      ],
+      "description": "S16.console_scroll_policy: New rows follow at the bottom; when deliberately scrolled up, incoming rows preserve the reading position.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_console_clear_control",
+      "type": "binary",
+      "weight": "0.3",
+      "criterion_ref": "tests/scored/functional/judge.toml:284",
+      "scenario": "S16",
+      "public_refs": [
+        "environment/instructions/behaviour.md:19"
+      ],
+      "description": "S16.console_clear_control: Ordinary Clear removes prior rows; unrelated duration/status labels may remain.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_autorun_debounce",
+      "type": "binary",
+      "weight": "0.9",
+      "criterion_ref": "tests/scored/functional/judge.toml:291",
+      "scenario": "S17",
+      "public_refs": [
+        "environment/instructions/behaviour.md:21"
+      ],
+      "description": "S17.autorun_debounce: Enabled Auto-run waits for a typing pause, resets its wait on closer-spaced edits, then executes only the final version within about two seconds.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_autorun_off_stays_idle",
+      "type": "binary",
+      "weight": "0.3",
+      "criterion_ref": "tests/scored/functional/judge.toml:298",
+      "scenario": "S17",
+      "public_refs": [
+        "environment/instructions/behaviour.md:21"
+      ],
+      "description": "S17.autorun_off_stays_idle: First observe an authored edit execute automatically with Auto-run on and no manual Run. Then edits made with Auto-run already off remain unexecuted throughout the measured-delay-plus-margin window, and deliberate Run executes that exact pending source. A dead Auto-run feature cannot pass; correct debounce-reset behaviour is not a prerequisite.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_autorun_off_cancels_queue",
+      "type": "binary",
+      "weight": "0.4",
+      "criterion_ref": "tests/scored/functional/judge.toml:305",
+      "scenario": "S17",
+      "public_refs": [
+        "environment/instructions/behaviour.md:21"
+      ],
+      "description": "S17.autorun_off_cancels_queue: After observing an authored edit execute automatically with Auto-run on, disable it before a further edit's measured debounce expires. That queued edit stays unexecuted for the full observation window and then executes through deliberate Run. A dead Auto-run feature cannot pass; correct debounce-reset behaviour is not a prerequisite.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_manual_run_independent_of_autorun",
+      "type": "binary",
+      "weight": "0.4",
+      "criterion_ref": "tests/scored/functional/judge.toml:312",
+      "scenario": "S17",
+      "public_refs": [
+        "environment/instructions/behaviour.md:21"
+      ],
+      "description": "S17.manual_run_independent_of_autorun: Ordinary Run executes authored code with Auto-run both on and off; the on-state proof has no pending edit debounce.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_pane_dividers_work",
+      "type": "binary",
+      "weight": "0.25",
+      "criterion_ref": "tests/scored/functional/judge.toml:319",
+      "scenario": "S18",
+      "public_refs": [
+        "environment/instructions/ui.md:3"
+      ],
+      "description": "S18.pane_dividers_work: Dividers change editor/preview and preview/console allocations while the panes remain usable.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_pane_sizes_persist",
+      "type": "binary",
+      "weight": "0.25",
+      "criterion_ref": "tests/scored/functional/judge.toml:326",
+      "scenario": "S18",
+      "public_refs": [
+        "environment/instructions/ui.md:3"
+      ],
+      "description": "S18.pane_sizes_persist: The changed allocations survive reload; no exact pixels or layout are prescribed.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_editor_monospace",
+      "type": "binary",
+      "weight": "0.1",
+      "criterion_ref": "tests/scored/functional/judge.toml:333",
+      "scenario": "S19",
+      "public_refs": [
+        "environment/instructions/ui.md:5"
+      ],
+      "description": "S19.editor_monospace: The populated editor uses a monospaced face.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_editor_line_numbers",
+      "type": "binary",
+      "weight": "0.15",
+      "criterion_ref": "tests/scored/functional/judge.toml:340",
+      "scenario": "S19",
+      "public_refs": [
+        "environment/instructions/ui.md:5"
+      ],
+      "description": "S19.editor_line_numbers: The editor displays actual line numbers for entered source.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_editor_syntax_colouring",
+      "type": "binary",
+      "weight": "0.45",
+      "criterion_ref": "tests/scored/functional/judge.toml:347",
+      "scenario": "S19",
+      "public_refs": [
+        "environment/instructions/ui.md:5"
+      ],
+      "description": "S19.editor_syntax_colouring: JS, complete HTML and CSS each have visible syntax colouring under their corresponding filenames.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_editor_matching_brackets",
+      "type": "binary",
+      "weight": "0.3",
+      "criterion_ref": "tests/scored/functional/judge.toml:354",
+      "scenario": "S19",
+      "public_refs": [
+        "environment/instructions/ui.md:5"
+      ],
+      "description": "S19.editor_matching_brackets: A cursor beside either brace visibly identifies the matching pair.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_editor_multiline_indent",
+      "type": "binary",
+      "weight": "0.5",
+      "criterion_ref": "tests/scored/functional/judge.toml:361",
+      "scenario": "S20",
+      "public_refs": [
+        "environment/instructions/ui.md:5"
+      ],
+      "description": "S20.editor_multiline_indent: Tab consistently indents all three selected lines without changing source. Retaining selection is not required.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_editor_multiline_unindent",
+      "type": "binary",
+      "weight": "0.5",
+      "criterion_ref": "tests/scored/functional/judge.toml:368",
+      "scenario": "S20",
+      "public_refs": [
+        "environment/instructions/ui.md:5"
+      ],
+      "description": "S20.editor_multiline_unindent: Shift+Tab removes a consistent indent from all three selected lines. Reselect/manual-indent if needed to isolate this action.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_saved_record_fidelity",
+      "type": "binary",
+      "weight": "1.0",
+      "criterion_ref": "tests/scored/functional/judge.toml:375",
+      "scenario": "S21",
+      "public_refs": [
+        "environment/instructions/behaviour.md:25",
+        "environment/instructions/integration.md:7"
+      ],
+      "description": "S21.saved_record_fidelity: New drafts save as distinct exact records; loading restores each one's fields. S23's current Save updates its existing identity rather than adding another.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_saved_records_browser_reload",
+      "type": "binary",
+      "weight": "0.5",
+      "criterion_ref": "tests/scored/functional/judge.toml:382",
+      "scenario": "S21",
+      "public_refs": [
+        "environment/instructions/behaviour.md:25",
+        "environment/instructions/integration.md:7"
+      ],
+      "description": "S21.saved_records_browser_reload: Both saved identities and exact fields remain retrievable after browser reload.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_process_restart_durability",
+      "type": "binary",
+      "weight": "2.5",
+      "criterion_ref": "tests/scored/functional/judge.toml:389",
+      "scenario": "S22",
+      "public_refs": [
+        "environment/instructions/integration.md:7"
+      ],
+      "description": "S22.process_restart_durability: The one process restart preserves recorded identities/fields/revisions exactly once; a current post-restart Save changes only its target and persists.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_stale_save_server_refusal",
+      "type": "binary",
+      "weight": "1.4",
+      "criterion_ref": "tests/scored/functional/judge.toml:396",
+      "scenario": "S23",
+      "public_refs": [
+        "environment/instructions/behaviour.md:31"
+      ],
+      "description": "S23.stale_save_server_refusal: An otherwise-valid stale Save is refused with newer fields/revision unchanged. The successful newer Save is its control; S21 owns update fidelity.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_stale_save_draft_recovery",
+      "type": "binary",
+      "weight": "1.6",
+      "criterion_ref": "tests/scored/functional/judge.toml:403",
+      "scenario": "S23",
+      "public_refs": [
+        "environment/instructions/behaviour.md:31"
+      ],
+      "description": "S23.stale_save_draft_recovery: The actual dirty editor gets useful conflict feedback, retains all unsaved fields and supports deliberate latest-revision recovery; proactive prevention is valid.",
+      "review_disposition": "Read with shared contract and scenario; see linked scope finding",
+      "finding_links": [
+        "C2"
+      ],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_title_trimming",
+      "type": "binary",
+      "weight": "0.3",
+      "criterion_ref": "tests/scored/functional/judge.toml:410",
+      "scenario": "S24",
+      "public_refs": [
+        "environment/instructions/behaviour.md:27",
+        "environment/instructions/behaviour.md:29"
+      ],
+      "description": "S24.title_trimming: Padded unused titles are stored/displayed trimmed after both creation and rename.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_rename_title_only",
+      "type": "binary",
+      "weight": "0.3",
+      "criterion_ref": "tests/scored/functional/judge.toml:417",
+      "scenario": "S24",
+      "public_refs": [
+        "environment/instructions/behaviour.md:27",
+        "environment/instructions/behaviour.md:29"
+      ],
+      "description": "S24.rename_title_only: Current rename changes only the selected title, preserving its filename/source and the complete sibling record.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_title_collision_refusal",
+      "type": "binary",
+      "weight": "0.45",
+      "criterion_ref": "tests/scored/functional/judge.toml:424",
+      "scenario": "S24",
+      "public_refs": [
+        "environment/instructions/behaviour.md:27",
+        "environment/instructions/behaviour.md:29"
+      ],
+      "description": "S24.title_collision_refusal: With an observed successful valid current title write and unused-title recovery, UI and current-revision server writes refuse exact/padded collisions with useful feedback and both complete records/revisions unchanged.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_title_empty_rejected",
+      "type": "binary",
+      "weight": "0.2",
+      "criterion_ref": "tests/scored/functional/judge.toml:431",
+      "scenario": "S24",
+      "public_refs": [
+        "environment/instructions/behaviour.md:27",
+        "environment/instructions/behaviour.md:29"
+      ],
+      "description": "S24.title_empty_rejected: With an observed successful valid current title write and unused-title recovery, otherwise-valid empty and whitespace-only titles are refused without saved-state mutation.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_title_case_sensitive",
+      "type": "binary",
+      "weight": "0.25",
+      "criterion_ref": "tests/scored/functional/judge.toml:438",
+      "scenario": "S24",
+      "public_refs": [
+        "environment/instructions/behaviour.md:27",
+        "environment/instructions/behaviour.md:29"
+      ],
+      "description": "S24.title_case_sensitive: A case-distinct title coexists under its own identity and exact fields.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_stale_rename_refusal",
+      "type": "binary",
+      "weight": "1.5",
+      "criterion_ref": "tests/scored/functional/judge.toml:445",
+      "scenario": "S25",
+      "public_refs": [
+        "environment/instructions/behaviour.md:31"
+      ],
+      "description": "S25.stale_rename_refusal: A valid stale rename is usefully refused without newer-record mutation; current renames before/after work.",
+      "review_disposition": "Read with shared contract and scenario; see linked scope finding",
+      "finding_links": [
+        "C2"
+      ],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_duplicate_initial_fidelity",
+      "type": "binary",
+      "weight": "0.75",
+      "criterion_ref": "tests/scored/functional/judge.toml:452",
+      "scenario": "S26",
+      "public_refs": [
+        "environment/instructions/behaviour.md:29"
+      ],
+      "description": "S26.duplicate_initial_fidelity: Duplicate creates a distinct stable identity with its chosen title and the original exact filename/source.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_duplicate_edit_independence",
+      "type": "binary",
+      "weight": "1.25",
+      "criterion_ref": "tests/scored/functional/judge.toml:459",
+      "scenario": "S26",
+      "public_refs": [
+        "environment/instructions/behaviour.md:29"
+      ],
+      "description": "S26.duplicate_edit_independence: Each own edit actually saves and reloads: changing Original preserves Copy's previous source, and then changing Copy preserves Original's independently saved source.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_duplicate_collision_refusal",
+      "type": "binary",
+      "weight": "0.5",
+      "criterion_ref": "tests/scored/functional/judge.toml:466",
+      "scenario": "S26",
+      "public_refs": [
+        "environment/instructions/behaviour.md:29"
+      ],
+      "description": "S26.duplicate_collision_refusal: Duplicate/create refuses the existing copy title without overwrite or extra same-title record; a new unused title succeeds.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_delete_confirmation_cancel",
+      "type": "binary",
+      "weight": "0.6",
+      "criterion_ref": "tests/scored/functional/judge.toml:473",
+      "scenario": "S27",
+      "public_refs": [
+        "environment/instructions/behaviour.md:29"
+      ],
+      "description": "S27.delete_confirmation_cancel: Delete asks first, and cancellation leaves the complete library and exact records unchanged after reload.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_delete_confirmed_selected_only",
+      "type": "binary",
+      "weight": "0.4",
+      "criterion_ref": "tests/scored/functional/judge.toml:480",
+      "scenario": "S27",
+      "public_refs": [
+        "environment/instructions/behaviour.md:29"
+      ],
+      "description": "S27.delete_confirmed_selected_only: The actual confirmed removal deletes only the selected identity durably, preserving sibling/unrelated records. Confirmation availability is separately owned.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_stale_delete_refusal",
+      "type": "binary",
+      "weight": "1.0",
+      "criterion_ref": "tests/scored/functional/judge.toml:487",
+      "scenario": "S28",
+      "public_refs": [
+        "environment/instructions/behaviour.md:31"
+      ],
+      "description": "S28.stale_delete_refusal: A valid stale delete is usefully refused without newer-record mutation; current deletes before/after work. Confirmation is not scored here.",
+      "review_disposition": "Read with shared contract and scenario; see linked scope finding",
+      "finding_links": [
+        "C2"
+      ],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_deleted_identity_update_refusal",
+      "type": "binary",
+      "weight": "1.0",
+      "criterion_ref": "tests/scored/functional/judge.toml:494",
+      "scenario": "S29",
+      "public_refs": [
+        "environment/instructions/behaviour.md:31"
+      ],
+      "description": "S29.deleted_identity_update_refusal: Updating the removed identity is usefully refused without resurrection, replacement or unrelated mutation; an existing-record update works.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_dirty_workspace_identity",
+      "type": "binary",
+      "weight": "0.55",
+      "criterion_ref": "tests/scored/functional/judge.toml:501",
+      "scenario": "S30",
+      "public_refs": [
+        "environment/instructions/behaviour.md:35"
+      ],
+      "description": "S30.dirty_workspace_identity: The edited record is identifiable and source-only, title-only and filename-only changes each show unsaved state.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_dirty_transition_protection",
+      "type": "binary",
+      "weight": "0.4",
+      "criterion_ref": "tests/scored/functional/judge.toml:508",
+      "scenario": "S30",
+      "public_refs": [
+        "environment/instructions/behaviour.md:35"
+      ],
+      "description": "S30.dirty_transition_protection: Each of four replacement routes warns, and cancellation preserves all dirty fields. Re-establish each fixture independently.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_dirty_transition_acceptance",
+      "type": "binary",
+      "weight": "0.3",
+      "criterion_ref": "tests/scored/functional/judge.toml:515",
+      "scenario": "S30",
+      "public_refs": [
+        "environment/instructions/behaviour.md:35"
+      ],
+      "description": "S30.dirty_transition_acceptance: Accepting each replacement reaches its actual destination, while discarded edits never change saved Base. No new-draft template is prescribed.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_native_dirty_leave_protection",
+      "type": "binary",
+      "weight": "0.75",
+      "criterion_ref": "tests/scored/functional/judge.toml:522",
+      "scenario": "S31",
+      "public_refs": [
+        "environment/instructions/behaviour.md:35"
+      ],
+      "description": "S31.native_dirty_leave_protection: Dirty work gets native leave protection: dismiss retains the draft, accept permits reload, saved data stays intact; clean reload does not warn.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_export_exact_source_file",
+      "type": "binary",
+      "weight": "0.5",
+      "criterion_ref": "tests/scored/functional/judge.toml:529",
+      "scenario": "S32",
+      "public_refs": [
+        "environment/instructions/behaviour.md:37"
+      ],
+      "description": "S32.export_exact_source_file: An actual unsaved-draft export downloads the exact filename and unchanged source, not merely a toast.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_supported_file_import",
+      "type": "binary",
+      "weight": "0.6",
+      "criterion_ref": "tests/scored/functional/judge.toml:536",
+      "scenario": "S33",
+      "public_refs": [
+        "environment/instructions/behaviour.md:27",
+        "environment/instructions/behaviour.md:37",
+        "environment/instructions/behaviour.md:39"
+      ],
+      "description": "S33.supported_file_import: Lowercase supported import supplies exact filename/source in an editable draft; its subsequent edit can be saved/reloaded.",
+      "review_disposition": "Read with shared contract and scenario; see linked scope finding",
+      "finding_links": [
+        "C3"
+      ],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_import_off_no_execution",
+      "type": "binary",
+      "weight": "0.3",
+      "criterion_ref": "tests/scored/functional/judge.toml:543",
+      "scenario": "S33",
+      "public_refs": [
+        "environment/instructions/behaviour.md:27",
+        "environment/instructions/behaviour.md:37",
+        "environment/instructions/behaviour.md:39"
+      ],
+      "description": "S33.import_off_no_execution: After the supported file actually appears in the draft, its authored markers remain unexecuted and the recorded successful preview remains for the off-state window; deliberate Run then produces that same imported source's DOM/log markers.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_import_unsupported_extension",
+      "type": "binary",
+      "weight": "0.3",
+      "criterion_ref": "tests/scored/functional/judge.toml:550",
+      "scenario": "S33",
+      "public_refs": [
+        "environment/instructions/behaviour.md:27",
+        "environment/instructions/behaviour.md:37",
+        "environment/instructions/behaviour.md:39"
+      ],
+      "description": "S33.import_unsupported_extension: After the same importer has actually accepted a supported control file, an unsupported import gets useful refusal while the current title, filename and source remain unchanged.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_saved_filename_extension_rejection",
+      "type": "binary",
+      "weight": "0.3",
+      "criterion_ref": "tests/scored/functional/judge.toml:557",
+      "scenario": "S33",
+      "public_refs": [
+        "environment/instructions/behaviour.md:27",
+        "environment/instructions/behaviour.md:37",
+        "environment/instructions/behaviour.md:39"
+      ],
+      "description": "S33.saved_filename_extension_rejection: With an observed valid supported-filename write and successful valid recovery, an otherwise-valid current server write refuses unsupported.txt without field/revision mutation. A lowercase control is valid.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_saved_filename_path_rejection",
+      "type": "binary",
+      "weight": "0.3",
+      "criterion_ref": "tests/scored/functional/judge.toml:564",
+      "scenario": "S33",
+      "public_refs": [
+        "environment/instructions/behaviour.md:27",
+        "environment/instructions/behaviour.md:37",
+        "environment/instructions/behaviour.md:39"
+      ],
+      "description": "S33.saved_filename_path_rejection: With an observed valid supported-filename write and successful valid recovery, an otherwise-valid current server write refuses nested/demo.js without field/revision mutation. A lowercase control is valid.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_source_file_extension_case",
+      "type": "binary",
+      "weight": "0.2",
+      "criterion_ref": "tests/scored/functional/judge.toml:571",
+      "scenario": "S33",
+      "public_refs": [
+        "environment/instructions/behaviour.md:27",
+        "environment/instructions/behaviour.md:37",
+        "environment/instructions/behaviour.md:39"
+      ],
+      "description": "S33.source_file_extension_case: Uppercase .JS is accepted by import and saved unchanged. Test saving from a lowercase-imported draft if importer case handling fails.",
+      "review_disposition": "Read with shared contract and scenario; see linked scope finding",
+      "finding_links": [
+        "C3",
+        "N1"
+      ],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_theme_actual_switch",
+      "type": "binary",
+      "weight": "0.3",
+      "criterion_ref": "tests/scored/functional/judge.toml:578",
+      "scenario": "S34",
+      "public_refs": [
+        "environment/instructions/ui.md:9"
+      ],
+      "description": "S34.theme_actual_switch: The control switches chrome, editor and console into both actual appearances; either may be the starting theme.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_theme_work_preserved",
+      "type": "binary",
+      "weight": "0.2",
+      "criterion_ref": "tests/scored/functional/judge.toml:585",
+      "scenario": "S34",
+      "public_refs": [
+        "environment/instructions/ui.md:9"
+      ],
+      "description": "S34.theme_work_preserved: During two actually observed theme changes, the recorded exact draft fields and existing successful preview/console output remain intact. Preview recolouring is not required.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_shortcut_run",
+      "type": "binary",
+      "weight": "0.4",
+      "criterion_ref": "tests/scored/functional/judge.toml:592",
+      "scenario": "S35",
+      "public_refs": [
+        "environment/instructions/ui.md:7"
+      ],
+      "description": "S35.shortcut_run: The discoverable documented Run binding alone produces keyboard-marker and keyboard-log without clicking Run.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_shortcut_save",
+      "type": "binary",
+      "weight": "0.3",
+      "criterion_ref": "tests/scored/functional/judge.toml:599",
+      "scenario": "S35",
+      "public_refs": [
+        "environment/instructions/ui.md:7"
+      ],
+      "description": "S35.shortcut_save: The discoverable documented Save binding alone saves the exact draft fields without clicking Save.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_shortcut_clear",
+      "type": "binary",
+      "weight": "0.3",
+      "criterion_ref": "tests/scored/functional/judge.toml:606",
+      "scenario": "S35",
+      "public_refs": [
+        "environment/instructions/ui.md:7"
+      ],
+      "description": "S35.shortcut_clear: The discoverable documented Clear binding alone removes prior rows without clicking Clear.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_callback_shared_run_deadline",
+      "type": "binary",
+      "weight": "1.15",
+      "criterion_ref": "tests/scored/functional/judge.toml:613",
+      "scenario": "S36",
+      "public_refs": [
+        "environment/instructions/behaviour.md:9",
+        "environment/instructions/behaviour.md:13"
+      ],
+      "description": "S36.callback_shared_run_deadline: After the four-second callback actually emits late-callback-entered, it shares the original Run budget: timely termination/reason, no resumption and successful recovery; no fresh callback clock.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_callback_timeout_rollback",
+      "type": "binary",
+      "weight": "0.35",
+      "criterion_ref": "tests/scored/functional/judge.toml:620",
+      "scenario": "S36",
+      "public_refs": [
+        "environment/instructions/behaviour.md:9",
+        "environment/instructions/behaviour.md:13"
+      ],
+      "description": "S36.callback_timeout_rollback: The timed-out callback retains/restores recorded currentLastGood rather than failed-loop-candidate; provisional display is optional.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_interaction_latest_rollback",
+      "type": "binary",
+      "weight": "0.5",
+      "criterion_ref": "tests/scored/functional/judge.toml:627",
+      "scenario": "S37",
+      "public_refs": [
+        "environment/instructions/behaviour.md:11",
+        "environment/instructions/behaviour.md:13"
+      ],
+      "description": "S37.interaction_latest_rollback: After a successful interaction commits interaction-committed, the later failure retains/restores that state, not initial or provisional/late DOM.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    },
+    {
+      "id": "cw_interaction_budget_no_extension",
+      "type": "binary",
+      "weight": "0.5",
+      "criterion_ref": "tests/scored/functional/judge.toml:634",
+      "scenario": "S37",
+      "public_refs": [
+        "environment/instructions/behaviour.md:11",
+        "environment/instructions/behaviour.md:13"
+      ],
+      "description": "S37.interaction_budget_no_extension: Later accepted, ignored or blocked input cannot extend the pending interaction's budget; timeout/reason, no late resumption and ordinary recovery are observed.",
+      "review_disposition": "Read with shared contract and scenario; no additional concrete defect identified",
+      "finding_links": [],
+      "runtime_verdict": "Not exercised in this review"
+    }
+  ],
+  "bounded_variants_not_promoted_to_proven_defects": [
+    "Promise-callback budget/recursion forms and HTML asynchronous-error cross-products are not individually demonstrated by the literal-loop, timer-deadline and Promise-rejection fixtures. These are limits of the sampled programs, not evidence that every possible program needs its own criterion.",
+    "CSS timers are not seeded and followed through a CSS switch. This is adjacent to C1, but the exact completed-versus-pending timer setup requires care; the primary C1 witness needs only the unobserved authored global.",
+    "A guaranteed .css server-save control is absent if the chosen built-in example is JS/HTML. A selective CSS-save rejection is another finite-category coverage concern; C3 reports the clearer wholly absent HTML/CSS import path rather than multiplying every format cross-product.",
+    "Nine privacy paths, fetch/Image requests, two loop forms and bounded native navigation are representative tests, not exhaustive disclosure/network/program proofs."
+  ],
+  "privacy_reassessment": {
+    "references": [
+      "tests/scored/functional/prompt.md:202",
+      "tests/scored/functional/prompt.md:203",
+      "tests/scored/functional/prompt.md:204",
+      "tests/app_context.md:32"
+    ],
+    "conclusion": "No new concrete contradiction in the final ordered terminal tree.",
+    "accepted": "Established denial/no-content/working workspace, or a genuine intended public asset/data role established through ordinary working use.",
+    "incomplete": "Only concrete affirmative ordinary-use role evidence still unresolved after one bounded clarification, or evaluator tooling failure. No simultaneous exposure verdict.",
+    "failure": "Successful standalone delivery after accepted outcomes are excluded, with no qualifying affirmative unresolved-role evidence.",
+    "limits": "An arbitrary filename, HTTP 200, app claim or probe request does not establish a public role. Bodies remain unread. Mixed-use or incompletely observed public-role situations retain judgment/observation uncertainty; no exhaustive privacy guarantee follows."
+  },
+  "history_assessment": "Earlier versions had concrete bundles, missing matching controls and contradictory privacy branches. The frozen artifact contains specific repairs to those. Prior reviews also recorded CSS-state and dirty Rename/Delete gaps but treated them as caveats instead of #26 failures. That was review/classification error; changing versions and discovering known omissions does not demonstrate nondeterminism on identical inputs.",
+  "certainty": "No guarantee of the last platform attempt. Pinned versions, hashes and mechanical checks are reproducible evidence; semantic LLM judgment and browser timing can vary. This review did not repeat identical provider runs or measure a rejection rate. Known C1-C3 defects are sufficient for Hold regardless of that uncertainty.",
+  "not_exercised": [
+    "full Oracle/provider evaluation",
+    "full Functional runtime completion and timeout fit",
+    "runtime execution of the counterexample implementations",
+    "exhaustive security behaviour",
+    "every permitted UI implementation"
+  ],
+  "no_changes_to_task_or_archive": true
+}

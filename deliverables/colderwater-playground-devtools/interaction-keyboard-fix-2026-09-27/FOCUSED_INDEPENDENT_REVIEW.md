@@ -1,0 +1,53 @@
+# Colderwater interaction and keyboard review
+
+The two reported contract/coverage defects are addressed in the final candidate. This read-only review found no remaining concrete blocker in the changed contract, corresponding golden behavior, or their interaction with the unchanged gates and scoring policy. It is a focused local review, not a new full-sheet verdict or an official platform, Oracle, or model result.
+
+Final archive: `colderwater-playground-devtools.zip`, SHA-256 `dc2ed5acde5addbdea6f7d4f49ad2c94e77a0decfccab54573967cb9a1cb4672`, **50 files, 846187 bytes**. Baseline archive: `d254c73e6ebe94b2001ed782b136707c9cc3c5391c35c0bcd7fd66705d0c8a25`. The earlier `b9e6ad…` draft is superseded; its binding is preserved separately and is not the final result.
+
+## Reported failures and their resolution
+
+| Reported QC rule | Defect | Final contract and witness |
+| --- | --- | --- |
+| `instruction_is_achievable_and_unambiguous_in_the_environment` | The initial Run's five-second clock and a later user action were ambiguous. Expiring all handlers after the initial clock could contradict the late-click expectation. | `environment/instructions/behaviour.md:11` explicitly keeps the successfully completed current preview interactive. A later click, key action or input starts its own five-second budget; actions during pending work do not extend that deadline. `security.md:3` and `tests/app_context.md:16` agree. Functional `language_dispatch` observes late click, keyboard and input output; `recovery_persistence_chain` observes a pending second interaction, timeout, rollback and recovery. |
+| `dimensions_cover_every_graded_requirement` | A mouse-only example picker/library could pass the existing handful of Tab checks and the separate Functional shortcuts despite the public pointer-free navigation promise. | Polish `labelled_controls_and_focus`, `tests/scored/polish/judge.toml:32`, now prepares its own saved snippet and observes editor → different example → own library record → editor using actual keyboard events. The fresh golden proof uses 31 key events with no pointer, DOM click, API action or programmatic focus during that route. |
+
+The public wording explains the user's intended behavior, including why somebody might return to a completed preview later. It does not introduce criterion identifiers or evaluation instructions into the product request. The explicit five-second policy is a stated product requirement, not a hidden timing convention.
+
+## Fairness and consistency checks
+
+- **Live completion and static rollback are distinct.** A successful current preview remains interactive. A failed, stopped or replaced context cannot resume. Restoring a previous successful picture may produce a static snapshot; the user can run the source again to regain handlers. `behaviour.md:13`, the Functional prompt, recovery leg and shared context all permit this. CSS intentionally copies the document without inherited scripts or handlers. The controlled click/key/input handlers only log, and the criterion does not demand a particular restored input value.
+- **The deadline witness is discriminating.** The first interaction schedules an ordinary six-second timer. The second click occurs about two seconds later while that timer is pending. Resetting the budget on that second click would let the six-second callback succeed. The criterion therefore requires both a time-limit outcome and absence of the late marker after its scheduled time; the approximately eight-second scheduling allowance alone is not the decision rule. It does not test unsupported native-operation time bombs.
+- **Keyboard navigation accepts alternate implementations.** The route starts at an ordinary desktop viewport, permits native keys and an application-documented editor-escape sequence, accepts ordinary keyboard-handled unsaved-work warnings, and prescribes no particular labels, layout or bindings. Legitimately disabled controls need not be tab stops. Controls need to be reachable when enabled; the judge need not activate every control.
+- **The saved control is independent.** An initially empty library is valid. Polish may create one harmless record using the UI before its graded keyboard route. It cannot depend on another judge's generated identity or alter existing records. The previous injected-context prohibition on all Polish mutations was corrected in `tests/app_context.md:22`; Visual remains read-only.
+- **Responsibilities remain separate.** Polish tests navigation, discoverability and focus. It expressly does not regrade Functional Run/Save/Clear shortcuts, execution, revisions or persistence. Preparing a known record supports a read/navigation comparison; it is not a second independent persistence score. Responsive access remains with Polish and visual composition remains with Visual.
+- **Browser operations are feasible.** The real installed MCP exposes `browser_run_code_unsafe` and normal dialog handling. Timed work can be batched, and the prompt allows one repeat when automation misses the setup window. The rubric uses frame interactions and observable results without requiring parent-origin access to a sandboxed preview. No source-inspection or hidden API requirement was introduced.
+
+The existing Functional timeout remains 9000 seconds and Polish 900 seconds; judge, wrapper and task timeout values are unchanged. The added late-input wait takes seconds, not a new timeout allocation. This establishes bounded local feasibility, not measured completion time for the full paid judge.
+
+## Fresh evidence reviewed
+
+The reviewer inspected the probe code and actual observations, not only their top-level pass flags. Browser execution was performed by the owning agents in separate disposable environments; this reviewer independently checked file/evidence hashes and inspected the final screenshots.
+
+| Evidence | Actual observation |
+| --- | --- |
+| `language-mcp-results.json` | Final authored HTML fixture exactly matches the shipped criterion. In Playwright MCP 0.0.79 / Chromium 152.0.7977.8, the click after 6102 ms produced its marker; the already-focused input remained idle for 6107 ms before typing produced one keyboard and one input marker. CSS preserved none of those handlers and did not rerun the HTML script; fresh JS did not retain the old global. |
+| `interaction-mcp-results.json` | Five groups passed. Original timer/loop budget terminated in 4998 ms. In the completed-preview case, the second click occurred 2177 ms after the first, while work was pending; timeout occurred at 5200 ms. Observation continued through 7026 ms, with no late callback marker, the successful picture restored, and the saved snippet still runnable. Later keyboard/input actions and stopped/replaced pending callbacks were also exercised. |
+| `keyboard-proof-results.json` | Five groups passed in Chromium 152.0.7977.8. Own-record setup works from an empty library, followed by the 31-event keyboard route, visible focus on enabled main controls, exact own-record recovery and return to the editor. No writes occurred during the route. An additional authored run after the route remained functional. |
+| `keyboard-built-inputs.json`, `keyboard-evidence-binding.json`, `golden-help.diff` | The golden already supported CodeMirror's Escape-then-Tab behavior, but did not explain it. The only authored application change is visible help and `aria-describedby`, followed by its pinned build. Runtime, server, styles, dependencies and installer are unchanged. Browser-served bundle hashes match the archive. |
+| Keyboard screenshots | Independently inspected editor-return and light-mobile help captures. The help remains visible after ordinary scrolling and wraps on mobile. Agent measurements cover desktop/mobile in both themes, with no horizontal page overflow and help contrast of 7.56:1 dark / 4.56:1 light. This is a review of the changed presentation, not a fresh score for every visual criterion. |
+
+The first interaction attempt was interrupted by MCP's native confirm-dialog bookkeeping. `interaction-mcp-attempt1-modal.json` preserves that diagnostic. The corrected run uses actual `browser_handle_dialog` and completes all five groups. An orchestration failure was not reported as a golden application failure or silently relabelled as a pass.
+
+The final targeted language run supplements the earlier five interaction groups; those groups were not all rerun after the fixture-only language refinement. Their tested runtime and browser bundle are byte-identical to the final candidate. The new exact HTML and changed leg have their own fresh result.
+
+## Independent binding and preserved policy
+
+`focused_review_binding.py --expected-sha dc2ed5acde5addbdea6f7d4f49ad2c94e77a0decfccab54573967cb9a1cb4672` completed **39 independent binding assertions with no failures**. `focused_review_binding.json` records archive CRC, all 50 source/archive/extracted hashes, evidence hashes, final authored HTML equality, actual observation predicates, unchanged criterion identities/order/types/weights and current image-evidence hashes. The coordinator's image build evidence matches all final source inputs; this reviewer did not rebuild the images.
+
+Only the descriptions of Functional `language_dispatch`, Functional `recovery_persistence_chain`, and Polish `labelled_controls_and_focus` changed. There are still **33 Functional criteria / weight 49.5**, four equally weighted binary Polish criteria, six Visual criteria and two binary gates. The judge/MCP configuration and scoring policy are byte-identical to the baseline. The task configuration, Dockerfiles, repaired `tests/test.sh`, canonical Python helpers, runtime/server/style source and database behavior are also unchanged.
+
+The Functional/Polish/Visual shares remain 60/20/20 with the same gate and Functional floor rules. No outcome is gifted by an added default or an easier weight. Stricter coverage can change a measured candidate result; an unchanged weight is not a claim that model scores remain the same.
+
+Application CDN permission, the separate authored-snippet network boundary, bounded confidentiality rules, gates and source-inspection restrictions remain unchanged. The coordinator's complete QC inventory and broader reused evidence remain separate from this focused review.
+
+No paid judge, hosted Oracle, model run or platform submission was executed here. These representative probes support the two corrected promises and their adjacent lifecycle behavior; they do not establish exhaustive JavaScript semantics, every possible keyboard/input combination, or a guaranteed future platform verdict.

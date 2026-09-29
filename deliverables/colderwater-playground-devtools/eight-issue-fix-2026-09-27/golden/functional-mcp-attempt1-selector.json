@@ -1,0 +1,475 @@
+{
+  "started_at": "2026-09-27T12:07:41Z",
+  "paid_provider": false,
+  "network": "none; browser and server in one disposable container",
+  "source_binding": {
+    "public/index.html": "d626c675e1fc335f03ba416d32ea4afe2ae1e9e41f004d97045627fc4dba648a",
+    "public/runner.html": "ed4a5811f8bd03a48fd256dbb15ee967b1afd6ff20633d77fff33b3491b03a09",
+    "src/app.tsx": "03917011ec2c4aa602ce6390a0427a32d8ff74567fc585a625fc709e583f1838",
+    "src/runtime.ts": "d2fc0471003dd6a2107918be7a2d69f3a96027ec4c56266e6dd9b035a30efd86",
+    "public/assets/index-C_1hOHr1.css": "cbfa10c893727b30ffa575ebe5befb26043074162af99b24384c2864fe58b05d",
+    "public/assets/index-VduTT3aN.js": "016976b4d2f058fadfff6d18dd14a4ee138eba496ac08e66ff840053aa7878a4"
+  },
+  "chromium_version": "Google Chrome for Testing 152.0.7977.8",
+  "mcp_version": "Version 0.0.79",
+  "command": [
+    "playwright-mcp",
+    "--headless",
+    "--isolated",
+    "--executable-path=/usr/local/bin/chromium",
+    "--no-sandbox"
+  ],
+  "initialize": {
+    "protocolVersion": "2025-06-18",
+    "capabilities": {
+      "tools": {}
+    },
+    "serverInfo": {
+      "name": "Playwright",
+      "version": "1.63.0-alpha-2026-08-05"
+    }
+  },
+  "tool": {
+    "name": "browser_run_code_unsafe",
+    "description": "Run a Playwright code snippet. Unsafe: executes arbitrary JavaScript in the Playwright server process and is RCE-equivalent.",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "code": {
+          "description": "A JavaScript function containing Playwright code to execute. It will be invoked with a single argument, page, which you can use for any page interaction. For example: `async (page) => { await page.getByRole('button', { name: 'Submit' }).click(); return await page.title(); }`",
+          "type": "string"
+        },
+        "filename": {
+          "description": "Load code from the specified file. If both code and filename are provided, code will be ignored.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "annotations": {
+      "title": "Run Playwright code (unsafe)",
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "openWorldHint": true
+    }
+  },
+  "raw_tool_results": [
+    {
+      "content": [
+        {
+          "type": "text",
+          "text": "### Ran Playwright code\n```js\nawait (async (page) => {\n  page.setDefaultTimeout(10000);\n  const observations=[]; page.__interactionProof={running:true,observations};\n  const assert=(condition,message)=>{if(!condition)throw new Error(message);};\n  const editor=p=>p.getByRole('textbox',{name:'Code editor',exact:true});\n  const title=p=>p.getByRole('textbox',{name:'Snippet title',exact:true});\n  const file=p=>p.getByRole('textbox',{name:'Filename',exact:true});\n  const preview=()=>page.frameLocator('iframe[title=\"Live preview\"]');\n  const body=()=>preview().locator('body').innerText();\n  const logs=()=>page.getByRole('log').innerText();\n  const complete=()=>page.waitForFunction(()=>document.querySelector('[role=status]')?.textContent.startsWith('Complete'),null,{timeout:10000});\n  const enter=async(code,filename,p=page)=>{await file(p).fill(filename);await editor(p).click();await p.keyboard.press('Control+A');await p.keyboard.insertText(code);assert(await editor(p).innerText()===code,'Exact entered source');};\n  const run=async(code,filename='proof.js',wait=true)=>{await enter(code,filename);const started=Date.now();await page.getByRole('button',{name:/^Run /}).click();if(wait)await complete();return started;};\n  const clear=()=>page.getByRole('button',{name:'Clear console',exact:true}).click();\n  const test=async(name,fn)=>{const start=Date.now();try{observations.push({name,passed:true,...await fn(),duration_ms:Date.now()-start});}catch(e){observations.push({name,passed:false,error:String(e),duration_ms:Date.now()-start});}};\n  await complete();await page.getByRole('checkbox',{name:'Auto-run',exact:true}).uncheck();\n  await test('language_dispatch_independent',async()=>{\n    await clear();\n    await run(\"document.body.innerHTML = '<p id=\\\"dispatch-mark\\\">js-dispatch-ok</p>';\\nconsole.log('js-dispatch-log');\",'dispatch.JS');\n    assert((await body()).includes('js-dispatch-ok')&&(await logs()).includes('js-dispatch-log'),'JS output');\n    await run('<!doctype html><html><body><h1 id=\"dispatch-mark\">html-dispatch-ok</h1><button id=\"dispatch-button\">Try handler</button><script>window.oldGlobal=\\'do-not-carry\\'; console.log(\\'html-once-marker\\'); document.getElementById(\\'dispatch-button\\').addEventListener(\\'click\\', () => console.log(\\'dispatch-handler-marker\\'));</script></body></html>','dispatch.html');\n    assert(!(await body()).includes('js-dispatch-ok'),'HTML replaced JS');\n    await preview().getByRole('button',{name:'Try handler'}).click();await complete();\n    assert((await logs()).includes('dispatch-handler-marker'),'Control handler ran');\n    await run('#dispatch-mark { color: rgb(255, 0, 0); }','dispatch.CSS');\n    assert(await preview().locator('#dispatch-mark').evaluate(e=>getComputedStyle(e).color)==='rgb(255, 0, 0)','CSS retained and styled HTML');\n    await preview().getByRole('button',{name:'Try handler'}).click();await page.waitForTimeout(200);\n    assert((await logs()).match(/dispatch-handler-marker/g)?.length===1,'No old handlers');\n    assert((await logs()).match(/html-once-marker/g)?.length===1,'No old script rerun');\n    await run(\"document.body.innerHTML = '<p id=\\\"fresh-js\\\">fresh-' + typeof window.oldGlobal + '</p>';\\nconsole.log('fresh-js-log');\",'dispatch.js');\n    assert((await body()).includes('fresh-undefined')&&!(await body()).includes('html-dispatch-ok'),'Fresh JS document/global');\n    return{delayed_interaction_not_regraded:true,css_static_copy:true};\n  });\n  await test('completed_preview_interactions_independent',async()=>{\n    await clear();\n    await run('<!doctype html><html><body><p>completed-interaction-ready</p><button id=\"interaction-button\">Try later action</button><input id=\"interaction-input\" aria-label=\"Later interaction input\"><script>console.log(\\'completed-interaction-ready-log\\'); document.getElementById(\\'interaction-button\\').addEventListener(\\'click\\', () => console.log(\\'completed-interaction-click\\')); document.getElementById(\\'interaction-input\\').addEventListener(\\'keydown\\', () => console.log(\\'completed-interaction-key\\')); document.getElementById(\\'interaction-input\\').addEventListener(\\'input\\', () => console.log(\\'completed-interaction-input\\'));</script></body></html>','interaction.html');\n    assert((await body()).includes('completed-interaction-ready')&&(await logs()).includes('completed-interaction-ready-log'),'Own initial control');\n    const finished=Date.now();await page.waitForTimeout(6100);const click=Date.now();await preview().getByRole('button',{name:'Try later action'}).click();await complete();\n    assert((await logs()).includes('completed-interaction-click'),'Late real click');\n    await preview().getByRole('textbox',{name:'Later interaction input'}).click();await complete();const focused=Date.now();await page.waitForTimeout(6100);const key=Date.now();await preview().getByRole('textbox',{name:'Later interaction input'}).press('a');await complete();\n    assert((await logs()).includes('completed-interaction-key')&&(await logs()).includes('completed-interaction-input'),'Late key and input');\n    return{wait_before_click_ms:click-finished,wait_before_key_ms:key-focused,own_fixture:true};\n  });\n  await test('shared_original_run_deadline_independent',async()=>{\n    await clear();await run(\"document.body.innerHTML='<p>recovery-marker-Q7</p>';\\nconsole.log('recovery-marker-Q7-log');\");\n    const started=await run(\"document.body.innerHTML='<p>failed-loop-candidate</p>';\\nsetTimeout(() => { console.log('late-callback-entered'); while (true) {} }, 4000);\",'proof.js',false);\n    assert((await body()).includes('failed-loop-candidate'),'Pending candidate');\n    await page.waitForFunction(()=>document.querySelector('[role=log]').textContent.includes('late-callback-entered'));\n    await page.waitForFunction(()=>/time limit/i.test(document.querySelector('[role=log]').textContent));const elapsed=Date.now()-started;\n    assert(elapsed<8000,'Original deadline no timer refresh');assert((await body()).includes('recovery-marker-Q7'),'Rollback own control');\n    await run(\"document.body.innerHTML='<p>shared-deadline-recovered</p>';console.log('shared-deadline-recovered-log');\");assert((await body()).includes('shared-deadline-recovered')&&(await logs()).includes('shared-deadline-recovered-log'),'Recovery');\n    return{original_run_to_timeout_ms:elapsed,no_library_dependency:true,no_active_loop_ui_requirement:true};\n  });\n  await test('pending_interaction_budget_independent',async()=>{\n    await clear();await run('<!doctype html><html><body><p id=\"interaction-state\">interaction-good</p><button id=\"start-work\">Start work</button><button id=\"still-waiting\">Still waiting</button><script>console.log(\\'interaction-initial-ready\\'); document.getElementById(\\'start-work\\').addEventListener(\\'click\\', () => { document.getElementById(\\'interaction-state\\').textContent=\\'interaction-candidate\\'; console.log(\\'interaction-started\\'); setTimeout(() => { document.getElementById(\\'interaction-state\\').textContent=\\'interaction-late\\'; console.log(\\'interaction-late\\'); }, 6000); }); document.getElementById(\\'still-waiting\\').addEventListener(\\'click\\', () => console.log(\\'interaction-still-waiting\\'));</script></body></html>','pending-interaction.html');\n    assert((await body()).includes('interaction-good')&&(await logs()).includes('interaction-initial-ready'),'Own good control');\n    const started=Date.now();await preview().getByRole('button',{name:'Start work'}).click();assert((await body()).includes('interaction-candidate')&&(await logs()).includes('interaction-started'),'Pending first action');await page.waitForTimeout(2100);const second=Date.now();await preview().getByRole('button',{name:'Still waiting'}).click();assert((await logs()).includes('interaction-still-waiting'),'Real second action');\n    await page.waitForFunction(()=>/time limit/i.test(document.querySelector('[role=log]').textContent));const timeout=Date.now();assert(timeout-started<8000,'No extended deadline');\n    await page.waitForTimeout(Math.max(0,started+6700-Date.now()));assert(!(await logs()).includes('interaction-late')&&!(await body()).includes('interaction-late'),'No late callback');assert((await body()).includes('interaction-good'),'Own rollback');\n    await run(\"document.body.innerHTML='<p>interaction-budget-recovered</p>';console.log('interaction-budget-recovered-log');\");assert((await body()).includes('interaction-budget-recovered')&&(await logs()).includes('interaction-budget-recovered-log'),'Recovery');\n    return{second_click_ms:second-started,timeout_ms:timeout-started,no_library_dependency:true};\n  });\n  await test('auto_run_measured_negative_windows',async()=>{\n    await clear();await file(page).fill('auto.js');await page.getByRole('checkbox',{name:'Auto-run',exact:true}).check();\n    const code=marker=>`document.body.innerHTML='<p>${marker}</p>';console.log('${marker}');`;\n    await enter(code('auto-fired'),'auto.js');const firstEdit=Date.now();await page.waitForFunction(()=>document.querySelector('[role=log]').textContent.includes('auto-fired'));await complete();const firstDelay=Date.now()-firstEdit;\n    const timings=[];const gap=Math.max(30,Math.floor(firstDelay/4));\n    const seriesStart=Date.now();let finalEdit;\n    for(let index=0;index<6;index++){const marker=index===5?'auto-final':'auto-intermediate-'+index;await editor(page).click();await page.keyboard.press('Control+A');await page.keyboard.insertText(code(marker));timings.push({index,at_ms:Date.now()-seriesStart});finalEdit=Date.now();if(index<5)await page.waitForTimeout(gap);}\n    await page.waitForFunction(()=>document.querySelector('[role=log]').textContent.includes('auto-final'));await complete();const finalDelay=Date.now()-finalEdit;\n    assert(!(await logs()).includes('auto-intermediate-'),'Intermediate source did not run');assert(Date.now()-seriesStart>firstDelay,'Editing lasted beyond first deadline');\n    const window=Math.max(3000,Math.max(firstDelay,finalDelay)+1000);\n    await page.getByRole('checkbox',{name:'Auto-run',exact:true}).uncheck();await enter(code('auto-off'),'auto.js');await page.waitForTimeout(window);assert(!(await logs()).includes('auto-off'),'Off did not run');await page.getByRole('button',{name:/^Run /}).click();await complete();assert((await logs()).includes('auto-off'),'Manual off control');\n    await page.getByRole('checkbox',{name:'Auto-run',exact:true}).check();await editor(page).click();await page.keyboard.press('Control+A');await page.keyboard.insertText(code('auto-queued'));const queued=Date.now();await page.getByRole('checkbox',{name:'Auto-run',exact:true}).uncheck();const disabled=Date.now();assert(disabled-queued<firstDelay,'Disable before debounce');await page.waitForTimeout(window);assert(!(await logs()).includes('auto-queued'),'Queued run cancelled');\n    await page.getByRole('button',{name:/^Run /}).click();await complete();assert((await logs()).includes('auto-queued'),'Manual queued control');\n    return{first_delay_ms:firstDelay,final_delay_ms:finalDelay,negative_window_ms:window,disable_after_edit_ms:disabled-queued,edit_timings:timings};\n  });\n  await test('persistent_snippets_actual_dirty_editor',async()=>{\n    await page.getByRole('button',{name:'New',exact:true}).click();await title(page).fill('QC Concurrent Save');await enter(\"console.log('base-version');\",'qc-concurrent.js');\n    const initialResponse=page.waitForResponse(r=>r.url().endsWith('/api/snippets')&&r.request().method()==='POST');await page.getByRole('button',{name:'Save',exact:true}).click();const initial=await(await initialResponse).json();\n    const b=await page.context().newPage();b.on('dialog',dialog=>dialog.accept());await b.goto('http://localhost:3000');await b.getByRole('button',{name:/^QC Concurrent Save/}).waitFor();await b.getByRole('button',{name:/^QC Concurrent Save/}).click();\n    await enter(\"console.log('stale-overwrite');\",'qc-concurrent.js',b);const dirty={title:await title(b).inputValue(),filename:await file(b).inputValue(),code:await editor(b).innerText()};\n    await title(page).fill('QC Concurrent Save Updated');await enter('<!doctype html><html><body>first-editor-won</body></html>','qc-concurrent.html');const aResponse=page.waitForResponse(r=>r.url().endsWith('/api/snippets/'+initial.id)&&r.request().method()==='PUT');await page.getByRole('button',{name:'Save',exact:true}).click();const winner=await(await aResponse).json();assert(winner.revision>initial.revision,'Advanced revision');\n    const staleResponse=b.waitForResponse(r=>r.url().endsWith('/api/snippets/'+initial.id)&&r.request().method()==='PUT');await b.getByRole('button',{name:'Save',exact:true}).click();const stale=await staleResponse;assert(stale.status()===409,'Actual UI stale rejection');await b.getByRole('button',{name:'Load latest',exact:true}).waitFor();\n    const retained={title:await title(b).inputValue(),filename:await file(b).inputValue(),code:await editor(b).innerText()};assert(JSON.stringify(retained)===JSON.stringify(dirty),'Exact dirty title/filename/code retained');\n    const observedUrl=stale.url();const fresh=await b.evaluate(async url=>await(await fetch(url)).json(),observedUrl);assert(JSON.stringify(fresh)===JSON.stringify(winner),'Fresh server unchanged');\n    await b.getByRole('button',{name:'Load latest',exact:true}).click();assert(await title(b).inputValue()===winner.title&&await file(b).inputValue()===winner.filename,'Deliberate latest fields');await enter('<!doctype html><html><body>reapplied-after-reload</body></html>','qc-concurrent.html',b);\n    const recoverResponse=b.waitForResponse(r=>r.url().endsWith('/api/snippets/'+initial.id)&&r.request().method()==='PUT');await b.getByRole('button',{name:'Save',exact:true}).click();const recovered=await(await recoverResponse).json();assert(recovered.revision>winner.revision,'Recovery advanced revision');await b.reload();await b.getByRole('button',{name:/^QC Concurrent Save Updated/}).click();assert(await editor(b).innerText()===recovered.code,'Recovered saved draft survives reload');await b.close();\n    return{dirty_before_A_saved:dirty,retained_after_rejection:retained,old_revision:initial.revision,winner_revision:winner.revision,recovered_revision:recovered.revision,actual_UI_stale_status:stale.status(),server_record_unchanged:true};\n  });\n  page.__interactionProof={running:false,passed:observations.every(item=>item.passed),observations};return page.__interactionProof;\n}\n)(page);\n```\n### Page\n- Page URL: http://localhost:3000/\n### Modal state\n- [\"confirm\" dialog with message \"Discard unsaved changes?\"]: can be handled by browser_handle_dialog"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "type": "text",
+          "text": "### Open tabs\n- 0: (current) [Colderwater Playground](http://localhost:3000/)\n- 1: [Colderwater Playground](http://localhost:3000/)\n### Page\n- Page URL: http://localhost:3000/\n- Page Title: Colderwater Playground"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "type": "text",
+          "text": "### Result\n{\"running\":true,\"observations\":[{\"name\":\"language_dispatch_independent\",\"passed\":true,\"delayed_interaction_not_regraded\":true,\"css_static_copy\":true,\"duration_ms\":1237},{\"name\":\"completed_preview_interactions_independent\",\"passed\":true,\"wait_before_click_ms\":6102,\"wait_before_key_ms\":6107,\"own_fixture\":true,\"duration_ms\":12636},{\"name\":\"shared_original_run_deadline_independent\",\"passed\":true,\"original_run_to_timeout_ms\":5005,\"no_library_dependency\":true,\"no_active_loop_ui_requirement\":true,\"duration_ms\":5539},{\"name\":\"pending_interaction_budget_independent\",\"passed\":true,\"second_click_ms\":2137,\"timeout_ms\":5148,\"no_library_dependency\":true,\"duration_ms\":7220},{\"name\":\"auto_run_measured_negative_windows\",\"passed\":true,\"first_delay_ms\":545,\"final_delay_ms\":554,\"negative_window_ms\":3000,\"disable_after_edit_ms\":38,\"edit_timings\":[{\"index\":0,\"at_ms\":48},{\"index\":1,\"at_ms\":234},{\"index\":2,\"at_ms\":431},{\"index\":3,\"at_ms\":617},{\"index\":4,\"at_ms\":812},{\"index\":5,\"at_ms\":996}],\"duration_ms\":8662}]}\n### Ran Playwright code\n```js\nawait (async(page)=>{await page.waitForTimeout(250);return page.__interactionProof;})(page);\n```\n### Open tabs\n- 0: (current) [Colderwater Playground](http://localhost:3000/)\n- 1: [Colderwater Playground](http://localhost:3000/)\n### Page\n- Page URL: http://localhost:3000/\n- Page Title: Colderwater Playground"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "type": "text",
+          "text": "### Result\n{\"running\":true,\"observations\":[{\"name\":\"language_dispatch_independent\",\"passed\":true,\"delayed_interaction_not_regraded\":true,\"css_static_copy\":true,\"duration_ms\":1237},{\"name\":\"completed_preview_interactions_independent\",\"passed\":true,\"wait_before_click_ms\":6102,\"wait_before_key_ms\":6107,\"own_fixture\":true,\"duration_ms\":12636},{\"name\":\"shared_original_run_deadline_independent\",\"passed\":true,\"original_run_to_timeout_ms\":5005,\"no_library_dependency\":true,\"no_active_loop_ui_requirement\":true,\"duration_ms\":5539},{\"name\":\"pending_interaction_budget_independent\",\"passed\":true,\"second_click_ms\":2137,\"timeout_ms\":5148,\"no_library_dependency\":true,\"duration_ms\":7220},{\"name\":\"auto_run_measured_negative_windows\",\"passed\":true,\"first_delay_ms\":545,\"final_delay_ms\":554,\"negative_window_ms\":3000,\"disable_after_edit_ms\":38,\"edit_timings\":[{\"index\":0,\"at_ms\":48},{\"index\":1,\"at_ms\":234},{\"index\":2,\"at_ms\":431},{\"index\":3,\"at_ms\":617},{\"index\":4,\"at_ms\":812},{\"index\":5,\"at_ms\":996}],\"duration_ms\":8662}]}\n### Ran Playwright code\n```js\nawait (async(page)=>{await page.waitForTimeout(250);return page.__interactionProof;})(page);\n```"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "type": "text",
+          "text": "### Result\n{\"running\":true,\"observations\":[{\"name\":\"language_dispatch_independent\",\"passed\":true,\"delayed_interaction_not_regraded\":true,\"css_static_copy\":true,\"duration_ms\":1237},{\"name\":\"completed_preview_interactions_independent\",\"passed\":true,\"wait_before_click_ms\":6102,\"wait_before_key_ms\":6107,\"own_fixture\":true,\"duration_ms\":12636},{\"name\":\"shared_original_run_deadline_independent\",\"passed\":true,\"original_run_to_timeout_ms\":5005,\"no_library_dependency\":true,\"no_active_loop_ui_requirement\":true,\"duration_ms\":5539},{\"name\":\"pending_interaction_budget_independent\",\"passed\":true,\"second_click_ms\":2137,\"timeout_ms\":5148,\"no_library_dependency\":true,\"duration_ms\":7220},{\"name\":\"auto_run_measured_negative_windows\",\"passed\":true,\"first_delay_ms\":545,\"final_delay_ms\":554,\"negative_window_ms\":3000,\"disable_after_edit_ms\":38,\"edit_timings\":[{\"index\":0,\"at_ms\":48},{\"index\":1,\"at_ms\":234},{\"index\":2,\"at_ms\":431},{\"index\":3,\"at_ms\":617},{\"index\":4,\"at_ms\":812},{\"index\":5,\"at_ms\":996}],\"duration_ms\":8662}]}\n### Ran Playwright code\n```js\nawait (async(page)=>{await page.waitForTimeout(250);return page.__interactionProof;})(page);\n```"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "type": "text",
+          "text": "### Result\n{\"running\":true,\"observations\":[{\"name\":\"language_dispatch_independent\",\"passed\":true,\"delayed_interaction_not_regraded\":true,\"css_static_copy\":true,\"duration_ms\":1237},{\"name\":\"completed_preview_interactions_independent\",\"passed\":true,\"wait_before_click_ms\":6102,\"wait_before_key_ms\":6107,\"own_fixture\":true,\"duration_ms\":12636},{\"name\":\"shared_original_run_deadline_independent\",\"passed\":true,\"original_run_to_timeout_ms\":5005,\"no_library_dependency\":true,\"no_active_loop_ui_requirement\":true,\"duration_ms\":5539},{\"name\":\"pending_interaction_budget_independent\",\"passed\":true,\"second_click_ms\":2137,\"timeout_ms\":5148,\"no_library_dependency\":true,\"duration_ms\":7220},{\"name\":\"auto_run_measured_negative_windows\",\"passed\":true,\"first_delay_ms\":545,\"final_delay_ms\":554,\"negative_window_ms\":3000,\"disable_after_edit_ms\":38,\"edit_timings\":[{\"index\":0,\"at_ms\":48},{\"index\":1,\"at_ms\":234},{\"index\":2,\"at_ms\":431},{\"index\":3,\"at_ms\":617},{\"index\":4,\"at_ms\":812},{\"index\":5,\"at_ms\":996}],\"duration_ms\":8662}]}\n### Ran Playwright code\n```js\nawait (async(page)=>{await page.waitForTimeout(250);return page.__interactionProof;})(page);\n```"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "type": "text",
+          "text": "### Result\n{\"running\":true,\"observations\":[{\"name\":\"language_dispatch_independent\",\"passed\":true,\"delayed_interaction_not_regraded\":true,\"css_static_copy\":true,\"duration_ms\":1237},{\"name\":\"completed_preview_interactions_independent\",\"passed\":true,\"wait_before_click_ms\":6102,\"wait_before_key_ms\":6107,\"own_fixture\":true,\"duration_ms\":12636},{\"name\":\"shared_original_run_deadline_independent\",\"passed\":true,\"original_run_to_timeout_ms\":5005,\"no_library_dependency\":true,\"no_active_loop_ui_requirement\":true,\"duration_ms\":5539},{\"name\":\"pending_interaction_budget_independent\",\"passed\":true,\"second_click_ms\":2137,\"timeout_ms\":5148,\"no_library_dependency\":true,\"duration_ms\":7220},{\"name\":\"auto_run_measured_negative_windows\",\"passed\":true,\"first_delay_ms\":545,\"final_delay_ms\":554,\"negative_window_ms\":3000,\"disable_after_edit_ms\":38,\"edit_timings\":[{\"index\":0,\"at_ms\":48},{\"index\":1,\"at_ms\":234},{\"index\":2,\"at_ms\":431},{\"index\":3,\"at_ms\":617},{\"index\":4,\"at_ms\":812},{\"index\":5,\"at_ms\":996}],\"duration_ms\":8662}]}\n### Ran Playwright code\n```js\nawait (async(page)=>{await page.waitForTimeout(250);return page.__interactionProof;})(page);\n```"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "type": "text",
+          "text": "### Result\n{\"running\":true,\"observations\":[{\"name\":\"language_dispatch_independent\",\"passed\":true,\"delayed_interaction_not_regraded\":true,\"css_static_copy\":true,\"duration_ms\":1237},{\"name\":\"completed_preview_interactions_independent\",\"passed\":true,\"wait_before_click_ms\":6102,\"wait_before_key_ms\":6107,\"own_fixture\":true,\"duration_ms\":12636},{\"name\":\"shared_original_run_deadline_independent\",\"passed\":true,\"original_run_to_timeout_ms\":5005,\"no_library_dependency\":true,\"no_active_loop_ui_requirement\":true,\"duration_ms\":5539},{\"name\":\"pending_interaction_budget_independent\",\"passed\":true,\"second_click_ms\":2137,\"timeout_ms\":5148,\"no_library_dependency\":true,\"duration_ms\":7220},{\"name\":\"auto_run_measured_negative_windows\",\"passed\":true,\"first_delay_ms\":545,\"final_delay_ms\":554,\"negative_window_ms\":3000,\"disable_after_edit_ms\":38,\"edit_timings\":[{\"index\":0,\"at_ms\":48},{\"index\":1,\"at_ms\":234},{\"index\":2,\"at_ms\":431},{\"index\":3,\"at_ms\":617},{\"index\":4,\"at_ms\":812},{\"index\":5,\"at_ms\":996}],\"duration_ms\":8662}]}\n### Ran Playwright code\n```js\nawait (async(page)=>{await page.waitForTimeout(250);return page.__interactionProof;})(page);\n```"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "type": "text",
+          "text": "### Result\n{\"running\":true,\"observations\":[{\"name\":\"language_dispatch_independent\",\"passed\":true,\"delayed_interaction_not_regraded\":true,\"css_static_copy\":true,\"duration_ms\":1237},{\"name\":\"completed_preview_interactions_independent\",\"passed\":true,\"wait_before_click_ms\":6102,\"wait_before_key_ms\":6107,\"own_fixture\":true,\"duration_ms\":12636},{\"name\":\"shared_original_run_deadline_independent\",\"passed\":true,\"original_run_to_timeout_ms\":5005,\"no_library_dependency\":true,\"no_active_loop_ui_requirement\":true,\"duration_ms\":5539},{\"name\":\"pending_interaction_budget_independent\",\"passed\":true,\"second_click_ms\":2137,\"timeout_ms\":5148,\"no_library_dependency\":true,\"duration_ms\":7220},{\"name\":\"auto_run_measured_negative_windows\",\"passed\":true,\"first_delay_ms\":545,\"final_delay_ms\":554,\"negative_window_ms\":3000,\"disable_after_edit_ms\":38,\"edit_timings\":[{\"index\":0,\"at_ms\":48},{\"index\":1,\"at_ms\":234},{\"index\":2,\"at_ms\":431},{\"index\":3,\"at_ms\":617},{\"index\":4,\"at_ms\":812},{\"index\":5,\"at_ms\":996}],\"duration_ms\":8662}]}\n### Ran Playwright code\n```js\nawait (async(page)=>{await page.waitForTimeout(250);return page.__interactionProof;})(page);\n```"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "type": "text",
+          "text": "### Result\n{\"running\":true,\"observations\":[{\"name\":\"language_dispatch_independent\",\"passed\":true,\"delayed_interaction_not_regraded\":true,\"css_static_copy\":true,\"duration_ms\":1237},{\"name\":\"completed_preview_interactions_independent\",\"passed\":true,\"wait_before_click_ms\":6102,\"wait_before_key_ms\":6107,\"own_fixture\":true,\"duration_ms\":12636},{\"name\":\"shared_original_run_deadline_independent\",\"passed\":true,\"original_run_to_timeout_ms\":5005,\"no_library_dependency\":true,\"no_active_loop_ui_requirement\":true,\"duration_ms\":5539},{\"name\":\"pending_interaction_budget_independent\",\"passed\":true,\"second_click_ms\":2137,\"timeout_ms\":5148,\"no_library_dependency\":true,\"duration_ms\":7220},{\"name\":\"auto_run_measured_negative_windows\",\"passed\":true,\"first_delay_ms\":545,\"final_delay_ms\":554,\"negative_window_ms\":3000,\"disable_after_edit_ms\":38,\"edit_timings\":[{\"index\":0,\"at_ms\":48},{\"index\":1,\"at_ms\":234},{\"index\":2,\"at_ms\":431},{\"index\":3,\"at_ms\":617},{\"index\":4,\"at_ms\":812},{\"index\":5,\"at_ms\":996}],\"duration_ms\":8662}]}\n### Ran Playwright code\n```js\nawait (async(page)=>{await page.waitForTimeout(250);return page.__interactionProof;})(page);\n```"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "type": "text",
+          "text": "### Result\n{\"running\":true,\"observations\":[{\"name\":\"language_dispatch_independent\",\"passed\":true,\"delayed_interaction_not_regraded\":true,\"css_static_copy\":true,\"duration_ms\":1237},{\"name\":\"completed_preview_interactions_independent\",\"passed\":true,\"wait_before_click_ms\":6102,\"wait_before_key_ms\":6107,\"own_fixture\":true,\"duration_ms\":12636},{\"name\":\"shared_original_run_deadline_independent\",\"passed\":true,\"original_run_to_timeout_ms\":5005,\"no_library_dependency\":true,\"no_active_loop_ui_requirement\":true,\"duration_ms\":5539},{\"name\":\"pending_interaction_budget_independent\",\"passed\":true,\"second_click_ms\":2137,\"timeout_ms\":5148,\"no_library_dependency\":true,\"duration_ms\":7220},{\"name\":\"auto_run_measured_negative_windows\",\"passed\":true,\"first_delay_ms\":545,\"final_delay_ms\":554,\"negative_window_ms\":3000,\"disable_after_edit_ms\":38,\"edit_timings\":[{\"index\":0,\"at_ms\":48},{\"index\":1,\"at_ms\":234},{\"index\":2,\"at_ms\":431},{\"index\":3,\"at_ms\":617},{\"index\":4,\"at_ms\":812},{\"index\":5,\"at_ms\":996}],\"duration_ms\":8662}]}\n### Ran Playwright code\n```js\nawait (async(page)=>{await page.waitForTimeout(250);return page.__interactionProof;})(page);\n```"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "type": "text",
+          "text": "### Result\n{\"running\":true,\"observations\":[{\"name\":\"language_dispatch_independent\",\"passed\":true,\"delayed_interaction_not_regraded\":true,\"css_static_copy\":true,\"duration_ms\":1237},{\"name\":\"completed_preview_interactions_independent\",\"passed\":true,\"wait_before_click_ms\":6102,\"wait_before_key_ms\":6107,\"own_fixture\":true,\"duration_ms\":12636},{\"name\":\"shared_original_run_deadline_independent\",\"passed\":true,\"original_run_to_timeout_ms\":5005,\"no_library_dependency\":true,\"no_active_loop_ui_requirement\":true,\"duration_ms\":5539},{\"name\":\"pending_interaction_budget_independent\",\"passed\":true,\"second_click_ms\":2137,\"timeout_ms\":5148,\"no_library_dependency\":true,\"duration_ms\":7220},{\"name\":\"auto_run_measured_negative_windows\",\"passed\":true,\"first_delay_ms\":545,\"final_delay_ms\":554,\"negative_window_ms\":3000,\"disable_after_edit_ms\":38,\"edit_timings\":[{\"index\":0,\"at_ms\":48},{\"index\":1,\"at_ms\":234},{\"index\":2,\"at_ms\":431},{\"index\":3,\"at_ms\":617},{\"index\":4,\"at_ms\":812},{\"index\":5,\"at_ms\":996}],\"duration_ms\":8662}]}\n### Ran Playwright code\n```js\nawait (async(page)=>{await page.waitForTimeout(250);return page.__interactionProof;})(page);\n```"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "type": "text",
+          "text": "### Result\n{\"running\":true,\"observations\":[{\"name\":\"language_dispatch_independent\",\"passed\":true,\"delayed_interaction_not_regraded\":true,\"css_static_copy\":true,\"duration_ms\":1237},{\"name\":\"completed_preview_interactions_independent\",\"passed\":true,\"wait_before_click_ms\":6102,\"wait_before_key_ms\":6107,\"own_fixture\":true,\"duration_ms\":12636},{\"name\":\"shared_original_run_deadline_independent\",\"passed\":true,\"original_run_to_timeout_ms\":5005,\"no_library_dependency\":true,\"no_active_loop_ui_requirement\":true,\"duration_ms\":5539},{\"name\":\"pending_interaction_budget_independent\",\"passed\":true,\"second_click_ms\":2137,\"timeout_ms\":5148,\"no_library_dependency\":true,\"duration_ms\":7220},{\"name\":\"auto_run_measured_negative_windows\",\"passed\":true,\"first_delay_ms\":545,\"final_delay_ms\":554,\"negative_window_ms\":3000,\"disable_after_edit_ms\":38,\"edit_timings\":[{\"index\":0,\"at_ms\":48},{\"index\":1,\"at_ms\":234},{\"index\":2,\"at_ms\":431},{\"index\":3,\"at_ms\":617},{\"index\":4,\"at_ms\":812},{\"index\":5,\"at_ms\":996}],\"duration_ms\":8662}]}\n### Ran Playwright code\n```js\nawait (async(page)=>{await page.waitForTimeout(250);return page.__interactionProof;})(page);\n```"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "type": "text",
+          "text": "### Result\n{\"running\":true,\"observations\":[{\"name\":\"language_dispatch_independent\",\"passed\":true,\"delayed_interaction_not_regraded\":true,\"css_static_copy\":true,\"duration_ms\":1237},{\"name\":\"completed_preview_interactions_independent\",\"passed\":true,\"wait_before_click_ms\":6102,\"wait_before_key_ms\":6107,\"own_fixture\":true,\"duration_ms\":12636},{\"name\":\"shared_original_run_deadline_independent\",\"passed\":true,\"original_run_to_timeout_ms\":5005,\"no_library_dependency\":true,\"no_active_loop_ui_requirement\":true,\"duration_ms\":5539},{\"name\":\"pending_interaction_budget_independent\",\"passed\":true,\"second_click_ms\":2137,\"timeout_ms\":5148,\"no_library_dependency\":true,\"duration_ms\":7220},{\"name\":\"auto_run_measured_negative_windows\",\"passed\":true,\"first_delay_ms\":545,\"final_delay_ms\":554,\"negative_window_ms\":3000,\"disable_after_edit_ms\":38,\"edit_timings\":[{\"index\":0,\"at_ms\":48},{\"index\":1,\"at_ms\":234},{\"index\":2,\"at_ms\":431},{\"index\":3,\"at_ms\":617},{\"index\":4,\"at_ms\":812},{\"index\":5,\"at_ms\":996}],\"duration_ms\":8662}]}\n### Ran Playwright code\n```js\nawait (async(page)=>{await page.waitForTimeout(250);return page.__interactionProof;})(page);\n```"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "type": "text",
+          "text": "### Result\n{\"running\":true,\"observations\":[{\"name\":\"language_dispatch_independent\",\"passed\":true,\"delayed_interaction_not_regraded\":true,\"css_static_copy\":true,\"duration_ms\":1237},{\"name\":\"completed_preview_interactions_independent\",\"passed\":true,\"wait_before_click_ms\":6102,\"wait_before_key_ms\":6107,\"own_fixture\":true,\"duration_ms\":12636},{\"name\":\"shared_original_run_deadline_independent\",\"passed\":true,\"original_run_to_timeout_ms\":5005,\"no_library_dependency\":true,\"no_active_loop_ui_requirement\":true,\"duration_ms\":5539},{\"name\":\"pending_interaction_budget_independent\",\"passed\":true,\"second_click_ms\":2137,\"timeout_ms\":5148,\"no_library_dependency\":true,\"duration_ms\":7220},{\"name\":\"auto_run_measured_negative_windows\",\"passed\":true,\"first_delay_ms\":545,\"final_delay_ms\":554,\"negative_window_ms\":3000,\"disable_after_edit_ms\":38,\"edit_timings\":[{\"index\":0,\"at_ms\":48},{\"index\":1,\"at_ms\":234},{\"index\":2,\"at_ms\":431},{\"index\":3,\"at_ms\":617},{\"index\":4,\"at_ms\":812},{\"index\":5,\"at_ms\":996}],\"duration_ms\":8662}]}\n### Ran Playwright code\n```js\nawait (async(page)=>{await page.waitForTimeout(250);return page.__interactionProof;})(page);\n```"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "type": "text",
+          "text": "### Result\n{\"running\":true,\"observations\":[{\"name\":\"language_dispatch_independent\",\"passed\":true,\"delayed_interaction_not_regraded\":true,\"css_static_copy\":true,\"duration_ms\":1237},{\"name\":\"completed_preview_interactions_independent\",\"passed\":true,\"wait_before_click_ms\":6102,\"wait_before_key_ms\":6107,\"own_fixture\":true,\"duration_ms\":12636},{\"name\":\"shared_original_run_deadline_independent\",\"passed\":true,\"original_run_to_timeout_ms\":5005,\"no_library_dependency\":true,\"no_active_loop_ui_requirement\":true,\"duration_ms\":5539},{\"name\":\"pending_interaction_budget_independent\",\"passed\":true,\"second_click_ms\":2137,\"timeout_ms\":5148,\"no_library_dependency\":true,\"duration_ms\":7220},{\"name\":\"auto_run_measured_negative_windows\",\"passed\":true,\"first_delay_ms\":545,\"final_delay_ms\":554,\"negative_window_ms\":3000,\"disable_after_edit_ms\":38,\"edit_timings\":[{\"index\":0,\"at_ms\":48},{\"index\":1,\"at_ms\":234},{\"index\":2,\"at_ms\":431},{\"index\":3,\"at_ms\":617},{\"index\":4,\"at_ms\":812},{\"index\":5,\"at_ms\":996}],\"duration_ms\":8662}]}\n### Ran Playwright code\n```js\nawait (async(page)=>{await page.waitForTimeout(250);return page.__interactionProof;})(page);\n```"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "type": "text",
+          "text": "### Result\n{\"running\":true,\"observations\":[{\"name\":\"language_dispatch_independent\",\"passed\":true,\"delayed_interaction_not_regraded\":true,\"css_static_copy\":true,\"duration_ms\":1237},{\"name\":\"completed_preview_interactions_independent\",\"passed\":true,\"wait_before_click_ms\":6102,\"wait_before_key_ms\":6107,\"own_fixture\":true,\"duration_ms\":12636},{\"name\":\"shared_original_run_deadline_independent\",\"passed\":true,\"original_run_to_timeout_ms\":5005,\"no_library_dependency\":true,\"no_active_loop_ui_requirement\":true,\"duration_ms\":5539},{\"name\":\"pending_interaction_budget_independent\",\"passed\":true,\"second_click_ms\":2137,\"timeout_ms\":5148,\"no_library_dependency\":true,\"duration_ms\":7220},{\"name\":\"auto_run_measured_negative_windows\",\"passed\":true,\"first_delay_ms\":545,\"final_delay_ms\":554,\"negative_window_ms\":3000,\"disable_after_edit_ms\":38,\"edit_timings\":[{\"index\":0,\"at_ms\":48},{\"index\":1,\"at_ms\":234},{\"index\":2,\"at_ms\":431},{\"index\":3,\"at_ms\":617},{\"index\":4,\"at_ms\":812},{\"index\":5,\"at_ms\":996}],\"duration_ms\":8662}]}\n### Ran Playwright code\n```js\nawait (async(page)=>{await page.waitForTimeout(250);return page.__interactionProof;})(page);\n```"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "type": "text",
+          "text": "### Result\n{\"running\":true,\"observations\":[{\"name\":\"language_dispatch_independent\",\"passed\":true,\"delayed_interaction_not_regraded\":true,\"css_static_copy\":true,\"duration_ms\":1237},{\"name\":\"completed_preview_interactions_independent\",\"passed\":true,\"wait_before_click_ms\":6102,\"wait_before_key_ms\":6107,\"own_fixture\":true,\"duration_ms\":12636},{\"name\":\"shared_original_run_deadline_independent\",\"passed\":true,\"original_run_to_timeout_ms\":5005,\"no_library_dependency\":true,\"no_active_loop_ui_requirement\":true,\"duration_ms\":5539},{\"name\":\"pending_interaction_budget_independent\",\"passed\":true,\"second_click_ms\":2137,\"timeout_ms\":5148,\"no_library_dependency\":true,\"duration_ms\":7220},{\"name\":\"auto_run_measured_negative_windows\",\"passed\":true,\"first_delay_ms\":545,\"final_delay_ms\":554,\"negative_window_ms\":3000,\"disable_after_edit_ms\":38,\"edit_timings\":[{\"index\":0,\"at_ms\":48},{\"index\":1,\"at_ms\":234},{\"index\":2,\"at_ms\":431},{\"index\":3,\"at_ms\":617},{\"index\":4,\"at_ms\":812},{\"index\":5,\"at_ms\":996}],\"duration_ms\":8662}]}\n### Ran Playwright code\n```js\nawait (async(page)=>{await page.waitForTimeout(250);return page.__interactionProof;})(page);\n```"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "type": "text",
+          "text": "### Result\n{\"running\":true,\"observations\":[{\"name\":\"language_dispatch_independent\",\"passed\":true,\"delayed_interaction_not_regraded\":true,\"css_static_copy\":true,\"duration_ms\":1237},{\"name\":\"completed_preview_interactions_independent\",\"passed\":true,\"wait_before_click_ms\":6102,\"wait_before_key_ms\":6107,\"own_fixture\":true,\"duration_ms\":12636},{\"name\":\"shared_original_run_deadline_independent\",\"passed\":true,\"original_run_to_timeout_ms\":5005,\"no_library_dependency\":true,\"no_active_loop_ui_requirement\":true,\"duration_ms\":5539},{\"name\":\"pending_interaction_budget_independent\",\"passed\":true,\"second_click_ms\":2137,\"timeout_ms\":5148,\"no_library_dependency\":true,\"duration_ms\":7220},{\"name\":\"auto_run_measured_negative_windows\",\"passed\":true,\"first_delay_ms\":545,\"final_delay_ms\":554,\"negative_window_ms\":3000,\"disable_after_edit_ms\":38,\"edit_timings\":[{\"index\":0,\"at_ms\":48},{\"index\":1,\"at_ms\":234},{\"index\":2,\"at_ms\":431},{\"index\":3,\"at_ms\":617},{\"index\":4,\"at_ms\":812},{\"index\":5,\"at_ms\":996}],\"duration_ms\":8662}]}\n### Ran Playwright code\n```js\nawait (async(page)=>{await page.waitForTimeout(250);return page.__interactionProof;})(page);\n```"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "type": "text",
+          "text": "### Result\n{\"running\":true,\"observations\":[{\"name\":\"language_dispatch_independent\",\"passed\":true,\"delayed_interaction_not_regraded\":true,\"css_static_copy\":true,\"duration_ms\":1237},{\"name\":\"completed_preview_interactions_independent\",\"passed\":true,\"wait_before_click_ms\":6102,\"wait_before_key_ms\":6107,\"own_fixture\":true,\"duration_ms\":12636},{\"name\":\"shared_original_run_deadline_independent\",\"passed\":true,\"original_run_to_timeout_ms\":5005,\"no_library_dependency\":true,\"no_active_loop_ui_requirement\":true,\"duration_ms\":5539},{\"name\":\"pending_interaction_budget_independent\",\"passed\":true,\"second_click_ms\":2137,\"timeout_ms\":5148,\"no_library_dependency\":true,\"duration_ms\":7220},{\"name\":\"auto_run_measured_negative_windows\",\"passed\":true,\"first_delay_ms\":545,\"final_delay_ms\":554,\"negative_window_ms\":3000,\"disable_after_edit_ms\":38,\"edit_timings\":[{\"index\":0,\"at_ms\":48},{\"index\":1,\"at_ms\":234},{\"index\":2,\"at_ms\":431},{\"index\":3,\"at_ms\":617},{\"index\":4,\"at_ms\":812},{\"index\":5,\"at_ms\":996}],\"duration_ms\":8662}]}\n### Ran Playwright code\n```js\nawait (async(page)=>{await page.waitForTimeout(250);return page.__interactionProof;})(page);\n```"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "type": "text",
+          "text": "### Result\n{\"running\":true,\"observations\":[{\"name\":\"language_dispatch_independent\",\"passed\":true,\"delayed_interaction_not_regraded\":true,\"css_static_copy\":true,\"duration_ms\":1237},{\"name\":\"completed_preview_interactions_independent\",\"passed\":true,\"wait_before_click_ms\":6102,\"wait_before_key_ms\":6107,\"own_fixture\":true,\"duration_ms\":12636},{\"name\":\"shared_original_run_deadline_independent\",\"passed\":true,\"original_run_to_timeout_ms\":5005,\"no_library_dependency\":true,\"no_active_loop_ui_requirement\":true,\"duration_ms\":5539},{\"name\":\"pending_interaction_budget_independent\",\"passed\":true,\"second_click_ms\":2137,\"timeout_ms\":5148,\"no_library_dependency\":true,\"duration_ms\":7220},{\"name\":\"auto_run_measured_negative_windows\",\"passed\":true,\"first_delay_ms\":545,\"final_delay_ms\":554,\"negative_window_ms\":3000,\"disable_after_edit_ms\":38,\"edit_timings\":[{\"index\":0,\"at_ms\":48},{\"index\":1,\"at_ms\":234},{\"index\":2,\"at_ms\":431},{\"index\":3,\"at_ms\":617},{\"index\":4,\"at_ms\":812},{\"index\":5,\"at_ms\":996}],\"duration_ms\":8662}]}\n### Ran Playwright code\n```js\nawait (async(page)=>{await page.waitForTimeout(250);return page.__interactionProof;})(page);\n```"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "type": "text",
+          "text": "### Result\n{\"running\":true,\"observations\":[{\"name\":\"language_dispatch_independent\",\"passed\":true,\"delayed_interaction_not_regraded\":true,\"css_static_copy\":true,\"duration_ms\":1237},{\"name\":\"completed_preview_interactions_independent\",\"passed\":true,\"wait_before_click_ms\":6102,\"wait_before_key_ms\":6107,\"own_fixture\":true,\"duration_ms\":12636},{\"name\":\"shared_original_run_deadline_independent\",\"passed\":true,\"original_run_to_timeout_ms\":5005,\"no_library_dependency\":true,\"no_active_loop_ui_requirement\":true,\"duration_ms\":5539},{\"name\":\"pending_interaction_budget_independent\",\"passed\":true,\"second_click_ms\":2137,\"timeout_ms\":5148,\"no_library_dependency\":true,\"duration_ms\":7220},{\"name\":\"auto_run_measured_negative_windows\",\"passed\":true,\"first_delay_ms\":545,\"final_delay_ms\":554,\"negative_window_ms\":3000,\"disable_after_edit_ms\":38,\"edit_timings\":[{\"index\":0,\"at_ms\":48},{\"index\":1,\"at_ms\":234},{\"index\":2,\"at_ms\":431},{\"index\":3,\"at_ms\":617},{\"index\":4,\"at_ms\":812},{\"index\":5,\"at_ms\":996}],\"duration_ms\":8662}]}\n### Ran Playwright code\n```js\nawait (async(page)=>{await page.waitForTimeout(250);return page.__interactionProof;})(page);\n```"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "type": "text",
+          "text": "### Result\n{\"running\":true,\"observations\":[{\"name\":\"language_dispatch_independent\",\"passed\":true,\"delayed_interaction_not_regraded\":true,\"css_static_copy\":true,\"duration_ms\":1237},{\"name\":\"completed_preview_interactions_independent\",\"passed\":true,\"wait_before_click_ms\":6102,\"wait_before_key_ms\":6107,\"own_fixture\":true,\"duration_ms\":12636},{\"name\":\"shared_original_run_deadline_independent\",\"passed\":true,\"original_run_to_timeout_ms\":5005,\"no_library_dependency\":true,\"no_active_loop_ui_requirement\":true,\"duration_ms\":5539},{\"name\":\"pending_interaction_budget_independent\",\"passed\":true,\"second_click_ms\":2137,\"timeout_ms\":5148,\"no_library_dependency\":true,\"duration_ms\":7220},{\"name\":\"auto_run_measured_negative_windows\",\"passed\":true,\"first_delay_ms\":545,\"final_delay_ms\":554,\"negative_window_ms\":3000,\"disable_after_edit_ms\":38,\"edit_timings\":[{\"index\":0,\"at_ms\":48},{\"index\":1,\"at_ms\":234},{\"index\":2,\"at_ms\":431},{\"index\":3,\"at_ms\":617},{\"index\":4,\"at_ms\":812},{\"index\":5,\"at_ms\":996}],\"duration_ms\":8662}]}\n### Ran Playwright code\n```js\nawait (async(page)=>{await page.waitForTimeout(250);return page.__interactionProof;})(page);\n```"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "type": "text",
+          "text": "### Result\n{\"running\":true,\"observations\":[{\"name\":\"language_dispatch_independent\",\"passed\":true,\"delayed_interaction_not_regraded\":true,\"css_static_copy\":true,\"duration_ms\":1237},{\"name\":\"completed_preview_interactions_independent\",\"passed\":true,\"wait_before_click_ms\":6102,\"wait_before_key_ms\":6107,\"own_fixture\":true,\"duration_ms\":12636},{\"name\":\"shared_original_run_deadline_independent\",\"passed\":true,\"original_run_to_timeout_ms\":5005,\"no_library_dependency\":true,\"no_active_loop_ui_requirement\":true,\"duration_ms\":5539},{\"name\":\"pending_interaction_budget_independent\",\"passed\":true,\"second_click_ms\":2137,\"timeout_ms\":5148,\"no_library_dependency\":true,\"duration_ms\":7220},{\"name\":\"auto_run_measured_negative_windows\",\"passed\":true,\"first_delay_ms\":545,\"final_delay_ms\":554,\"negative_window_ms\":3000,\"disable_after_edit_ms\":38,\"edit_timings\":[{\"index\":0,\"at_ms\":48},{\"index\":1,\"at_ms\":234},{\"index\":2,\"at_ms\":431},{\"index\":3,\"at_ms\":617},{\"index\":4,\"at_ms\":812},{\"index\":5,\"at_ms\":996}],\"duration_ms\":8662}]}\n### Ran Playwright code\n```js\nawait (async(page)=>{await page.waitForTimeout(250);return page.__interactionProof;})(page);\n```"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "type": "text",
+          "text": "### Result\n{\"running\":true,\"observations\":[{\"name\":\"language_dispatch_independent\",\"passed\":true,\"delayed_interaction_not_regraded\":true,\"css_static_copy\":true,\"duration_ms\":1237},{\"name\":\"completed_preview_interactions_independent\",\"passed\":true,\"wait_before_click_ms\":6102,\"wait_before_key_ms\":6107,\"own_fixture\":true,\"duration_ms\":12636},{\"name\":\"shared_original_run_deadline_independent\",\"passed\":true,\"original_run_to_timeout_ms\":5005,\"no_library_dependency\":true,\"no_active_loop_ui_requirement\":true,\"duration_ms\":5539},{\"name\":\"pending_interaction_budget_independent\",\"passed\":true,\"second_click_ms\":2137,\"timeout_ms\":5148,\"no_library_dependency\":true,\"duration_ms\":7220},{\"name\":\"auto_run_measured_negative_windows\",\"passed\":true,\"first_delay_ms\":545,\"final_delay_ms\":554,\"negative_window_ms\":3000,\"disable_after_edit_ms\":38,\"edit_timings\":[{\"index\":0,\"at_ms\":48},{\"index\":1,\"at_ms\":234},{\"index\":2,\"at_ms\":431},{\"index\":3,\"at_ms\":617},{\"index\":4,\"at_ms\":812},{\"index\":5,\"at_ms\":996}],\"duration_ms\":8662}]}\n### Ran Playwright code\n```js\nawait (async(page)=>{await page.waitForTimeout(250);return page.__interactionProof;})(page);\n```"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "type": "text",
+          "text": "### Result\n{\"running\":true,\"observations\":[{\"name\":\"language_dispatch_independent\",\"passed\":true,\"delayed_interaction_not_regraded\":true,\"css_static_copy\":true,\"duration_ms\":1237},{\"name\":\"completed_preview_interactions_independent\",\"passed\":true,\"wait_before_click_ms\":6102,\"wait_before_key_ms\":6107,\"own_fixture\":true,\"duration_ms\":12636},{\"name\":\"shared_original_run_deadline_independent\",\"passed\":true,\"original_run_to_timeout_ms\":5005,\"no_library_dependency\":true,\"no_active_loop_ui_requirement\":true,\"duration_ms\":5539},{\"name\":\"pending_interaction_budget_independent\",\"passed\":true,\"second_click_ms\":2137,\"timeout_ms\":5148,\"no_library_dependency\":true,\"duration_ms\":7220},{\"name\":\"auto_run_measured_negative_windows\",\"passed\":true,\"first_delay_ms\":545,\"final_delay_ms\":554,\"negative_window_ms\":3000,\"disable_after_edit_ms\":38,\"edit_timings\":[{\"index\":0,\"at_ms\":48},{\"index\":1,\"at_ms\":234},{\"index\":2,\"at_ms\":431},{\"index\":3,\"at_ms\":617},{\"index\":4,\"at_ms\":812},{\"index\":5,\"at_ms\":996}],\"duration_ms\":8662}]}\n### Ran Playwright code\n```js\nawait (async(page)=>{await page.waitForTimeout(250);return page.__interactionProof;})(page);\n```"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "type": "text",
+          "text": "### Result\n{\"running\":true,\"observations\":[{\"name\":\"language_dispatch_independent\",\"passed\":true,\"delayed_interaction_not_regraded\":true,\"css_static_copy\":true,\"duration_ms\":1237},{\"name\":\"completed_preview_interactions_independent\",\"passed\":true,\"wait_before_click_ms\":6102,\"wait_before_key_ms\":6107,\"own_fixture\":true,\"duration_ms\":12636},{\"name\":\"shared_original_run_deadline_independent\",\"passed\":true,\"original_run_to_timeout_ms\":5005,\"no_library_dependency\":true,\"no_active_loop_ui_requirement\":true,\"duration_ms\":5539},{\"name\":\"pending_interaction_budget_independent\",\"passed\":true,\"second_click_ms\":2137,\"timeout_ms\":5148,\"no_library_dependency\":true,\"duration_ms\":7220},{\"name\":\"auto_run_measured_negative_windows\",\"passed\":true,\"first_delay_ms\":545,\"final_delay_ms\":554,\"negative_window_ms\":3000,\"disable_after_edit_ms\":38,\"edit_timings\":[{\"index\":0,\"at_ms\":48},{\"index\":1,\"at_ms\":234},{\"index\":2,\"at_ms\":431},{\"index\":3,\"at_ms\":617},{\"index\":4,\"at_ms\":812},{\"index\":5,\"at_ms\":996}],\"duration_ms\":8662}]}\n### Ran Playwright code\n```js\nawait (async(page)=>{await page.waitForTimeout(250);return page.__interactionProof;})(page);\n```"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "type": "text",
+          "text": "### Result\n{\"running\":true,\"observations\":[{\"name\":\"language_dispatch_independent\",\"passed\":true,\"delayed_interaction_not_regraded\":true,\"css_static_copy\":true,\"duration_ms\":1237},{\"name\":\"completed_preview_interactions_independent\",\"passed\":true,\"wait_before_click_ms\":6102,\"wait_before_key_ms\":6107,\"own_fixture\":true,\"duration_ms\":12636},{\"name\":\"shared_original_run_deadline_independent\",\"passed\":true,\"original_run_to_timeout_ms\":5005,\"no_library_dependency\":true,\"no_active_loop_ui_requirement\":true,\"duration_ms\":5539},{\"name\":\"pending_interaction_budget_independent\",\"passed\":true,\"second_click_ms\":2137,\"timeout_ms\":5148,\"no_library_dependency\":true,\"duration_ms\":7220},{\"name\":\"auto_run_measured_negative_windows\",\"passed\":true,\"first_delay_ms\":545,\"final_delay_ms\":554,\"negative_window_ms\":3000,\"disable_after_edit_ms\":38,\"edit_timings\":[{\"index\":0,\"at_ms\":48},{\"index\":1,\"at_ms\":234},{\"index\":2,\"at_ms\":431},{\"index\":3,\"at_ms\":617},{\"index\":4,\"at_ms\":812},{\"index\":5,\"at_ms\":996}],\"duration_ms\":8662}]}\n### Ran Playwright code\n```js\nawait (async(page)=>{await page.waitForTimeout(250);return page.__interactionProof;})(page);\n```"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "type": "text",
+          "text": "### Result\n{\"running\":true,\"observations\":[{\"name\":\"language_dispatch_independent\",\"passed\":true,\"delayed_interaction_not_regraded\":true,\"css_static_copy\":true,\"duration_ms\":1237},{\"name\":\"completed_preview_interactions_independent\",\"passed\":true,\"wait_before_click_ms\":6102,\"wait_before_key_ms\":6107,\"own_fixture\":true,\"duration_ms\":12636},{\"name\":\"shared_original_run_deadline_independent\",\"passed\":true,\"original_run_to_timeout_ms\":5005,\"no_library_dependency\":true,\"no_active_loop_ui_requirement\":true,\"duration_ms\":5539},{\"name\":\"pending_interaction_budget_independent\",\"passed\":true,\"second_click_ms\":2137,\"timeout_ms\":5148,\"no_library_dependency\":true,\"duration_ms\":7220},{\"name\":\"auto_run_measured_negative_windows\",\"passed\":true,\"first_delay_ms\":545,\"final_delay_ms\":554,\"negative_window_ms\":3000,\"disable_after_edit_ms\":38,\"edit_timings\":[{\"index\":0,\"at_ms\":48},{\"index\":1,\"at_ms\":234},{\"index\":2,\"at_ms\":431},{\"index\":3,\"at_ms\":617},{\"index\":4,\"at_ms\":812},{\"index\":5,\"at_ms\":996}],\"duration_ms\":8662}]}\n### Ran Playwright code\n```js\nawait (async(page)=>{await page.waitForTimeout(250);return page.__interactionProof;})(page);\n```"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "type": "text",
+          "text": "### Result\n{\"running\":true,\"observations\":[{\"name\":\"language_dispatch_independent\",\"passed\":true,\"delayed_interaction_not_regraded\":true,\"css_static_copy\":true,\"duration_ms\":1237},{\"name\":\"completed_preview_interactions_independent\",\"passed\":true,\"wait_before_click_ms\":6102,\"wait_before_key_ms\":6107,\"own_fixture\":true,\"duration_ms\":12636},{\"name\":\"shared_original_run_deadline_independent\",\"passed\":true,\"original_run_to_timeout_ms\":5005,\"no_library_dependency\":true,\"no_active_loop_ui_requirement\":true,\"duration_ms\":5539},{\"name\":\"pending_interaction_budget_independent\",\"passed\":true,\"second_click_ms\":2137,\"timeout_ms\":5148,\"no_library_dependency\":true,\"duration_ms\":7220},{\"name\":\"auto_run_measured_negative_windows\",\"passed\":true,\"first_delay_ms\":545,\"final_delay_ms\":554,\"negative_window_ms\":3000,\"disable_after_edit_ms\":38,\"edit_timings\":[{\"index\":0,\"at_ms\":48},{\"index\":1,\"at_ms\":234},{\"index\":2,\"at_ms\":431},{\"index\":3,\"at_ms\":617},{\"index\":4,\"at_ms\":812},{\"index\":5,\"at_ms\":996}],\"duration_ms\":8662}]}\n### Ran Playwright code\n```js\nawait (async(page)=>{await page.waitForTimeout(250);return page.__interactionProof;})(page);\n```"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "type": "text",
+          "text": "### Result\n{\"running\":true,\"observations\":[{\"name\":\"language_dispatch_independent\",\"passed\":true,\"delayed_interaction_not_regraded\":true,\"css_static_copy\":true,\"duration_ms\":1237},{\"name\":\"completed_preview_interactions_independent\",\"passed\":true,\"wait_before_click_ms\":6102,\"wait_before_key_ms\":6107,\"own_fixture\":true,\"duration_ms\":12636},{\"name\":\"shared_original_run_deadline_independent\",\"passed\":true,\"original_run_to_timeout_ms\":5005,\"no_library_dependency\":true,\"no_active_loop_ui_requirement\":true,\"duration_ms\":5539},{\"name\":\"pending_interaction_budget_independent\",\"passed\":true,\"second_click_ms\":2137,\"timeout_ms\":5148,\"no_library_dependency\":true,\"duration_ms\":7220},{\"name\":\"auto_run_measured_negative_windows\",\"passed\":true,\"first_delay_ms\":545,\"final_delay_ms\":554,\"negative_window_ms\":3000,\"disable_after_edit_ms\":38,\"edit_timings\":[{\"index\":0,\"at_ms\":48},{\"index\":1,\"at_ms\":234},{\"index\":2,\"at_ms\":431},{\"index\":3,\"at_ms\":617},{\"index\":4,\"at_ms\":812},{\"index\":5,\"at_ms\":996}],\"duration_ms\":8662}]}\n### Ran Playwright code\n```js\nawait (async(page)=>{await page.waitForTimeout(250);return page.__interactionProof;})(page);\n```"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "type": "text",
+          "text": "### Result\n{\"running\":true,\"observations\":[{\"name\":\"language_dispatch_independent\",\"passed\":true,\"delayed_interaction_not_regraded\":true,\"css_static_copy\":true,\"duration_ms\":1237},{\"name\":\"completed_preview_interactions_independent\",\"passed\":true,\"wait_before_click_ms\":6102,\"wait_before_key_ms\":6107,\"own_fixture\":true,\"duration_ms\":12636},{\"name\":\"shared_original_run_deadline_independent\",\"passed\":true,\"original_run_to_timeout_ms\":5005,\"no_library_dependency\":true,\"no_active_loop_ui_requirement\":true,\"duration_ms\":5539},{\"name\":\"pending_interaction_budget_independent\",\"passed\":true,\"second_click_ms\":2137,\"timeout_ms\":5148,\"no_library_dependency\":true,\"duration_ms\":7220},{\"name\":\"auto_run_measured_negative_windows\",\"passed\":true,\"first_delay_ms\":545,\"final_delay_ms\":554,\"negative_window_ms\":3000,\"disable_after_edit_ms\":38,\"edit_timings\":[{\"index\":0,\"at_ms\":48},{\"index\":1,\"at_ms\":234},{\"index\":2,\"at_ms\":431},{\"index\":3,\"at_ms\":617},{\"index\":4,\"at_ms\":812},{\"index\":5,\"at_ms\":996}],\"duration_ms\":8662}]}\n### Ran Playwright code\n```js\nawait (async(page)=>{await page.waitForTimeout(250);return page.__interactionProof;})(page);\n```"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "type": "text",
+          "text": "### Result\n{\"running\":true,\"observations\":[{\"name\":\"language_dispatch_independent\",\"passed\":true,\"delayed_interaction_not_regraded\":true,\"css_static_copy\":true,\"duration_ms\":1237},{\"name\":\"completed_preview_interactions_independent\",\"passed\":true,\"wait_before_click_ms\":6102,\"wait_before_key_ms\":6107,\"own_fixture\":true,\"duration_ms\":12636},{\"name\":\"shared_original_run_deadline_independent\",\"passed\":true,\"original_run_to_timeout_ms\":5005,\"no_library_dependency\":true,\"no_active_loop_ui_requirement\":true,\"duration_ms\":5539},{\"name\":\"pending_interaction_budget_independent\",\"passed\":true,\"second_click_ms\":2137,\"timeout_ms\":5148,\"no_library_dependency\":true,\"duration_ms\":7220},{\"name\":\"auto_run_measured_negative_windows\",\"passed\":true,\"first_delay_ms\":545,\"final_delay_ms\":554,\"negative_window_ms\":3000,\"disable_after_edit_ms\":38,\"edit_timings\":[{\"index\":0,\"at_ms\":48},{\"index\":1,\"at_ms\":234},{\"index\":2,\"at_ms\":431},{\"index\":3,\"at_ms\":617},{\"index\":4,\"at_ms\":812},{\"index\":5,\"at_ms\":996}],\"duration_ms\":8662}]}\n### Ran Playwright code\n```js\nawait (async(page)=>{await page.waitForTimeout(250);return page.__interactionProof;})(page);\n```"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "type": "text",
+          "text": "### Result\n{\"running\":true,\"observations\":[{\"name\":\"language_dispatch_independent\",\"passed\":true,\"delayed_interaction_not_regraded\":true,\"css_static_copy\":true,\"duration_ms\":1237},{\"name\":\"completed_preview_interactions_independent\",\"passed\":true,\"wait_before_click_ms\":6102,\"wait_before_key_ms\":6107,\"own_fixture\":true,\"duration_ms\":12636},{\"name\":\"shared_original_run_deadline_independent\",\"passed\":true,\"original_run_to_timeout_ms\":5005,\"no_library_dependency\":true,\"no_active_loop_ui_requirement\":true,\"duration_ms\":5539},{\"name\":\"pending_interaction_budget_independent\",\"passed\":true,\"second_click_ms\":2137,\"timeout_ms\":5148,\"no_library_dependency\":true,\"duration_ms\":7220},{\"name\":\"auto_run_measured_negative_windows\",\"passed\":true,\"first_delay_ms\":545,\"final_delay_ms\":554,\"negative_window_ms\":3000,\"disable_after_edit_ms\":38,\"edit_timings\":[{\"index\":0,\"at_ms\":48},{\"index\":1,\"at_ms\":234},{\"index\":2,\"at_ms\":431},{\"index\":3,\"at_ms\":617},{\"index\":4,\"at_ms\":812},{\"index\":5,\"at_ms\":996}],\"duration_ms\":8662}]}\n### Ran Playwright code\n```js\nawait (async(page)=>{await page.waitForTimeout(250);return page.__interactionProof;})(page);\n```"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "type": "text",
+          "text": "### Result\n{\"running\":true,\"observations\":[{\"name\":\"language_dispatch_independent\",\"passed\":true,\"delayed_interaction_not_regraded\":true,\"css_static_copy\":true,\"duration_ms\":1237},{\"name\":\"completed_preview_interactions_independent\",\"passed\":true,\"wait_before_click_ms\":6102,\"wait_before_key_ms\":6107,\"own_fixture\":true,\"duration_ms\":12636},{\"name\":\"shared_original_run_deadline_independent\",\"passed\":true,\"original_run_to_timeout_ms\":5005,\"no_library_dependency\":true,\"no_active_loop_ui_requirement\":true,\"duration_ms\":5539},{\"name\":\"pending_interaction_budget_independent\",\"passed\":true,\"second_click_ms\":2137,\"timeout_ms\":5148,\"no_library_dependency\":true,\"duration_ms\":7220},{\"name\":\"auto_run_measured_negative_windows\",\"passed\":true,\"first_delay_ms\":545,\"final_delay_ms\":554,\"negative_window_ms\":3000,\"disable_after_edit_ms\":38,\"edit_timings\":[{\"index\":0,\"at_ms\":48},{\"index\":1,\"at_ms\":234},{\"index\":2,\"at_ms\":431},{\"index\":3,\"at_ms\":617},{\"index\":4,\"at_ms\":812},{\"index\":5,\"at_ms\":996}],\"duration_ms\":8662}]}\n### Ran Playwright code\n```js\nawait (async(page)=>{await page.waitForTimeout(250);return page.__interactionProof;})(page);\n```"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "type": "text",
+          "text": "### Result\n{\"running\":true,\"observations\":[{\"name\":\"language_dispatch_independent\",\"passed\":true,\"delayed_interaction_not_regraded\":true,\"css_static_copy\":true,\"duration_ms\":1237},{\"name\":\"completed_preview_interactions_independent\",\"passed\":true,\"wait_before_click_ms\":6102,\"wait_before_key_ms\":6107,\"own_fixture\":true,\"duration_ms\":12636},{\"name\":\"shared_original_run_deadline_independent\",\"passed\":true,\"original_run_to_timeout_ms\":5005,\"no_library_dependency\":true,\"no_active_loop_ui_requirement\":true,\"duration_ms\":5539},{\"name\":\"pending_interaction_budget_independent\",\"passed\":true,\"second_click_ms\":2137,\"timeout_ms\":5148,\"no_library_dependency\":true,\"duration_ms\":7220},{\"name\":\"auto_run_measured_negative_windows\",\"passed\":true,\"first_delay_ms\":545,\"final_delay_ms\":554,\"negative_window_ms\":3000,\"disable_after_edit_ms\":38,\"edit_timings\":[{\"index\":0,\"at_ms\":48},{\"index\":1,\"at_ms\":234},{\"index\":2,\"at_ms\":431},{\"index\":3,\"at_ms\":617},{\"index\":4,\"at_ms\":812},{\"index\":5,\"at_ms\":996}],\"duration_ms\":8662}]}\n### Ran Playwright code\n```js\nawait (async(page)=>{await page.waitForTimeout(250);return page.__interactionProof;})(page);\n```"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "type": "text",
+          "text": "### Result\n{\"running\":true,\"observations\":[{\"name\":\"language_dispatch_independent\",\"passed\":true,\"delayed_interaction_not_regraded\":true,\"css_static_copy\":true,\"duration_ms\":1237},{\"name\":\"completed_preview_interactions_independent\",\"passed\":true,\"wait_before_click_ms\":6102,\"wait_before_key_ms\":6107,\"own_fixture\":true,\"duration_ms\":12636},{\"name\":\"shared_original_run_deadline_independent\",\"passed\":true,\"original_run_to_timeout_ms\":5005,\"no_library_dependency\":true,\"no_active_loop_ui_requirement\":true,\"duration_ms\":5539},{\"name\":\"pending_interaction_budget_independent\",\"passed\":true,\"second_click_ms\":2137,\"timeout_ms\":5148,\"no_library_dependency\":true,\"duration_ms\":7220},{\"name\":\"auto_run_measured_negative_windows\",\"passed\":true,\"first_delay_ms\":545,\"final_delay_ms\":554,\"negative_window_ms\":3000,\"disable_after_edit_ms\":38,\"edit_timings\":[{\"index\":0,\"at_ms\":48},{\"index\":1,\"at_ms\":234},{\"index\":2,\"at_ms\":431},{\"index\":3,\"at_ms\":617},{\"index\":4,\"at_ms\":812},{\"index\":5,\"at_ms\":996}],\"duration_ms\":8662}]}\n### Ran Playwright code\n```js\nawait (async(page)=>{await page.waitForTimeout(250);return page.__interactionProof;})(page);\n```"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "type": "text",
+          "text": "### Result\n{\"running\":true,\"observations\":[{\"name\":\"language_dispatch_independent\",\"passed\":true,\"delayed_interaction_not_regraded\":true,\"css_static_copy\":true,\"duration_ms\":1237},{\"name\":\"completed_preview_interactions_independent\",\"passed\":true,\"wait_before_click_ms\":6102,\"wait_before_key_ms\":6107,\"own_fixture\":true,\"duration_ms\":12636},{\"name\":\"shared_original_run_deadline_independent\",\"passed\":true,\"original_run_to_timeout_ms\":5005,\"no_library_dependency\":true,\"no_active_loop_ui_requirement\":true,\"duration_ms\":5539},{\"name\":\"pending_interaction_budget_independent\",\"passed\":true,\"second_click_ms\":2137,\"timeout_ms\":5148,\"no_library_dependency\":true,\"duration_ms\":7220},{\"name\":\"auto_run_measured_negative_windows\",\"passed\":true,\"first_delay_ms\":545,\"final_delay_ms\":554,\"negative_window_ms\":3000,\"disable_after_edit_ms\":38,\"edit_timings\":[{\"index\":0,\"at_ms\":48},{\"index\":1,\"at_ms\":234},{\"index\":2,\"at_ms\":431},{\"index\":3,\"at_ms\":617},{\"index\":4,\"at_ms\":812},{\"index\":5,\"at_ms\":996}],\"duration_ms\":8662}]}\n### Ran Playwright code\n```js\nawait (async(page)=>{await page.waitForTimeout(250);return page.__interactionProof;})(page);\n```"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "type": "text",
+          "text": "### Result\n{\"running\":true,\"observations\":[{\"name\":\"language_dispatch_independent\",\"passed\":true,\"delayed_interaction_not_regraded\":true,\"css_static_copy\":true,\"duration_ms\":1237},{\"name\":\"completed_preview_interactions_independent\",\"passed\":true,\"wait_before_click_ms\":6102,\"wait_before_key_ms\":6107,\"own_fixture\":true,\"duration_ms\":12636},{\"name\":\"shared_original_run_deadline_independent\",\"passed\":true,\"original_run_to_timeout_ms\":5005,\"no_library_dependency\":true,\"no_active_loop_ui_requirement\":true,\"duration_ms\":5539},{\"name\":\"pending_interaction_budget_independent\",\"passed\":true,\"second_click_ms\":2137,\"timeout_ms\":5148,\"no_library_dependency\":true,\"duration_ms\":7220},{\"name\":\"auto_run_measured_negative_windows\",\"passed\":true,\"first_delay_ms\":545,\"final_delay_ms\":554,\"negative_window_ms\":3000,\"disable_after_edit_ms\":38,\"edit_timings\":[{\"index\":0,\"at_ms\":48},{\"index\":1,\"at_ms\":234},{\"index\":2,\"at_ms\":431},{\"index\":3,\"at_ms\":617},{\"index\":4,\"at_ms\":812},{\"index\":5,\"at_ms\":996}],\"duration_ms\":8662}]}\n### Ran Playwright code\n```js\nawait (async(page)=>{await page.waitForTimeout(250);return page.__interactionProof;})(page);\n```"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "type": "text",
+          "text": "### Result\n{\"running\":true,\"observations\":[{\"name\":\"language_dispatch_independent\",\"passed\":true,\"delayed_interaction_not_regraded\":true,\"css_static_copy\":true,\"duration_ms\":1237},{\"name\":\"completed_preview_interactions_independent\",\"passed\":true,\"wait_before_click_ms\":6102,\"wait_before_key_ms\":6107,\"own_fixture\":true,\"duration_ms\":12636},{\"name\":\"shared_original_run_deadline_independent\",\"passed\":true,\"original_run_to_timeout_ms\":5005,\"no_library_dependency\":true,\"no_active_loop_ui_requirement\":true,\"duration_ms\":5539},{\"name\":\"pending_interaction_budget_independent\",\"passed\":true,\"second_click_ms\":2137,\"timeout_ms\":5148,\"no_library_dependency\":true,\"duration_ms\":7220},{\"name\":\"auto_run_measured_negative_windows\",\"passed\":true,\"first_delay_ms\":545,\"final_delay_ms\":554,\"negative_window_ms\":3000,\"disable_after_edit_ms\":38,\"edit_timings\":[{\"index\":0,\"at_ms\":48},{\"index\":1,\"at_ms\":234},{\"index\":2,\"at_ms\":431},{\"index\":3,\"at_ms\":617},{\"index\":4,\"at_ms\":812},{\"index\":5,\"at_ms\":996}],\"duration_ms\":8662}]}\n### Ran Playwright code\n```js\nawait (async(page)=>{await page.waitForTimeout(250);return page.__interactionProof;})(page);\n```"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "type": "text",
+          "text": "### Result\n{\"running\":true,\"observations\":[{\"name\":\"language_dispatch_independent\",\"passed\":true,\"delayed_interaction_not_regraded\":true,\"css_static_copy\":true,\"duration_ms\":1237},{\"name\":\"completed_preview_interactions_independent\",\"passed\":true,\"wait_before_click_ms\":6102,\"wait_before_key_ms\":6107,\"own_fixture\":true,\"duration_ms\":12636},{\"name\":\"shared_original_run_deadline_independent\",\"passed\":true,\"original_run_to_timeout_ms\":5005,\"no_library_dependency\":true,\"no_active_loop_ui_requirement\":true,\"duration_ms\":5539},{\"name\":\"pending_interaction_budget_independent\",\"passed\":true,\"second_click_ms\":2137,\"timeout_ms\":5148,\"no_library_dependency\":true,\"duration_ms\":7220},{\"name\":\"auto_run_measured_negative_windows\",\"passed\":true,\"first_delay_ms\":545,\"final_delay_ms\":554,\"negative_window_ms\":3000,\"disable_after_edit_ms\":38,\"edit_timings\":[{\"index\":0,\"at_ms\":48},{\"index\":1,\"at_ms\":234},{\"index\":2,\"at_ms\":431},{\"index\":3,\"at_ms\":617},{\"index\":4,\"at_ms\":812},{\"index\":5,\"at_ms\":996}],\"duration_ms\":8662}]}\n### Ran Playwright code\n```js\nawait (async(page)=>{await page.waitForTimeout(250);return page.__interactionProof;})(page);\n```"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "type": "text",
+          "text": "### Result\n{\"running\":false,\"passed\":false,\"observations\":[{\"name\":\"language_dispatch_independent\",\"passed\":true,\"delayed_interaction_not_regraded\":true,\"css_static_copy\":true,\"duration_ms\":1237},{\"name\":\"completed_preview_interactions_independent\",\"passed\":true,\"wait_before_click_ms\":6102,\"wait_before_key_ms\":6107,\"own_fixture\":true,\"duration_ms\":12636},{\"name\":\"shared_original_run_deadline_independent\",\"passed\":true,\"original_run_to_timeout_ms\":5005,\"no_library_dependency\":true,\"no_active_loop_ui_requirement\":true,\"duration_ms\":5539},{\"name\":\"pending_interaction_budget_independent\",\"passed\":true,\"second_click_ms\":2137,\"timeout_ms\":5148,\"no_library_dependency\":true,\"duration_ms\":7220},{\"name\":\"auto_run_measured_negative_windows\",\"passed\":true,\"first_delay_ms\":545,\"final_delay_ms\":554,\"negative_window_ms\":3000,\"disable_after_edit_ms\":38,\"edit_timings\":[{\"index\":0,\"at_ms\":48},{\"index\":1,\"at_ms\":234},{\"index\":2,\"at_ms\":431},{\"index\":3,\"at_ms\":617},{\"index\":4,\"at_ms\":812},{\"index\":5,\"at_ms\":996}],\"duration_ms\":8662},{\"name\":\"persistent_snippets_actual_dirty_editor\",\"passed\":false,\"error\":\"TimeoutError: locator.waitFor: Timeout 30000ms exceeded.\\nCall log:\\n  - waiting for getByRole('button', { name: 'Load latest', exact: true }) to be visible\\n\",\"duration_ms\":31279}]}\n### Ran Playwright code\n```js\nawait (async(page)=>{await page.waitForTimeout(250);return page.__interactionProof;})(page);\n```"
+        }
+      ]
+    }
+  ],
+  "observations": {
+    "running": false,
+    "passed": false,
+    "observations": [
+      {
+        "name": "language_dispatch_independent",
+        "passed": true,
+        "delayed_interaction_not_regraded": true,
+        "css_static_copy": true,
+        "duration_ms": 1237
+      },
+      {
+        "name": "completed_preview_interactions_independent",
+        "passed": true,
+        "wait_before_click_ms": 6102,
+        "wait_before_key_ms": 6107,
+        "own_fixture": true,
+        "duration_ms": 12636
+      },
+      {
+        "name": "shared_original_run_deadline_independent",
+        "passed": true,
+        "original_run_to_timeout_ms": 5005,
+        "no_library_dependency": true,
+        "no_active_loop_ui_requirement": true,
+        "duration_ms": 5539
+      },
+      {
+        "name": "pending_interaction_budget_independent",
+        "passed": true,
+        "second_click_ms": 2137,
+        "timeout_ms": 5148,
+        "no_library_dependency": true,
+        "duration_ms": 7220
+      },
+      {
+        "name": "auto_run_measured_negative_windows",
+        "passed": true,
+        "first_delay_ms": 545,
+        "final_delay_ms": 554,
+        "negative_window_ms": 3000,
+        "disable_after_edit_ms": 38,
+        "edit_timings": [
+          {
+            "index": 0,
+            "at_ms": 48
+          },
+          {
+            "index": 1,
+            "at_ms": 234
+          },
+          {
+            "index": 2,
+            "at_ms": 431
+          },
+          {
+            "index": 3,
+            "at_ms": 617
+          },
+          {
+            "index": 4,
+            "at_ms": 812
+          },
+          {
+            "index": 5,
+            "at_ms": 996
+          }
+        ],
+        "duration_ms": 8662
+      },
+      {
+        "name": "persistent_snippets_actual_dirty_editor",
+        "passed": false,
+        "error": "TimeoutError: locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n  - waiting for getByRole('button', { name: 'Load latest', exact: true }) to be visible\n",
+        "duration_ms": 31279
+      }
+    ]
+  },
+  "passed": false,
+  "finished_at": "2026-09-27T12:08:51Z"
+}

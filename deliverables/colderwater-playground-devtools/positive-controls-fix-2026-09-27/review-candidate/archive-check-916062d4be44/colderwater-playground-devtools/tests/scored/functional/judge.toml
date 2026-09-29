@@ -1,0 +1,638 @@
+[judge]
+judge = "claude-code"
+mode = "batched"
+timeout = 9000
+isolated = false
+prompt_template = "prompt.md"
+
+[[judge.mcp_servers]]
+name = "playwright"
+transport = "stdio"
+command = "playwright-mcp"
+args = ["--headless", "--isolated", "--executable-path=/usr/local/bin/chromium", "--no-sandbox"]
+
+[[judge.mcp_servers]]
+name = "verifier"
+transport = "stdio"
+command = "/usr/local/bin/python3"
+args = ["/tests/tools/restart_mcp.py", "$APP_RESTART_HELPER"]
+
+[scoring]
+aggregation = "weighted_mean"
+
+
+[[criterion]]
+id = "cw_startup_ready"
+name = "cw_startup_ready"
+type = "binary"
+weight = 0.20
+description = "S01.startup_ready: Useful starting source automatically produces preview and console output without Run."
+
+[[criterion]]
+id = "cw_usable_examples"
+name = "cw_usable_examples"
+type = "binary"
+weight = 0.15
+description = "S01.usable_examples: A chosen built-in example supplies editable source and working output; an authored edit actually executes."
+
+[[criterion]]
+id = "cw_example_separate"
+name = "cw_example_separate"
+type = "binary"
+weight = 0.15
+description = "S01.example_separate: The edited example saves as a separate exact user record; reloading the built-in example preserves its original filename/source."
+
+[[criterion]]
+id = "cw_js_html_filename_dispatch"
+name = "cw_js_html_filename_dispatch"
+type = "binary"
+weight = 0.40
+description = "S02.js_html_filename_dispatch: JS and complete HTML execute in the mode selected by filename alone. Lowercase fallback isolates case handling."
+
+[[criterion]]
+id = "cw_css_apply_snapshot"
+name = "cw_css_apply_snapshot"
+type = "binary"
+weight = 0.30
+description = "S02.css_apply_snapshot: CSS applies to a fresh copy of the last successful document, preserving its content and prior authored style."
+
+[[criterion]]
+id = "cw_extension_case"
+name = "cw_extension_case"
+type = "binary"
+weight = 0.15
+description = "S02.extension_case: Uppercase .JS, .HTML and .CSS dispatch correctly without selecting a separate language."
+
+[[criterion]]
+id = "cw_js_fresh_document"
+name = "cw_js_fresh_document"
+type = "binary"
+weight = 0.25
+description = "S02.js_fresh_document: After the observed prior document, the later JS Run produces its own fresh-undefined preview and fresh-js-log without the old heading. Global freshness also requires S04's executed A setter/start and B DOM/log showing typeof window.__cancelLeak is undefined; cancellation timing need not pass."
+
+[[criterion]]
+id = "cw_css_inert_copy"
+name = "cw_css_inert_copy"
+type = "binary"
+weight = 0.40
+description = "S02.css_inert_copy: After the HTML script and button handler have actually produced their markers, CSS retains that document and its visible enabled button. An ordinary click on that retained button succeeds as a browser action, but neither old marker count increases during CSS Run or the click. A removed, blank, hidden or disabled button cannot establish inert copying. CSS colour/style correctness is scored separately."
+
+[[criterion]]
+id = "cw_later_interactions"
+name = "cw_later_interactions"
+type = "binary"
+weight = 0.60
+description = "S03.later_interactions: After each six-second idle interval, the completed preview handles the click and later focused key/input without rerunning source."
+
+[[criterion]]
+id = "cw_completed_stop"
+name = "cw_completed_stop"
+type = "binary"
+weight = 0.40
+description = "S03.completed_stop: After a completed preview and at least one of its authored handlers actually works, Stop reports stopped, prevents further old-handler output and permits a new Run. Removed/static/disabled controls after Stop are valid."
+
+[[criterion]]
+id = "cw_supersede_pending"
+name = "cw_supersede_pending"
+type = "binary"
+weight = 0.90
+description = "S04.supersede_pending: B supersedes genuinely pending A: A's delayed output, DOM and success never become current. Fresh globals are owned by S02."
+
+[[criterion]]
+id = "cw_stop_pending_execution"
+name = "cw_stop_pending_execution"
+type = "binary"
+weight = 0.90
+description = "S04.stop_pending_execution: Stop reports cancellation, prevents the active timer's late output and permits a new Run. Rollback is separate."
+
+[[criterion]]
+id = "cw_stop_pending_rollback"
+name = "cw_stop_pending_rollback"
+type = "binary"
+weight = 0.70
+description = "S04.stop_pending_rollback: Stopping the active timer retains/restores B's completed render; provisional candidate display is optional."
+
+[[criterion]]
+id = "cw_preview_origin_boundary"
+name = "cw_preview_origin_boundary"
+type = "binary"
+weight = 1.25
+description = "S05.preview_origin_boundary: All four parent-document/storage operations are blocked, actual host state is unchanged, and own-document execution remains usable."
+
+[[criterion]]
+id = "cw_working_files_private"
+name = "cw_working_files_private"
+type = "binary"
+weight = 0.50
+description = "S06.working_files_private: Healthy controls succeed and all nine candidates reach S06's accepted denial/no-content/fallback/public-role outcomes. A confirmed exposure is a local no. Only the narrowly defined unresolved public-role observation or failed evaluator tooling uses EVALUATION_INCOMPLETE; neither can simultaneously be an exposure verdict."
+
+[[criterion]]
+id = "cw_snippet_network_boundary"
+name = "cw_snippet_network_boundary"
+type = "binary"
+weight = 0.50
+description = "S07.snippet_network_boundary: With matching transport controls, separate fetch/Image runs visibly refuse access with no extra deliveries/content; ordinary execution recovers."
+
+[[criterion]]
+id = "cw_harmless_scope_words"
+name = "cw_harmless_scope_words"
+type = "binary"
+weight = 0.25
+description = "S08.harmless_scope_words: The HTML control's ordinary strings/comments/text containing unsupported-family words renders and logs successfully."
+
+[[criterion]]
+id = "cw_unsupported_execution_refused"
+name = "cw_unsupported_execution_refused"
+type = "binary"
+weight = 1.50
+description = "S08.unsupported_execution_refused: Each of the five separate unsupported-family probes is clearly refused, preserves the good render and permits ordinary recovery."
+
+[[criterion]]
+id = "cw_literal_loop_deadline"
+name = "cw_literal_loop_deadline"
+type = "binary"
+weight = 2.75
+description = "S09.literal_loop_deadline: Both literal loops terminate within the allowed budget margin with a time-limit reason, early logs preserved and successful recovery."
+
+[[criterion]]
+id = "cw_literal_loop_rollback"
+name = "cw_literal_loop_rollback"
+type = "binary"
+weight = 0.75
+description = "S09.literal_loop_rollback: Each loop timeout retains/restores recorded currentLastGood rather than a failed or empty candidate."
+
+[[criterion]]
+id = "cw_js_error_message"
+name = "cw_js_error_message"
+type = "binary"
+weight = 0.25
+description = "S10.js_error_message: The console identifies the not-a-function error involving forEeach."
+
+[[criterion]]
+id = "cw_js_error_line"
+name = "cw_js_error_line"
+type = "binary"
+weight = 0.25
+description = "S10.js_error_line: The error identifies line 4 of the exact entered JS source, without wrapper offsets."
+
+[[criterion]]
+id = "cw_js_error_rollback"
+name = "cw_js_error_rollback"
+type = "binary"
+weight = 0.50
+description = "S10.js_error_rollback: The JS failure restores recorded currentLastGood, not failed-partial-dom; an ordinary recovery Run works."
+
+[[criterion]]
+id = "cw_html_error_message"
+name = "cw_html_error_message"
+type = "binary"
+weight = 0.25
+description = "S11.html_error_message: The console identifies undefinedFunctionCall from the complete HTML source."
+
+[[criterion]]
+id = "cw_html_error_line"
+name = "cw_html_error_line"
+type = "binary"
+weight = 0.25
+description = "S11.html_error_line: The error identifies line 6 of the exact complete HTML document, including its markup."
+
+[[criterion]]
+id = "cw_html_error_rollback"
+name = "cw_html_error_rollback"
+type = "binary"
+weight = 0.50
+description = "S11.html_error_rollback: The HTML failure restores recorded currentLastGood, not Failed HTML candidate; an ordinary recovery Run works."
+
+[[criterion]]
+id = "cw_timer_error_message"
+name = "cw_timer_error_message"
+type = "binary"
+weight = 0.25
+description = "S12.timer_error_message: The timer callback's thrown async-error-marker is reported as a failure."
+
+[[criterion]]
+id = "cw_timer_error_line"
+name = "cw_timer_error_line"
+type = "binary"
+weight = 0.25
+description = "S12.timer_error_line: The timer error identifies entered user-source line 2."
+
+[[criterion]]
+id = "cw_timer_error_rollback"
+name = "cw_timer_error_rollback"
+type = "binary"
+weight = 0.50
+description = "S12.timer_error_rollback: The timer failure restores recorded currentLastGood, not async-failed-candidate; an ordinary recovery Run works."
+
+[[criterion]]
+id = "cw_promise_error_message"
+name = "cw_promise_error_message"
+type = "binary"
+weight = 0.25
+description = "S13.promise_error_message: The unhandled promise-error-marker rejection is reported as a failure."
+
+[[criterion]]
+id = "cw_promise_error_line"
+name = "cw_promise_error_line"
+type = "binary"
+weight = 0.25
+description = "S13.promise_error_line: The unhandled rejection identifies entered user-source line 2."
+
+[[criterion]]
+id = "cw_promise_error_rollback"
+name = "cw_promise_error_rollback"
+type = "binary"
+weight = 0.50
+description = "S13.promise_error_rollback: The rejection restores recorded currentLastGood, not promise-failed-candidate; an ordinary recovery Run works."
+
+[[criterion]]
+id = "cw_console_level_stream"
+name = "cw_console_level_stream"
+type = "binary"
+weight = 1.00
+description = "S14.console_level_stream: The four authored console levels have their exact values, order and unambiguous level indicators; console.error alone is a log."
+
+[[criterion]]
+id = "cw_console_value_inspection"
+name = "cw_console_value_inspection"
+type = "binary"
+weight = 1.50
+description = "S15.console_value_inspection: App controls expose object properties, nested deep value and array elements rather than opaque summaries."
+
+[[criterion]]
+id = "cw_console_history"
+name = "cw_console_history"
+type = "binary"
+weight = 0.30
+description = "S16.console_history: Previously observed log entries remain while subsequent Runs actually append their distinct new markers, until Clear is used."
+
+[[criterion]]
+id = "cw_console_duration"
+name = "cw_console_duration"
+type = "binary"
+weight = 0.30
+description = "S16.console_duration: The completed Run shows a measured duration, not a blank or placeholder."
+
+[[criterion]]
+id = "cw_console_scroll_policy"
+name = "cw_console_scroll_policy"
+type = "binary"
+weight = 0.60
+description = "S16.console_scroll_policy: New rows follow at the bottom; when deliberately scrolled up, incoming rows preserve the reading position."
+
+[[criterion]]
+id = "cw_console_clear_control"
+name = "cw_console_clear_control"
+type = "binary"
+weight = 0.30
+description = "S16.console_clear_control: Ordinary Clear removes prior rows; unrelated duration/status labels may remain."
+
+[[criterion]]
+id = "cw_autorun_debounce"
+name = "cw_autorun_debounce"
+type = "binary"
+weight = 0.90
+description = "S17.autorun_debounce: Enabled Auto-run waits for a typing pause, resets its wait on closer-spaced edits, then executes only the final version within about two seconds."
+
+[[criterion]]
+id = "cw_autorun_off_stays_idle"
+name = "cw_autorun_off_stays_idle"
+type = "binary"
+weight = 0.30
+description = "S17.autorun_off_stays_idle: First observe an authored edit execute automatically with Auto-run on and no manual Run. Then edits made with Auto-run already off remain unexecuted throughout the measured-delay-plus-margin window, and deliberate Run executes that exact pending source. A dead Auto-run feature cannot pass; correct debounce-reset behaviour is not a prerequisite."
+
+[[criterion]]
+id = "cw_autorun_off_cancels_queue"
+name = "cw_autorun_off_cancels_queue"
+type = "binary"
+weight = 0.40
+description = "S17.autorun_off_cancels_queue: After observing an authored edit execute automatically with Auto-run on, disable it before a further edit's measured debounce expires. That queued edit stays unexecuted for the full observation window and then executes through deliberate Run. A dead Auto-run feature cannot pass; correct debounce-reset behaviour is not a prerequisite."
+
+[[criterion]]
+id = "cw_manual_run_independent_of_autorun"
+name = "cw_manual_run_independent_of_autorun"
+type = "binary"
+weight = 0.40
+description = "S17.manual_run_independent_of_autorun: Ordinary Run executes authored code with Auto-run both on and off; the on-state proof has no pending edit debounce."
+
+[[criterion]]
+id = "cw_pane_dividers_work"
+name = "cw_pane_dividers_work"
+type = "binary"
+weight = 0.25
+description = "S18.pane_dividers_work: Dividers change editor/preview and preview/console allocations while the panes remain usable."
+
+[[criterion]]
+id = "cw_pane_sizes_persist"
+name = "cw_pane_sizes_persist"
+type = "binary"
+weight = 0.25
+description = "S18.pane_sizes_persist: The changed allocations survive reload; no exact pixels or layout are prescribed."
+
+[[criterion]]
+id = "cw_editor_monospace"
+name = "cw_editor_monospace"
+type = "binary"
+weight = 0.10
+description = "S19.editor_monospace: The populated editor uses a monospaced face."
+
+[[criterion]]
+id = "cw_editor_line_numbers"
+name = "cw_editor_line_numbers"
+type = "binary"
+weight = 0.15
+description = "S19.editor_line_numbers: The editor displays actual line numbers for entered source."
+
+[[criterion]]
+id = "cw_editor_syntax_colouring"
+name = "cw_editor_syntax_colouring"
+type = "binary"
+weight = 0.45
+description = "S19.editor_syntax_colouring: JS, complete HTML and CSS each have visible syntax colouring under their corresponding filenames."
+
+[[criterion]]
+id = "cw_editor_matching_brackets"
+name = "cw_editor_matching_brackets"
+type = "binary"
+weight = 0.30
+description = "S19.editor_matching_brackets: A cursor beside either brace visibly identifies the matching pair."
+
+[[criterion]]
+id = "cw_editor_multiline_indent"
+name = "cw_editor_multiline_indent"
+type = "binary"
+weight = 0.50
+description = "S20.editor_multiline_indent: Tab consistently indents all three selected lines without changing source. Retaining selection is not required."
+
+[[criterion]]
+id = "cw_editor_multiline_unindent"
+name = "cw_editor_multiline_unindent"
+type = "binary"
+weight = 0.50
+description = "S20.editor_multiline_unindent: Shift+Tab removes a consistent indent from all three selected lines. Reselect/manual-indent if needed to isolate this action."
+
+[[criterion]]
+id = "cw_saved_record_fidelity"
+name = "cw_saved_record_fidelity"
+type = "binary"
+weight = 1.00
+description = "S21.saved_record_fidelity: New drafts save as distinct exact records; loading restores each one's fields. S23's current Save updates its existing identity rather than adding another."
+
+[[criterion]]
+id = "cw_saved_records_browser_reload"
+name = "cw_saved_records_browser_reload"
+type = "binary"
+weight = 0.50
+description = "S21.saved_records_browser_reload: Both saved identities and exact fields remain retrievable after browser reload."
+
+[[criterion]]
+id = "cw_process_restart_durability"
+name = "cw_process_restart_durability"
+type = "binary"
+weight = 2.50
+description = "S22.process_restart_durability: The one process restart preserves recorded identities/fields/revisions exactly once; a current post-restart Save changes only its target and persists."
+
+[[criterion]]
+id = "cw_stale_save_server_refusal"
+name = "cw_stale_save_server_refusal"
+type = "binary"
+weight = 1.40
+description = "S23.stale_save_server_refusal: An otherwise-valid stale Save is refused with newer fields/revision unchanged. The successful newer Save is its control; S21 owns update fidelity."
+
+[[criterion]]
+id = "cw_stale_save_draft_recovery"
+name = "cw_stale_save_draft_recovery"
+type = "binary"
+weight = 1.60
+description = "S23.stale_save_draft_recovery: The actual dirty editor gets useful conflict feedback, retains all unsaved fields and supports deliberate latest-revision recovery; proactive prevention is valid."
+
+[[criterion]]
+id = "cw_title_trimming"
+name = "cw_title_trimming"
+type = "binary"
+weight = 0.30
+description = "S24.title_trimming: Padded unused titles are stored/displayed trimmed after both creation and rename."
+
+[[criterion]]
+id = "cw_rename_title_only"
+name = "cw_rename_title_only"
+type = "binary"
+weight = 0.30
+description = "S24.rename_title_only: Current rename changes only the selected title, preserving its filename/source and the complete sibling record."
+
+[[criterion]]
+id = "cw_title_collision_refusal"
+name = "cw_title_collision_refusal"
+type = "binary"
+weight = 0.45
+description = "S24.title_collision_refusal: With an observed successful valid current title write and unused-title recovery, UI and current-revision server writes refuse exact/padded collisions with useful feedback and both complete records/revisions unchanged."
+
+[[criterion]]
+id = "cw_title_empty_rejected"
+name = "cw_title_empty_rejected"
+type = "binary"
+weight = 0.20
+description = "S24.title_empty_rejected: With an observed successful valid current title write and unused-title recovery, otherwise-valid empty and whitespace-only titles are refused without saved-state mutation."
+
+[[criterion]]
+id = "cw_title_case_sensitive"
+name = "cw_title_case_sensitive"
+type = "binary"
+weight = 0.25
+description = "S24.title_case_sensitive: A case-distinct title coexists under its own identity and exact fields."
+
+[[criterion]]
+id = "cw_stale_rename_refusal"
+name = "cw_stale_rename_refusal"
+type = "binary"
+weight = 1.50
+description = "S25.stale_rename_refusal: A valid stale rename is usefully refused without newer-record mutation; current renames before/after work."
+
+[[criterion]]
+id = "cw_duplicate_initial_fidelity"
+name = "cw_duplicate_initial_fidelity"
+type = "binary"
+weight = 0.75
+description = "S26.duplicate_initial_fidelity: Duplicate creates a distinct stable identity with its chosen title and the original exact filename/source."
+
+[[criterion]]
+id = "cw_duplicate_edit_independence"
+name = "cw_duplicate_edit_independence"
+type = "binary"
+weight = 1.25
+description = "S26.duplicate_edit_independence: Each own edit actually saves and reloads: changing Original preserves Copy's previous source, and then changing Copy preserves Original's independently saved source."
+
+[[criterion]]
+id = "cw_duplicate_collision_refusal"
+name = "cw_duplicate_collision_refusal"
+type = "binary"
+weight = 0.50
+description = "S26.duplicate_collision_refusal: Duplicate/create refuses the existing copy title without overwrite or extra same-title record; a new unused title succeeds."
+
+[[criterion]]
+id = "cw_delete_confirmation_cancel"
+name = "cw_delete_confirmation_cancel"
+type = "binary"
+weight = 0.60
+description = "S27.delete_confirmation_cancel: Delete asks first, and cancellation leaves the complete library and exact records unchanged after reload."
+
+[[criterion]]
+id = "cw_delete_confirmed_selected_only"
+name = "cw_delete_confirmed_selected_only"
+type = "binary"
+weight = 0.40
+description = "S27.delete_confirmed_selected_only: The actual confirmed removal deletes only the selected identity durably, preserving sibling/unrelated records. Confirmation availability is separately owned."
+
+[[criterion]]
+id = "cw_stale_delete_refusal"
+name = "cw_stale_delete_refusal"
+type = "binary"
+weight = 1.00
+description = "S28.stale_delete_refusal: A valid stale delete is usefully refused without newer-record mutation; current deletes before/after work. Confirmation is not scored here."
+
+[[criterion]]
+id = "cw_deleted_identity_update_refusal"
+name = "cw_deleted_identity_update_refusal"
+type = "binary"
+weight = 1.00
+description = "S29.deleted_identity_update_refusal: Updating the removed identity is usefully refused without resurrection, replacement or unrelated mutation; an existing-record update works."
+
+[[criterion]]
+id = "cw_dirty_workspace_identity"
+name = "cw_dirty_workspace_identity"
+type = "binary"
+weight = 0.55
+description = "S30.dirty_workspace_identity: The edited record is identifiable and source-only, title-only and filename-only changes each show unsaved state."
+
+[[criterion]]
+id = "cw_dirty_transition_protection"
+name = "cw_dirty_transition_protection"
+type = "binary"
+weight = 0.40
+description = "S30.dirty_transition_protection: Each of four replacement routes warns, and cancellation preserves all dirty fields. Re-establish each fixture independently."
+
+[[criterion]]
+id = "cw_dirty_transition_acceptance"
+name = "cw_dirty_transition_acceptance"
+type = "binary"
+weight = 0.30
+description = "S30.dirty_transition_acceptance: Accepting each replacement reaches its actual destination, while discarded edits never change saved Base. No new-draft template is prescribed."
+
+[[criterion]]
+id = "cw_native_dirty_leave_protection"
+name = "cw_native_dirty_leave_protection"
+type = "binary"
+weight = 0.75
+description = "S31.native_dirty_leave_protection: Dirty work gets native leave protection: dismiss retains the draft, accept permits reload, saved data stays intact; clean reload does not warn."
+
+[[criterion]]
+id = "cw_export_exact_source_file"
+name = "cw_export_exact_source_file"
+type = "binary"
+weight = 0.50
+description = "S32.export_exact_source_file: An actual unsaved-draft export downloads the exact filename and unchanged source, not merely a toast."
+
+[[criterion]]
+id = "cw_supported_file_import"
+name = "cw_supported_file_import"
+type = "binary"
+weight = 0.60
+description = "S33.supported_file_import: Lowercase supported import supplies exact filename/source in an editable draft; its subsequent edit can be saved/reloaded."
+
+[[criterion]]
+id = "cw_import_off_no_execution"
+name = "cw_import_off_no_execution"
+type = "binary"
+weight = 0.30
+description = "S33.import_off_no_execution: After the supported file actually appears in the draft, its authored markers remain unexecuted and the recorded successful preview remains for the off-state window; deliberate Run then produces that same imported source's DOM/log markers."
+
+[[criterion]]
+id = "cw_import_unsupported_extension"
+name = "cw_import_unsupported_extension"
+type = "binary"
+weight = 0.30
+description = "S33.import_unsupported_extension: After the same importer has actually accepted a supported control file, an unsupported import gets useful refusal while the current title, filename and source remain unchanged."
+
+[[criterion]]
+id = "cw_saved_filename_extension_rejection"
+name = "cw_saved_filename_extension_rejection"
+type = "binary"
+weight = 0.30
+description = "S33.saved_filename_extension_rejection: With an observed valid supported-filename write and successful valid recovery, an otherwise-valid current server write refuses unsupported.txt without field/revision mutation. A lowercase control is valid."
+
+[[criterion]]
+id = "cw_saved_filename_path_rejection"
+name = "cw_saved_filename_path_rejection"
+type = "binary"
+weight = 0.30
+description = "S33.saved_filename_path_rejection: With an observed valid supported-filename write and successful valid recovery, an otherwise-valid current server write refuses nested/demo.js without field/revision mutation. A lowercase control is valid."
+
+[[criterion]]
+id = "cw_source_file_extension_case"
+name = "cw_source_file_extension_case"
+type = "binary"
+weight = 0.20
+description = "S33.source_file_extension_case: Uppercase .JS is accepted by import and saved unchanged. Test saving from a lowercase-imported draft if importer case handling fails."
+
+[[criterion]]
+id = "cw_theme_actual_switch"
+name = "cw_theme_actual_switch"
+type = "binary"
+weight = 0.30
+description = "S34.theme_actual_switch: The control switches chrome, editor and console into both actual appearances; either may be the starting theme."
+
+[[criterion]]
+id = "cw_theme_work_preserved"
+name = "cw_theme_work_preserved"
+type = "binary"
+weight = 0.20
+description = "S34.theme_work_preserved: During two actually observed theme changes, the recorded exact draft fields and existing successful preview/console output remain intact. Preview recolouring is not required."
+
+[[criterion]]
+id = "cw_shortcut_run"
+name = "cw_shortcut_run"
+type = "binary"
+weight = 0.40
+description = "S35.shortcut_run: The discoverable documented Run binding alone produces keyboard-marker and keyboard-log without clicking Run."
+
+[[criterion]]
+id = "cw_shortcut_save"
+name = "cw_shortcut_save"
+type = "binary"
+weight = 0.30
+description = "S35.shortcut_save: The discoverable documented Save binding alone saves the exact draft fields without clicking Save."
+
+[[criterion]]
+id = "cw_shortcut_clear"
+name = "cw_shortcut_clear"
+type = "binary"
+weight = 0.30
+description = "S35.shortcut_clear: The discoverable documented Clear binding alone removes prior rows without clicking Clear."
+
+[[criterion]]
+id = "cw_callback_shared_run_deadline"
+name = "cw_callback_shared_run_deadline"
+type = "binary"
+weight = 1.15
+description = "S36.callback_shared_run_deadline: After the four-second callback actually emits late-callback-entered, it shares the original Run budget: timely termination/reason, no resumption and successful recovery; no fresh callback clock."
+
+[[criterion]]
+id = "cw_callback_timeout_rollback"
+name = "cw_callback_timeout_rollback"
+type = "binary"
+weight = 0.35
+description = "S36.callback_timeout_rollback: The timed-out callback retains/restores recorded currentLastGood rather than failed-loop-candidate; provisional display is optional."
+
+[[criterion]]
+id = "cw_interaction_latest_rollback"
+name = "cw_interaction_latest_rollback"
+type = "binary"
+weight = 0.50
+description = "S37.interaction_latest_rollback: After a successful interaction commits interaction-committed, the later failure retains/restores that state, not initial or provisional/late DOM."
+
+[[criterion]]
+id = "cw_interaction_budget_no_extension"
+name = "cw_interaction_budget_no_extension"
+type = "binary"
+weight = 0.50
+description = "S37.interaction_budget_no_extension: Later accepted, ignored or blocked input cannot extend the pending interaction's budget; timeout/reason, no late resumption and ordinary recovery are observed."

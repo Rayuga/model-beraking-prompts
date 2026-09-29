@@ -1,0 +1,10 @@
+const express = require('express');
+const Database = require('better-sqlite3');
+const app = express();
+const db = new Database(process.env.DB_PATH);
+db.exec('CREATE TABLE IF NOT EXISTS records(id INTEGER PRIMARY KEY, value TEXT)');
+app.get('/api/health', (req,res) => res.json({ok:true}));
+app.get('/fixture', (req,res) => res.json({cwd:process.cwd(),uid:process.getuid(),secretPresent:!!process.env.HARNESS_SECRET,value:db.prepare('SELECT value FROM records WHERE id=1').get()?.value}));
+app.post('/write', (req,res) => { db.prepare('INSERT OR REPLACE INTO records VALUES (1,?)').run('durable'); res.json({ok:true}); });
+app.use(express.static('public'));
+app.listen(3000,'0.0.0.0');

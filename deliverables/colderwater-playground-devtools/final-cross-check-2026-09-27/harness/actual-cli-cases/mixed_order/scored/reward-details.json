@@ -1,0 +1,511 @@
+{
+  "functional": {
+    "score": 0.6616,
+    "criteria": [
+      {
+        "id": "initial_examples",
+        "name": "initial_examples",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 0.5,
+        "description": "1. Open a fresh page at the public workspace. It starts with useful source and automatically produced preview content and console feedback, without clicking Run. Either an application example or a previously loaded snippet is valid. A gate may already have saved a record: do not require an empty library, remove existing records or demand that particular record at startup.\n2. Choose one of the app's examples and run it if selection alone does not run it. It provides editable source and working output. Then set an ordinary .js filename and replace the code with your own snippet that writes a distinctive paragraph into document.body and logs the same distinctive marker. Run it through the UI. The preview and console reflect your authored result, not the old example.\n3. The app is served from the local server. External fonts, scripts, editor components and CDN assets are allowed and must not fail this criterion. Local loopback hostnames used for the isolated runner are also valid. The separate authored-snippet network boundary is checked by its own criterion; do not impose an app-wide network restriction here. Do not inspect submitted scripts/bundles or save during this criterion.\n",
+        "reasoning": "Local transport fixture; no product behavior was evaluated."
+      },
+      {
+        "id": "language_dispatch",
+        "name": "language_dispatch",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.5,
+        "description": "1. With auto-run off, name the file dispatch.JS and run:\ndocument.body.innerHTML = '<p id=\"dispatch-mark\">js-dispatch-ok</p>';\nconsole.log('js-dispatch-log');\nThe preview shows js-dispatch-ok and the console shows js-dispatch-log.\n2. Change only the filename and source to dispatch.html and the following complete document, then run:\n<!doctype html><html><body><h1 id=\"dispatch-mark\">html-dispatch-ok</h1><button id=\"dispatch-button\">Try handler</button><script>window.oldGlobal='do-not-carry'; console.log('html-once-marker'); document.getElementById('dispatch-button').addEventListener('click', () => console.log('dispatch-handler-marker'));</script></body></html>\nThe new HTML replaces the old JS document. After successful completion, click its Try handler button once and confirm dispatch-handler-marker. This establishes a real installed handler before the CSS copy; no delayed-interaction timing is graded here. Note the current counts of html-once-marker and dispatch-handler-marker.\n3. Change to dispatch.CSS with source:\n#dispatch-mark { color: rgb(255, 0, 0); }\nRun it. The last successful HTML text remains and its heading is red, while html-once-marker has not been logged again. Click the retained Try handler button: no new dispatch-handler-marker appears. CSS must neither rerun the old script nor preserve its installed event handler.\n4. Change to dispatch.js and run:\ndocument.body.innerHTML = '<p id=\"fresh-js\">fresh-' + typeof window.oldGlobal + '</p>';\nconsole.log('fresh-js-log');\nThe new document says fresh-undefined and contains no old heading. Never select a separate language control during these steps; the existence of an optional indicator/control is not itself a failure.\n",
+        "reasoning": "Local transport fixture; no product behavior was evaluated."
+      },
+      {
+        "id": "cw_completed_preview_interactions",
+        "name": "cw_completed_preview_interactions",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "1. With auto-run off, run this criterion's own complete interaction.html document:\n<!doctype html><html><body><p>completed-interaction-ready</p><button id=\"interaction-button\">Try later action</button><input id=\"interaction-input\" aria-label=\"Later interaction input\"><script>console.log('completed-interaction-ready-log'); document.getElementById('interaction-button').addEventListener('click', () => console.log('completed-interaction-click')); document.getElementById('interaction-input').addEventListener('keydown', () => console.log('completed-interaction-key')); document.getElementById('interaction-input').addEventListener('input', () => console.log('completed-interaction-input'));</script></body></html>\nConfirm its initial paragraph and log, and wait for successful completion. Leave the completed preview untouched for at least six seconds, beyond the original run's five-second budget. Click Try later action and observe completed-interaction-click.\n2. After that action finishes, focus Later interaction input. Leave it focused and untouched for another six seconds, then type one ordinary character without clicking again. Observe both completed-interaction-key and completed-interaction-input. Do not rerun the source between these interactions or infer a handler ran from its source text.\nThis criterion owns deliberate later click, keyboard and input behavior after completion. It does not grade language selection, CSS copying or the deadline of already-pending work. Its fixture and observations are independent of language_dispatch.\n",
+        "reasoning": "Local transport fixture; no product behavior was evaluated."
+      },
+      {
+        "id": "fresh_cancel",
+        "name": "fresh_cancel",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 2.5,
+        "description": "1. Turn auto-run off. Run a short successful .js snippet producing a stable paragraph and console marker, establishing a last-good preview.\n2. Run:\nwindow.__cancelLeak = 'A';\ndocument.body.innerHTML = '<p id=\"run-A\">candidate-A</p>';\nconsole.log('cancel-A-started');\nsetTimeout(() => console.log('cancel-A-delayed'), 4000);\nOnce cancel-A-started appears, replace and run the following before that timer fires:\ndocument.body.innerHTML = '<p id=\"run-B\">run-B-' + typeof window.__cancelLeak + '</p>';\nconsole.log('cancel-B-started');\nUse a single browser automation action for the time-sensitive editor replacement and Run activation if needed. Confirm A was still active when B started; if setup missed the four-second window, redo this setup once rather than call an already-finished run a cancellation.\n3. B's preview says run-B-undefined and cancel-B-started appears. Wait until six seconds after A started: cancel-A-delayed must never appear, and A cannot replace B's DOM or report itself as the current success. A separate notification that A was superseded is optional; prove the actual cancellation from these observations.\n4. Start a separate timer run that logs stop-started, changes the preview to a candidate and schedules stop-delayed after four seconds. Use the actual Stop control promptly while it is active. A visible stopped/cancelled reason appears, B's last-good preview is restored, and stop-delayed never appears after waiting past its scheduled time. A subsequent short ordinary run still works. Do not mistake hidden old output for terminated work.\n",
+        "reasoning": "Local transport fixture; no product behavior was evaluated."
+      },
+      {
+        "id": "cw_preview_origin_isolation",
+        "name": "cw_preview_origin_isolation",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.25,
+        "description": "1. Run a legitimate .js snippet that writes isolation-control into its own document and logs isolation-control-log. Confirm both outputs as this criterion's working control.\n2. Record the playground page's own title and its localStorage value for the otherwise-unused key cw-isolation-probe. Run:\nlet docRead='not-blocked', docWrite='not-blocked', storageRead='not-blocked', storageWrite='not-blocked';\ntry { const value=parent.document.title; } catch (error) { docRead='blocked'; }\ntry { parent.document.title='cw-forbidden-title'; } catch (error) { docWrite='blocked'; }\ntry { const value=parent.localStorage.getItem('cw-isolation-probe'); } catch (error) { storageRead='blocked'; }\ntry { parent.localStorage.setItem('cw-isolation-probe','changed'); } catch (error) { storageWrite='blocked'; }\ndocument.body.innerHTML='<p>isolation-'+docRead+'-'+docWrite+'-'+storageRead+'-'+storageWrite+'</p>';\nconsole.log('isolation-results',docRead,docWrite,storageRead,storageWrite);\nAll four results must be blocked. Fresh in-page reads of the playground's own title and storage show exactly their earlier values, and the app remains usable.\n3. Run another ordinary own-document DOM update and log. It succeeds, proving the forbidden parent access did not break legitimate use. Unsupported execution has its own criterion. Do not add other sandbox escapes or native-blocking probes.\n",
+        "reasoning": "Local transport fixture; no product behavior was evaluated."
+      },
+      {
+        "id": "cw_runtime_files_not_publicly_exposed",
+        "name": "cw_runtime_files_not_publicly_exposed",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 0.5,
+        "description": "1. Through the UI, run ordinary .js source that renders confidentiality-control-preview and logs confidentiality-control-log. Confirm both. This working control prevents a broken server from passing a denial check.\n2. Open each of the three publicly reserved addresses /app.db, /server.js and /package.json on the application's origin in a separate browser page. Use ordinary browser navigation and its response/download events. These paths are explicitly reserved in the security note; no other filenames, traversal variants or source paths are in scope.\n3. Each address must produce a missing/denied HTTP response (for example 401, 403, 404 or 410; equivalent clear denial outcomes are valid), or display the actual working playground workspace with usable editor, preview and console. A redirect to that workspace or a normal SPA fallback is valid. Allow ordinary navigation redirects; use the final visible page and final HTTP response. A download or a successful response displaying a different file does not meet this reserved-address requirement. Do not read or classify implementation source, package fields, database bytes or response bodies. Do not require any particular error wording, MIME type or framework. If a navigation is deliberately refused/closed, retry once and confirm the normal workspace still works; a reproducible refusal with a healthy control counts as denial. Tool crashes or unavailable browser observations use the incomplete-evaluation protocol instead.\n4. Close only these probe pages and confirm a fresh ordinary Run still produces preview and console output on the original page. Record the three starting paths and observed denial/fallback/download outcomes. This tests the stated reserved URLs, not every possible disclosure route.\n",
+        "reasoning": "Local transport fixture; no product behavior was evaluated."
+      },
+      {
+        "id": "cw_preview_network_requests_blocked",
+        "name": "cw_preview_network_requests_blocked",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 0.5,
+        "description": "1. Use the ready-to-run network-control setup in the Functional prompt; do not invent a routing framework. Establish its deterministic browser-tool control, without contacting the internet. Choose a fresh nonce and two HTTPS URLs under https://cw-qc-network.invalid/: one text resource and one tiny valid SVG image. In the current browser context, install a route handler for only those probe URLs. Count every handler delivery and fulfill it locally with HTTP 200, Access-Control-Allow-Origin: *, Cache-Control: no-store and the appropriate content type. The text body contains the nonce; the SVG has a known nonzero size. Use a fresh unprotected about:blank page in that same context to fetch the text and load the image. Both must succeed with the expected text/dimensions and handler deliveries. Close that control page and record the resulting delivery count. A failed control cannot prove the playground blocks anything. Retry setup at most once; if browser tooling still cannot establish it, use EVALUATION_INCOMPLETE: in structured reasoning. Do not award a pass or report a product failure from failed test setup.\n2. With auto-run off, use the playground UI to run a legitimate .js own-document update and console marker, proving ordinary execution works and establishing a last-good preview. Then run an authored snippet that attempts fetch of the EXACT text URL from leg 1, with a success log and a catch handler reporting refusal. Observe the actual outcome and the route-handler count. The preview cannot receive the external text and the handler count must not increase.\n3. In a SEPARATE authored run, attempt to load an Image from the EXACT SVG URL, with onload logging success/dimensions and onerror reporting refusal; append it to the preview document. This independent run is required even if the fetch attempt was rejected before any source executed. The external image cannot load and the handler count must still not increase. Combining both operations in one source and skipping the second after a synchronous refusal does not establish both boundaries.\n4. For each run, accept either an explicit unsupported/network refusal that retains the last-good preview or a caught blocked operation with clear error/refusal feedback while legitimate own-document code completes normally. Caught errors need not roll back the preview. No-delivery evidence without a visible refusal/blocked result is insufficient, as is a CORS or DNS error after the route handler delivered a resource. Do not require particular CSP text, a header policy or matching origins for the local runner.\n5. A final ordinary own-document DOM update and console marker work, with no additional probe deliveries. Remove the exact browser route handler afterward, including after a failure. This checks the stated external-resource boundary through representative fetch and image requests; do not add an unbounded network-mechanism or escape catalogue, and do not inspect submitted implementation code.\n",
+        "reasoning": "Local transport fixture; no product behavior was evaluated."
+      },
+      {
+        "id": "cw_unsupported_execution_refusal",
+        "name": "cw_unsupported_execution_refusal",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.75,
+        "description": "1. With auto-run off, run this valid complete HTML source as scope-control.html:\n<!doctype html><html><body><p>scope-control: eval Function WebAssembly Worker import</p><script>\n// eval Function WebAssembly Worker import are ordinary comment words\nconsole.log('scope-control-log', 'eval Function WebAssembly Worker import');\n</script></body></html>\nThe paragraph and console message appear. Thus strings, comments and HTML text merely mentioning these words are accepted, and this successful render establishes this criterion's own last-good preview.\n2. As separate .js runs, try each of these five bounded sources:\neval('1 + 1');\nnew Function('return 2')();\nnew WebAssembly.Module(new Uint8Array([0,97,115,109,1,0,0,0]));\nnew Worker('data:text/javascript,postMessage(1)');\nimport('data:text/javascript,export const answer = 1');\nEach source is a separate probe, not five lines in one run. For every family, the app gives a clear unsupported/refused execution message, does not claim successful execution and preserves the scope-control last-good preview. The Worker and import payloads are self-contained data URLs, not external dependencies; no real remote request or generated infinite loop is needed.\n3. Run a new ordinary .js DOM update and console marker to prove recovery still works. Do not test aliases, constructor bypasses, arbitrary native blocking or other unsupported-code attack catalogues. The bar is explicit refusal of the five named families without blocking legitimate text.\n",
+        "reasoning": "Local transport fixture; no product behavior was evaluated."
+      },
+      {
+        "id": "cw_execution_budget_termination",
+        "name": "cw_execution_budget_termination",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 3.5,
+        "description": "1. Run a short valid .js snippet producing timeout-control in the preview and console. Then run:\nconsole.log('before-braced-hang');\nwhile (true) {}\n2. The run is stopped for its five-second budget with a visible time-limit reason. before-braced-hang is preserved in the console, even if it arrives together with the timeout. The preview restores timeout-control. Check the editor's usability after the run has stopped; the brief does not require unrelated host controls to respond while the loop is executing.\n3. Run this distinct unbraced loop:\nconsole.log('before-unbraced-hang');\nwhile (true);\nIt is also stopped for the time limit, with its initial log retained and the last-good preview preserved.\n4. A normal recovery snippet renders and logs timeout-recovered afterward.\nAllow normal scheduling overhead, but either literal loop continuing beyond about eight seconds, leaving the playground unusable after termination, hiding the run without a stop reason, or preventing the recovery run fails. A temporary pause during the loop is not itself a failure if the required termination and recovery occur. These are supported literal loops; do not substitute eval, native-library time bombs, WebAssembly or unsupported generated code.\n",
+        "reasoning": "Local transport fixture; no product behavior was evaluated."
+      },
+      {
+        "id": "cw_js_error_line_and_preview_restore",
+        "name": "cw_js_error_line_and_preview_restore",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 1.0,
+        "description": "1. With auto-run off, establish this criterion's own successful .js run that renders js-good-preview and logs js-good-log. Confirm the actual outputs.\n2. Enter exactly these four lines as bad.js, with no added leading blank line:\ndocument.body.innerHTML='<p>failed-partial-dom</p>';\nconst marker = 1;\nconst items = [1, 2, 3];\nitems.forEeach((n) => n);\nRun it. The console identifies the not-a-function error involving forEeach at user-source line 4. The preview returns to js-good-preview, not failed-partial-dom.\n3. A new valid .js run renders and logs js-error-recovered. Judge the exact entered source lines, not injected wrapper offsets. Logging the error while committing the failed candidate, clearing the prior good render or failing recovery does not pass.\n",
+        "reasoning": "Local transport fixture; no product behavior was evaluated."
+      },
+      {
+        "id": "cw_html_error_document_line_and_preview_restore",
+        "name": "cw_html_error_document_line_and_preview_restore",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "1. With auto-run off, establish this criterion's own successful run that renders html-good-preview and logs html-good-log. Confirm the actual outputs; do not depend on the previous error criterion.\n2. Enter exactly this nine-line bad.html document, without a leading blank line:\n<!doctype html>\n<html>\n<body>\n<h1>Failed HTML candidate</h1>\n<script>\nundefinedFunctionCall();\n</script>\n</body>\n</html>\nRun it. The console identifies undefinedFunctionCall and line 6 of the entered complete HTML document. The preview restores html-good-preview, not Failed HTML candidate. Counting from the injected script wrapper or the start of the script tag is incorrect.\n3. A new valid run renders and logs html-error-recovered. The error, exact user-document line, preserved preview and recovery all need direct evidence.\n",
+        "reasoning": "Local transport fixture; no product behavior was evaluated."
+      },
+      {
+        "id": "cw_timer_error_line_and_preview_restore",
+        "name": "cw_timer_error_line_and_preview_restore",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "1. With auto-run off, establish a successful .js run that renders timer-good-preview and logs timer-good-log. This is this criterion's own positive control and last-good render.\n2. Enter exactly these two lines as delayed-error.js, with no leading blank line:\ndocument.body.innerHTML='<p>async-failed-candidate</p>';\nsetTimeout(() => { throw new Error('async-error-marker'); }, 50);\nRun and wait for the callback. The console names async-error-marker and user-source line 2; the preview restores timer-good-preview rather than retaining async-failed-candidate.\n3. A new valid .js run renders and logs timer-error-recovered. The asynchronous error must not commit a half-failed preview or prevent recovery.\n",
+        "reasoning": "Local transport fixture; no product behavior was evaluated."
+      },
+      {
+        "id": "cw_promise_rejection_line_and_preview_restore",
+        "name": "cw_promise_rejection_line_and_preview_restore",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 1.0,
+        "description": "1. With auto-run off, establish a successful .js run that renders promise-good-preview and logs promise-good-log. This is this criterion's own positive control and last-good render.\n2. Enter exactly these two lines as rejected-promise.js, with no leading blank line:\ndocument.body.innerHTML='<p>promise-failed-candidate</p>';\nPromise.reject(new Error('promise-error-marker'));\nRun and wait. The console reports the unhandled rejection with promise-error-marker and user-source line 2. The preview restores promise-good-preview rather than retaining promise-failed-candidate.\n3. A new valid .js run renders and logs promise-error-recovered. The rejection must not be silently reported as success, clear the last-good render or prevent recovery.\n",
+        "reasoning": "Local transport fixture; no product behavior was evaluated."
+      },
+      {
+        "id": "console_levels",
+        "name": "console_levels",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Run the following valid .js source:\nconsole.log('level-log');\nconsole.warn('level-warn');\nconsole.error('level-error');\nconsole.info('level-info');\nAll four entries appear in this relative order, with their exact string values and recognizably different level labels or other unambiguous level indicators. No particular colour palette is required. An explicit console.error call is a logged message, not an uncaught execution failure.\n",
+        "reasoning": "Local transport fixture; no product behavior was evaluated."
+      },
+      {
+        "id": "console_objects",
+        "name": "console_objects",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.5,
+        "description": "Run:\nconsole.log({ tag: 'object-check', nested: { deep: 'nested-value' } });\nconsole.log([11, 22, 33]);\nInspect/expand the resulting entries. The object exposes tag and nested, and expanding nested reveals deep with nested-value. The array exposes the three individual elements 11, 22 and 33. Neither may be an opaque [object Object] or an uninspectable summary. Use the app's own expand controls rather than reading the snippet's source as evidence.\n",
+        "reasoning": "Local transport fixture; no product behavior was evaluated."
+      },
+      {
+        "id": "console_controls",
+        "name": "console_controls",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 1.5,
+        "description": "1. Run a .js loop that logs row-0 through row-39 in order. Confirm all forty entries and a measured run duration, not a blank or placeholder.\n2. Scroll the console up away from the bottom and record its visible position. Run console.log('after-scroll-up');. Earlier rows remain, the new row is appended, and the view does not jump to the bottom.\n3. Scroll to the bottom. Run console.log('after-scroll-down');. The new row comes into view automatically.\n4. Use Clear console. Prior log rows are gone. An empty-state hint is allowed. Do not demand that run durations or unrelated status labels elsewhere disappear.\n",
+        "reasoning": "Local transport fixture; no product behavior was evaluated."
+      },
+      {
+        "id": "auto_run",
+        "name": "auto_run",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 2.0,
+        "description": "1. Turn auto-run on, replace .js source with a DOM marker auto-fired and matching console log, then stop typing without clicking Run. It runs after a brief typing pause and within about two seconds. Measure the observed delay from the last edit to this automatic execution; do not assume a fixed debounce interval.\n2. Establish that later edits restart the wait. Make several real editor edits to valid sources with distinct DOM/log markers, spaced comfortably closer together than the observed delay. Continue editing beyond the time when the first edit alone would have run. Record the actual edit timings. No intermediate version executes while these edits continue; after the final edit and a typing pause, only that final version runs within about two seconds. Batch the time-sensitive editing sequence in one browser action if needed. If automation missed the intended within-delay setup, repeat it once; a run after an actual idle gap is not a debounce-reset failure.\n3. Set the observation window to the greater of three seconds and the longest successful auto-run delay measured in legs 1-2 plus one second of scheduling margin. Turn auto-run off, replace source with a distinct auto-off marker and log, and observe for that entire window after the final edit. Neither marker nor log replaces the prior result automatically. Click Run and confirm this new code now executes.\n4. Turn auto-run on again. In one time-sensitive browser action, make a further edit scheduling a distinct auto-queued marker and immediately turn auto-run off before its debounce expires. Observe for the same measured-delay-plus-margin window after turning it off: the queued edit must not run, including after its previously scheduled deadline. If the setup visibly allowed its debounce to expire before switching off, repeat the setup once with the actions batched; do not count an already-executed run as a cancellation failure.\n5. Manual Run executes that same queued edit successfully. Leave auto-run off. Do not require a particular debounce millisecond value or runs on every keystroke.\n",
+        "reasoning": "Local transport fixture; no product behavior was evaluated."
+      },
+      {
+        "id": "pane_resize",
+        "name": "pane_resize",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 0.5,
+        "description": "At a desktop viewport, note the editor, preview and console proportions. Move each relevant divider enough to visibly change both the editor/preview allocation and preview/console allocation, using dragging or the app's equivalent divider control. All three panes stay visible and usable. Perform a normal reload, accepting an unsaved-work warning if your own earlier edits require it, and confirm the changed sizes are restored. Do not prescribe vertical versus horizontal arrangements or exact pixel values.\n",
+        "reasoning": "Local transport fixture; no product behavior was evaluated."
+      },
+      {
+        "id": "editor_basics",
+        "name": "editor_basics",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 1.0,
+        "description": "1. Inspect a populated editor and its line-number gutter. It uses a monospaced face and shows real line numbers.\n2. Enter representative JavaScript, complete HTML and CSS source in turn with the corresponding filenames. Keywords/values, tags or properties are visibly syntax coloured in each language, rather than every token being one flat colour. The exact palette is free.\n3. In .js source enter a complete matching pair, for example const data = { value: 1 };. Place the cursor immediately beside either brace. The matching pair is visibly identified. An unmatched opening brace is not a valid setup for this test.\nDo not grade indentation width, editor package, DOM implementation or a specific highlight colour.\n",
+        "reasoning": "Local transport fixture; no product behavior was evaluated."
+      },
+      {
+        "id": "editor_indent",
+        "name": "editor_indent",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Enter three lines, select all three, and press Tab:\nconst alpha = 1;\nconst beta = 2;\nconst gamma = 3;\nEvery selected line gains the same indentation and all source remains intact; the selection still covers the three lines. Press Shift+Tab with that selection: the added indentation is removed and the exact original three lines return. Any consistent indentation width or tab representation is valid.\n",
+        "reasoning": "Local transport fixture; no product behavior was evaluated."
+      },
+      {
+        "id": "save_load",
+        "name": "save_load",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.5,
+        "description": "1. Start a new draft and save title QC Save Alpha, filename qc-alpha.js, source console.log('alpha-body');. Record the successful UI save request and the saved identity.\n2. Start another new draft and save title QC Save Beta, filename qc-beta.html, source <!doctype html><html><body><p>beta-body</p></body></html>.\n3. The library contains both distinct entries. Load Alpha and Beta in turn and inspect the title, filename and exact source. Each matches its own saved data; one never borrows the other's fields.\n4. Reload the browser and load both again. Their identities and exact fields survive. This is a real durable save/load check, not evidence from an unsaved editor buffer.\n",
+        "reasoning": "Local transport fixture; no product behavior was evaluated."
+      },
+      {
+        "id": "cw_process_restart_durability",
+        "name": "cw_process_restart_durability",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 2.5,
+        "description": "1. Establish this criterion's own durable controls. Save QC Restart Primary (qc-restart.js, console.log('restart-original');) and make an independent duplicate QC Restart Copy. Edit and save only Copy to console.log('restart-copy-edited');. Create QC Restart Deleted and delete it through confirmation. Record the current full list of stable identities/titles and the primary/copy exact fields and revisions.\n2. Call the verifier MCP tool restart_app exactly once, wait for its completed restart, then open a fresh browser page at http://localhost:3000. A browser reload alone is insufficient.\n3. The recorded library identities/titles remain exactly once each, with no resurrected QC Restart Deleted. Primary and Copy load with their own exact saved filenames, source and revisions. Run each and observe its matching console marker.\n4. Edit Primary to console.log('restart-after-save'); and save with its loaded current revision. This succeeds; a fresh read shows the new source and advanced revision, while Copy is still exactly unchanged.\nAll legs must be observed. Do not depend on another criterion's reference or verdict, reset the database, enumerate hidden files, or add an authentication step.\n",
+        "reasoning": "Local transport fixture; no product behavior was evaluated."
+      },
+      {
+        "id": "persistent_snippets",
+        "name": "persistent_snippets",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 3.0,
+        "description": "1. Create a dedicated saved snippet QC Concurrent Save, filename qc-concurrent.js, source console.log('base-version');. Capture its actual saved identity and revision from browser reads and a successful UI save request. Open that SAME revision in two real editor pages A and B. In B, make a real unsaved source edit to console.log('stale-overwrite'); and record B's exact title, filename and source. B must remain open and dirty while A saves. A captured old API request alone is not an editor and cannot prove draft preservation.\n2. Save A through the UI with title QC Concurrent Save Updated, filename qc-concurrent.html, source <!doctype html><html><body>first-editor-won</body></html>. Fresh lookup confirms all three changed fields and an advanced revision. Do not reload or replace B's dirty draft.\n3. Attempt Save from B's actual dirty UI. It must explain the stale conflict without overwriting A or discarding B's exact unsaved title, filename and source. Proactive conflict detection that deliberately prevents the stale Save is valid with the same feedback and draft preservation. In that case, also replay the otherwise valid old-revision update in the successful UI request's observed shape to verify that the server itself refuses it. If B sends the stale request normally, observe that actual request and refusal instead. A fresh read shows A's title, filename, source and revision exactly unchanged. An unrelated validation error, missing route or disabled Save without conflict feedback does not establish this behavior.\n4. Only after verifying B's retained dirty fields, deliberately load the latest saved record in B, accepting a discard/recovery confirmation if offered. Reapply source <!doctype html><html><body>reapplied-after-reload</body></html> and save through the UI using the loaded current revision. It succeeds and survives a browser reload. Close the extra editor after collecting evidence. The stale rejection must not permanently prevent valid saving.\nUse two real pages or independent contexts. The functional prompt supplies a browser-tool context recipe; no fixed UI layout or storage architecture is required.\n",
+        "reasoning": "Local transport fixture; no product behavior was evaluated."
+      },
+      {
+        "id": "cw_title_change_uniqueness",
+        "name": "cw_title_change_uniqueness",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.5,
+        "description": "1. Save two dedicated snippets: QC Rename Source (qc-rename-a.js, console.log('rename-source');) and QC Rename Sibling (qc-rename-b.js, console.log('rename-sibling');).\n2. Rename Source to QC Rename Source Renamed using the normal UI. Fresh reload/read confirms only that record's title changed, with its filename/source intact and Sibling untouched. Record the real successful write format.\n3. With the renamed record's CURRENT revision, attempt to rename it to the already-used title QC Rename Sibling. A clear refusal must appear. If the UI blocks sending it, also submit this same collision directly in-page using the observed write format and current revision. The server must refuse; both complete records and their revisions remain unchanged.\n4. Also attempt the collision with surrounding spaces around the sibling title. Trimming cannot create two records with the same title. Confirm the same no-mutation result.\n5. Using the current revision and otherwise valid data, separately try an empty title and a whitespace-only title. Each is refused without changing either record or its revision. Do not impose a title length limit that the task did not specify.\n6. Start a separate new draft and save a third record titled qc rename sibling, with its own supported filename and source. It must coexist with QC Rename Sibling under a different identity: titles that differ in case are allowed. Confirm loading each retrieves its own exact fields, not the other's record.\n7. A different unused title can still be saved to the original source afterward through the UI. Use QC Rename Recovered, and confirm both sibling records remain untouched. Rejection merely caused by a stale revision, guessed route or invalid unrelated field cannot establish title validation. Stale renaming is scored separately.\n",
+        "reasoning": "Local transport fixture; no product behavior was evaluated."
+      },
+      {
+        "id": "cw_stale_rename_preserves_newer_record",
+        "name": "cw_stale_rename_preserves_newer_record",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 1.5,
+        "description": "1. Create a dedicated saved snippet QC Stale Rename Base, filename qc-stale-rename.js, source console.log('stale-rename-original');. Record its identity, exact fields and current revision, preserving an independent editor snapshot or captured actual request at that revision.\n2. Rename it normally through the UI to QC Stale Rename Current. Capture the real successful rename/write method, path, body and revision mechanism. Fresh lookup confirms the new title and advanced revision, with the filename and source unchanged. This is the positive control for the actual rename operation.\n3. Attempt a rename of that same identity from the old snapshot/revision to a different unused valid title QC Stale Rename Rejected. Use the observed operation and otherwise valid data. It is refused with useful conflict feedback; a fresh read still has QC Stale Rename Current, the original filename/source and exactly the newer revision. This cannot be passed by a name-collision, unrelated validation error or missing route.\n4. Reload the latest record and rename it through the UI to QC Stale Rename Recovered using its current revision. Fresh lookup confirms that title, intact filename/source and another advanced revision. The stale refusal must not permanently prevent valid renaming. Use this criterion's own record and do not borrow the title-validation criterion's outcome. This criterion grades the rename's saved-state invariant; persistent_snippets separately observes actual dirty-editor retention.\n",
+        "reasoning": "Local transport fixture; no product behavior was evaluated."
+      },
+      {
+        "id": "cw_independent_snippet_copy",
+        "name": "cw_independent_snippet_copy",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 2.5,
+        "description": "1. Save QC Duplicate Original, filename qc-dup.js, source console.log('original-copy-source');. Duplicate it to QC Duplicate Copy through the UI.\n2. Before editing, both records coexist with different stable identities, the same filename and exact source. Edit and save only Copy to console.log('copy-edited-source');. Reload and confirm Original still contains its original source while Copy contains the edit.\n3. Using the observed duplicate/create request shape, attempt to create another record titled QC Duplicate Copy, while retaining otherwise valid fields and any required current source revision. It must refuse rather than overwrite Copy or create another same-titled record. Fresh reads show the two existing identities, fields and revisions unchanged.\n4. Successfully create another duplicate under the new unused title QC Duplicate Extra. This proves the refusal was title collision rather than a broken duplicate action. Do not require a particular automatic suffix or title-dialog layout.\n",
+        "reasoning": "Local transport fixture; no product behavior was evaluated."
+      },
+      {
+        "id": "delete_confirm",
+        "name": "delete_confirm",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 3.0,
+        "description": "1. Save QC Delete Target (qc-delete.js, console.log('delete-original');), QC Delete Sibling (qc-sibling.js, console.log('keep-sibling');) and QC Delete Control (qc-control.js, console.log('valid-delete-control');). Record the current list and Target's identity/revision.\n2. Start deleting Target, then cancel its confirmation. Reload and verify all three remain with unchanged fields. Delete Control through the normal confirmation and record that actual successful delete request; only Control disappears.\n3. Preserve Target's old revision, then load Target and save new source console.log('newer-work-to-keep'); with its current revision. Fresh read confirms the newer content and revision.\n4. Replay the real delete operation against Target using its old revision. The server must refuse and retain the newer Target and unchanged Sibling. The UI/response explains the conflict; merely hiding a delete button is not evidence.\n5. Reload the latest Target and confirm its deletion normally using that current revision. Only Target disappears, Sibling remains exact, and a browser reload preserves this result.\n6. Attempt to save the previously loaded Target back to its deleted identity using the actual update format. It must refuse instead of recreating/upserting the deleted record. The library remains the prior list minus Control and Target. Other criteria's unrelated snippets must remain untouched.\n",
+        "reasoning": "Local transport fixture; no product behavior was evaluated."
+      },
+      {
+        "id": "cw_dirty_workspace_transition_warnings",
+        "name": "cw_dirty_workspace_transition_warnings",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 1.25,
+        "description": "1. With auto-run off, save this criterion's own QC Dirty Base (qc-dirty.js, console.log('dirty-original');) and QC Dirty Destination (qc-destination.js, console.log('dirty-destination');). Load Base, then change its title, filename and source to distinctive unsaved values. The workspace identifies the loaded record and visibly marks the draft dirty. Record all three exact edited fields.\n2. Test each of four replacement actions separately: load QC Dirty Destination; choose an app example; start a new draft; import a valid source file cw-dirty-import.js containing console.log('dirty-import-destination');. Before each action, independently reload Base and re-establish the recorded unsaved edits, deliberately handling any cleanup warning. Do not rely on dirty state left by the previous action.\n3. Each action warns before replacing the draft. Cancel that action and confirm the title, filename and source remain exactly as recorded. Repeat it and accept: the chosen saved record, example, new draft or imported file actually becomes the workspace. A new draft is independent of the old saved identity; no particular default title, filename or template is required. For import, supply the file through the actual file input and compare its filename and exact source after accepting.\n4. Reload Base from the library: its saved original title, filename and source were never changed by these discarded edits. From that clean record, change only its title to QC Dirty Title Only, try a replacement and cancel; the dirty indication and warning apply, and that exact title remains. Restore the clean saved Base, then separately change only its filename to qc-dirty-filename-only.js and repeat the cancelled replacement. That filename is retained too. Judge in-app protection here; native browser unload warnings and imported execution are separate criteria.\n",
+        "reasoning": "Local transport fixture; no product behavior was evaluated."
+      },
+      {
+        "id": "cw_native_dirty_leave_warning",
+        "name": "cw_native_dirty_leave_warning",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 0.75,
+        "description": "1. Save a dedicated QC Native Leave snippet with filename qc-native-leave.js and source console.log('native-leave-original');. With no unsaved change, perform a normal reload and confirm the workspace remains usable without a dirty-work leave warning. Do not depend on another criterion's draft.\n2. Load that saved snippet, turn auto-run off and make a real keyboard edit in its source. Record the exact dirty title, filename and source. Request a normal browser reload after that user interaction.\n3. The browser's native leave-page warning appears. Dismiss it to remain on the page; the exact unsaved fields are still present and dirty. A custom application dialog alone is insufficient, and browser tools must not silently auto-accept or suppress the native dialog.\n4. Request reload again and accept the native warning. The actual page reloads and remains usable. Load QC Native Leave and confirm its original saved source is unchanged. Do not require exact browser-dialog wording or restoration of a discarded unsaved draft after acceptance.\n",
+        "reasoning": "Local transport fixture; no product behavior was evaluated."
+      },
+      {
+        "id": "cw_exact_source_file_export",
+        "name": "cw_exact_source_file_export",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 0.5,
+        "description": "With auto-run off, start an independent draft, put filename export-me.js and exact source console.log('export-me-body'); in the editor, then export through the app's own control. Inspect the resulting browser download: its actual filename is export-me.js and its exact text is console.log('export-me-body');. A toast or a filename label without a download is insufficient. Do not require saving to the library or performing an import to earn export credit.\n",
+        "reasoning": "Local transport fixture; no product behavior was evaluated."
+      },
+      {
+        "id": "cw_supported_source_file_import",
+        "name": "cw_supported_source_file_import",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 2.0,
+        "description": "1. Turn auto-run off. Establish a successful ordinary .js run that renders import-good-preview and logs import-good-log, then save it as this criterion's own QC Import Preview Control so the workspace is clean. Note the last-good output and console entries.\n2. Import a file named import-me.JS with exactly these two lines:\ndocument.body.innerHTML='<p>import-executed-marker</p>';\nconsole.log('import-executed-log');\nUse the app's real file input; an in-memory browser-upload file is valid. Its filename and exact editable source appear in a draft. Wait two seconds with auto-run still off: the prior preview remains and neither imported marker nor log has executed. Click ordinary Run and now confirm both imported outputs. Do not infer execution merely from the text in the editor.\n3. Save that imported draft as QC Imported File and reload it successfully. Attempt to import notes.txt containing unrelated text. A useful refusal leaves the current title, filename and source exactly unchanged.\n4. Record QC Imported File's actual successful save/update operation. With its CURRENT revision and otherwise valid fields, separately attempt unsupported.txt and nested/demo.js as its filename through an in-page request in the observed shape. The first has an unsupported extension; the second is a path rather than a single filename. Each server refusal leaves title, filename, source and revision unchanged on a fresh read. UI filtering alone or an unrelated stale-revision error cannot satisfy these cases. Do not invent length or platform-specific reserved-name restrictions.\n5. Keep supported filename import-me.JS, change the source to console.log('import-edited-body'); and save normally. Reload and confirm the edit persisted. This proves refusal did not break valid saving and that supported extensions are case-insensitive. Dirty-import warnings and export downloads are scored separately.\n",
+        "reasoning": "Local transport fixture; no product behavior was evaluated."
+      },
+      {
+        "id": "cw_theme_switch_legibility",
+        "name": "cw_theme_switch_legibility",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 0.5,
+        "description": "With auto-run off, establish this criterion's own normal .js run that renders theme-control-preview and logs theme-control-log. Record its current title, filename, exact editor source and resulting preview/console output. Record the starting theme, which may be light or dark. Use the theme control to switch to the other appearance, then back. Both changes must actually affect the workspace chrome, editor and console, rather than only changing the toggle label. The title, filename, source and existing preview/console output remain intact through both switches. Judge switching and preservation of the working state here; visual criteria own contrast, palette and aesthetic readability. Do not require a particular initial theme, recolouring of the authored preview document, or theme persistence after reload.\n",
+        "reasoning": "Local transport fixture; no product behavior was evaluated."
+      },
+      {
+        "id": "cw_keyboard_shortcut_actions",
+        "name": "cw_keyboard_shortcut_actions",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "1. Find the app's visible shortcut documentation for Run, Save and Clear console. Use its documented choices, not assumed key combinations. Start a new draft before entering this criterion's code.\n2. With auto-run off, enter a .js snippet producing keyboard-marker in the preview and keyboard-log in the console. Trigger Run only through its keyboard shortcut and confirm both outputs.\n3. Keep that same draft and source, set title QC Keyboard Save and filename qc-keyboard.js, then trigger Save only through its documented shortcut. The library contains that exact saved title/filename/source.\n4. Trigger Clear console through its shortcut; previous rows disappear. Do not click the equivalent action buttons as a substitute for the tested shortcuts.\n",
+        "reasoning": "Local transport fixture; no product behavior was evaluated."
+      },
+      {
+        "id": "cw_shared_run_deadline_recovery",
+        "name": "cw_shared_run_deadline_recovery",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 1.5,
+        "description": "1. With auto-run off, run this criterion's own ordinary .js positive control:\ndocument.body.innerHTML='<p>recovery-marker-Q7</p>';\nconsole.log('recovery-marker-Q7-log');\nConfirm the successful preview and console output. No library save or reload is required here.\n2. Replace the source with:\ndocument.body.innerHTML='<p>failed-loop-candidate</p>';\nsetTimeout(() => { console.log('late-callback-entered'); while (true) {} }, 4000);\nRun it, confirm the candidate is active while the timer is pending and then observe late-callback-entered. The run must terminate for the shared time limit within about eight seconds of the ORIGINAL Run action, with the original recovery marker restored rather than failed-loop-candidate. The four-second wait is part of its five-second budget: a fresh five seconds beginning at callback entry would run to roughly nine seconds and fails this check. Measure elapsed time from the actual Run action; do not start the clock at the callback log.\n3. Enter a new ordinary .js snippet through the editor that renders shared-deadline-recovered and logs shared-deadline-recovered-log. Run successfully and confirm both outputs. No later output or state from the timed-out callback may replace this result.\nUse the exact four-second delay: a short-delay callback cannot distinguish the required shared budget. Check recovery after termination, not unrelated control responsiveness while the loop is active. This criterion owns the original run's shared deadline; pending interaction deadlines and durable saving are graded independently.\n",
+        "reasoning": "Local transport fixture; no product behavior was evaluated."
+      },
+      {
+        "id": "cw_pending_interaction_budget_nonextension",
+        "name": "cw_pending_interaction_budget_nonextension",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "1. With auto-run off, run this criterion's own complete pending-interaction.html document:\n<!doctype html><html><body><p id=\"interaction-state\">interaction-good</p><button id=\"start-work\">Start work</button><button id=\"still-waiting\">Still waiting</button><script>console.log('interaction-initial-ready'); document.getElementById('start-work').addEventListener('click', () => { document.getElementById('interaction-state').textContent='interaction-candidate'; console.log('interaction-started'); setTimeout(() => { document.getElementById('interaction-state').textContent='interaction-late'; console.log('interaction-late'); }, 6000); }); document.getElementById('still-waiting').addEventListener('click', () => console.log('interaction-still-waiting'));</script></body></html>\nConfirm the initial successful paragraph and console marker before beginning the interaction. This is its own last-good control, independent of all preceding verdicts.\n2. Click Start work and measure time from that real click. Confirm interaction-candidate and interaction-started while the timer is pending. About two seconds later, click Still waiting and observe interaction-still-waiting. Batch the two clicks and observations in one browser automation call if necessary to keep the second click within the pending period.\n3. Within about eight seconds from Start work, observe a time-limit reason and interaction-good restored. Keep observing until after the six-second timer's scheduled time and confirm interaction-late never appears in the console or restored preview. The second click must not grant a fresh deadline that lets the first callback run. Do not require the restored handlers to remain live: rollback may restore a static snapshot.\n4. Enter and run an ordinary .js snippet rendering interaction-budget-recovered and logging interaction-budget-recovered-log. Both outputs appear, showing the timeout did not break subsequent execution.\nUse the exact six-second timer and observe that pending work existed before the second click. This criterion owns the five-second interaction budget and its nonextension by more input. It does not grade the original run's deadline, library saves or process restart.\n",
+        "reasoning": "Local transport fixture; no product behavior was evaluated."
+      }
+    ],
+    "kind": "agent",
+    "judge": {
+      "agent": "claude-code",
+      "model": "local-unpaid-transport-fixture",
+      "timeout": 9000,
+      "cwd": null,
+      "isolated": false,
+      "atif_trajectory": null,
+      "mode": "batched",
+      "mcp_servers": [
+        {
+          "name": "playwright",
+          "transport": "stdio",
+          "url": null,
+          "command": "playwright-mcp",
+          "args": [
+            "--headless",
+            "--isolated",
+            "--executable-path=/usr/local/bin/chromium",
+            "--no-sandbox"
+          ],
+          "allowed_tools": []
+        },
+        {
+          "name": "verifier",
+          "transport": "stdio",
+          "url": null,
+          "command": "/usr/local/bin/python3",
+          "args": [
+            "/tests/tools/restart_mcp.py",
+            "$APP_RESTART_HELPER"
+          ],
+          "allowed_tools": []
+        }
+      ]
+    },
+    "judge_output": "{\"cw_pending_interaction_budget_nonextension\": {\"score\": \"yes\", \"reasoning\": \"Local transport fixture; no product behavior was evaluated.\"}, \"cw_shared_run_deadline_recovery\": {\"score\": \"no\", \"reasoning\": \"Local transport fixture; no product behavior was evaluated.\"}, \"cw_keyboard_shortcut_actions\": {\"score\": \"yes\", \"reasoning\": \"Local transport fixture; no product behavior was evaluated.\"}, \"cw_theme_switch_legibility\": {\"score\": \"yes\", \"reasoning\": \"Local transport fixture; no product behavior was evaluated.\"}, \"cw_supported_source_file_import\": {\"score\": \"no\", \"reasoning\": \"Local transport fixture; no product behavior was evaluated.\"}, \"cw_exact_source_file_export\": {\"score\": \"yes\", \"reasoning\": \"Local transport fixture; no product behavior was evaluated.\"}, \"cw_native_dirty_leave_warning\": {\"score\": \"yes\", \"reasoning\": \"Local transport fixture; no product behavior was evaluated.\"}, \"cw_dirty_workspace_transition_warnings\": {\"score\": \"no\", \"reasoning\": \"Local transport fixture; no product behavior was evaluated.\"}, \"delete_confirm\": {\"score\": \"yes\", \"reasoning\": \"Local transport fixture; no product behavior was evaluated.\"}, \"cw_independent_snippet_copy\": {\"score\": \"yes\", \"reasoning\": \"Local transport fixture; no product behavior was evaluated.\"}, \"cw_stale_rename_preserves_newer_record\": {\"score\": \"no\", \"reasoning\": \"Local transport fixture; no product behavior was evaluated.\"}, \"cw_title_change_uniqueness\": {\"score\": \"yes\", \"reasoning\": \"Local transport fixture; no product behavior was evaluated.\"}, \"persistent_snippets\": {\"score\": \"yes\", \"reasoning\": \"Local transport fixture; no product behavior was evaluated.\"}, \"cw_process_restart_durability\": {\"score\": \"no\", \"reasoning\": \"Local transport fixture; no product behavior was evaluated.\"}, \"save_load\": {\"score\": \"yes\", \"reasoning\": \"Local transport fixture; no product behavior was evaluated.\"}, \"editor_indent\": {\"score\": \"yes\", \"reasoning\": \"Local transport fixture; no product behavior was evaluated.\"}, \"editor_basics\": {\"score\": \"no\", \"reasoning\": \"Local transport fixture; no product behavior was evaluated.\"}, \"pane_resize\": {\"score\": \"yes\", \"reasoning\": \"Local transport fixture; no product behavior was evaluated.\"}, \"auto_run\": {\"score\": \"yes\", \"reasoning\": \"Local transport fixture; no product behavior was evaluated.\"}, \"console_controls\": {\"score\": \"no\", \"reasoning\": \"Local transport fixture; no product behavior was evaluated.\"}, \"console_objects\": {\"score\": \"yes\", \"reasoning\": \"Local transport fixture; no product behavior was evaluated.\"}, \"console_levels\": {\"score\": \"yes\", \"reasoning\": \"Local transport fixture; no product behavior was evaluated.\"}, \"cw_promise_rejection_line_and_preview_restore\": {\"score\": \"no\", \"reasoning\": \"Local transport fixture; no product behavior was evaluated.\"}, \"cw_timer_error_line_and_preview_restore\": {\"score\": \"yes\", \"reasoning\": \"Local transport fixture; no product behavior was evaluated.\"}, \"cw_html_error_document_line_and_preview_restore\": {\"score\": \"yes\", \"reasoning\": \"Local transport fixture; no product behavior was evaluated.\"}, \"cw_js_error_line_and_preview_restore\": {\"score\": \"no\", \"reasoning\": \"Local transport fixture; no product behavior was evaluated.\"}, \"cw_execution_budget_termination\": {\"score\": \"yes\", \"reasoning\": \"Local transport fixture; no product behavior was evaluated.\"}, \"cw_unsupported_execution_refusal\": {\"score\": \"yes\", \"reasoning\": \"Local transport fixture; no product behavior was evaluated.\"}, \"cw_preview_network_requests_blocked\": {\"score\": \"no\", \"reasoning\": \"Local transport fixture; no product behavior was evaluated.\"}, \"cw_runtime_files_not_publicly_exposed\": {\"score\": \"yes\", \"reasoning\": \"Local transport fixture; no product behavior was evaluated.\"}, \"cw_preview_origin_isolation\": {\"score\": \"yes\", \"reasoning\": \"Local transport fixture; no product behavior was evaluated.\"}, \"fresh_cancel\": {\"score\": \"no\", \"reasoning\": \"Local transport fixture; no product behavior was evaluated.\"}, \"cw_completed_preview_interactions\": {\"score\": \"yes\", \"reasoning\": \"Local transport fixture; no product behavior was evaluated.\"}, \"language_dispatch\": {\"score\": \"yes\", \"reasoning\": \"Local transport fixture; no product behavior was evaluated.\"}, \"initial_examples\": {\"score\": \"no\", \"reasoning\": \"Local transport fixture; no product behavior was evaluated.\"}}"
+  },
+  "polish": {
+    "score": 0.5,
+    "criteria": [
+      {
+        "id": "responsive_layout",
+        "name": "responsive_layout",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 1.0,
+        "description": "At a roughly 390 by 844 viewport, confirm the editor, preview and console can each be reached and used. Stacking, tabs, drawers and intentional pane scrolling are valid. Essential controls must not be permanently clipped or hidden behind another pane; horizontal scrolling within long code or console content is acceptable.\n",
+        "reasoning": "Local transport fixture; no product behavior was evaluated."
+      },
+      {
+        "id": "labelled_controls_and_focus",
+        "name": "labelled_controls_and_focus",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "At an ordinary desktop viewport, inspect Run, Save, filename/title controls, Auto-run and theme controls: their purpose is identified by a visible label or accessible name. For a recognisable read control, first save your own small harmless snippet through the ordinary UI, noting its title and content. This preparation may use a pointer; an initially empty library is valid. Do not depend on another dimension's generated record or private identity.\n\nNow use only the keyboard for this bounded navigation route: from the focused editor, leave it, reach and operate the example picker, choose a different runnable example and observe its source in the workspace, then reach the saved library and open your own snippet. Confirm its recognisable title and content appear, and return focus to the editor. Normal Tab/Shift+Tab navigation, native control keys, standard editor escape keys such as Escape followed by Tab, and application-specific escape sequences are all valid. Standard or native editor behavior does not need application help text; do not deduct for an absent shortcut hint. Do not prescribe particular bindings, labels or layout. Handle any ordinary unsaved-work warning through the keyboard as well; a normal warning is not a failure and no particular dialog design or wording is required. During this route do not use pointer actions, programmatic focus, DOM clicks or application API calls.\n\nConfirm the main Run, Save, title/filename, Auto-run and theme controls are keyboard-reachable when enabled, with visible focus on the controls used; native focus styling is valid. A control legitimately disabled in the observed state need not be a tab stop. Reachability does not require activating every control. Keep this a non-destructive read/navigation flow after preparation: do not regrade Run/Save/Clear shortcuts, execution semantics, revision rules or persistence here.\n",
+        "reasoning": "Local transport fixture; no product behavior was evaluated."
+      },
+      {
+        "id": "interaction_feedback",
+        "name": "interaction_feedback",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Activate one ordinary supported action such as Run on the current runnable example or Clear console when entries exist. The interface gives visible feedback appropriate to that action, such as run status/duration, new output or a clear empty-console state. Use an available positive case; if the console is initially empty, running a short harmless log is valid setup. Judge acknowledgement and clarity, not exact execution semantics, error line numbers or persistence.\n",
+        "reasoning": "Local transport fixture; no product behavior was evaluated."
+      },
+      {
+        "id": "workspace_organisation",
+        "name": "workspace_organisation",
+        "value": 0.0,
+        "raw": "no",
+        "weight": 1.0,
+        "description": "The editor, preview and console are recognisable from their labels or layout. The current filename and the saved-snippets library can be located without guessing at an unlabelled hidden surface. Empty library and console states are valid. Judge whether a user can understand which surface holds editable code, output or saved work; do not prescribe a pane arrangement or regrade theme switching, persistence or execution.\n",
+        "reasoning": "Local transport fixture; no product behavior was evaluated."
+      }
+    ],
+    "kind": "agent",
+    "judge": {
+      "agent": "claude-code",
+      "model": "local-unpaid-transport-fixture",
+      "timeout": 900,
+      "cwd": null,
+      "isolated": false,
+      "atif_trajectory": null,
+      "mode": "batched",
+      "mcp_servers": [
+        {
+          "name": "playwright",
+          "transport": "stdio",
+          "url": null,
+          "command": "playwright-mcp",
+          "args": [
+            "--headless",
+            "--isolated",
+            "--executable-path=/usr/local/bin/chromium",
+            "--no-sandbox"
+          ],
+          "allowed_tools": []
+        }
+      ]
+    },
+    "judge_output": "{\"workspace_organisation\": {\"score\": \"no\", \"reasoning\": \"Local transport fixture; no product behavior was evaluated.\"}, \"interaction_feedback\": {\"score\": \"yes\", \"reasoning\": \"Local transport fixture; no product behavior was evaluated.\"}, \"labelled_controls_and_focus\": {\"score\": \"yes\", \"reasoning\": \"Local transport fixture; no product behavior was evaluated.\"}, \"responsive_layout\": {\"score\": \"no\", \"reasoning\": \"Local transport fixture; no product behavior was evaluated.\"}}"
+  },
+  "visual": {
+    "score": 0.4167,
+    "criteria": [
+      {
+        "id": "visual_typography",
+        "name": "visual_typography",
+        "value": 0.0,
+        "raw": 1,
+        "weight": 1.0,
+        "description": "Assess typography across the editor, preview frame surround, console and saved-snippets surface.\n5: text is comfortably readable, headings and labels are distinguishable, and the type treatment is consistent enough to follow the interface without effort. Harmless small variations do not prevent full credit.\n4: generally readable, with a few distracting size, alignment or truncation issues.\n3: readable overall but several inconsistent or cramped text treatments slow scanning.\n2: substantial portions are difficult to read.\n1: typography is largely unreadable or the relevant surface does not render.\n",
+        "reasoning": "Local transport fixture; no product behavior was evaluated."
+      },
+      {
+        "id": "visual_color_and_contrast",
+        "name": "visual_color_and_contrast",
+        "value": 0.25,
+        "raw": 2,
+        "weight": 1.0,
+        "description": "Assess colour and contrast across the editor, preview frame surround, console and saved-snippets surface.\n5: text has clear contrast, colours work together, and visible states remain easy to distinguish in each offered theme. A restrained or native-looking palette can earn full credit.\n4: generally clear, with a few distracting contrast or colour inconsistencies.\n3: several low-contrast or conflicting treatments reduce clarity.\n2: frequent contrast problems make important content difficult to read.\n1: colour treatment is largely unreadable or the relevant surface does not render.\n",
+        "reasoning": "Local transport fixture; no product behavior was evaluated."
+      },
+      {
+        "id": "visual_spacing_and_layout",
+        "name": "visual_spacing_and_layout",
+        "value": 0.5,
+        "raw": 3,
+        "weight": 1.0,
+        "description": "Assess spacing and layout across the editor, preview frame surround, console and saved-snippets surface.\n5: groups have clear separation, spacing supports comfortable reading, and essential content is not obscured by overlap or clipping. Simple conventional layouts can earn full credit.\n4: mostly orderly, with a few distracting gaps, alignments or crowded areas.\n3: several crowded or uneven areas make the layout harder to follow.\n2: frequent collisions or clipping obscure important content.\n1: the layout is broadly unusable or the relevant surface does not render.\n",
+        "reasoning": "Local transport fixture; no product behavior was evaluated."
+      },
+      {
+        "id": "visual_hierarchy_and_scanability",
+        "name": "visual_hierarchy_and_scanability",
+        "value": 0.75,
+        "raw": 4,
+        "weight": 1.0,
+        "description": "Assess visual hierarchy and scannability across the editor, preview frame surround, console and saved-snippets surface.\n5: the main content, current context and primary controls are easy to locate, with sensible grouping and visual emphasis. No particular branding, hero section or layout is required.\n4: mostly clear, with a few competing or insufficiently prominent elements.\n3: several important labels or controls are visually buried among similar elements.\n2: weak grouping and emphasis make the interface difficult to scan.\n1: no usable visual hierarchy is apparent or the relevant surface does not render.\n",
+        "reasoning": "Local transport fixture; no product behavior was evaluated."
+      },
+      {
+        "id": "visual_overall_craft",
+        "name": "visual_overall_craft",
+        "value": 1.0,
+        "raw": 5,
+        "weight": 1.0,
+        "description": "Assess overall visual consistency across the editor, preview frame surround, console and saved-snippets surface.\n5: the reviewed surfaces form a coherent, readable interface with consistent controls and a reasonably finished appearance. Native components, simple styling and minor harmless imperfections are compatible with full credit.\n4: generally coherent, with a few visibly inconsistent or unfinished details.\n3: several mismatched or unfinished elements interrupt the presentation.\n2: most surfaces appear inconsistent or unfinished.\n1: little coherent presentation is apparent or the relevant surfaces do not render.\n",
+        "reasoning": "Local transport fixture; no product behavior was evaluated."
+      },
+      {
+        "id": "visual_responsive_consistency",
+        "name": "visual_responsive_consistency",
+        "value": 0.0,
+        "raw": 1,
+        "weight": 1.0,
+        "description": "Compare at least two of the same workspace surfaces at desktop and roughly 390 by 844 mobile size. Judge how their group proportions, density and visual arrangement adapt. Stacking, tabs, drawers, a simple single column or intentional scrolling can all earn full credit. Mobile control reachability, operability, clipping and overflow belong to Polish; do not deduct for those same observations here. Judge the playground's own interface, not arbitrary authored preview content.\n5: groups keep a sensible visual relationship as the width changes, with a balanced arrangement and comfortable density at each size. Simple conventional adaptation is sufficient.\n4: mostly coherent adaptation, with a few distracting changes in group proportions or density.\n3: several awkward changes in relative scale or grouping weaken the composition.\n2: the cross-viewport arrangement has little consistent grouping or balance.\n1: no coherent relationship between the two compositions is apparent, or the required views do not render.\n",
+        "reasoning": "Local transport fixture; no product behavior was evaluated."
+      }
+    ],
+    "kind": "agent",
+    "judge": {
+      "agent": "claude-code",
+      "model": "local-unpaid-transport-fixture",
+      "timeout": 900,
+      "cwd": null,
+      "isolated": false,
+      "atif_trajectory": null,
+      "mode": "batched",
+      "mcp_servers": [
+        {
+          "name": "playwright",
+          "transport": "stdio",
+          "url": null,
+          "command": "playwright-mcp",
+          "args": [
+            "--headless",
+            "--isolated",
+            "--executable-path=/usr/local/bin/chromium",
+            "--no-sandbox"
+          ],
+          "allowed_tools": []
+        }
+      ]
+    },
+    "judge_output": "{\"visual_responsive_consistency\": {\"score\": 1, \"reasoning\": \"Local transport fixture; no product behavior was evaluated.\"}, \"visual_overall_craft\": {\"score\": 5, \"reasoning\": \"Local transport fixture; no product behavior was evaluated.\"}, \"visual_hierarchy_and_scanability\": {\"score\": 4, \"reasoning\": \"Local transport fixture; no product behavior was evaluated.\"}, \"visual_spacing_and_layout\": {\"score\": 3, \"reasoning\": \"Local transport fixture; no product behavior was evaluated.\"}, \"visual_color_and_contrast\": {\"score\": 2, \"reasoning\": \"Local transport fixture; no product behavior was evaluated.\"}, \"visual_typography\": {\"score\": 1, \"reasoning\": \"Local transport fixture; no product behavior was evaluated.\"}}"
+  }
+}

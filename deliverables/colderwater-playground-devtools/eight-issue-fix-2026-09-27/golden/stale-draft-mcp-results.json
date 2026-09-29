@@ -1,0 +1,95 @@
+{
+  "started_at": "2026-09-27T12:10:29Z",
+  "paid_provider": false,
+  "network": "none; browser and server in one disposable container",
+  "source_binding": {
+    "public/index.html": "d626c675e1fc335f03ba416d32ea4afe2ae1e9e41f004d97045627fc4dba648a",
+    "public/runner.html": "ed4a5811f8bd03a48fd256dbb15ee967b1afd6ff20633d77fff33b3491b03a09",
+    "src/app.tsx": "03917011ec2c4aa602ce6390a0427a32d8ff74567fc585a625fc709e583f1838",
+    "src/runtime.ts": "d2fc0471003dd6a2107918be7a2d69f3a96027ec4c56266e6dd9b035a30efd86",
+    "public/assets/index-C_1hOHr1.css": "cbfa10c893727b30ffa575ebe5befb26043074162af99b24384c2864fe58b05d",
+    "public/assets/index-VduTT3aN.js": "016976b4d2f058fadfff6d18dd14a4ee138eba496ac08e66ff840053aa7878a4"
+  },
+  "chromium_version": "Google Chrome for Testing 152.0.7977.8",
+  "mcp_version": "Version 0.0.79",
+  "command": [
+    "playwright-mcp",
+    "--headless",
+    "--isolated",
+    "--executable-path=/usr/local/bin/chromium",
+    "--no-sandbox"
+  ],
+  "initialize": {
+    "protocolVersion": "2025-06-18",
+    "capabilities": {
+      "tools": {}
+    },
+    "serverInfo": {
+      "name": "Playwright",
+      "version": "1.63.0-alpha-2026-08-05"
+    }
+  },
+  "tool": {
+    "name": "browser_run_code_unsafe",
+    "description": "Run a Playwright code snippet. Unsafe: executes arbitrary JavaScript in the Playwright server process and is RCE-equivalent.",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "code": {
+          "description": "A JavaScript function containing Playwright code to execute. It will be invoked with a single argument, page, which you can use for any page interaction. For example: `async (page) => { await page.getByRole('button', { name: 'Submit' }).click(); return await page.title(); }`",
+          "type": "string"
+        },
+        "filename": {
+          "description": "Load code from the specified file. If both code and filename are provided, code will be ignored.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "annotations": {
+      "title": "Run Playwright code (unsafe)",
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "openWorldHint": true
+    }
+  },
+  "raw_tool_results": [
+    {
+      "content": [
+        {
+          "type": "text",
+          "text": "### Result\n{\"running\":false,\"passed\":true,\"observations\":[{\"name\":\"persistent_snippets_actual_dirty_editor\",\"passed\":true,\"dirty_before_A_saved\":{\"title\":\"QC Concurrent Save\",\"filename\":\"qc-concurrent.js\",\"code\":\"console.log('stale-overwrite');\"},\"retained_after_rejection\":{\"title\":\"QC Concurrent Save\",\"filename\":\"qc-concurrent.js\",\"code\":\"console.log('stale-overwrite');\"},\"old_revision\":1,\"winner_revision\":2,\"recovered_revision\":3,\"actual_UI_stale_status\":409,\"server_record_unchanged\":true,\"duration_ms\":2741}]}\n### Ran Playwright code\n```js\nawait (async (page) => {\n  page.setDefaultTimeout(10000);\n  const observations=[]; page.__interactionProof={running:true,observations};\n  const assert=(condition,message)=>{if(!condition)throw new Error(message);};\n  const editor=p=>p.getByRole('textbox',{name:'Code editor',exact:true});\n  const title=p=>p.getByRole('textbox',{name:'Snippet title',exact:true});\n  const file=p=>p.getByRole('textbox',{name:'Filename',exact:true});\n  const preview=()=>page.frameLocator('iframe[title=\"Live preview\"]');\n  const body=()=>preview().locator('body').innerText();\n  const logs=()=>page.getByRole('log').innerText();\n  const complete=()=>page.waitForFunction(()=>document.querySelector('[role=status]')?.textContent.startsWith('Complete'),null,{timeout:10000});\n  const enter=async(code,filename,p=page)=>{await file(p).fill(filename);await editor(p).click();await p.keyboard.press('Control+A');await p.keyboard.insertText(code);assert(await editor(p).innerText()===code,'Exact entered source');};\n  const run=async(code,filename='proof.js',wait=true)=>{await enter(code,filename);const started=Date.now();await page.getByRole('button',{name:/^Run /}).click();if(wait)await complete();return started;};\n  const clear=()=>page.getByRole('button',{name:'Clear console',exact:true}).click();\n  const test=async(name,fn)=>{const start=Date.now();try{observations.push({name,passed:true,...await fn(),duration_ms:Date.now()-start});}catch(e){observations.push({name,passed:false,error:String(e),duration_ms:Date.now()-start});}};\n  await complete();await page.getByRole('checkbox',{name:'Auto-run',exact:true}).uncheck();\n  await test('persistent_snippets_actual_dirty_editor',async()=>{\n    await page.getByRole('button',{name:'New',exact:true}).click();await title(page).fill('QC Concurrent Save');await enter(\"console.log('base-version');\",'qc-concurrent.js');\n    const initialResponse=page.waitForResponse(r=>r.url().endsWith('/api/snippets')&&r.request().method()==='POST');await page.getByRole('button',{name:'Save',exact:true}).click();const initial=await(await initialResponse).json();\n    const b=await page.context().newPage();b.on('dialog',dialog=>dialog.accept());await b.goto('http://localhost:3000');await b.getByRole('button',{name:/^QC Concurrent Save/}).waitFor();await b.getByRole('button',{name:/^QC Concurrent Save/}).click();\n    await enter(\"console.log('stale-overwrite');\",'qc-concurrent.js',b);const dirty={title:await title(b).inputValue(),filename:await file(b).inputValue(),code:await editor(b).innerText()};\n    await title(page).fill('QC Concurrent Save Updated');await enter('<!doctype html><html><body>first-editor-won</body></html>','qc-concurrent.html');const aResponse=page.waitForResponse(r=>r.url().endsWith('/api/snippets/'+initial.id)&&r.request().method()==='PUT');await page.getByRole('button',{name:'Save',exact:true}).click();const winner=await(await aResponse).json();assert(winner.revision>initial.revision,'Advanced revision');\n    const staleResponse=b.waitForResponse(r=>r.url().endsWith('/api/snippets/'+initial.id)&&r.request().method()==='PUT');await b.getByRole('button',{name:'Save',exact:true}).click();const stale=await staleResponse;assert(stale.status()===409,'Actual UI stale rejection');await b.getByRole('button',{name:'Reload latest',exact:true}).waitFor();\n    const retained={title:await title(b).inputValue(),filename:await file(b).inputValue(),code:await editor(b).innerText()};assert(JSON.stringify(retained)===JSON.stringify(dirty),'Exact dirty title/filename/code retained');\n    const observedUrl=stale.url();const fresh=await b.evaluate(async url=>await(await fetch(url)).json(),observedUrl);assert(JSON.stringify(fresh)===JSON.stringify(winner),'Fresh server unchanged');\n    await b.getByRole('button',{name:'Reload latest',exact:true}).click();await b.waitForFunction(expected=>document.querySelector('input[aria-label=\"Snippet title\"]').value===expected.title&&document.querySelector('input[aria-label=\"Filename\"]').value===expected.filename,winner);assert(await title(b).inputValue()===winner.title&&await file(b).inputValue()===winner.filename,'Deliberate latest fields');await enter('<!doctype html><html><body>reapplied-after-reload</body></html>','qc-concurrent.html',b);\n    const recoverResponse=b.waitForResponse(r=>r.url().endsWith('/api/snippets/'+initial.id)&&r.request().method()==='PUT');await b.getByRole('button',{name:'Save',exact:true}).click();const recovered=await(await recoverResponse).json();assert(recovered.revision>winner.revision,'Recovery advanced revision');await b.reload();await b.getByRole('button',{name:/^QC Concurrent Save Updated/}).click();assert(await editor(b).innerText()===recovered.code,'Recovered saved draft survives reload');await b.close();\n    return{dirty_before_A_saved:dirty,retained_after_rejection:retained,old_revision:initial.revision,winner_revision:winner.revision,recovered_revision:recovered.revision,actual_UI_stale_status:stale.status(),server_record_unchanged:true};\n  });\n  page.__interactionProof={running:false,passed:observations.every(item=>item.passed),observations};return page.__interactionProof;\n}\n)(page);\n```"
+        }
+      ]
+    }
+  ],
+  "observations": {
+    "running": false,
+    "passed": true,
+    "observations": [
+      {
+        "name": "persistent_snippets_actual_dirty_editor",
+        "passed": true,
+        "dirty_before_A_saved": {
+          "title": "QC Concurrent Save",
+          "filename": "qc-concurrent.js",
+          "code": "console.log('stale-overwrite');"
+        },
+        "retained_after_rejection": {
+          "title": "QC Concurrent Save",
+          "filename": "qc-concurrent.js",
+          "code": "console.log('stale-overwrite');"
+        },
+        "old_revision": 1,
+        "winner_revision": 2,
+        "recovered_revision": 3,
+        "actual_UI_stale_status": 409,
+        "server_record_unchanged": true,
+        "duration_ms": 2741
+      }
+    ]
+  },
+  "passed": true,
+  "finished_at": "2026-09-27T12:10:35Z"
+}

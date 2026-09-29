@@ -1,0 +1,36 @@
+# Ridgeline: independent second golden cross-check
+
+No golden application defect was found. The two newly strengthened UI checks pass in the real browser: the paper filter includes fully sold-out Allotment, and the complete bounded keyboard navigation route works. Existing golden source did not need changes.
+
+All 37 current criteria are mapped in `CRITERION_MAP.md` and `CRITERION_EVIDENCE.json`: 25 Functional (weight 35), two gates, four Polish and six Visual. The map distinguishes fresh evidence from the exact previous evidence retained for unchanged behavior. It does not label old test runs as newly executed.
+
+## Artifact identity and isolation
+
+The starting final ZIP has SHA-256 `9944734b651333bfd5cdb9df99b05835bab74d3bf0b8a71dd4ff894c1314445c`. I independently checked its CRCs, safely extracted it and compared every solution file with current source. All 19 hashes match both the previous criterion map and the fresh installed application. No source edit was made during this golden review. The root reviewer owns subsequent rubric/harness edits and final ZIP binding.
+
+The fresh app ran from that extracted solution in its own disposable `ridgeline-second-golden-20260927` container and fresh database. Image: `ridgeline-verifier:20260927-crosscheck`, ID `sha256:6fbd4d7468c34ea8f0035aca4243c9c1c6f7363dd3f9ea16f92eb3ecc097f29a`. It started from `/app`. The normal HTTP-served index, JavaScript, vendor JavaScript and CSS match the corresponding golden hashes. `artifact-identity.json` and `runtime-binding.json` contain the proof.
+
+The flow used the installed `browser_run_code_unsafe` MCP tool and its browser context methods, not a paid judge. Chromium was 152.0.7977.8. No original/shared database or container was used. The task-owned disposable container was removed after evidence capture.
+
+## Fresh continuous flow
+
+`boundary-mcp-results.json` contains the raw successful MCP response; `boundary-observations.json` contains structured observations. Eight groups passed, with 46 browser-side network observations, 76 actual keyboard events and 21 screenshots:
+
+1. A normal Kiln purchase succeeded, and an independent context with initially empty cookies/storage retrieved its reference, recipient, line and exact receipt after reload. The placed order left six Kiln copies.
+2. Combined size/paper/title filtering retained the offered sold-out size. A no-results state reset to all eight prints, and complete price/title lists sorted in both directions. The newly required Colorplan Pristine White filter showed exactly Allotment, Long Field and Nine Windows, with Allotment still visibly sold out; clearing it restored eight. The prior MCP proof retains the independent Munken-only leg.
+3. A normal UI setup put one available, unplaced unit in a private basket. From the catalogue, 76 genuine keyboard events reached search, size, paper, sort, theme and basket controls with visible focus; switched theme; opened a print detail; returned to the catalogue; opened the prepared basket; and returned again. The route used no pointer actions, programmatic focus, DOM clicks or application API calls. Stock remained unchanged and pointer cleanup emptied the unplaced basket. The resulting scope matches both revised Polish criteria, with labels/focus separate from actual view changes.
+4. Fractional and overstock basket edits retained the last valid two-unit basket. Two simultaneous independent browser contexts retained different baskets over full reloads. Setting quantity to zero removed the original basket and all payable/postage UI after another reload.
+5. Four fresh server attempts separately supplied whitespace-only name, address line, city and postcode. Each was refused while all stocks and the valid control receipt stayed exact. A separate subsequent normal valid UI checkout succeeded.
+6. A real three-line, 2,090-gram collection order persisted subtotal £866.50, saving £79.25, zero postage and total £787.25. Its receipt clearly remained collection-only after reload. Cancelling restored each variant exactly; simultaneous repeated cancellation requests restored nothing extra. Its original checkout replay returned the same cancelled receipt. Escape also dismissed the confirmation dialog without cancelling.
+7. The final Slack A2 purchase committed on the server, then its response was deliberately dropped before the browser received it. A second clean context looked up and cancelled that committed order. After the original browser reloaded, the real recovery control replayed its exact request and received the same cancelled reference, without resurrecting the order or consuming stock. A changed-address replay was refused, and a genuinely new checkout could subsequently buy that same basket with a new reference. This combines terminal cancellation with lost-response recovery, beyond the previously tested sequential cases.
+8. At 1440-pixel desktop and 390-pixel mobile widths in both themes, catalogue/detail/empty-basket/receipt views fit without page-wide overflow and kept stock unchanged. Sold-out Slack A2 remained included in its offered-size filter while the remaining A3 kept the print available. The full prior five-surface presentation suite is retained for the unchanged layout; these are new follow-through views after the fresh transactions.
+
+No page errors were recorded. I inspected the new paper-filter, desktop dark basket, mobile dark receipt and mobile light detail screenshots. The filter membership is visible, controls and text are readable, and the responsive grouping is coherent. No new visible defect contradicts the rubric's attainable top Visual anchors. This is a local rendered assessment, not a promised aesthetic judge score.
+
+## What was reused and why
+
+I read the public brief, all instruction notes, seed, all current criterion descriptions, editable frontend/server/pricing/database source, and the prior detailed evidence map and witness code. Fresh scope deliberately targets behavior combinations and new requirements not established by the earlier exact checks. The same 19 application hashes support reuse of the prior eight-print/thirteen-variant inspection, same-basket trade reversal, 500/2,000-gram inclusive preview boundaries, historical/mixed receipts, authoritative pricing, duplicate/invalid-line atomicity, stale multi-line refusal, simultaneous last-copy race, cheapest-sold-out price branches, successive trade tiers and actual process-restart proof. Their individual result files are linked and hashed per criterion; the previous aggregate PASS label is not treated as fresh execution.
+
+The previous installer lifecycle evidence is also unchanged: the installer hash remains `926a0dd3d71d4c47e4f1c7e251fab8b6ac405800c8d32d26904cc1afd26f40ed`. Its documented active-database refusal, clean installation, ordinary restart and stopped reinstall checks are retained. The separate harness reviewer owns the newly corrected cleanup path and final harness regressions; this report does not substitute the older harness identity for that work.
+
+There was no paid Oracle or target-model run. The evidence supports full golden capability across the current rubric, but the platform's actual Oracle score and target-model reward remain unmeasured. No extra difficulty or hidden requirement was added to force a model score.

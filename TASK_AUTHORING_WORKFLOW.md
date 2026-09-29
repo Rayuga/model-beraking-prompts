@@ -4,6 +4,10 @@ Read [NEW_TASK_AUTHORING_CONTEXT.md](NEW_TASK_AUTHORING_CONTEXT.md) first. This 
 
 Use the supplied rubric skill throughout design and final review. Use the breaker skill when hardening an existing task is in scope. Preserve the user's cleanup and unrelated work. Keep authoring reports outside the task folder.
 
+Before accepting a rubric rewrite, test partial-feature counterexamples for every bundled outcome and distinguish a shared scenario from its scoring units. Measure the resolved RewardKit prompt and schema with the installed CLI builders: a larger rubric can exceed the operating system's per-argument launch limit even when all TOML parses. Record source size, browser work and measured full judge latency separately. Do not mark an unmeasured timeout concern resolved or remove the incomplete-evaluation guard to hide it.
+
+Apply the latest [QC regression prevention steps](QC_REGRESSION_PREVENTION.md) during stages 2, 4, 5 and 6. In particular, test a valid alternative as well as the golden, read injected context with each criterion, distinguish tool failures, and rebind every changed candidate. Older Colderwater private-source classification and mandatory escape-help recommendations below are historical and superseded by that document.
+
 ## Roadmap
 
 | Stage | Main source / skill | Result |
@@ -63,9 +67,9 @@ Build the app under `solution/app/` with `server.js` as entry point. Follow the 
 
 Verify the core UI and API together, including valid actions, visible refusals, state changes, re-reads, and server restart. Repeated seeding must not duplicate records. Check mobile and secondary/detail/empty surfaces relevant to the supplied polish and visual criteria; a polished home page alone does not cover them.
 
-Use the exact verifier runtime assumptions: unprivileged app user, sanitized environment, `DB_PATH`, actual CWD, fallback app path, and persistent database. See the [shared preflight register](NEW_TASK_AUTHORING_CONTEXT.md#8-shared-preflight-register) for the CWD and Visual-scale questions. Reproduce and resolve an actual contract mismatch instead of only adapting the golden to survive it.
+Use the exact verifier runtime assumptions: unprivileged app user, sanitized environment, `DB_PATH`, actual CWD, fallback app path, and persistent database. Apply the verified launch-directory and 1–5 Likert corrections recorded in the [shared preflight register](NEW_TASK_AUTHORING_CONTEXT.md#8-shared-preflight-register) when adapting the downloaded starter. Reproduce and resolve an actual contract mismatch instead of only adapting the golden to survive it.
 
-External browser assets are permitted by the current integration note; external backend/data services are not. Do not introduce a blanket offline condition or require all requests to be same-origin.
+External browser assets are permitted by the current integration note; external backend/data services are not. Do not introduce a blanket offline condition or require all requests to be same-origin. Compare task-authored notes against this profile: they cannot authorize their own exception. Run `scripts/check_public_network_policy.py <task>` before packaging and against the extracted candidate. A product-specific authored-snippet network restriction is separate from its app-asset policy.
 
 **Done when:** every requested flow is implemented and exercised locally, with meaningful browser evidence as well as backend checks. Successful startup or API responses alone are insufficient.
 
@@ -243,3 +247,81 @@ Final artifacts / submitted status / acceptance evidence:
 ```
 
 A future instance should read both base documents, the current task notes, this handoff record, and the relevant skill before editing. Resume the recorded next action; do not restore superseded archive rules or reinterpret old runs as evidence for a new revision.
+
+For the final artifact pass, compare the extracted ZIP with the frozen source and rerun source checks against that extracted tree. Keep shell files LF both on disk and through Git checkout. Verify the exact built images contain the final notes and verifier bytes, with no golden files in the agent environment. A source parser, synthetic harness score and successful Docker build are distinct evidence; none substitutes for the measured Oracle/Luna runs.
+
+Run `scripts/check_public_criterion_ids.py <task-folder>` before packaging and again on the extracted task. It exits nonzero when any criterion ID appears as a literal word/token in participant-facing Markdown. Ordinary words such as `keyboard` can be collisions; use distinctive internal IDs rather than delete legitimate product requirements. `deliverables/package_staged_candidates.py` now runs this guard automatically. This local check covers the observed ID-collision rule, not every behavior of the private instruction-hygiene checker.
+
+## Required regression review after the Ridgeline feedback
+
+Apply these during authoring and repeat affected checks before freezing a candidate. The original Ridgeline review missed them even though the golden and source assertions passed.
+
+1. Extract requirements from the public brief and notes first. For each, record the shipped criterion, observable action/result and golden evidence. Then reverse the map and ensure each criterion is justified by public requirements. Explicitly identify browser-unobservable architecture requirements. Do not count an external smoke test as rubric coverage.
+2. Read the brief aloud as an owner request. Move deployment instructions to integration notes, preserve business rules, and remove scoring vocabulary and verifier-shaped clauses. Evaluate voice manually; keyword checks and contractions cannot certify it.
+3. Check all five prompts for an explicit source/implementation evidence ban, browser-based evidence instructions, and the correct prerequisite. "Untrusted" does not mean "do not inspect." Ensure the permitted browser/network tools can actually perform the observations.
+4. Build and execute a plausible negative fixture against each critical prerequisite. For shared server data, use static seed responses plus localStorage writes and even a no-op successful POST. Require the gate to distinguish that fixture from the golden through a fresh independent browser retrieval. Do not credit a same-context reload as shared storage, nor infer the database engine from browser behavior.
+5. Record every gate mutation and each subsequent criterion's stock/state allocation. Scored judges must not assume access to another judge's browser storage or generated reference. Use delta-based checks after earlier failures and stop a failed negative sequence before it drains fixtures needed later.
+6. Inspect bundled criteria with counterexamples: can a working independent feature lose all credit because a different feature fails? Split when appropriate, retaining linked positive/negative/recovery legs for one behavior. Compute redistribution effects and floor crossings under the canonical scorer; do not adjust the policy to manufacture the target score.
+7. Exercise golden installation on both empty and used workspaces, separately from normal process restart. An installation-only seed reset must target exact files and refuse active database use. Restart must preserve prior writes. Keep actual evidence for both lifecycles.
+8. Freeze source; rerun affected source/browser/negative-fixture checks; rebuild and compare actual image contents; package and repeat checks on the extracted ZIP. Have the independent reviewer use the frozen manifest. Disclose reused evidence and unresolved subjective or measured-evaluation limits.
+
+See [Ridgeline correction evidence](deliverables/ridgeline-print-storefront/rubric-fix-2026-09-26/) for executable installer, browser-mock, golden gate/address, source and score-bound examples. These are regression examples to adapt, not a replacement for the 53/48 task review or paid evaluation. Never repeat a previous local PASS after platform evidence disproves its rationale.
+
+The subsequent Colderwater failures add these concrete checks to the same review:
+
+- Run `scripts/check_public_grader_terms.py <task-folder>` alongside the criterion-ID scan, both before packaging and against extraction. Reproduce a known-bad public-vocabulary leak to verify the guard actually fails; a zero exit code on only the corrected source is weaker evidence.
+- For a code runner, prove a newly authored snippet actually runs before editor-only features can unlock presentation credit. For its server library, prove a new save and clean-context retrieval. Execute separate negative fixtures for dead execution and browser-only storage.
+- Expand every plural promise into coverage cases: each unsupported execution family, each revision-protected mutation, each dirty-navigation destination, and both positive/negative sides of filename/title rules. Record acceptance when auto-run is off as well as active execution after Run.
+- Keep user-authored editor/file contents permitted as product evidence while prohibiting inspection of the application's implementation. Validate exact source line fixtures after splitting error paths.
+- Budget gate-created records and avoid assuming a particular order between the two gate judges. Startup requirements and the first scored check must remain valid with that record present. Do not add destructive cleanup or advanced delete behavior to a basic Save gate.
+- When a local browser test fails, distinguish a bad assertion about browser-tool behavior from an app defect. Native beforeunload cancellation may produce a pending navigation timeout rather than a specific ERR_ABORTED string; grade the observed retained draft and cancelled navigation, not a particular automation exception.
+
+Use [Colderwater correction evidence](deliverables/colderwater-playground-devtools/rubric-fix-2026-09-26/) for these cases. Keep canonical scoring and report partial-credit/floor effects honestly; a repaired prerequisite can give an incomplete model zero even when the authoring target starts above zero.
+
+The later [Ridgeline follow-up](deliverables/ridgeline-print-storefront/rubric-followup-2026-09-26/) adds four preflight steps:
+
+1. Review every mandatory display assertion against a public display requirement. Data used to calculate a price, such as grams or a shipping-band name, is not automatically required receipt text.
+2. Give independently useful controls separate outcomes, retaining their combined weight. Assign mobile usability and visual composition distinct evidence so the same overflow does not lose points twice.
+3. Compare the brief, integration notes and all judges with the current public-network profile. Run the new network-policy guard on source and extraction, plus its known-bad regression cases. App CDN permissions and authored-snippet network restrictions are separate policies.
+4. Exercise unusual browser setup through the actual MCP tool and exact flags. For simultaneous independent visitors, prove context creation, empty initial storage, both live contexts, reload isolation and cleanup that preserves the original MCP page. Include the tested tool recipe in the rubric; do not infer capability or impossibility from `--isolated` alone.
+
+The 27 September Colderwater review adds these checks before the source freeze:
+
+1. Interpret feedback requirements per action. Stop, timeout and supersession may have different public requirements; do not infer the same required notification for all three. Keep substantive lifecycle invariants strict.
+2. List security promises individually. For each, identify an executable bounded counterexample before declaring it browser-unobservable. A static-root file leak can be observed even though comprehensive host security cannot be proved.
+3. Exercise negative classifiers against both failing and permitted implementations. Include SPA fallback responses, ordinary public JavaScript and harmless JSON metadata. Restrict response inspection to classification, without execution or logging sensitive content. Record truncation or ambiguous evidence honestly.
+4. For temporal/state requirements, add the distinguishing transition: a second edit inside a pending debounce, or a previously working handler after a CSS context replacement. Ordinary single-action smoke tests do not cover these promises.
+5. Apply cross-task learnings to each candidate separately. Verify presentation ownership in both Polish and Visual and remove aesthetic deductions from functional mechanics.
+6. Reconcile generic helper findings with the authoritative template and current sheet. A regex demanding an initial database deletion or rejecting the word "optional" can be stale or overbroad. Preserve the raw result and document the exact false-positive reason; do not silently label the helper as passing or change durable runtime behavior to satisfy it.
+7. Bind fresh source/extraction checks, actual image bytes, criterion-level browser observations and independent 53/48 review to the same source. State all runtime or judgment gaps, especially when local groups are not an execution of the complete paid rubric.
+
+The second Colderwater cross-check adds two adversarial preflight cases:
+
+1. Prove process replacement separately from HTTP availability. Test a SIGTERM-resistant server and child, a replacement that exits, and an unrelated listener. Require the actual single-use MCP helper to report errors for unsuccessful replacement, verify old-group termination and new-PID liveness, then repeat the browser-created record/restart/fresh-read/save witness. Keep startup checks free of process-group creation races and all waits inside the MCP deadline.
+2. Challenge private-file classifiers with redirects as well as ordinary bodies. Test same-origin public fallback, same-origin private-signature exposure, off-origin redirects with zero outbound requests, and genuine transport failure through the installed browser MCP. Use bounded observed redirect metadata without printing private payloads. Avoid a hidden no-redirect requirement and disclose uninspected destinations.
+
+When these reveal a new defect after a source freeze, keep the earlier archive immutable, repair only the affected implementation or rubric, rerun focused proofs, compare unchanged golden hashes, and produce a replacement ZIP, manifest and review. Do not present the older report as proof for changed harness or prompt bytes.
+
+For parallel tasks, explicitly list the reviewed task and its source hash in each progress/final report. A sibling's successful checks or repaired shared-pattern defect are not evidence that this task was checked. Reproduce and validate the affected behavior independently.
+
+For every conditional product promise, identify a reachable state that distinguishes it from a plausible wrong implementation. Initial seed coverage can miss a condition that only appears after purchases, cancellation or another mutation. Keep a small independent outcome separate from unrelated checkout correctness, give it its own valid setup when earlier checks fail, preserve later stock allocations, and test both setup paths. Update criterion counts, metadata and packaging assertions together; retain the dimension's total weight and document floor effects separately from above-floor bounds.
+
+For execution deadlines, explicitly map initial execution, pending callbacks, successful completion, later user interaction, Stop, error and supersession. Read the public wording as an independent implementer before consulting the golden's behavior. A completed preview's later interaction can start a fresh budget only when the brief says so; unfinished work must retain its original deadline. Test a delayed positive interaction and a negative case whose measured timing actually distinguishes an incorrect reset. Do not promise that a restored static snapshot revives cancelled handlers.
+
+For keyboard-accessibility promises, perform a pointer-free route through the specific product surfaces: escape the editor, choose an example, load an independently prepared saved item and return to the workspace. Tab-stop counts and command shortcuts are insufficient coverage. Use normal or documented keys, inspect visible focus, prohibit programmatic focus/click shortcuts during the route, and check discoverability of editor escape. Keep keyboard operability in Polish and the separate shortcut behavior in Functional. Re-read the injected app context for any contradictory state/setup rules; permit only the necessary dedicated setup record and preserve earlier data. Rebuild and verify the delivered bundle when adding golden help text; a source-only change does not fix the shipped app.
+
+For the final harness exit, run a separate resistant-process check even when restart tests pass. Assert bounded termination of parent/child process groups, preservation of valid or zero rewards and the original nonzero exit status. Re-run affected orchestration after repairing cleanup, while retaining unchanged helper/scorer evidence only by exact hash.
+
+Before freezing a catalogue or durable-state rubric, write a concrete wrong implementation for each plural/boundary promise. Test a wholly sold-out item in the relevant filter, and record every required variant before restart rather than trusting a vague “all recorded” comparison. Verify observed local URL/credential handling and remove unrequested tie-order rules. For keyboard promises, prove real view changes separately from labels/focus, using ordinary or documented keys and harmless independent setup.
+
+Reconcile all final workbook rows, including deterministic output text, with current counts and evidence. A newer summary can still contain old “24 criteria” or “unchanged test.sh” claims copied into individual rows. Reopen the client-safe workbook, compare every 53/48 entry to the final findings, bind the exact archive hash, and mark fresh versus reused observations explicitly.
+
+At the final cross-check, exercise the installed result producer and its serializer with a local transport fixture. Empty optional fields may be omitted in legitimate CLI output; handwritten fixtures cannot establish that compatibility. Keep explicit malformed fields, incomplete evaluator markers and observed app failures as different cases. Preserve the failed assumption and supersede its old test expectation openly.
+
+For provisional execution and state recovery, test a valid last-good overlay that hides candidate changes and blocks further input. Do not force hidden/disabled controls. A successful interaction must precede a failed interaction when testing latest-state rollback. Also test completed-preview Stop, successful unique padded-title writes and a saved edited example whose original remains unchanged. Choose an example language the app actually supplies. Keep the public contract and weights unchanged when these are already stated requirements.
+
+Standard editor escape keys can satisfy navigation without app-provided help text. This supersedes earlier discoverability language in this document unless documentation itself is explicitly requested. Consult [the current prevention guide](QC_REGRESSION_PREVENTION.md) before packaging and keep hosted Oracle/target-model claims unmeasured until those actual runs exist.
+
+Before finalizing privacy checks, compare public prose with the private candidate list. State the product boundary by data/file category; never fix a hidden requirement by publishing the exact finite probes. Exercise the concrete leaking implementation that blocks only the previously advertised paths. Preserve genuine public asset/data roles and source-inspection restrictions, and record the finite coverage limit.
+
+Before finalizing criterion independence, map each setup operation to its separately graded owner. Restart needs ordinary independent saves, not Duplicate/Delete. Separate independently useful confirmation, stale-delete protection and deleted-identity update refusal; give each its own data. In server-only checks, perform offered confirmation if necessary without making its UI a scoring requirement. Missing Auto-run alone cannot invalidate an unrelated gate. Keep intrinsic controls such as a valid current-revision operation before testing its stale refusal. Review accepted evidence assumptions as well as code: the previous guard that required public probe filenames was enforcing a bad design.

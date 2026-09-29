@@ -1,0 +1,83 @@
+--- baseline/tests/scored/functional/judge.toml
++++ current/tests/scored/functional/judge.toml
+@@ -42,11 +42,11 @@
+ console.log('js-dispatch-log');
+ The preview shows js-dispatch-ok and the console shows js-dispatch-log.
+ 2. Change only the filename and source to dispatch.html and the following complete document, then run:
+-<!doctype html><html><body><h1 id="dispatch-mark">html-dispatch-ok</h1><script>window.oldGlobal='do-not-carry'; console.log('html-once-marker');</script></body></html>
+-The new HTML replaces the old JS document. Note the current count of html-once-marker console entries.
++<!doctype html><html><body><h1 id="dispatch-mark">html-dispatch-ok</h1><button id="dispatch-button">Try handler</button><script>window.oldGlobal='do-not-carry'; console.log('html-once-marker'); document.getElementById('dispatch-button').addEventListener('click', () => console.log('dispatch-handler-marker'));</script></body></html>
++The new HTML replaces the old JS document. Click its Try handler button and confirm dispatch-handler-marker appears, proving the original handler works. Note the current counts of html-once-marker and dispatch-handler-marker console entries.
+ 3. Change to dispatch.CSS with source:
+ #dispatch-mark { color: rgb(255, 0, 0); }
+-Run it. The last successful HTML text remains and its heading is red, while html-once-marker has not been logged again. CSS must not rerun the old script.
++Run it. The last successful HTML text remains and its heading is red, while html-once-marker has not been logged again. Click the retained Try handler button: no new dispatch-handler-marker entry appears. CSS must neither rerun the old script nor preserve its installed event handler. The control deliberately does not mutate the document when clicked, so this does not impose a choice about retaining post-run DOM edits.
+ 4. Change to dispatch.js and run:
+ document.body.innerHTML = '<p id="fresh-js">fresh-' + typeof window.oldGlobal + '</p>';
+ console.log('fresh-js-log');
+@@ -57,7 +57,7 @@
+ id = "fresh_cancel"
+ name = "fresh_cancel"
+ type = "binary"
+-weight = 3.0
++weight = 2.5
+ description = """
+ 1. Turn auto-run off. Run a short successful .js snippet producing a stable paragraph and console marker, establishing a last-good preview.
+ 2. Run:
+@@ -69,7 +69,7 @@
+ document.body.innerHTML = '<p id="run-B">run-B-' + typeof window.__cancelLeak + '</p>';
+ console.log('cancel-B-started');
+ Use a single browser automation action for the time-sensitive editor replacement and Run activation if needed. Confirm A was still active when B started; if setup missed the four-second window, redo this setup once rather than call an already-finished run a cancellation.
+-3. B's preview says run-B-undefined, the UI/console explains that the prior run was cancelled or superseded, and cancel-B-started appears. Wait until six seconds after A started: cancel-A-delayed must never appear, and A cannot replace B's DOM.
++3. B's preview says run-B-undefined and cancel-B-started appears. Wait until six seconds after A started: cancel-A-delayed must never appear, and A cannot replace B's DOM or report itself as the current success. A separate notification that A was superseded is optional; prove the actual cancellation from these observations.
+ 4. Start a separate timer run that logs stop-started, changes the preview to a candidate and schedules stop-delayed after four seconds. Use the actual Stop control promptly while it is active. A visible stopped/cancelled reason appears, B's last-good preview is restored, and stop-delayed never appears after waiting past its scheduled time. A subsequent short ordinary run still works. Do not mistake hidden old output for terminated work.
+ """
+ 
+@@ -90,6 +90,22 @@
+ console.log('isolation-results',docRead,docWrite,storageRead,storageWrite);
+ All four results must be blocked. Fresh in-page reads of the playground's own title and storage show exactly their earlier values, and the app remains usable.
+ 3. Run another ordinary own-document DOM update and log. It succeeds, proving the forbidden parent access did not break legitimate use. Unsupported execution has its own criterion. Do not add other sandbox escapes or native-blocking probes.
++"""
++
++[[criterion]]
++id = "cw_runtime_files_not_publicly_exposed"
++name = "cw_runtime_files_not_publicly_exposed"
++type = "binary"
++weight = 0.5
++description = """
++1. Establish this criterion's own working control: through the UI, run ordinary .js source that renders confidentiality-control-preview and logs confidentiality-control-log. Confirm both outputs. Also make a successful browser HTTP read of the workspace at its normal public URL. This check must not pass merely because the server or all HTTP reads are broken.
++2. From the browser, make a separate GET to each of exactly /app.db, /server.js and /package.json on the application's local origin. These are bounded exposure probes derived from the stated runtime filenames, not required endpoints. Do not add traversal, encoded-path variants, directory discovery, secret filenames, authenticated routes or source-map searches. Do not follow redirects off the local app origin. A normal access denial or an intended public fallback is valid.
++3. Classify only a bounded response prefix, up to 64 KiB per request, inside browser automation. Cancel the response reader at that limit and do not execute response text. Look for actual exposed private content, not the status code, MIME type, filename or a single echoed keyword:
++- A database exposure requires the exact SQLite header in the first 16 bytes: SQLite format 3 followed by a zero byte. Do not enumerate tables, records or values.
++- Raw server-source exposure requires both server-side import/require evidence and executable server initialization/listening or database-opening evidence. Ordinary browser JavaScript named server.js is valid. HTML fallback pages, source-looking words inside comments or string literals, and a lone import/filename are not sufficient. Classify the returned file type only; do not analyze its application logic or use it to predict any other criterion.
++- A runtime package-manifest exposure requires a parsed non-array JSON object with BOTH a server-start command and server-only dependency declarations, such as Express or better-sqlite3. Harmless JSON metadata, a frontend package manifest, a scripts key alone or name/version alone is not evidence of a private runtime manifest.
++4. Each of the three requests must be attempted and its observed outcome recorded. HTTP 200 with an HTML app shell, an error page or a benign public payload can be correct; a non-200 response that actually delivers recognizable private content is still exposure. Reaching the 64 KiB limit completes this bounded inspection: an unrecognized or truncated public response must not fail merely because its full type cannot be established. With no positive private-file evidence in the observed prefix, report no recognizable private content in that prefix, not that the entire response or server is proved safe. Actual transport failures, opaque off-origin redirects or missing working controls leave evidence incomplete and cannot establish a pass. Do not turn a status/MIME guess into a verdict.
++5. Run another ordinary own-document DOM update and console marker through the UI and confirm the workspace still works. Pass requires the working controls, all three completed bounded probes and no recognizable private-file exposure in their observed responses. Only positive private-file evidence fails this confidentiality check; there is no response-size limit for valid public assets. Return only path, status, byte-count/truncation metadata and classification or boolean results. Do not print, quote, persist or download returned private content, or analyze application logic in any returned source. Inspect response bytes only for the narrowly allowed file-type classifications; never extract database records or secrets. The functional prompt's narrow HTTP-response classification exception applies only here. This is representative confidentiality coverage, not a proof against every possible file-serving route or a license to inspect implementation files.
+ """
+ 
+ [[criterion]]
+@@ -254,10 +270,11 @@
+ type = "binary"
+ weight = 2.0
+ description = """
+-1. Turn auto-run on, replace .js source with a DOM marker auto-fired and matching console log, then stop typing without clicking Run. It runs after a brief typing pause and within about two seconds.
+-2. Turn auto-run off. Replace source with a distinct auto-off marker and log; wait two seconds. Neither marker nor log replaces the prior result automatically. Click Run and confirm this new code now executes.
+-3. Turn auto-run on again. In one time-sensitive browser action, make a further edit scheduling a distinct auto-queued marker and immediately turn auto-run off before its debounce expires. Wait two seconds: the queued edit must not run. If the setup visibly allowed its debounce to expire before switching off, repeat the setup once with the actions batched; do not count an already-executed run as a cancellation failure.
+-4. Manual Run executes that same queued edit successfully. Leave auto-run off. Do not require a particular debounce millisecond value or runs on every keystroke.
++1. Turn auto-run on, replace .js source with a DOM marker auto-fired and matching console log, then stop typing without clicking Run. It runs after a brief typing pause and within about two seconds. Measure the observed delay from the last edit to this automatic execution; do not assume a fixed debounce interval.
++2. Establish that later edits restart the wait. Make several real editor edits to valid sources with distinct DOM/log markers, spaced comfortably closer together than the observed delay. Continue editing beyond the time when the first edit alone would have run. Record the actual edit timings. No intermediate version executes while these edits continue; after the final edit and a typing pause, only that final version runs within about two seconds. Batch the time-sensitive editing sequence in one browser action if needed. If automation missed the intended within-delay setup, repeat it once; a run after an actual idle gap is not a debounce-reset failure.
++3. Turn auto-run off. Replace source with a distinct auto-off marker and log; wait two seconds. Neither marker nor log replaces the prior result automatically. Click Run and confirm this new code now executes.
++4. Turn auto-run on again. In one time-sensitive browser action, make a further edit scheduling a distinct auto-queued marker and immediately turn auto-run off before its debounce expires. Wait two seconds: the queued edit must not run. If the setup visibly allowed its debounce to expire before switching off, repeat the setup once with the actions batched; do not count an already-executed run as a cancellation failure.
++5. Manual Run executes that same queued edit successfully. Leave auto-run off. Do not require a particular debounce millisecond value or runs on every keystroke.
+ """
+ 
+ [[criterion]]
+@@ -426,7 +443,7 @@
+ type = "binary"
+ weight = 0.5
+ description = """
+-Record the starting theme, which may be light or dark. Use the theme control to switch to the other appearance, then back. The overall interface, editor syntax and console remain legible in both, and the rendered theme change is clear across the workspace rather than only in the toggle. Do not require one initial theme or theme the authored preview document's own content.
++With auto-run off, establish this criterion's own normal .js run that renders theme-control-preview and logs theme-control-log. Record its current title, filename, exact editor source and resulting preview/console output. Record the starting theme, which may be light or dark. Use the theme control to switch to the other appearance, then back. Both changes must actually affect the workspace chrome, editor and console, rather than only changing the toggle label. The title, filename, source and existing preview/console output remain intact through both switches. Judge switching and preservation of the working state here; visual criteria own contrast, palette and aesthetic readability. Do not require a particular initial theme, recolouring of the authored preview document, or theme persistence after reload.
+ """
+ 
+ [[criterion]]
