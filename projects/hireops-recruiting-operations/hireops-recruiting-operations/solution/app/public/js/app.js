@@ -1,0 +1,394 @@
+'use strict';
+/* HireOps SPA shell.
+ *
+ * A multi-workspace operations client: a primary navigation (Dashboard,
+ * Requisitions, Offers, Equity Table, Referrals, Audit Trail), a headline metric
+ * dashboard, a light/dark theme control, and a details drawer used both for
+ * read-only record detail and for the revise / rescind action forms (so no native
+ * prompt() or raw JSON blob is ever shown to the operator). The domain workspaces
+ * are supplied by window.renderWorkspaces (js/hireops.js), which loads first.
+ */
+
+const ROLE_LABELS = {
+  recruiter: 'Recruiter',
+  comp_partner: 'Comp partner',
+  approver: 'Approver',
+  finance_controller: 'Finance controller',
+  auditor: 'Auditor',
+};
+const ROMAN = { 1: 'I', 2: 'II', 3: 'III' };
+
+const WORKSPACES = [
+  { id: 'dashboard', label: 'Dashboard' },
+  { id: 'requisitions', label: 'Requisitions' },
+  { id: 'offers', label: 'Offers' },
+  { id: 'equity', label: 'Equity Table' },
+  { id: 'referrals', label: 'Referrals' },
+  { id: 'audit', label: 'Audit Trail' },
+];
+
+const $ = (s, r = document) => r.querySelector(s);
+const el = (tag, props = {}, kids = []) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(props)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'text') n.textContent = v;
+    else if (k === 'html') n.innerHTML = v;
+    else if (k.startsWith('on') && typeof v === 'function') n.addEventListener(k.slice(2), v);
+    else if (v != null) n.setAttribute(k, v);
+  }
+  for (const kid of [].concat(kids)) if (kid != null) n.append(kid);
+  return n;
+};
+
+let STATE = { user: null, boot: null, view: 'dashboard' };
+
+async function api(method, path, body) {
+  let res;
+  try { res = await fetch(path, {
+    method,
+    headers: body ? { 'Content-Type': 'application/json' } : {},
+    body: body ? JSON.stringify(body) : undefined,
+    credentials: 'same-origin',
+  }); } catch { return { ok: false, status: 0, data: { error: 'The server could not be reached. Your entries are still here; try again.' } }; }
+  let data = null;
+  try { data = await res.json(); } catch { /* non-json */ }
+  return { ok: res.ok, status: res.status, data };
+}
+
+function money(cents) {
+  if (cents === null || cents === undefined || Number.isNaN(Number(cents))) return '—';
+  const c = Number(cents);
+  const s = c < 0 ? '-' : '';
+  const a = Math.abs(c);
+  return `${s}$${Math.floor(a / 100).toLocaleString('en-US')}.${String(a % 100).padStart(2, '0')}`;
+}
+
+function fmtTime(iso) {
+  if (!iso) return '—';
+  try {
+    return new Date(iso).toLocaleString('en-US', { timeZone: 'UTC', timeZoneName: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+  } catch { return iso; }
+}
+
+function userName(id) {
+  if (!id) return '—';
+  const u = (STATE.boot && STATE.boot.users || []).find((x) => x.id === id);
+  return u ? u.name : id;
+}
+function roleLabel(u) {
+  if (!u) return '';
+  const base = ROLE_LABELS[u.role] || u.role;
+  if (u.role === 'approver' && u.authority_tier) return `${base} · Band ${ROMAN[u.authority_tier] || u.authority_tier}`;
+  return base;
+}
+
+/* Human-readable summary of an action response (never a raw JSON dump). */
+function summarize(obj) {
+  if (obj == null) return 'Done.';
+  if (typeof obj === 'string') return obj;
+  if (obj.error) return obj.error;
+  const bits = [];
+  if (obj.approved) bits.push(`Approved ${obj.id || ''}`.trim());
+  if (obj.revised) bits.push(`Revised → ${obj.revised_offer_id} (supersedes ${obj.superseded_offer_id})`);
+  if (obj.rescinded) bits.push(`Rescinded ${obj.id || ''}`.trim());
+  if (obj.created) bits.push(`Created ${obj.id || ''}`.trim());
+  if (obj.composition && obj.composition.committed_run_rate_display)
+    bits.push(`run-rate ${obj.composition.committed_run_rate_display}`);
+  if (obj.fresh_commit_display) bits.push(`new commit ${obj.fresh_commit_display}`);
+  if (obj.reversal_display) bits.push(`reversal ${obj.reversal_display}`);
+  if (obj.clawback_display) bits.push(`clawback ${obj.clawback_display}`);
+  if (obj.signing_vested_display) bits.push(`vested retained ${obj.signing_vested_display}`);
+  if (obj.req_headroom_display) bits.push(`headroom ${obj.req_headroom_display}`);
+  if (obj.headroom_display) bits.push(`headroom ${obj.headroom_display}`);
+  if (!bits.length) return 'Action completed successfully.';
+  return bits.join(' · ');
+}
+
+function flash(msg, kind = 'info') {
+  const box = $('#flash');
+  box.innerHTML = '';
+  box.append(el('div', { class: `flash ${kind}`, text: summarize(msg) }));
+}
+
+function pendingState(button, container, message) {
+  const label = button ? button.textContent : null;
+  if (button) { button.disabled = true; button.textContent = message; button.setAttribute('aria-busy', 'true'); }
+  if (container) container.setAttribute('aria-busy', 'true');
+  const status = el('p', { class: 'pending-status', role: 'status', 'aria-live': 'polite', text: message });
+  if (container) container.prepend(status);
+  return () => {
+    if (button) { button.disabled = false; button.textContent = label; button.removeAttribute('aria-busy'); }
+    if (container) container.removeAttribute('aria-busy');
+    status.remove();
+  };
+}
+
+/* actionButton: POST/GET, show a readable summary, then refresh. */
+function actionButton(label, method, path, bodyFn, opts = {}) {
+  return el('button', {
+    class: `action${opts.secondary ? ' secondary' : ''}${opts.danger ? ' danger' : ''}`,
+    type: 'button',
+    onclick: async (event) => {
+      const button = event.currentTarget;
+      const container = button.closest('.panel');
+      if (container && [...container.querySelectorAll('input, select')].some((input) => !input.reportValidity())) return;
+      let body;
+      try { body = bodyFn ? bodyFn() : undefined; } catch (err) { flash(err.message || String(err), 'error'); return; }
+      if (body === false) return;
+      const done = pendingState(button, container, 'Saving changes…');
+      const r = await api(method, typeof path === 'function' ? path() : path, body);
+      done();
+      flash(r.data || `${r.status}`, r.ok ? 'ok' : 'error');
+      if (r.ok) { await refresh(); focusWorkspace(); }
+    },
+  }, [label]);
+}
+
+/* Details drawer (read-only content). */
+let detailOpener = null;
+function showDetail() {
+  detailOpener = document.activeElement;
+  $('#detail-backdrop').hidden = false;
+  $('#main').inert = true;
+  $('#topbar').inert = true;
+  ($('#detail-body input') || $('#detail-close')).focus();
+}
+function focusWorkspace() {
+  const heading = $('#workspace .page.active h1');
+  if (heading) { heading.tabIndex = -1; heading.focus(); }
+}
+function openDetail(title, nodes) {
+  $('#detail-title').textContent = title;
+  const body = $('#detail-body');
+  body.innerHTML = '';
+  for (const node of [].concat(nodes)) if (node != null) body.append(node);
+  showDetail();
+}
+function closeDetail() {
+  if ($('#detail-backdrop').hidden) return;
+  $('#detail-backdrop').hidden = true;
+  $('#detail-body').innerHTML = '';
+  $('#main').inert = false;
+  $('#topbar').inert = false;
+  if (detailOpener && detailOpener.isConnected) detailOpener.focus();
+  else focusWorkspace();
+}
+
+/* openForm: a labelled form inside the drawer (replaces window.prompt). fields is
+ * an array of { name, label, type, value, options }. onSubmit(values) returns a
+ * {method, path, body} descriptor; the response is summarised into the flash. */
+function openForm(title, fields, submitLabel, buildRequest) {
+  $('#detail-title').textContent = title;
+  const body = $('#detail-body');
+  body.innerHTML = '';
+  const inputs = {};
+  const form = el('form', { class: 'drawer-form' });
+  for (const f of fields) {
+    let input;
+    if (f.type === 'select') {
+      input = el('select', { name: f.name }, (f.options || []).map((o) =>
+        el('option', { value: o.value, text: o.label, ...(o.value === f.value ? { selected: 'selected' } : {}) })));
+    } else {
+      input = el('input', { name: f.name, type: f.type || 'text', value: f.value == null ? '' : String(f.value), required: '', min: f.type === 'number' ? '0' : null, step: f.step || (f.type === 'number' ? '0.01' : null) });
+    }
+    inputs[f.name] = input;
+    form.append(el('label', {}, [el('span', { text: f.label }), input]));
+  }
+  form.append(el('div', { class: 'actionbar' }, [el('button', { class: 'action', type: 'submit', text: submitLabel })]));
+  const error = el('p', { class: 'error', role: 'alert' });
+  form.append(error);
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const values = {};
+    for (const [k, node] of Object.entries(inputs)) values[k] = node.value;
+    let req;
+    try { req = buildRequest(values); } catch (err) { error.textContent = String(err && err.message || err); return; }
+    if (!req) return;
+    const submit = form.querySelector('button[type="submit"]');
+    const done = pendingState(submit, form, 'Saving changes…');
+    error.textContent = '';
+    const r = await api(req.method, req.path, req.body);
+    done();
+    if (!r.ok) { error.textContent = summarize(r.data || `${r.status}`); return; }
+    flash(r.data || `${r.status}`, r.ok ? 'ok' : 'error');
+    closeDetail();
+    await refresh();
+    focusWorkspace();
+  });
+  body.append(form);
+  showDetail();
+}
+
+const HELPERS = () => ({ el, actionButton, openDetail, openForm, api, flash, refresh, money, fmtTime, userName, roleLabel, romanTier: (t) => ROMAN[t] || t });
+
+function metricCard(label, value) {
+  return el('article', { class: 'metric' }, [
+    el('span', { text: label }),
+    el('strong', { text: value == null ? '—' : String(value) }),
+  ]);
+}
+
+function renderDashboard(boot) {
+  const reqs = boot.requisitions || [];
+  const offers = boot.offers || [];
+  const headroomTotal = reqs.reduce((a, r) => a + (Number(r.headroom_cents) || 0), 0);
+  const pending = offers.filter((o) => o.status === 'PENDING').length;
+  const committed = offers.filter((o) => o.status === 'COMMITTED').length;
+  const grants = (boot.equity_grants || []).filter((g) => g.state === 'LIVE').length;
+  const activity = (boot.audit || []).slice(0, 12);
+  return el('section', { class: 'page active', 'data-workspace': 'dashboard' }, [
+    el('h1', { text: 'Dashboard' }),
+    el('p', { class: 'muted', text: 'Headline recruiting, cost and budget-headroom metrics across all open requisitions.' }),
+    el('div', { class: 'metrics' }, [
+      metricCard('Open requisitions', reqs.length),
+      metricCard('Total budget headroom', money(headroomTotal)),
+      metricCard('Committed offers', committed),
+      metricCard('Pending approvals', pending),
+    ]),
+    el('div', { class: 'metrics' }, [
+      metricCard('Live equity grants', grants),
+      metricCard('Referral accruals', (boot.referral_accruals || []).length),
+      metricCard('Remittance rows', (boot.remittances || []).length),
+      metricCard('Signed-in as', roleLabel(boot.user) || '—'),
+    ]),
+    el('section', { class: 'panel' }, [
+      el('h2', { text: 'Recent activity' }),
+      el('div', { class: 'activity' }, activity.length ? activity.map((ev) => el('div', { class: 'event' }, [
+        el('div', {}, [
+          el('strong', { text: ev.action }),
+          el('span', { class: 'muted', text: ` · ${ev.subject}` }),
+          ev.detail ? el('div', { class: 'muted', text: ev.detail }) : null,
+        ]),
+        el('small', { text: `${userName(ev.actor_id)}${ev.created_at ? ' · ' + fmtTime(ev.created_at) : ''}` }),
+      ])) : [el('p', { class: 'muted', text: 'No activity recorded yet.' })]),
+    ]),
+  ]);
+}
+
+function setView(view) {
+  STATE.view = view;
+  $('#flash').innerHTML = '';
+  renderAll();
+  focusWorkspace();
+  window.scrollTo({ top: 0, behavior: 'auto' });
+}
+
+function renderNav() {
+  const nav = $('#nav');
+  nav.innerHTML = '';
+  for (const ws of WORKSPACES) {
+    nav.append(el('button', {
+      type: 'button',
+      'data-view': ws.id,
+      class: STATE.view === ws.id ? 'active' : '',
+      onclick: () => setView(ws.id),
+    }, [ws.label]));
+  }
+}
+
+function renderAll() {
+  const boot = STATE.boot || {};
+  for (const btn of $('#nav').querySelectorAll('button')) {
+    btn.classList.toggle('active', btn.dataset.view === STATE.view);
+    if (btn.dataset.view === STATE.view) btn.setAttribute('aria-current', 'page');
+    else btn.removeAttribute('aria-current');
+  }
+  const root = $('#workspace');
+  root.innerHTML = '';
+  const pages = window.renderWorkspaces ? window.renderWorkspaces(boot, HELPERS()) : [];
+  const byId = Object.fromEntries(pages.map((p) => [p.dataset.workspace, p]));
+  byId.dashboard = renderDashboard(boot);
+  for (const ws of WORKSPACES) {
+    const page = byId[ws.id];
+    if (!page) continue;
+    page.classList.toggle('active', STATE.view === ws.id);
+    for (const scroll of page.querySelectorAll('.table-wrap')) {
+      scroll.tabIndex = 0;
+      scroll.setAttribute('role', 'region');
+      const heading = scroll.closest('.panel')?.querySelector('h2');
+      scroll.setAttribute('aria-label', (heading ? heading.textContent : ws.label) + ' table; scroll horizontally for more columns');
+    }
+    root.append(page);
+  }
+}
+
+async function refresh() {
+  const done = pendingState(null, $('#workspace'), 'Loading workspace…');
+  const r = await api('GET', '/api/bootstrap');
+  done();
+  if (r.ok) { STATE.boot = r.data; renderNav(); renderAll(); }
+  else flash(r.data || 'The workspace could not be loaded. Please try again.', 'error');
+  return r;
+}
+
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  try { localStorage.setItem('hireops-theme', theme); } catch { /* ignore */ }
+  $('#theme-toggle').textContent = theme === 'dark' ? 'Light mode' : 'Dark mode';
+}
+
+function showApp() {
+  $('#login-view').hidden = true;
+  $('#app-view').hidden = false;
+  $('#logout').hidden = false;
+  $('#who').textContent = STATE.user ? `${STATE.user.name} · ${roleLabel(STATE.user)}` : '';
+}
+function showLogin() {
+  $('#login-view').hidden = false;
+  $('#app-view').hidden = true;
+  $('#logout').hidden = true;
+  $('#who').textContent = '';
+  $('#nav').innerHTML = '';
+  $('#workspace').innerHTML = '';
+  $('#flash').innerHTML = '';
+  $('#email').focus();
+}
+
+async function boot() {
+  let saved = 'light';
+  try { saved = localStorage.getItem('hireops-theme') || 'light'; } catch { /* ignore */ }
+  applyTheme(saved);
+  const done = pendingState($('#login-form button[type="submit"]'), $('#login-form'), 'Checking sign-in…');
+  const me = await api('GET', '/api/auth/me');
+  done();
+  if (me.ok) { STATE.user = me.data; showApp(); await refresh(); }
+  else showLogin();
+}
+
+$('#login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  $('#login-error').textContent = '';
+  const done = pendingState($('#login-form button[type="submit"]'), $('#login-form'), 'Signing in…');
+  const r = await api('POST', '/api/auth/login', { email: $('#email').value, password: $('#password').value });
+  done();
+  if (r.ok) { STATE.user = r.data; STATE.view = 'dashboard'; showApp(); await refresh(); }
+  else $('#login-error').textContent = (r.data && r.data.error) || 'sign-in failed';
+});
+
+$('#logout').addEventListener('click', async () => {
+  await api('POST', '/api/auth/logout');
+  STATE = { user: null, boot: null, view: 'dashboard' };
+  closeDetail();
+  showLogin();
+});
+
+$('#theme-toggle').addEventListener('click', () => {
+  const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  applyTheme(next);
+});
+
+$('#detail-close').addEventListener('click', closeDetail);
+$('#detail-backdrop').addEventListener('click', (e) => { if (e.target === $('#detail-backdrop')) closeDetail(); });
+document.addEventListener('keydown', (e) => {
+  if ($('#detail-backdrop').hidden) return;
+  if (e.key === 'Escape') { e.preventDefault(); closeDetail(); }
+  if (e.key === 'Tab') {
+    const stops = [...$('#detail-drawer').querySelectorAll('button, input, select, textarea, a[href], [tabindex="0"]')].filter((n) => !n.disabled && !n.hidden);
+    const first = stops[0], last = stops[stops.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  }
+});
+
+boot();

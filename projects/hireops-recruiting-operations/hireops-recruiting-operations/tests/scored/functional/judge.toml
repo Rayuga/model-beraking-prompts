@@ -1,0 +1,428 @@
+[judge]
+judge = "claude-code"
+mode = "batched"
+timeout = 9000
+isolated = false
+prompt_template = "prompt.md"
+
+[[judge.mcp_servers]]
+name = "playwright"
+transport = "stdio"
+command = "playwright-mcp"
+args = ["--headless", "--isolated", "--executable-path=/usr/local/bin/chromium", "--no-sandbox"]
+
+[[judge.mcp_servers]]
+name = "verifier"
+transport = "stdio"
+command = "/usr/local/bin/python3"
+args = ["/tests/tools/restart_mcp.py", "$APP_RESTART_HELPER"]
+
+[scoring]
+aggregation = "weighted_mean"
+
+[[criterion]]
+id = "hro_accounts"
+name = "Account roster"
+type = "binary"
+weight = 1.0
+description = """
+Sign in with every listed account and the shared password; each reaches the protected workspace visibly identifying the signed-in person by name, seeded role and authority tier. Invalid password refusal is owned by the gate. Do not demand specific labels or an exposed user ID.
+"""
+
+[[criterion]]
+id = "hro_req_identity"
+name = "Requisition creation and exact identity"
+type = "binary"
+weight = 1.0
+description = """
+P1: using any successfully authorized signed-in role, create and freshly retrieve requisition ID with leading/trailing spaces and /?# intact, preserving title, department and budget. Ordinary UI rendering may collapse whitespace visually: an observed product response or editable detail can establish the exact value. Every-role creation permission, including Auditor, belongs to hro_raise_roles.
+"""
+
+[[criterion]]
+id = "hro_offer_identity"
+name = "Offer creation and exact identity"
+type = "binary"
+weight = 1.0
+description = """
+P1: using any successfully authorized creator, raise a valid offer directly PENDING; preserve the explicitly entered nonblank ID including spaces /?#, requisition, candidate, six economic inputs and both distinct dates/referrer when supplied. No draft-submit dance is required. After duplicate checks, approve this unusual-ID offer as a distinct sufficient-tier approver, then rescind it directly as Finance without a revision, proving the rescission route handles the caller's unusual ID too. P4 separately carries another unusual offer ID on an unusual requisition ID through approval and revisions using the UI. Those routes must operate on the intended hire. Judge identifier preservation/routing here, not numerical results. Use simple economics and successful ordinary-ID controls if needed to isolate routing from unrelated failure. Creator-role coverage belongs to hro_raise_roles.
+"""
+
+[[criterion]]
+id = "hro_duplicate_identity"
+name = "Duplicate and blank identifiers"
+type = "binary"
+weight = 1.0
+description = """
+P1: after a successful saved requisition and offer, attempt same-kind duplicate IDs and whitespace-only IDs through UI or an observed write replay. Reject without replacing the originals or adding rows. Matching an existing ID of the other record kind is allowed; do not impose global uniqueness, prefixes or trimmed identity.
+"""
+
+[[criterion]]
+id = "hro_numeric_validation"
+name = "Invalid numeric mutations"
+type = "binary"
+weight = 1.0
+description = """
+P2: valid control first; reject negative money, fractional shares, fractional cents in an observed cents-valued request, nonnumeric and unsafe-integer economic inputs without changing the targeted offer/requisition or economic records. Test one invalid create, one invalid revision and invalid requisition budget; reuse the observed request shape. Also reject computed overflow: units9007199254740991 at fair.02/strike0 exceed safe intrinsic despite individually safe inputs; a neighboring valid control with zero spread is accepted and preserved exactly. Use ordinary input or observed write schema, interpreting units as whole shares. Browser money fields legitimately accept two decimal dollar amounts.
+"""
+
+[[criterion]]
+id = "hro_date_validation"
+name = "Invalid date mutations"
+type = "binary"
+weight = 1.0
+description = """
+P2: valid full UTC instant control first; impossible calendar date 2025-02-30T00:00:00Z and invalid date text cannot create an offer, revise a record or rescind it; no economic side effects. Do not require revision to edit dates if it offers only economic fields: an injected invalid date may be ignored with the valid revision applied, provided stored dates stay valid and unchanged. Zero-padding and equivalent valid UTC instant formatting are permitted. Also reject missing required offer start, referred-hire date when a referrer is selected, and rescission effective date; accept a real YYYY-MM-DD date as UTC midnight.
+"""
+
+[[criterion]]
+id = "hro_intrinsic"
+name = "Intrinsic equity"
+type = "binary"
+weight = 1.0
+description = """
+P3: visible intrinsic equals units times positive fair-minus-strike: two units at .03/.02 -> $.02. Also inspect pending offers with fair equal to and below strike: intrinsic is zero. No credit for gross-fair or strike notional as intrinsic. Owns only intrinsic.
+"""
+
+[[criterion]]
+id = "hro_annual"
+name = "Annualization half-up"
+type = "binary"
+weight = 1.0
+description = """
+P3: $.02 intrinsic annualizes to $.01; $.01 intrinsic annualizes to $0.00. Require exact visible annualized values; no rounding the unit spread or using gross grant value. Can establish these independently with valid pending offers if another composition leg is broken.
+"""
+
+[[criterion]]
+id = "hro_runrate"
+name = "Run-rate composition"
+type = "binary"
+weight = 1.0
+description = """
+P3 and P4 initial: run-rate excludes signing and relocation and includes annualized intrinsic; P3 baseline $199999.98, P4 $100001.77. Check visible figure, independently of band or commitment correctness.
+"""
+
+[[criterion]]
+id = "hro_basis"
+name = "Approval basis composition"
+type = "binary"
+weight = 1.0
+description = """
+P3 baseline basis $199999.99 (base199999.97 plus half-up .01 bonus plus annual .01); P4 initial basis $105001.78. Relocation excluded. Distinguish rounding half the odd-cent bonus before addition.
+"""
+
+[[criterion]]
+id = "hro_bands"
+name = "Half-open band edges"
+type = "binary"
+weight = 1.0
+description = """
+P3: bases199999.97/199999.98 and349999.97/349999.98, each with bonus.01 and equity intrinsic.02, yield bases199999.99/200000.00/349999.99/350000.00 and required tiers1/2/2/3. Judge the stated bands against known raw inputs, not a possibly wrong sibling display.
+"""
+
+[[criterion]]
+id = "hro_approval_role"
+name = "Approval role boundary"
+type = "binary"
+weight = 1.0
+description = """
+P5: a distinct seeded approver successfully approves a valid affordable pending control. Replay a different valid pending approval as Recruiter, Comp partner, Finance and Auditor; each is forbidden (403) and remains pending with no settlement rows. Derive request from UI; hiding the control alone does not prove server refusal.
+"""
+
+[[criterion]]
+id = "hro_raise_roles"
+name = "Offer creation role boundary"
+type = "binary"
+weight = 1.0
+description = """
+P5: Recruiter, Comp partner, each seeded approver and Finance can raise distinct PENDING controls; reuse P1/P5 successful observed creations. Auditor is refused403 on a replay of an observed create with a new ID, which never appears. Any signed-in role, including Auditor, can create a requisition. Do not conflate requisition and offer rights.
+"""
+
+[[criterion]]
+id = "hro_revision_roles"
+name = "Revision role boundary"
+type = "binary"
+weight = 1.0
+description = """
+P5: successful separate committed revisions by Recruiter, each of tiers1/2/3 and Finance; Comp partner and Auditor are forbidden (403) on other committed controls with no mutation. A successful revision need only alter base minimally; economic correctness is scored separately. Use P4/P5 observations where relevant. At least one Recruiter revision crosses into BandIII on an ample-budget requisition without a new approval or tier check.
+"""
+
+[[criterion]]
+id = "hro_rescission_role"
+name = "Rescission role boundary"
+type = "binary"
+weight = 1.0
+description = """
+P5: Finance successfully rescinds a valid committed control at a valid instant. Recruiter, Comp partner, all three Approvers and Auditor receive403 for a separate committed control, which retains its pre-attempt state and economics. Role coverage can use observed request replay.
+"""
+
+[[criterion]]
+id = "hro_tier"
+name = "Authority is at least required tier"
+type = "binary"
+weight = 1.0
+description = """
+P5: tier1 refuses BandII and tier2 refuses BandIII, each403 naming held/required authority; tier2 succeeds on BandII and tier3 on BandI. Use different records from the self-approval witness; compare against raw economics. Refusal without a successful approval control earns no credit.
+"""
+
+[[criterion]]
+id = "hro_dual"
+name = "Self approval refusal"
+type = "binary"
+weight = 1.0
+description = """
+P5: inspect OFF-DC raised by Bill, the seeded tier2 approver; refuse Bill's self-approval, unchanged, while Bill successfully approves another affordable pending offer raised by someone else. A distinct authorized approver MUST then successfully approve that same OFF-DC, proving the target was approvable. Verify creator and tier from product data first. If seed handling is separately broken, a fresh affordable Bill-created pending offer with the same refusal and distinct-approver success is an equivalent control.
+"""
+
+[[criterion]]
+id = "hro_approval_budget"
+name = "Approval uses available run-rate"
+type = "binary"
+weight = 1.0
+description = """
+P6: on independent budget100000.00 requisition, approve base99999.99, bonus100000.00, no equity despite basis149999.99; remaining $.01 permits base$.01, then rejects base$.01 with explicit shortfall and no settlement. This distinguishes run-rate from band basis, equality from strict-less-than and live headroom from initial budget.
+"""
+
+[[criterion]]
+id = "hro_commitment"
+name = "Approval commitment movement"
+type = "binary"
+weight = 1.0
+description = """
+P4 approval: a visible movement consumes exactly100001.77 and headroom drops by that amount from observed initial budget. Before mutations, seeded REQ-ENG-2 budget450000.00 and movements-200000.00/-197000.00 yield53000.00 headroom, not its stale60000.00 planning scalar. This row owns live movement netting and the approval effect. Later preservation of old monetary rows belongs to hro_history.
+"""
+
+[[criterion]]
+id = "hro_grant"
+name = "Approval equity grant"
+type = "binary"
+weight = 1.0
+description = """
+P4 approval: new grant contains7 units with original start instant and equity schedule20% at12 months,+4% thereafter,capped at32 months. Also approve a zero-unit control and verify no nonzero/current equity grant. Score the recorded approval-time grant only; preservation after later revisions belongs to hro_revision_equity.
+"""
+
+[[criterion]]
+id = "hro_signing"
+name = "Approval signing payment"
+type = "binary"
+weight = 1.0
+description = """
+P4 approval: exactly10000.01 paid as initial signing remittance linked to the approved offer. Inspect an otherwise equivalent zero-bonus approved control: no nonzero signing payment. Allow omitted zero rows.
+"""
+
+[[criterion]]
+id = "hro_referral_creation"
+name = "Referral ownership and split"
+type = "binary"
+weight = 1.0
+description = """
+P4 approval: exactly one10000.00 accrual to employee Dara Whitfield, not candidate, with5000.00 at-hire and5000.00 contingent components and the separate referred-hire date. An approved no-referrer control has no referral accrual. Owns creation/split, not retention timing or later immutability.
+"""
+
+[[criterion]]
+id = "hro_revision_lineage"
+name = "Revision history and six economic fields"
+type = "binary"
+weight = 1.0
+description = """
+P4: both revisions mint new already-COMMITTED offers, retain prior economic/date/creator fields and link each superseded predecessor to its successor. Latest values exactly match all six supplied economics. Do not require a specific generated-ID format. If second revision fails, demonstrate a separate second-generation chain before concluding; initial approval correctness is not this row's bar.
+"""
+
+[[criterion]]
+id = "hro_revision_budget"
+name = "Revision budget substitution"
+type = "binary"
+weight = 1.0
+description = """
+P6 revision branch: budget100000.00, committed base80000.00 no equity, headroom20000.00. Revision to100000.00 succeeds because old commitment is released; next revision100000.01 refuses and preserves active lineage/movements/headroom. A later revision to90000.00 yields10000.00 headroom, with original reversal and replacement rows visible. Distinct from the approval budget branch.
+"""
+
+[[criterion]]
+id = "hro_revision_signing"
+name = "Signed signing adjustments"
+type = "binary"
+weight = 1.0
+description = """
+P4: first signing adjustment-1999.98, second+4000.02; net signing paid12000.05. Zero-delta revision may omit a zero adjustment. Judge the new adjustment amounts and current paid total here, relative to successful observed predecessor values if unrelated inputs had to use equivalent fallback. Preservation of the original payment's historical fields belongs to hro_history.
+"""
+
+[[criterion]]
+id = "hro_revision_equity"
+name = "Replacement grant lineage"
+type = "binary"
+weight = 1.0
+description = """
+P4: first and second prior grants become SUPERSEDED historical grants preserving7 then11 units and their original grant instant. Active grant has13 revised units and original instant, not revision time; previous cancellation totals remain unchanged. No two grants simultaneously count as current. A separate successful revision to zero units leaves no active grant while preserving superseded history.
+"""
+
+[[criterion]]
+id = "hro_referral_immutable"
+name = "Referral survives revisions and rescission"
+type = "binary"
+weight = 1.0
+description = """
+P4: record initial referral identity/employee/dates/components/vested amount; both revisions and final rescission leave that original accrual unchanged and create no extra referral. Compare against its initial observation, not sibling arithmetic expectations. If P4 cannot advance, independent valid offers can establish each transition; need all three operation kinds.
+"""
+
+[[criterion]]
+id = "hro_release"
+name = "Rescission budget release"
+type = "binary"
+weight = 1.0
+description = """
+P4 final: release90009.78, restoring original P4 requisition headroom; new row points at latest offer, which becomes RESCINDED with entered effective instant. If unrelated revisions fail, rescind an independently committed ordinary offer and grade release equal to its recorded run-rate. Old monetary-row preservation belongs to hro_history.
+"""
+
+[[criterion]]
+id = "hro_claw"
+name = "Signing vest-first clawback"
+type = "binary"
+weight = 1.0
+description = """
+P4 final12-month case: current12000.05 paid, half-up40% vested4800.02, claw7200.03. P7 13-month case bonus100.01 ->45.00 vested55.01 claw; schedule differs from equity. Show retained and clawed figures, effective instant and the new contra against lineage payments, with final net paid equal to retained signing. Old payment-field preservation belongs to hro_history.
+"""
+
+[[criterion]]
+id = "hro_cancel"
+name = "Equity vest-first cancellation"
+type = "binary"
+weight = 1.0
+description = """
+P4 final: latest13-unit grant retains3 and cancels10 at20%; historical7/11 grants gain no cancellation. P7 13-month case7 units at24% retains2 cancels5. A direct independent13-unit approval at the same original date can establish12-month rounding if unrelated revision setup fails; historical-grant protection still needs a completed revision witness.
+"""
+
+[[criterion]]
+id = "hro_months"
+name = "UTC original-anchor month boundaries"
+type = "binary"
+weight = 1.0
+description = """
+P7: leap-day start2024-02-29T12:34:56.789Z, rescind one millisecond before2025-02-28T12:34:56.789Z ->11 months, at instant ->12. A separate effective instant before its start gives zero completed months and zero vested rate. Separate Jan31 start2024-01-31T12:00:00Z, rescind2025-03-30T12:00:00Z ->13 months, not14 from repeatedly clamping February. Derive expected signing rates0/40/45% and equity0/20/24%. Only grade the month selection here; use visibly reported month/rate or distinguish with simple100.00 bonus and100 units. Do not charge this row for correct months plus a separate amount-rounding defect.
+"""
+
+[[criterion]]
+id = "hro_caps"
+name = "Independent full vesting caps"
+type = "binary"
+weight = 1.0
+description = """
+P7: at24 months100.01 bonus is fully vested, zero claw, while7 equity units at68% retain5/cancel2. At32 months same bonus and units entirely vested, zero claw/cancellation. Allow omitted zero contra/cancellation records. Verify one partial control from P7 so a dead rescind handler cannot pass.
+"""
+
+[[criterion]]
+id = "hro_referral_clock"
+name = "Referral separate start and fixed cliff"
+type = "binary"
+weight = 1.0
+description = """
+P8: offer start2026-07-01 for all, referral starts2026-02-01T00:00:00Z and2026-02-01T00:00:00.001Z -> reference2026-08-01 yields10000.00 vs5000.00 vested. Add start2026-01-31T12:00:00Z -> cliff2026-07-31T12:00:00Z, fully vested. Approval and later rescission effective dates must not substitute for fixed reference or referral start.
+"""
+
+[[criterion]]
+id = "hro_competing"
+name = "Competing approvals are atomic"
+type = "binary"
+weight = 1.0
+description = """
+P6 race: own requisition budget100.00, two separate pending base60.00 offers, each bonus10.00, one unit at fair1.00/strike0, referrer Dara with referral start2026-02-01; both created by Recruiter with valid offer start2026-01-01. After a separate successful ordinary approval establishes the real request shape, as distinct tier3 send these two approval requests concurrently using Promise.all through browser_run_code_unsafe and the observed app interface. Exactly one commits and consumes60.25; the other remains pending, headroom39.75, only one settlement movement/receipt and one winner grant/payment/referral, with none for the loser. Do not require which offer wins or any response latency. Re-read fresh persisted state. This is a finite concurrent witness, not a proof of every interleaving.
+"""
+
+[[criterion]]
+id = "hro_stale"
+name = "Stale ancestor and repeated settlement refusal"
+type = "binary"
+weight = 1.0
+description = """
+P4/P5: after a successful approval, replay approval; after successful revision, try revising/rescinding its superseded ancestor; after successful rescission, replay rescission and attempt revision. All refused, no new offer, economic movement, grant, payment, referral or settlement audit/after-image; prior active state unchanged. Also refuse approval of seeded DRAFT OFF-301 and revision/rescission of an ordinary PENDING control; DRAFT contributes no commitment. Positive transition controls required. Generic security-access logs are not settlement audit entries.
+
+P9 also sends two concurrent requests for the SAME target at each stage of a small independent hire: pending approval, committed revision, then latest-leaf rescission. Use observed successful request shapes and an ample budget. At each stage exactly one succeeds and one is refused, with one transition's complete effects and one current lineage only. Do not require a winner or response timing. The successful competing request is the matching positive control. Score this row on same-hire exclusivity; P6/hro_competing owns two distinct hires competing for budget.
+"""
+
+[[criterion]]
+id = "hro_claim_identity"
+name = "Session identity defeats body claims"
+type = "binary"
+weight = 1.0
+description = """
+P9: replay an observed valid approval for a different valid pending offer, supplying another actor/role/tier in body using the app's actual field conventions where observable. Stored actor must be signed-in actor; an unauthorized actor cannot gain approval by claiming tier3. For an otherwise valid request, ignore forged identity/role/tier fields and give the same result as their omission; an unauthorized actor still receives403. Never accept forged authority. Normal approval succeeds as control.
+"""
+
+[[criterion]]
+id = "hro_claim_economics"
+name = "Stored economics defeat derived body claims"
+type = "binary"
+weight = 1.0
+description = """
+P9: approval with fake band/tier/committed amount and rescission with fake clawback/cancel quantities cannot alter computed results. Use observable request conventions; compare final state with actual valid stored inputs. An otherwise valid request must ignore these derived claims and settle exactly as their omission would; refusing solely because these claims were added also violates the public rule. Failure of an unrelated economic formula is owned by its row, but trusting injected values fails here.
+"""
+
+[[criterion]]
+id = "hro_anon_read"
+name = "Anonymous operational read boundary"
+type = "binary"
+weight = 1.0
+description = """
+P9: capture a successful ordinary authenticated operational read, replay without session/auth credentials in a fresh context. It must401 and return no operational records. Health and login shell may remain public. Do not count an empty list without authenticated populated control.
+"""
+
+[[criterion]]
+id = "hro_anon_write"
+name = "Anonymous write boundary"
+type = "binary"
+weight = 1.0
+description = """
+P9: successful authenticated creation first, then same write shape with new ID and no credentials. Must401; fresh authenticated retrieval shows no new record and the valid control still exists. Generic access logs may grow, economics may not.
+"""
+
+[[criterion]]
+id = "hro_audit_text"
+name = "Readable action history"
+type = "binary"
+weight = 1.0
+description = """
+P4: approval, each successful revision and rescission produce immutable human-readable entries naming actor and target with before/after summary. No particular wording, timestamp or exact total log-count increase required. If chain fails, use separate valid controls for each action so independent logging can still earn credit.
+"""
+
+[[criterion]]
+id = "hro_afterimage"
+name = "Stored computed after-images"
+type = "binary"
+weight = 1.0
+description = """
+P4: each approval/revision/rescission exposes a structured product snapshot containing actual computed figures from that action. Record snapshots when created and read again after later actions: older snapshots must retain then-current values, not recompute from current latest state. Snapshot presentation may be columns, expansion or equivalent; raw implementation inspection prohibited. Each receipt preserves actual actor, before/after headroom and relevant compensation/settlement values. Incorrect arithmetic is separately scored; receipt values must faithfully match the action's observed state.
+"""
+
+[[criterion]]
+id = "hro_history"
+name = "Append-only monetary history"
+type = "binary"
+weight = 1.0
+description = """
+P4: record the economic fields of original commitment movements and signing payment records immediately after approval, and of each reversal, replacement and signed payment adjustment after its revision. After later revision and rescission, those same monetary ledger records retain their original amounts, identities and links; corrections are new monetary entries. Read them again after fresh Auditor sign-in. Compare recorded actual values, not sibling arithmetic expectations. This row owns only append-only monetary movement/payment history. Offer fields belong to revision lineage, grant history to replacement/cancellation, audit prose to action history, snapshots to after-images, and rejection side effects to refusal rows."""
+
+[[criterion]]
+id = "hro_dashboard"
+name = "Live dashboard aggregates"
+type = "binary"
+weight = 1.0
+description = """
+P10: record open requisition count,total net headroom,committed offers,pending approvals. Create one req budget1000 and pending offer base10: deltas+1,+1000,0,+1. Approve: headroom-10,committed+1,pending-1; revise base20:headroom-10,committed unchanged; rescind:headroom+20,committed-1. Compare deltas, allowing gate/other-protocol records already present. Reuse this small chain for missing audit controls.
+"""
+
+[[criterion]]
+id = "hro_readback"
+name = "Independent-context saved readback"
+type = "binary"
+weight = 1.0
+description = """
+P10: independently create ordinary requisition/offer, record exact saved details and visible economics, then read in a fresh context signed in as Auditor. Values match actual before-values; do not regrade arithmetic. If approval unavailable, persisted pending offer plus requisition suffices. Independent context, not only same-page reload.
+"""
+
+[[criterion]]
+id = "hro_restart"
+name = "Process durability and seed idempotence"
+type = "binary"
+weight = 1.0
+description = """
+P10 LAST: save fresh ordinary req and pending offer independently of revisions, grants or audit. Record all seeded IDs/counts plus these saved details and any available P4 lineage/ledger/snapshot values. Call restart_app exactly once, reopen/sign in and reread: all recorded records/data survive identically, seed IDs remain exactly once, no newly written data replaced with seed. No seeded-only substitute for successful fresh write. Do not rejudge pre-restart arithmetic; tool error is missing restart evidence, not proof of storage loss.
+"""
+
