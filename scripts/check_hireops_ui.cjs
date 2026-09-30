@@ -78,7 +78,12 @@ async function main() {
   await page.getByRole('button', { name: 'Create requisition', exact: true }).click();
   await page.locator('#flash .error').waitFor();
   assert.equal(await page.locator('#req-title').inputValue(), 'Do not clear this rejected title');
-  record('duplicate-create refusal retains entered fields');
+  assert.equal(await page.locator('#req-id').inputValue(), reqId);
+  await page.locator('#req-id').fill('recovered requisition');
+  await page.getByRole('button', { name: 'Create requisition', exact: true }).click();
+  await saved('recovered requisition');
+  assert.equal((await bootData()).requisitions.find(r => r.id === 'recovered requisition').title, 'Do not clear this rejected title');
+  record('requisition refusal retains entered fields and correction saves');
   await nav('Offers');
   const offerId = '  offer / ? # café  ';
   await page.locator('#off-id').fill(offerId);
@@ -117,16 +122,6 @@ async function main() {
   await nav('Offers');
   await page.getByRole('button', { name: 'Revise ' + offerId, exact: true }).click();
   assert.equal(await page.locator('input[name="base"]').evaluate(n => n === document.activeElement), true);
-  await page.locator('input[name="base"]').fill('200000.01');
-  await page.getByRole('button', { name: 'Apply revision', exact: true }).click();
-  await page.locator('.drawer-form .error').filter({ hasText: /.+/ }).waitFor();
-  const budgetError=await page.locator('.drawer-form .error').innerText();
-  assert.ok(budgetError.includes('available headroom $100,000.01'), budgetError);
-  assert.ok(budgetError.includes('shortfall $100,000.88'), budgetError);
-  record('revision refusal shows available replacement budget and exact shortfall', {message:budgetError});
-  assert.equal(await page.locator('input[name="base"]').inputValue(), '200000.01');
-  assert.equal(await page.locator('#detail-backdrop').isVisible(), true);
-  record('over-budget revision remains open with error and entered amount');
   await page.keyboard.press('Escape');
   assert.equal(await page.getByRole('button', { name: 'Revise ' + offerId, exact: true }).evaluate(n => n === document.activeElement), true);
   await page.getByRole('button', { name: 'Revise ' + offerId, exact: true }).click();
@@ -136,6 +131,18 @@ async function main() {
   await page.keyboard.press('Tab');
   assert.equal(await page.locator('#detail-close').evaluate(n => n === document.activeElement), true);
   record('dialog initially focuses form, traps tab and returns focus on Escape');
+  await page.locator('input[name="base"]').fill('200000.01');
+  await page.getByRole('button', { name: 'Apply revision', exact: true }).click();
+  await page.locator('.drawer-form .error').filter({ hasText: /.+/ }).waitFor();
+  const budgetError=await page.locator('.drawer-form .error').innerText();
+  assert.ok(budgetError.includes('available headroom $100,000.01'), budgetError);
+  assert.ok(budgetError.includes('shortfall $100,000.88'), budgetError);
+  record('revision refusal shows available replacement budget and exact shortfall', {message:budgetError});
+  assert.equal(await page.locator('input[name="base"]').inputValue(), '200000.01');
+  assert.equal(await page.locator('#detail-backdrop').isVisible(), true);
+  for (const [field, value] of Object.entries({signing:'101.01',relocation:'2.99',units:'7',fair:'1.50',strike:'1.00'}))
+    assert.equal(await page.locator(`input[name="${field}"]`).inputValue(), value);
+  record('over-budget revision remains open with error and entered amount');
   await page.locator('input[name="base"]').fill('51000.02');
   await page.locator('input[name="signing"]').fill('99.99');
   await page.locator('input[name="relocation"]').fill('3.14');
@@ -154,7 +161,9 @@ async function main() {
   await nav('Offers');
   await page.getByRole('button', { name: 'Rescind ' + revision.id, exact: true }).click();
   await page.locator('input[name="effective_at"]').fill('2027-04-30T12:30:00.125Z');
+  const rescissionRequest = page.waitForRequest(r => r.method() === 'POST' && r.postData()?.includes('2027-04-30T12:30:00.125Z'));
   await page.getByRole('button', { name: 'Post rescission (Finance controller only)', exact: true }).click();
+  const observedRescission = await rescissionRequest;
   await page.locator('#detail-backdrop').waitFor({ state: 'hidden' });
   revision = (await bootData()).offers.find(o => o.id === revision.id);
   assert.equal(revision.status, 'RESCINDED');
@@ -205,6 +214,31 @@ async function main() {
   assert.equal(precise.composition.equity_fair_cents, 7036874417766401);
   assert.equal(precise.composition.equity_strike_cents, 7036874417766401);
   record('large valid cents survive UI create, revision prefill and unchanged-field save exactly');
+  await login('finance');
+  await nav('Offers');
+  await page.getByRole('button', { name: 'Rescind ' + precise.id, exact: true }).click();
+  const effective = '2027-04-30T12:30:00.125Z';
+  await page.locator('input[name="effective_at"]').fill(effective);
+  const observedFamily = new URL(observedRescission.url()).pathname.split('/').at(-1);
+  let aborted = 0;
+  const abortOneRescission = async route => {
+    const request = route.request();
+    if (!aborted && request.method() === observedRescission.method() && new URL(request.url()).pathname.split('/').at(-1) === observedFamily) {
+      aborted++;
+      await route.abort('failed');
+    } else await route.continue();
+  };
+  await page.route('**/*', abortOneRescission);
+  await page.getByRole('button', { name: 'Post rescission (Finance controller only)', exact: true }).click();
+  await page.locator('.drawer-form .error').filter({ hasText: /.+/ }).waitFor();
+  await page.unroute('**/*', abortOneRescission);
+  assert.equal(aborted, 1);
+  assert.equal(await page.locator('input[name="effective_at"]').inputValue(), effective);
+  assert.equal((await bootData()).offers.find(o => o.id === precise.id).status, 'COMMITTED');
+  await page.getByRole('button', { name: 'Post rescission (Finance controller only)', exact: true }).click();
+  await page.locator('#detail-backdrop').waitFor({state:'hidden'});
+  assert.equal((await bootData()).offers.find(o => o.id === precise.id).status, 'RESCINDED');
+  record('rescission transport failure retains entered date and retry succeeds', {aborted_requests:aborted});
   assert.deepEqual(errors, []);
   record('no browser JavaScript errors');
 }

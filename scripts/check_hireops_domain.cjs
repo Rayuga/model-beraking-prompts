@@ -15,6 +15,7 @@ const sha=p=>crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex'
 const source={};
 function walk(dir) { for(const e of fs.readdirSync(dir,{withFileTypes:true})) {const p=path.join(dir,e.name); if(e.isDirectory())walk(p);else source[path.relative(task,p).replaceAll('\\','/')]=sha(p);} }
 walk(task);
+const scriptSha256=sha(__filename),startedAt=new Date().toISOString(),startedMs=performance.now();
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function boot(){
   server=spawn(process.execPath,[path.join(task,'solution/app/server.js')],{cwd:out,windowsHide:true,env:{...process.env,PORT:String(port),DB_PATH:path.join(out,'domain.sqlite'),NODE_PATH:path.join(root,'.tools/hireops/node_modules')},stdio:['ignore','pipe','pipe']});
@@ -39,6 +40,21 @@ async function success(id,verb,body={},role){const r=await action(id,verb,body,r
 async function refuse(label,run,status){const before=economic(await state()),r=await run();assert.ok(status?r.status===status:r.status>=400,label+': '+r.status);assert.deepEqual(economic(await state()),before,label+' changed business state');record(label);}
 function record(name,detail={}){results.push({name,passed:true,...detail});}
 async function test(name,fn){try{await fn();record(name);}catch(e){results.push({name,passed:false,error:e.stack});}}
+async function relocationSettlement(label,before,offerId,kind,amount,relocation){
+ const after=await state(), priorIds=new Set(before.remittances.map(row=>row.id));
+ assert.equal(priorIds.size,before.remittances.length,label+': duplicate original remittance IDs');
+ const preserved=after.remittances.filter(row=>priorIds.has(row.id));
+ assert.deepEqual(preserved,before.remittances,label+': a prior remittance was edited or removed');
+ const added=after.remittances.filter(row=>!priorIds.has(row.id));
+ assert.equal(after.remittances.length,before.remittances.length+1,label+': unexpected payment or reversal');
+ assert.deepEqual(added.map(row=>({offer_id:row.offer_id,kind:row.kind,amount_cents:row.amount_cents})),
+  [{offer_id:offerId,kind,amount_cents:amount}],label+': only the expected signing settlement may be added');
+ assert.equal(after.offers.find(row=>row.id===offerId).composition.relocation_cents,relocation,label+': recorded relocation changed');
+ record(label,{before_remittance_count:before.remittances.length,after_remittance_count:after.remittances.length,
+  preserved_remittance_count:preserved.length,added_remittances:added,stored_relocation_cents:relocation,
+  assertions:'All prior remittance rows match in full; total grows by exactly one; the only added row belongs to the successful target and has the expected signing kind/amount; relocation remains recorded without any extra payment or reversal.'});
+ return after;
+}
 async function main(){
  await boot();
  for(const role of Object.keys(accounts)){const u=await login(role);assert.ok(u.name&&u.role);}
@@ -75,11 +91,17 @@ async function main(){
  });
  await test('two revisions, signed adjustments, superseded grants, final latest-leaf settlement',async()=>{
   const r=await req(),a=await offer(r,{base_salary_cents:10000000,signing_bonus_cents:1000001,relocation_cents:12345,equity_units:7,equity_fair_cents:102,equity_strike_cents:1,start_date:'2024-02-29T12:34:56.789Z',referred_by:'EMP-R1',referred_hire_start:'2026-02-01T00:00:00Z'});
-  await success(a,'approve');const before=(await state()).after_images;
+  const beforeApproval=await state();
+  await success(a,'approve');
+  const approved=await relocationSettlement('nonzero relocation approval adds signing only and preserves every prior remittance',beforeApproval,a,'SIGNING',1000001,12345);
+  const before=approved.after_images;
   const b=(await success(a,'revise',{base_salary_cents:11000000,signing_bonus_cents:800003,relocation_cents:22222,equity_units:11,equity_fair_cents:203,equity_strike_cents:2})).revised_offer_id;
+  const revisedOnce=await relocationSettlement('nonzero relocation first revision adds signing adjustment only and preserves every prior remittance',approved,b,'SIGNING_ADJUSTMENT',-199998,22222);
   const c=(await success(b,'revise',{base_salary_cents:9000000,signing_bonus_cents:1200005,relocation_cents:33300,equity_units:13,equity_fair_cents:304,equity_strike_cents:3},'finance')).revised_offer_id;
+  const revisedTwice=await relocationSettlement('nonzero relocation second revision adds signing adjustment only and preserves every prior remittance',revisedOnce,c,'SIGNING_ADJUSTMENT',400002,33300);
   const current=await get(c);assert.equal(current.net_signing_outflow_cents,1200005);assert.deepEqual(current.remittances.map(x=>x.amount_cents),[1000001,-199998,400002]);assert.equal(current.composition.committed_run_rate_cents,9000978);
   const final=await success(c,'rescind',{effective_at:'2025-02-28T12:34:56.789Z'});assert.equal(final.signing_vested_cents,480002);assert.equal(final.clawback_cents,720003);assert.equal(final.equity_vested_units,3);assert.equal(final.equity_cancelled_units,10);assert.equal(final.net_signing_outflow_cents,480002);
+  await relocationSettlement('nonzero relocation rescission adds signing contra only and preserves every prior remittance',revisedTwice,c,'CLAWBACK_CONTRA',720003,33300);
   assert.equal((await get(a)).equity_grant.state,'SUPERSEDED');assert.equal((await get(b)).equity_grant.units,11);assert.equal(final.referral_accrual.vested_cents,1000000);
   const after=(await state()).after_images;assert.deepEqual(after.filter(x=>before.some(y=>y.id===x.id)),before);
   for(const [id,verb] of [[a,'approve'],[a,'revise'],[a,'rescind'],[c,'revise'],[c,'rescind']])await refuse('stale '+id+' '+verb,()=>action(id,verb,verb==='rescind'?{effective_at:'2025-02-28T12:34:56.789Z'}:{}));
@@ -125,6 +147,11 @@ async function main(){
  });
 }
 main().catch(e=>results.push({name:'suite setup',passed:false,error:e.stack})).finally(async()=>{
- await stop();fs.writeFileSync(path.join(out,'requests.json'),JSON.stringify(trace,null,2));fs.writeFileSync(path.join(out,'results.json'),JSON.stringify({kind:'local HTTP product regressions, not browser or configured judge scores',source,results},null,2));
+ await stop();
+ const appSourceUnchanged=Object.entries(source).filter(([file])=>file.startsWith('solution/app/')).every(([file,hash])=>sha(path.join(task,file))===hash);
+ if(!appSourceUnchanged)results.push({name:'application source unchanged during run',passed:false,error:'Application files changed during the evidence run'});
+ const provenance={script:'scripts/check_hireops_domain.cjs',script_sha256:scriptSha256,script_unchanged:sha(__filename)===scriptSha256,
+  runtime:process.version,executable:process.execPath,arguments:process.argv.slice(1),started_at:startedAt,duration_ms:performance.now()-startedMs,application_source_unchanged:appSourceUnchanged};
+ fs.writeFileSync(path.join(out,'requests.json'),JSON.stringify(trace,null,2));fs.writeFileSync(path.join(out,'results.json'),JSON.stringify({kind:'local HTTP product regressions, not browser or configured judge scores',provenance,source,results},null,2));
  console.log(JSON.stringify({out,passed:results.filter(x=>x.passed).length,failed:results.filter(x=>!x.passed)},null,2));if(results.some(x=>!x.passed))process.exitCode=1;
 });
