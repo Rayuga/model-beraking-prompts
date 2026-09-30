@@ -83,7 +83,7 @@ for source in (extracted / task.name / 'tests').glob('*/*/judge.toml'):
     parsed = tomllib.loads(source.read_text(encoding='utf-8'))
     dimensions[source.parent.name] = {'criteria': len(parsed['criterion']), 'weight': float(sum(Decimal(str(item['weight'])) for item in parsed['criterion']))}
 assert set(dimensions) == {'render', 'constraints', 'functional', 'polish', 'visual'}
-expected_functional = {'ridgeline-print-storefront': (42, 35), 'colderwater-playground-devtools': (58, 32.7), 'hireops-recruiting-operations': (61, 45)}[task.name]
+expected_functional = {'ridgeline-print-storefront': (42, 35), 'colderwater-playground-devtools': (58, 32.7), 'hireops-recruiting-operations': (68, 45)}[task.name]
 assert dimensions['functional'] == dict(zip(('criteria', 'weight'), expected_functional))
 assert dimensions['polish']['criteria'] == {'ridgeline-print-storefront': 7, 'colderwater-playground-devtools': 7, 'hireops-recruiting-operations': 12}[task.name]
 assert dimensions['visual']['criteria'] == 6

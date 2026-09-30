@@ -59,6 +59,31 @@ async function main(){
  await boot();
  for(const role of Object.keys(accounts)){const u=await login(role);assert.ok(u.name&&u.role);}
  record('all seven demo accounts');
+ const seed=JSON.parse(fs.readFileSync(path.join(task,'environment/assets/seed_data.json'),'utf8'));
+ const initial=await state();
+ const project=(row,keys)=>Object.fromEntries(keys.map(key=>[key,row[key]]));
+ const sorted=rows=>rows.map(row=>JSON.stringify(row)).sort();
+ const seedFamilies=[
+  ['employees','employees',['id','name']],
+  ['requisitions','requisitions',['id','title','dept','budget_cents']],
+  ['seed_commitments','commitment_movements',['offer_id','req_id','movement_cents']],
+  ['seed_equity_grants','equity_grants',['offer_id','units','strike_cents','fair_cents','grant_date']],
+  ['seed_remittances','remittances',['offer_id','kind','amount_cents']],
+  ['seed_referral_accruals','referral_accruals',['offer_id','referrer_id','candidate','referred_hire_start']],
+ ];
+ for(const [from,to,keys] of seedFamilies)await test('complete initial seed '+to+' matches public product facts',async()=>{
+   assert.deepEqual(sorted(initial[to].map(row=>project(row,keys))),sorted(seed[from].map(row=>project(row,keys))));
+ });
+ await test('complete initial seed offers preserve identities, economics, dates and people',async()=>{
+   assert.deepEqual(initial.offers.map(row=>row.id).sort(),seed.offers.map(row=>row.id).sort());
+   for(const expected of seed.offers){
+     const actual=initial.offers.find(row=>row.id===expected.id),flat={...actual,...actual.composition};
+     for(const [key,value] of Object.entries(expected)){
+       if(['note','raised_at'].includes(key))continue; // Fixture annotation/internal timestamp is not a required visible field.
+       assert.equal(flat[key],value,expected.id+' '+key);
+     }
+   }
+ });
  const shared=await req();
  await test('all roles create requisitions and permitted roles raise offers',async()=>{
    for(const role of Object.keys(accounts)){await req(1000000,undefined,role);if(role!=='auditor')await offer(shared,{},role);}
