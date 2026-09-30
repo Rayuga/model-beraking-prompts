@@ -4,9 +4,19 @@ const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
 const assert = require('assert/strict');
+const crypto = require('node:crypto');
 const root = path.resolve(__dirname, '..');
 const { chromium } = require(path.join(root, '.tools/hireops/node_modules/playwright'));
 const app = path.join(root, 'projects/hireops-recruiting-operations/hireops-recruiting-operations/solution/app');
+function sourceHashes(dir = app, found = {}) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const file = path.join(dir, entry.name);
+    if (entry.isDirectory()) sourceHashes(file, found);
+    else found[path.relative(app, file).replaceAll('\\', '/')] = crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+  }
+  return found;
+}
+const sourceBefore = sourceHashes();
 const output = path.resolve(process.argv[2] || path.join(root, 'qc/runs/hireops-2026-09-30-development/ui', new Date().toISOString().replace(/[:.]/g, '-')));
 fs.mkdirSync(output, { recursive: true });
 const results = [];
@@ -156,12 +166,44 @@ async function main() {
   }
   await page.screenshot({ path: path.join(output, 'mobile-audit-dark.png'), fullPage: true });
   record('all six workspaces fit 390px viewport');
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await login('recruiter');
+  await nav('Offers');
+  const precisionId = 'Exact cents revision';
+  await page.locator('#off-id').fill(precisionId);
+  await page.locator('#off-req').selectOption(reqId);
+  await page.locator('#off-base').fill('1.00');
+  await page.locator('#off-rel').fill('90071992547409.91');
+  await page.locator('#off-fair').fill('70368744177664.01');
+  await page.locator('#off-strike').fill('70368744177664.01');
+  await page.getByRole('button', { name: 'Create offer', exact: true }).click();
+  await saved(precisionId);
+  let precise = (await bootData()).offers.find(o => o.id === precisionId);
+  assert.equal(precise.composition.relocation_cents, Number.MAX_SAFE_INTEGER);
+  assert.equal(precise.composition.equity_fair_cents, 7036874417766401);
+  await login('approver');
+  await nav('Offers');
+  await page.getByRole('button', { name: 'Approve ' + precisionId, exact: true }).click();
+  await page.getByRole('button', { name: 'Revise ' + precisionId, exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Revise ' + precisionId, exact: true }).click();
+  assert.equal(await page.locator('input[name="relocation"]').inputValue(), '90071992547409.91');
+  assert.equal(await page.locator('input[name="fair"]').inputValue(), '70368744177664.01');
+  await page.locator('input[name="base"]').fill('1.01');
+  await page.getByRole('button', { name: 'Apply revision', exact: true }).click();
+  await page.locator('#detail-backdrop').waitFor({ state: 'hidden' });
+  precise = (await bootData()).offers.find(o => o.supersedes_id === precisionId);
+  assert.equal(precise.composition.relocation_cents, Number.MAX_SAFE_INTEGER);
+  assert.equal(precise.composition.equity_fair_cents, 7036874417766401);
+  assert.equal(precise.composition.equity_strike_cents, 7036874417766401);
+  record('large valid cents survive UI create, revision prefill and unchanged-field save exactly');
   assert.deepEqual(errors, []);
   record('no browser JavaScript errors');
 }
 main().catch(e => { results.push({ passed: false, error: e.stack }); process.exitCode = 1; }).finally(async () => {
   if (browser) await browser.close();
   server.kill();
-  fs.writeFileSync(path.join(output, 'results.json'), JSON.stringify({ kind: 'local scripted browser product evidence', results, browser_errors: errors }, null, 2));
+  const unchanged = JSON.stringify(sourceBefore) === JSON.stringify(sourceHashes());
+  if (!unchanged) { results.push({ passed: false, error: 'Application source changed during run' }); process.exitCode = 1; }
+  fs.writeFileSync(path.join(output, 'results.json'), JSON.stringify({ kind: 'local scripted browser product evidence', source: sourceBefore, source_unchanged: unchanged, results, browser_errors: errors }, null, 2));
   console.log(JSON.stringify({ output, results }, null, 2));
 });

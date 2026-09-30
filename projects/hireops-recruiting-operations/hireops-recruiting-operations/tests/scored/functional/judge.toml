@@ -35,7 +35,7 @@ name = "Requisition creation and exact identity"
 type = "binary"
 weight = 1.0
 description = """
-P1: using any successfully authorized signed-in role, create and freshly retrieve requisition ID with leading/trailing spaces and /?# intact, preserving title, department and budget. Ordinary UI rendering may collapse whitespace visually: an observed product response or editable detail can establish the exact value. Every-role creation permission, including Auditor, belongs to hro_raise_roles.
+P1: using any successfully authorized signed-in role, create and freshly retrieve requisition ID with leading/trailing spaces and /?# intact, preserving title, department and budget. Ordinary UI rendering may collapse whitespace visually: an observed product response or editable detail can establish the exact value. Every-role creation permission, including Auditor, belongs to hro_req_roles.
 """
 
 [[criterion]]
@@ -60,9 +60,18 @@ P1: after a successful saved requisition and offer, attempt same-kind duplicate 
 id = "hro_numeric_validation"
 name = "Invalid numeric mutations"
 type = "binary"
-weight = 1.0
+weight = 0.75
 description = """
 P2: valid control first; reject negative money, fractional shares, fractional cents in an observed cents-valued request, nonnumeric and unsafe-integer economic inputs without changing the targeted offer/requisition or economic records. Test one invalid create, one invalid revision and invalid requisition budget; reuse the observed request shape. Also reject computed overflow: units9007199254740991 at fair.02/strike0 exceed safe intrinsic despite individually safe inputs; a neighboring valid control with zero spread is accepted and preserved exactly. Use ordinary input or observed write schema, interpreting units as whole shares. Browser money fields legitimately accept two decimal dollar amounts.
+"""
+
+[[criterion]]
+id = "hro_money_precision"
+name = "Exact valid money through the UI"
+type = "binary"
+weight = 0.25
+description = """
+P2 exact-money control: on an affordable ordinary requisition, raise through the UI a base100.00, bonus0, one-unit offer with relocation90071992547409.91 and fair/strike both70368744177664.01 dollars. These are valid safe-integer cent values; equal fair and strike keep intrinsic zero and run-rate small while the nonzero unit makes the equity fields applicable. Save and freshly read the exact values. Approve as a distinct sufficient-tier approver, then open revision through the UI, change only base to101.00 and submit without retyping the three large money fields. The saved revision and retained predecessor must preserve all three large amounts exactly. A normal small-money creation/revision establishes working controls; reuse prior controls. Observe rendered values or ordinary product responses, interpreting their public representation rather than demanding cents-valued keys. This row owns exact UI money round-tripping, not rejection of invalid inputs, general revision lineage or arithmetic formulas.
 """
 
 [[criterion]]
@@ -132,9 +141,18 @@ P5: a distinct seeded approver successfully approves a valid affordable pending 
 id = "hro_raise_roles"
 name = "Offer creation role boundary"
 type = "binary"
-weight = 1.0
+weight = 0.5
 description = """
-P5: Recruiter, Comp partner, each seeded approver and Finance can raise distinct PENDING controls; reuse P1/P5 successful observed creations. Auditor is refused403 on a replay of an observed create with a new ID, which never appears. Any signed-in role, including Auditor, can create a requisition. Do not conflate requisition and offer rights.
+P5: Recruiter, Comp partner, each seeded approver and Finance can raise distinct PENDING controls; reuse P1/P5 successful observed creations. Auditor is refused403 on a replay of an observed offer creation with a new ID, which never appears. Judge only offer-creation rights; hro_req_roles separately owns requisition-creation rights. If one role cannot create a requisition, use an existing suitable requisition for its offer control.
+"""
+
+[[criterion]]
+id = "hro_req_roles"
+name = "Requisition creation role boundary"
+type = "binary"
+weight = 0.5
+description = """
+P1/P5: every seeded signed-in account, including Auditor and all three approver tiers, can open and freshly retrieve an ordinary valid requisition with its entered title, department and budget. Reuse already observed successful requisition creations rather than repeat them. This row owns requisition-creation permission only; do not withhold it for offer-creation, compensation or settlement failures. Basic caller-chosen ID handling is separately hro_req_identity.
 """
 
 [[criterion]]
@@ -300,21 +318,39 @@ P7: leap-day start2024-02-29T12:34:56.789Z, rescind one millisecond before2025-0
 """
 
 [[criterion]]
-id = "hro_caps"
-name = "Independent full vesting caps"
+id = "hro_signing_cap"
+name = "Signing full vesting cap"
 type = "binary"
-weight = 1.0
+weight = 0.5
 description = """
-P7: at24 months100.01 bonus is fully vested, zero claw, while7 equity units at68% retain5/cancel2. At32 months same bonus and units entirely vested, zero claw/cancellation. Allow omitted zero contra/cancellation records. Verify one partial control from P7 so a dead rescind handler cannot pass.
+P7: at24 completed months a100.01 signing bonus is fully vested with zero clawback; at32 months it remains fully vested with zero clawback. Allow an omitted zero contra. First establish an actual partial signing rescission, e.g. P7's13-month case, so a handler that never settles cannot pass. Grade this signing cap independently of equity amounts/cancellation or a sibling's numerical-rounding failure: visibly reported signing rate100% and matching full retained amount establish the cap.
+"""
+
+[[criterion]]
+id = "hro_equity_cap"
+name = "Equity full vesting cap"
+type = "binary"
+weight = 0.5
+description = """
+P7: at24 completed months the7-unit equity grant is only68% vested, retaining5 and cancelling2; at32 months the same-size independent grant is fully vested, retaining7 and cancelling0. Allow an omitted zero cancellation. Establish a successful partial equity rescission before crediting the absence of a32-month cancellation. Judge the equity schedule and cap independently of signing: if unrelated unit rounding obscures the rate, an otherwise equivalent100-unit control must retain68/cancel32 at24 months and retain100/cancel0 at32. Amount rounding for the odd-unit12/13-month witnesses belongs to hro_cancel.
 """
 
 [[criterion]]
 id = "hro_referral_clock"
 name = "Referral separate start and fixed cliff"
 type = "binary"
-weight = 1.0
+weight = 0.75
 description = """
 P8: offer start2026-07-01 for all, referral starts2026-02-01T00:00:00Z and2026-02-01T00:00:00.001Z -> reference2026-08-01 yields10000.00 vs5000.00 vested. Add start2026-01-31T12:00:00Z -> cliff2026-07-31T12:00:00Z, fully vested. Approval and later rescission effective dates must not substitute for fixed reference or referral start.
+"""
+
+[[criterion]]
+id = "hro_referral_immediate"
+name = "Approval immediately vests the referral first half"
+type = "binary"
+weight = 0.25
+description = """
+P8 future-start control: approve an otherwise ordinary affordable offer whose offer start is2026-09-01T00:00:00Z and separate referred-hire start is2026-09-15T00:00:00Z, both later than the stored2026-08-01 reference moment. Immediately after approval, the referral shows5000.00 vested at hire and5000.00 still contingent; it must not withhold the first half until either scheduled start. Reuse a prior ordinary successful referred approval as control. This row owns immediate vesting at the approval event; referral ownership/split is hro_referral_creation and the separate six-month cliff is hro_referral_clock.
 """
 
 [[criterion]]
@@ -327,14 +363,57 @@ P6 race: own requisition budget100.00, two separate pending base60.00 offers, ea
 """
 
 [[criterion]]
-id = "hro_stale"
-name = "Stale ancestor and repeated settlement refusal"
+id = "hro_stale_approval"
+name = "Approval refuses ineligible stored states"
 type = "binary"
-weight = 1.0
+weight = 0.125
 description = """
-P4/P5: after a successful approval, replay approval; after successful revision, try revising/rescinding its superseded ancestor; after successful rescission, replay rescission and attempt revision. All refused, no new offer, economic movement, grant, payment, referral or settlement audit/after-image; prior active state unchanged. Also refuse approval of seeded DRAFT OFF-301 and revision/rescission of an ordinary PENDING control; DRAFT contributes no commitment. Positive transition controls required. Generic security-access logs are not settlement audit entries.
+P4/P5/P9 sequential approval: after an actual successful ordinary approval, replay its approval request and require refusal. Also refuse approval of seeded DRAFT OFF-301; inspect that DRAFT contributes no commitment. The successful pending approval is the positive control for the same approval mechanism. This row owns sequential approval eligibility only, not revision or rescission protections. Compare fresh persisted state before/after: no new offer, movement, grant, payment, referral, successful settlement audit entry or after-image, and no changed active lineage/economic values. Generic access/security logs may grow. Reuse successful observed action controls, not sibling verdicts.
+"""
 
-P9 also sends two concurrent requests for the SAME target at each stage of a small independent hire: pending approval, committed revision, then latest-leaf rescission. Use observed successful request shapes and an ample budget. At each stage exactly one succeeds and one is refused, with one transition's complete effects and one current lineage only. Do not require a winner or response timing. The successful competing request is the matching positive control. Score this row on same-hire exclusivity; P6/hro_competing owns two distinct hires competing for budget.
+[[criterion]]
+id = "hro_stale_revision"
+name = "Revision refuses noncurrent or uncommitted offers"
+type = "binary"
+weight = 0.1875
+description = """
+P4/P5/P9 sequential revision: first perform a successful committed-offer revision. Attempt revision of its superseded ancestor, an ordinary PENDING offer and an already rescinded offer; all refuse. Use an independent ordinary successful rescission to prepare the last target if P4 failed. This row owns sequential revision eligibility only, not approval or rescission refusal. Compare fresh persisted state before/after: no new offer, movement, grant, payment, referral, successful settlement audit entry or after-image, and no changed active lineage/economic values. Generic access/security logs may grow. Reuse successful observed action controls, not sibling verdicts.
+"""
+
+[[criterion]]
+id = "hro_stale_rescission"
+name = "Rescission refuses noncurrent or unsettled offers"
+type = "binary"
+weight = 0.1875
+description = """
+P4/P5/P9 sequential rescission: first perform a successful Finance rescission of an ordinary committed target. Replay that rescission, then attempt Finance rescission of a superseded ancestor and an ordinary PENDING offer; all refuse. Independently prepare the superseded target with an ordinary successful revision if needed. This row owns sequential rescission eligibility only, not approval or revision refusal. Compare fresh persisted state before/after: no new offer, movement, grant, payment, referral, successful settlement audit entry or after-image, and no changed active lineage/economic values. Generic access/security logs may grow. Reuse successful observed action controls, not sibling verdicts.
+"""
+
+[[criterion]]
+id = "hro_concurrent_approval"
+name = "Concurrent approvals of one offer settle once"
+type = "binary"
+weight = 0.125
+description = """
+P9 same-target approval pair: target one affordable PENDING hire, raised by a person distinct from the authorized approver. Use Promise.all with two copies of the actual UI-observed successful request shape under an authorized session and an ample budget. Exactly one succeeds and the other is refused. Inspect fresh persisted results: only one transition's complete effects and one current lineage; no duplicate economic rows or settlement receipts. Do not require which request wins or its latency. The winner is the matching positive control; an independently successful ordinary action first establishes the request shape. Evaluate exclusivity relative to the observed successful action, not a sibling formula verdict. If the shared chain cannot reach this stage, prepare an independent eligible target; do not require the earlier concurrent stage to pass. One offer becomes committed with one approval's movements/grant/payment/referral where applicable and one receipt. P6/hro_competing separately owns two different hires competing for insufficient combined budget.
+"""
+
+[[criterion]]
+id = "hro_concurrent_revision"
+name = "Concurrent revisions of one offer settle once"
+type = "binary"
+weight = 0.1875
+description = """
+P9 same-target revision pair: target one current COMMITTED hire and submit the same valid compensation change twice concurrently. Use Promise.all with two copies of the actual UI-observed successful request shape under an authorized session and an ample budget. Exactly one succeeds and the other is refused. Inspect fresh persisted results: only one transition's complete effects and one current lineage; no duplicate economic rows or settlement receipts. Do not require which request wins or its latency. The winner is the matching positive control; an independently successful ordinary action first establishes the request shape. Evaluate exclusivity relative to the observed successful action, not a sibling formula verdict. If the shared chain cannot reach this stage, prepare an independent eligible target; do not require the earlier concurrent stage to pass. Exactly one successor is minted, its predecessor is superseded once, and only one reversal/replacement, signing adjustment and replacement grant where applicable is posted. Same-target approval success is not this row's prerequisite.
+"""
+
+[[criterion]]
+id = "hro_concurrent_rescission"
+name = "Concurrent rescissions of one offer settle once"
+type = "binary"
+weight = 0.1875
+description = """
+P9 same-target rescission pair: target one current COMMITTED hire as Finance with the same valid effective date in both requests. Use Promise.all with two copies of the actual UI-observed successful request shape under an authorized session and an ample budget. Exactly one succeeds and the other is refused. Inspect fresh persisted results: only one transition's complete effects and one current lineage; no duplicate economic rows or settlement receipts. Do not require which request wins or its latency. The winner is the matching positive control; an independently successful ordinary action first establishes the request shape. Evaluate exclusivity relative to the observed successful action, not a sibling formula verdict. If the shared chain cannot reach this stage, prepare an independent eligible target; do not require the earlier concurrent stage to pass. The target becomes rescinded once, with only one release, contra/cancellation where applicable and receipt. Same-target revision success is not this row's prerequisite.
 """
 
 [[criterion]]
@@ -361,16 +440,16 @@ name = "Anonymous operational read boundary"
 type = "binary"
 weight = 1.0
 description = """
-P9: capture a successful ordinary authenticated operational read, replay without session/auth credentials in a fresh context. It must401 and return no operational records. Health and login shell may remain public. Do not count an empty list without authenticated populated control.
+P9: inventory every distinct operational read family actually used by the UI while opening Dashboard, Requisitions, Offers, Equity Table, Referrals and Audit Trail, including available detail/receipt reads. Deduplicate a genuinely shared bootstrap/read rather than require an endpoint per screen. First capture a populated successful authenticated response for each observed family. Replay each without every observed cookie/token/auth credential in a fresh empty context: each must401 and return no operational records. Public health and a login/static app shell may remain public. Do not guess routes or inspect implementation; report the observed inventory and bounded coverage. An empty response without its populated authenticated control proves nothing. If a listed screen lacks a separate request, inspect the shared observed read that supplied its data.
 """
 
 [[criterion]]
 id = "hro_anon_write"
-name = "Anonymous write boundary"
+name = "Anonymous operational write boundary"
 type = "binary"
 weight = 1.0
 description = """
-P9: successful authenticated creation first, then same write shape with new ID and no credentials. Must401; fresh authenticated retrieval shows no new record and the valid control still exists. Generic access logs may grow, economics may not.
+P9: cover every required operational write family observed through successful UI actions: requisition creation, offer creation, approval, revision and rescission. For each, first capture a successful authenticated control, then replay its actual shape without every auth credential in a fresh empty context against a separate otherwise valid eligible target (fresh unused IDs for creations, current state and sufficient budget for settlements). Each must401. Fresh authenticated readback must show no created record or changed status, lineage, financial row, grant, payment, referral or successful settlement receipt; valid control records remain. Generic access logs may grow. Reuse P1/P4/P5/P6/P10 controls and small dedicated targets, never guess a route. A missing product operation lacks evidence for its corresponding family, but do not claim anonymous access was observed merely because a tool/setup failed. Login/logout are session operations, not operational writes in this row.
 """
 
 [[criterion]]

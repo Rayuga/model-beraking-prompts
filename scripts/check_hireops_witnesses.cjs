@@ -8,7 +8,7 @@ const source=path.join(task,'solution/app');
 const node=path.join(root,'.tools/hireops/node.exe');
 const stamp=new Date().toISOString().replace(/[:.]/g,'-');
 const scratch=path.join(root,'.tools/hireops/witnesses',stamp);
-const output=path.join(root,'qc/runs/hireops-2026-09-30-development/witnesses',stamp);
+const output=path.resolve(process.argv[2] || path.join(root,'qc/runs/hireops-2026-09-30-development/witnesses',stamp));
 fs.mkdirSync(scratch,{recursive:true});fs.mkdirSync(output,{recursive:true});
 const hash=x=>crypto.createHash('sha256').update(x).digest('hex');
 function manifest(dir){const m={};function walk(p){for(const e of fs.readdirSync(p,{withFileTypes:true}).sort((a,b)=>a.name.localeCompare(b.name))){const f=path.join(p,e.name);if(e.isDirectory())walk(f);else m[path.relative(dir,f).replaceAll('\\','/')]=hash(fs.readFileSync(f));}}walk(dir);return m;}

@@ -15,9 +15,13 @@
       const text = String(value);
       if (!/^\d+(?:\.\d{1,2})?$/.test(text)) throw new Error('Enter a nonnegative dollar amount with at most two decimal places.');
       const [whole, fraction = ''] = text.split('.');
-      const result = Number(whole) * 100 + Number(fraction.padEnd(2, '0'));
-      if (!Number.isSafeInteger(result)) throw new Error('That amount is too large.');
-      return result;
+      const result = BigInt(whole) * 100n + BigInt(fraction.padEnd(2, '0'));
+      if (result > BigInt(Number.MAX_SAFE_INTEGER)) throw new Error('That amount is too large.');
+      return Number(result);
+    };
+    const dollars = (value) => {
+      const amount = BigInt(value || 0);
+      return `${amount / 100n}.${String(amount % 100n).padStart(2, '0')}`;
     };
     const units = (value) => {
       if (!/^\d+$/.test(String(value)) || !Number.isSafeInteger(Number(value))) throw new Error('Enter a nonnegative whole number of equity units.');
@@ -169,12 +173,12 @@
         bar.append(el('button', { class: 'action secondary', type: 'button', onclick: () => openForm(
           `Revise ${o.id}`,
           [
-            { name: 'base', label: 'New base salary (dollars)', type: 'number', value: (c.base_salary_cents || 0) / 100 },
-            { name: 'signing', label: 'New signing bonus (dollars)', type: 'number', value: (c.signing_bonus_cents || 0) / 100 },
-            { name: 'relocation', label: 'New relocation (dollars)', type: 'number', value: (c.relocation_cents || 0) / 100 },
+            { name: 'base', label: 'New base salary (dollars)', type: 'number', value: dollars(c.base_salary_cents) },
+            { name: 'signing', label: 'New signing bonus (dollars)', type: 'number', value: dollars(c.signing_bonus_cents) },
+            { name: 'relocation', label: 'New relocation (dollars)', type: 'number', value: dollars(c.relocation_cents) },
             { name: 'units', label: 'New equity units', type: 'number', step: '1', value: (c.equity_units || 0) },
-            { name: 'fair', label: 'New equity fair value (dollars/unit)', type: 'number', value: (c.equity_fair_cents || 0) / 100 },
-            { name: 'strike', label: 'New equity strike (dollars/unit)', type: 'number', value: (c.equity_strike_cents || 0) / 100 },
+            { name: 'fair', label: 'New equity fair value (dollars/unit)', type: 'number', value: dollars(c.equity_fair_cents) },
+            { name: 'strike', label: 'New equity strike (dollars/unit)', type: 'number', value: dollars(c.equity_strike_cents) },
           ],
           'Apply revision',
           (v) => ({ method: 'POST', path: '/api/offers/' + encodeURIComponent(o.id) + '/revise', body: {

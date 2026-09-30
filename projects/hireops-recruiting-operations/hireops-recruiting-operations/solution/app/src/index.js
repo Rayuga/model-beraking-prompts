@@ -1,4 +1,8 @@
 'use strict';
+const { isMainThread, parentPort } = require('node:worker_threads');
+if (isMainThread) {
+  module.exports = require('./bootstrap').start(__filename);
+} else {
 // hireops HTTP layer. A recruiting-operations + compensation back-office (offer &
 // clawback desk).
 //
@@ -22,13 +26,11 @@ const R = require('./rules');
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
 
-// Health is answered before any DB access and is never gated on seeding.
+// Public health lives in bootstrap; these routes also support the internal listener.
 app.get('/health', (_req, res) => res.json({ ok: true, service: 'hireops' }));
 app.get('/api/health', (_req, res) => res.json({ ok: true, service: 'hireops' }));
 
-let db = null;
-try { db = dbmod.open(); }
-catch (e) { console.error('[hireops] database open failed:', e.message); }
+const db = dbmod.open();
 
 app.use(express.json({ limit: '2mb' }));
 app.use(cookieParser);
@@ -433,5 +435,9 @@ app.use((error, _req, res, _next) => {
   if (status === 500) console.error('[hireops] operation failed:', error.message);
   res.status(status).json({ error: status === 500 ? 'Operation failed; no financial changes were committed.' : error.message });
 });
-app.listen(PORT, '0.0.0.0', () => console.log(`[hireops] listening on ${PORT}`));
+const server = app.listen(PORT, '127.0.0.1', () => {
+  parentPort.postMessage({ port: server.address().port });
+});
 module.exports = app;
+
+}
