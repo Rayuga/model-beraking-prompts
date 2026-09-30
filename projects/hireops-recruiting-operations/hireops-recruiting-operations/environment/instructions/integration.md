@@ -12,3 +12,8 @@ before database work can block startup.
 The product is served from the local server. It may load external fonts,
 scripts or CDN assets, but it cannot depend on an external backend or data
 service. How routes and files are laid out under /app is up to you.
+
+For delivery, use ordinary files under /app. Symbolic links are supported
+only inside /app/node_modules, and their resolved targets must also stay
+inside /app/node_modules. Use NODE_PATH for the preinstalled packages rather
+than linking to their global installation directories.
