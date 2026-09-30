@@ -60,6 +60,15 @@ async function main(){
   const iii=await offer(shared,{base_salary_cents:35000000});await refuse('tier2 below bandIII',()=>action(iii,'approve',{},'tier2'),403);await success(iii,'approve');
   const own=await offer(shared,{},'tier2');await refuse('self approval',()=>action(own,'approve',{},'tier2'));await success(own,'approve');
  });
+ await test('complete held-tier by required-band authority matrix',async()=>{
+  const r=await req();
+  for(const tier of [1,2,3])for(const [band,base] of [[1,10000],[2,20000000],[3,35000000]]){
+   const id=await offer(r,{base_salary_cents:base});
+   const label='tier'+tier+' / band'+band;
+   if(tier>=band){await success(id,'approve',{},'tier'+tier);record(label+' allowed');}
+   else await refuse(label+' refused with unchanged economic state',()=>action(id,'approve',{},'tier'+tier),403);
+  }
+ });
  await test('approval and replacement budget equality and no partial writes',async()=>{
   const r=await req(10000000),a=await offer(r,{base_salary_cents:9999999,signing_bonus_cents:10000000});await success(a,'approve');const b=await offer(r,{base_salary_cents:1});await success(b,'approve');const c=await offer(r,{base_salary_cents:1});await refuse('one-cent overrun',()=>action(c,'approve'));
   const rr=await req(10000000),x=await offer(rr,{base_salary_cents:8000000});await success(x,'approve');const y=await success(x,'revise',{base_salary_cents:10000000});await refuse('revision overrun leaves whole ledger',()=>action(y.revised_offer_id,'revise',{base_salary_cents:10000001}));await success(y.revised_offer_id,'revise',{base_salary_cents:9000000});
