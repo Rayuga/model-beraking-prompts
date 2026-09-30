@@ -11,9 +11,7 @@ Run the code in an isolated frame. It must not be able to reach the playground's
 own page, its storage, or the parent document. A snippet that tries has to fail
 on its own rather than break the app around it.
 
-JavaScript and HTML runs start with a fresh document. CSS runs use a fresh copy
-of the last successful document and styles without rerunning its scripts. No
-old event handlers, timers or globals carry into the new frame. Authored snippets
+JavaScript and HTML runs start with a fresh document. CSS runs style a built-in sample page. Authored snippets
 cannot request external resources or network services.
 
 What runs how
@@ -24,7 +22,7 @@ remember to set.
 
   .js     runs as a script against the preview document
   .html   replaces the preview document entirely
-  .css    styles a fresh copy of the last successful preview document
+  .css    styles a built-in sample page
 
 Stopping
 --------
@@ -36,14 +34,18 @@ imports are outside this playground and must be refused clearly. Those words
 remain valid in ordinary strings, comments and HTML text.
 
 A supported run has one five-second budget, including time spent waiting for its
-timers and callbacks. Work still running at that limit is stopped with a clear
-reason while the surrounding app stays usable. slow.js demonstrates a supported
+timers and callbacks. At that limit, show a clear time-limit reason and prevent
+further effects from the run on the current preview, console or run status,
+while leaving the surrounding app usable. slow.js demonstrates a supported
 literal infinite loop. This is not a promise to interrupt arbitrary native
 operations or unsupported generated code.
 
 Starting another run cancels the previous run and prevents its late output from
 replacing the new result. Stop cancels the active run, explains why it stopped
-and restores the last completed successful preview.
+and restores the last completed successful preview. Stopping an already
+completed preview keeps its current successful picture; that picture may be
+static. Old code and callbacks cannot later affect the current preview, console
+or run status.
 
 Errors
 ------

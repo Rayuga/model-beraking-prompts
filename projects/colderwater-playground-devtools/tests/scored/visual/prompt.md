@@ -21,6 +21,15 @@ Do not deduct twice for those mobile usability observations. Functional
 checks whether the theme control changes the workspace; Visual assesses
 the resulting colours, contrast and typography.
 
+Use a single owner for each desktop text defect. Typography owns typeface,
+size, weight and letter spacing. Spacing/layout owns alignment, line/row and
+pane spacing, overlap and clipping/truncation, including text cut off by a
+container. Do not infer a font-choice defect just from clipping or
+misalignment, or a layout defect just from inconsistent fonts. Do not reuse
+the same observation to lower hierarchy, overall craft or responsive
+consistency. Distinct defects may affect both typography and layout only
+when each has separate rendered evidence.
+
 Global browser gate: the harness runs this suite only after Render proves an
 authored Run produces output and Constraints proves a newly saved record can
 be retrieved in an independent clean browser context. Here, reload the public

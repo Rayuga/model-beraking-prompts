@@ -6,4 +6,4 @@ Please read the six notes in /instructions before you start. They cover the edit
 
 Opening it should feel ready to use: useful code, a preview and some console feedback already there. I also need to start a fresh draft and return to something I saved earlier. Keep it comfortable with a keyboard and on a narrow screen, and offer light and dark themes.
 
-The finished app goes in /app. Our setup is described in /instructions/integration.md. Include the source and built frontend so I can start it with the supplied runtime. External fonts, scripts and CDN assets are fine for the app itself.
+The finished app goes in /app. Our setup and start command are in /instructions/integration.md. External fonts, scripts and CDN assets are fine for the app itself.

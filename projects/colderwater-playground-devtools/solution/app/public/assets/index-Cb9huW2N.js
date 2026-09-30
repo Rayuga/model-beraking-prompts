@@ -28578,17 +28578,31 @@ K.MethodDefinition = K.PropertyDefinition = K.Property = function(i, e, t) {
 };
 const emptyDocument = '<!doctype html><html><head><style>body{font:16px system-ui;padding:24px;color:#1d3044;background:#f6f8fa}pre{white-space:pre-wrap}button{padding:8px 12px;margin:4px;border:1px solid #a6b9c8;border-radius:5px;background:#fff;color:#193848}</style></head><body><h1>Your preview</h1><pre id="out">Run a snippet to begin.</pre></body></html>';
 const policy = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; connect-src 'none'; frame-src 'none'; worker-src 'none'; form-action 'none'; base-uri 'none'";
-function staticDocument(document2) {
-  return `<meta http-equiv="Content-Security-Policy" content="${policy.replace("script-src 'unsafe-inline'", "script-src 'none'")}">${document2}`;
+function restoreFormState(doc, states) {
+  if (!Array.isArray(states)) return;
+  const controls = doc.documentElement.querySelectorAll("input,textarea,select");
+  for (const state of states) {
+    if (!Array.isArray(state) || !Number.isSafeInteger(state[0]) || state[0] < 0) continue;
+    const control = controls[state[0]];
+    if (state[1] === "value" && typeof state[2] === "string" && (control instanceof HTMLTextAreaElement || control instanceof HTMLInputElement && control.type !== "file")) control.value = state[2];
+    if (state[1] === "indeterminate" && control instanceof HTMLInputElement) control.indeterminate = true;
+    if (state[1] === "unselected" && control instanceof HTMLSelectElement) control.selectedIndex = -1;
+  }
+}
+function staticDocument(document2, formState = []) {
+  const nonce = crypto.randomUUID().replaceAll("-", "");
+  const csp = policy.replace("script-src 'unsafe-inline'", `script-src 'nonce-${nonce}'`);
+  const state = JSON.stringify(formState).replace(/</g, "\\u003c");
+  return `<meta http-equiv="Content-Security-Policy" content="${csp}">${document2}<script nonce="${nonce}">(${restoreFormState.toString()})(document,${state});document.currentScript.remove();<\/script>`;
 }
 function language(filename) {
   return filename.toLowerCase().match(/\.(js|html|css)$/)?.[1] || "";
 }
 function instrument(code, guard, lineOffset = 0) {
-  const ast = E9(code, { ecmaVersion: "latest", sourceType: "script", locations: true });
+  const comments = [];
+  const ast = E9(code, { ecmaVersion: "latest", sourceType: "script", locations: true, onComment: comments });
   const edits = [];
   const guarded = /* @__PURE__ */ new Set();
-  const blocked = /* @__PURE__ */ new Set(["eval", "Function", "WebAssembly", "Worker", "SharedWorker", "importScripts"]);
   const add = (at2, text, order = 0) => edits.push({ at: at2, text, order });
   function body(node) {
     if (guarded.has(node.start)) return;
@@ -28604,7 +28618,7 @@ function instrument(code, guard, lineOffset = 0) {
       add(node.argument.start, `${guard}origin((`, -1);
       add(node.argument.end, `),${node.loc.start.line + lineOffset})`, 3);
     }
-    if (node.type === "ImportExpression" || node.type === "Identifier" && blocked.has(node.name) || node.type === "MemberExpression" && node.computed && node.property.type === "Literal" && blocked.has(node.property.value)) {
+    if (node.type === "ImportExpression") {
       throw Object.assign(new Error("Dynamic evaluation, imports, WebAssembly and workers are outside this playground’s supported execution modes."), { loc: node.loc.start });
     }
     if (["WhileStatement", "DoWhileStatement", "ForStatement", "ForInStatement", "ForOfStatement"].includes(node.type)) body(node.body);
@@ -28625,11 +28639,26 @@ function instrument(code, guard, lineOffset = 0) {
     }
     if (node.type === "TryStatement" && node.finalizer) body(node.finalizer);
   });
-  let result = code.replace(/\/\/[#@]\s*source(?:Mapping)?URL[^\n]*/g, (value) => " ".repeat(value.length));
+  let result = code;
+  for (const comment of comments) {
+    if (comment.type === "Line" && /^[#@]\s*source(?:Mapping)?URL/.test(comment.value)) {
+      result = result.slice(0, comment.start) + " ".repeat(comment.end - comment.start) + result.slice(comment.end);
+    }
+  }
   for (const edit of edits.sort((a, b) => b.at - a.at || b.order - a.order)) result = result.slice(0, edit.at) + edit.text + result.slice(edit.at);
   return result;
 }
 function sandboxBootstrap(token, key) {
+  if (typeof globalThis.SharedWorker === "function") {
+    const refuseWorker = () => {
+      const error = new Error("Dynamic evaluation, imports, WebAssembly and workers are outside this playground’s supported execution modes.");
+      fail(error);
+      throw error;
+    };
+    const guardedWorker = new Proxy(globalThis.SharedWorker, { construct: refuseWorker, apply: refuseWorker });
+    globalThis.SharedWorker = guardedWorker;
+    guardedWorker.prototype.constructor = guardedWorker;
+  }
   const now = performance.now.bind(performance);
   const sendNative = parent.postMessage.bind(parent);
   const timeoutNative = setTimeout.bind(window);
@@ -28728,11 +28757,45 @@ function sandboxBootstrap(token, key) {
   function snapshot() {
     if (failed) return;
     const copy = document.documentElement.cloneNode(true);
+    const styles = document.querySelectorAll("style");
+    const copiedStyles = copy.querySelectorAll("style");
+    const stylesheetText = (sheet) => Array.from(sheet.cssRules, (rule) => rule.cssText).join("\n").replace(/<\/style/gi, (token2) => "\\3c " + token2.slice(1));
+    styles.forEach((style, index) => {
+      if (!style.sheet) return;
+      copiedStyles[index].textContent = stylesheetText(style.sheet);
+      copiedStyles[index].setAttribute("media", style.sheet.disabled ? "not all" : style.sheet.media.mediaText);
+    });
+    for (const sheet of document.adoptedStyleSheets) {
+      const style = document.createElement("style");
+      style.textContent = stylesheetText(sheet);
+      style.media = sheet.disabled ? "not all" : sheet.media.mediaText;
+      (copy.querySelector("body") || copy).appendChild(style);
+    }
+    const controls = document.documentElement.querySelectorAll("input,textarea,select");
+    const copiedControls = copy.querySelectorAll("input,textarea,select");
+    const formState = [];
+    controls.forEach((control, index) => {
+      const copied = copiedControls[index];
+      if (control instanceof HTMLInputElement) {
+        if (control.type !== "file") {
+          copied.setAttribute("value", control.value);
+          formState.push([index, "value", control.value]);
+        }
+        copied.toggleAttribute("checked", control.checked);
+        if (control.indeterminate) formState.push([index, "indeterminate"]);
+      } else if (control instanceof HTMLTextAreaElement) {
+        copied.textContent = control.value;
+        formState.push([index, "value", control.value]);
+      } else if (control instanceof HTMLSelectElement) {
+        Array.from(control.options).forEach((option, index2) => copied.options[index2].toggleAttribute("selected", option.selected));
+        if (control.selectedIndex === -1) formState.push([index, "unselected"]);
+      }
+    });
     copy.querySelectorAll("script,meta[http-equiv]").forEach((element) => element.remove());
     copy.querySelectorAll("*").forEach((element) => Array.from(element.attributes).forEach((attribute) => {
       if (attribute.name.startsWith("on") || attribute.name.startsWith("data-cw-")) element.removeAttribute(attribute.name);
     }));
-    send("snapshot", { html: "<!doctype html>" + copy.outerHTML });
+    send("snapshot", { html: "<!doctype html>" + copy.outerHTML, formState });
   }
   function settleSoon() {
     if (settleTimer) clearNative(settleTimer);
@@ -28759,6 +28822,11 @@ function sandboxBootstrap(token, key) {
     fail(event.error || event.message, event.lineno || 0);
     event.preventDefault();
   });
+  addEventListener("securitypolicyviolation", (event) => {
+    if (event.disposition === "enforce" && (["eval", "wasm-eval"].includes(event.blockedURI) || event.effectiveDirective === "worker-src")) {
+      fail(new Error("Dynamic evaluation, imports, WebAssembly and workers are outside this playground’s supported execution modes."), event.lineNumber || 0);
+    }
+  });
   addEventListener("unhandledrejection", (event) => {
     fail(event.reason, rejectionLine(event.promise) || thrownLines.get(event.reason)?.[0] || 0);
     event.preventDefault();
@@ -28784,6 +28852,7 @@ function sandboxBootstrap(token, key) {
       wrap(fn2)(...args);
     }, delay);
     timers.add(id2);
+    settled = false;
     send("pending", { count: timers.size + callbacks });
     return id2;
   };
@@ -28796,6 +28865,7 @@ function sandboxBootstrap(token, key) {
     if (typeof fn2 !== "function") throw new Error("String timers are unsupported. Pass a function.");
     const id2 = intervalNative(wrap(fn2), delay, ...args);
     timers.add(id2);
+    settled = false;
     send("pending", { count: timers.size + callbacks });
     return id2;
   };
@@ -28806,6 +28876,7 @@ function sandboxBootstrap(token, key) {
   };
   PromiseNative.prototype.then = function(onFulfilled, onRejected) {
     callbacks++;
+    settled = false;
     send("pending", { count: timers.size + callbacks });
     const parentPromise = this;
     let result;
@@ -28838,6 +28909,7 @@ function sandboxBootstrap(token, key) {
   };
   window.queueMicrotask = (fn2) => {
     callbacks++;
+    settled = false;
     microtaskNative(() => {
       try {
         wrap(fn2)();
@@ -28847,8 +28919,48 @@ function sandboxBootstrap(token, key) {
       }
     });
   };
-  for (const name of ["click", "input", "change", "keydown"]) document.addEventListener(name, () => {
-    if (settled) {
+  const interactionEvents = [
+    "pointerdown",
+    "pointerup",
+    "pointermove",
+    "pointerover",
+    "pointerout",
+    "pointerenter",
+    "pointerleave",
+    "pointercancel",
+    "mousedown",
+    "mouseup",
+    "mousemove",
+    "mouseover",
+    "mouseout",
+    "mouseenter",
+    "mouseleave",
+    "click",
+    "dblclick",
+    "auxclick",
+    "contextmenu",
+    "wheel",
+    "touchstart",
+    "touchmove",
+    "touchend",
+    "touchcancel",
+    "keydown",
+    "keypress",
+    "keyup",
+    "beforeinput",
+    "input",
+    "change",
+    "compositionstart",
+    "compositionupdate",
+    "compositionend",
+    "focus",
+    "blur",
+    "focusin",
+    "focusout"
+  ];
+  for (const name of interactionEvents) window.addEventListener(name, (event) => {
+    if (!event.isTrusted || failed) return;
+    if (settled && !timers.size && !callbacks) {
       settled = false;
       started = now();
       deadline = started + 4900;
@@ -28865,22 +28977,48 @@ function sandboxBootstrap(token, key) {
   } });
   send("started");
 }
-function buildRun(code, filename, lastDocument, token) {
+function locatedHtml(code, marker) {
+  const locations = /* @__PURE__ */ new Map();
+  const edits = [];
+  const tree = ZL().language.parser.parse(code.replace(/[A-Z]/g, (char) => char.toLowerCase()));
+  const cursor = tree.cursor(Ke.IgnoreMounts);
+  do {
+    if (!["OpenTag", "SelfClosingTag"].includes(cursor.name)) continue;
+    const tag = cursor.node, name = tag.getChild("TagName");
+    if (!name) continue;
+    const handlers = /* @__PURE__ */ new Map();
+    for (const attribute of tag.getChildren("Attribute")) {
+      const name2 = attribute.getChild("AttributeName");
+      const value = attribute.getChild("AttributeValue") || attribute.getChild("UnquotedAttributeValue");
+      if (!name2 || !value) continue;
+      const key = code.slice(name2.from, name2.to).toLowerCase();
+      if (key.startsWith("on") && !handlers.has(key)) handlers.set(key, value.from + (value.name === "AttributeValue" ? 1 : 0));
+    }
+    const id2 = String(tag.from);
+    locations.set(id2, { script: tag.to, handlers });
+    edits.push({ at: name.to, text: ` ${marker}="${id2}"` });
+  } while (cursor.next());
+  let source = code;
+  for (const edit of edits.reverse()) source = source.slice(0, edit.at) + edit.text + source.slice(edit.at);
+  return { source, locations };
+}
+function buildRun(code, filename, token) {
   const kind = language(filename);
   if (!kind) throw new Error("Filename must end in .js, .html or .css.");
   const guard = "__cw_" + crypto.randomUUID().replaceAll("-", "");
   const nonce = crypto.randomUUID().replaceAll("-", "");
-  const doc = new DOMParser().parseFromString(kind === "html" ? code : kind === "css" ? lastDocument : emptyDocument, "text/html");
+  const locationAttribute = "data-cw-source-" + nonce;
+  const located = kind === "html" ? locatedHtml(code, locationAttribute) : null;
+  const doc = new DOMParser().parseFromString(located ? located.source : emptyDocument, "text/html");
+  const sourceLine = (at2) => code.slice(0, at2).split(/\r\n?|\n/).length - 1;
+  const location2 = (element) => located?.locations.get(element.getAttribute(locationAttribute));
   const scripts = [];
-  let cursor = 0;
   if (kind === "js") scripts.push({ text: code, line: 0 });
   if (kind === "html") {
     for (const script of doc.querySelectorAll("script")) {
       if (script.src || script.type && !["text/javascript", "application/javascript"].includes(script.type.toLowerCase())) throw new Error("Use local inline classic JavaScript; external and module scripts are unsupported.");
       const text = script.textContent || "";
-      const at2 = code.indexOf(text, cursor);
-      cursor = Math.max(cursor, at2 + text.length);
-      scripts.push({ text, line: code.slice(0, Math.max(0, at2)).split("\n").length - 1 });
+      scripts.push({ text, line: sourceLine(location2(script)?.script || 0) });
     }
   }
   doc.querySelectorAll("script,meta[http-equiv],base,iframe,object,embed").forEach((element) => element.remove());
@@ -28893,12 +29031,19 @@ function buildRun(code, filename, lastDocument, token) {
     if (attribute.name.toLowerCase().startsWith("on")) {
       const id2 = "handler-" + crypto.randomUUID();
       element.setAttribute("data-cw-handler", id2);
-      const at2 = code.indexOf(attribute.value);
-      scripts.push({ text: `document.querySelector('[data-cw-handler="${id2}"]').addEventListener(${JSON.stringify(attribute.name.slice(2))}, function(event){${attribute.value}});`, line: kind === "html" ? code.slice(0, Math.max(0, at2)).split("\n").length - 1 : 0 });
+      const at2 = location2(element)?.handlers.get(attribute.name.toLowerCase()) || 0;
+      scripts.push({ text: `document.querySelector('[data-cw-handler="${id2}"]').addEventListener(${JSON.stringify(attribute.name.slice(2))}, function(event){${attribute.value}});`, line: kind === "html" ? sourceLine(at2) : 0 });
       element.removeAttribute(attribute.name);
     }
     if (["href", "src", "action", "formaction"].includes(attribute.name) && /^\s*(javascript:|https?:|\/\/)/i.test(attribute.value)) element.removeAttribute(attribute.name);
   }
+  const clearLocations = (root) => {
+    for (const element of root.querySelectorAll("*")) {
+      element.removeAttribute(locationAttribute);
+      if (element instanceof HTMLTemplateElement) clearLocations(element.content);
+    }
+  };
+  clearLocations(doc);
   const prepared = scripts.map((script, index) => {
     let text;
     try {
@@ -28907,9 +29052,11 @@ function buildRun(code, filename, lastDocument, token) {
       if (error.loc) error.loc.line += script.line;
       throw error;
     }
-    return `<script nonce="${nonce}">${"\n".repeat(script.line)}${text.replace(/<\/script/gi, "<\\/script")}
+    const source = "\n".repeat(script.line) + text + `
 //# sourceURL=cw-user-${index}-${filename.replace(/[^a-zA-Z0-9_.-]/g, "_")}
-<\/script>`;
+`;
+    const payload = JSON.stringify(source).replace(/</g, "\\u003c");
+    return `<script nonce="${nonce}">(() => { const script = document.createElement('script'); script.nonce = ${JSON.stringify(nonce)}; script.textContent = ${payload}; document.currentScript.replaceWith(script); })();<\/script>`;
   }).join("");
   const csp = policy.replace("script-src 'unsafe-inline'", `script-src 'nonce-${nonce}'`);
   const bootstrap = `(${sandboxBootstrap.toString()})(${JSON.stringify(token)},${JSON.stringify(guard)});document.currentScript.remove();`;
@@ -28926,6 +29073,9 @@ class PreviewRunner {
   lastGood = emptyDocument;
   rollback = emptyDocument;
   candidate = emptyDocument;
+  lastGoodForms = [];
+  rollbackForms = [];
+  candidateForms = [];
   timer = null;
   active = false;
   started = 0;
@@ -28951,11 +29101,14 @@ class PreviewRunner {
     this.frame = document.createElement("iframe");
     this.frame.title = "Live preview";
     this.frame.sandbox = "allow-scripts";
-    this.frame.srcdoc = staticDocument(this.lastGood);
+    this.frame.srcdoc = staticDocument(this.lastGood, this.lastGoodForms);
     this.host.replaceChildren(this.frame);
   }
   stop(reason = "Run cancelled", level = "info") {
-    if (this.active) this.lastGood = this.rollback;
+    if (this.active) {
+      this.lastGood = this.rollback;
+      this.lastGoodForms = this.rollbackForms;
+    }
     this.clearTimer();
     this.active = false;
     this.token = "";
@@ -28971,8 +29124,10 @@ class PreviewRunner {
     this.active = true;
     this.rollback = this.lastGood;
     this.candidate = this.lastGood;
+    this.rollbackForms = this.lastGoodForms;
+    this.candidateForms = this.lastGoodForms;
     try {
-      this.html = buildRun(code, filename, this.lastGood, this.token);
+      this.html = buildRun(code, filename, this.token);
     } catch (error) {
       this.active = false;
       this.token = "";
@@ -29007,10 +29162,14 @@ class PreviewRunner {
     }
     if (data.kind === "snapshot") {
       this.candidate = data.html;
+      this.candidateForms = Array.isArray(data.formState) ? data.formState : [];
       return;
     }
     if (data.kind === "started" || data.kind === "interaction") {
-      if (data.kind === "interaction") this.rollback = this.lastGood;
+      if (data.kind === "interaction") {
+        this.rollback = this.lastGood;
+        this.rollbackForms = this.lastGoodForms;
+      }
       this.active = true;
       this.started = performance.now();
       this.watchdog();
@@ -29025,6 +29184,7 @@ class PreviewRunner {
       this.clearTimer();
       this.active = false;
       this.lastGood = this.candidate;
+      this.lastGoodForms = this.candidateForms;
       this.onStatus("Complete", data.duration);
       return;
     }
@@ -29033,6 +29193,7 @@ class PreviewRunner {
       this.active = false;
       this.token = "";
       this.lastGood = this.rollback;
+      this.lastGoodForms = this.rollbackForms;
       this.restore();
       this.onEntry("error", [`${data.message}${data.line ? ` · line ${data.line}` : ""}`]);
       this.onStatus("Error — previous preview retained", data.duration);

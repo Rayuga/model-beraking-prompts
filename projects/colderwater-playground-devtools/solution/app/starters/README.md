@@ -6,14 +6,13 @@ are here because they misbehave and the playground has to cope.
 
   hello.js       Prints twelve lines and logs once.
   counter.html   A whole document: markup, a little CSS and a script together.
-  sheet.css      A stylesheet for the last successful preview document.
+  sheet.css      A stylesheet for the built-in sample page.
   broken.js      Throws a TypeError on line 4. `forEeach` is not a function.
   slow.js        An infinite loop. It must be stopped and reported as stopped,
                  not left to hang the tab.
 
 Language is decided by the extension, not by a dropdown the user has to remember
-to set: .js runs as script, .html replaces the whole preview document, .css styles a fresh copy of the last successful document without rerunning its
-scripts or retaining event handlers, timers or globals.
+to set: .js runs as script, .html replaces the whole preview document, .css styles a built-in sample page.
 
 How the playground has to run them
 ----------------------------------

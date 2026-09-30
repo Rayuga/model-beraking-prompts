@@ -2,15 +2,15 @@
 
 ## The preview
 
-A JavaScript run starts with a fresh preview document. A complete HTML file replaces it. For CSS, use a fresh isolated copy of the last successful document and its styles, then apply the new stylesheet. Don't rerun that document's old scripts or keep its active timers or event handlers. Before anything has rendered successfully, a simple built-in document is fine for trying CSS.
+A JavaScript run starts with a fresh preview document. A complete HTML file replaces it. For CSS, apply the stylesheet to a small built-in sample page.
 
 Starting another run cancels whatever the previous one still had pending. Stop does the same for the current run; when I use it, show that I stopped the run. Old work mustn't come back later with a log entry, replace the current preview or claim to be the current success. An error from that cancelled work shouldn't spoil the newer run either.
 
-Give each run five seconds altogether, including its scheduled callbacks. A timer doesn't get a new five seconds when it fires. This covers source-written loops, functions and timer or Promise callbacks. If it takes too long, stop it, show a time-limit reason and leave the editor usable. The limits of that promise are in /instructions/security.md.
+Give each run five seconds altogether, including its scheduled callbacks. A timer doesn't get a new five seconds when it fires. This covers source-written loops, functions and timer or Promise callbacks. If it takes too long, end its visible run with a time-limit reason and leave the editor usable. Its old work can't change the current preview, add console entries or change the run status afterward. The limits of that promise are in /instructions/security.md.
 
-Keep the current successfully completed preview interactive until I stop it, it fails or another run replaces it. I might leave it there for a while before clicking a button or typing into a field. A stopped, timed-out or replaced preview must never start working again.
+Keep the current successfully completed preview interactive until I stop it, it fails or another run replaces it. I might leave it there for a while before clicking a button or typing into a field. Once stopped, timed out or replaced, that preview's old handlers must no longer change the current preview, console or run status.
 
-It's fine to show a run's candidate preview while it works. It becomes the last good preview only when it finishes without an uncaught error. If it fails, is stopped or runs out of time, bring back the previous successful render. I don't want half of the failed attempt left behind. If I've had several successful runs, bring back the most recent one, not an earlier snapshot. That restored picture can be static; I can run the source again when I want its handlers back.
+It's fine to show a run's candidate preview while it works. It becomes the last good preview only when it finishes without an uncaught error. If it fails, is stopped or runs out of time, bring back the previous successful render. I don't want half of the failed attempt left behind. If I've had several successful runs, bring back the most recent one, not an earlier snapshot. Using Stop after a preview has completed should keep its current successful picture on screen too. That restored picture can be static; I can run the source again when I want its handlers back.
 
 Errors need the message and a one-based line number from the source I actually entered. For HTML, count from the beginning of the complete document, including the lines before a script tag. The same applies to errors thrown later by a timer and to unhandled Promise rejections; both belong in the console and should restore the good preview.
 

@@ -28,7 +28,9 @@ Pointer actions may prepare that control, but the subsequent keyboard route
 must use actual key events without pointer actions or programmatic focus.
 Accept standard editor escape behavior such as Escape followed by Tab even
 when the application has no shortcut hint; documenting it is not graded.
-Functional owns business rules, execution semantics and durable data. Read
+Functional owns business rules, execution semantics, run feedback, console
+clearing, durations and durable data. Do not add a Run or Clear probe for
+action feedback here. Read
 the current application state; earlier dimensions may have changed it.
 
 Score each criterion independently, using actions and observations gathered
