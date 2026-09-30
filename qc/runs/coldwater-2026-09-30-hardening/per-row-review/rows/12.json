@@ -1,0 +1,31 @@
+{
+  "number": 12,
+  "id": "no_prebuilt_image_shadows_the_agent_dockerfile",
+  "input_sha256": "a6a5219e9c5aa5e19c2b30acb01ca3a1719938a02ea09674cd18e08987bf43a9",
+  "reviewer": "/root/qc_point_12",
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Read the actual frozen XLSX with openpyxl: Quality Checks row 13, check 12, requires that '[environment].docker_image isn't set while the agent Dockerfile still has active build steps (which would skip the Dockerfile entirely).' The frozen skill's references/quality-checks.md:53-54 states the same condition, and references/staged-task-contract.md:78 requires the key to be absent. In .qc-cache/coldwater-2026-09-30-hardening/task/task.toml:20-24, [environment] contains only 'build_timeout_sec = 600.0', 'network_mode = \"public\"', 'cpus = 2', and 'memory_mb = 4096'. Parsing the complete file with Python 3.12 tomllib confirmed these four keys and returned False for 'docker_image' in parsed['environment']; this also excludes a quoted or dotted-key override elsewhere in the file. The agent Dockerfile has active build steps at environment/Dockerfile:5 ('RUN apt-get update && apt-get install'), :9 ('RUN npm install -g'), :14 ('COPY instructions/ /instructions/'), :15 ('COPY assets/ /assets/'), and :16-23 (permissions and /app Git initialization). These steps are therefore not shadowed by a configured prebuilt agent image. task.toml:26-28 separately specifies the verifier with 'environment_mode = \"separate\"'; the distinct tests/Dockerfile was inspected and is not an agent docker_image override. Read-only comparison confirmed that the agent Dockerfile is byte-identical to the frozen template and the parsed environment table equals the frozen template table. SHA256 of task.toml (17d5c69747a3c372b8fb1270a651cdff8b7a23a0e0ec9f03d7c026fbe6454802), environment/Dockerfile (0a75419e9598ded9317b26bbf0d2b12de0b9b11185fb4c9fed1ca7f3e52467d1), and tests/Dockerfile (72998ab8ef0e4225e63b88fccdb754943c54022e25da355035efe7f759a55fdd) match manifest.json inputs.task for the assigned input hash. This is a confirmed configuration/source result for row 12 only; no Docker launch, full judge runtime, Oracle result, or target-model score is claimed or needed to establish absence of this override.",
+  "counterexample": "Executed four read-only in-memory TOML witnesses. Conforming alternatives '[environment]\\nbuild_timeout_sec=600\\n# docker_image=\"example/old:tag\"' and '[environment]\\nbuild_timeout_sec=600\\n[metadata]\\ndocker_image=\"documentation-only\"' both parsed with no environment.docker_image; a bare-text search could falsely fail them. Broken variants '[environment]\\n\"docker_image\"=\"example/prebuilt:tag\"' and 'environment.docker_image=\"example/prebuilt:tag\"' both parsed with environment.docker_image present; a checker looking only for an unquoted key within a visually delimited table could falsely pass them. With this candidate's active RUN/COPY instructions, either broken variant would shadow the agent Dockerfile. The actual full-file parser check distinguishes all four and finds no such override in the frozen task.",
+  "suggested_fix": null,
+  "run_verdict": "CONFIRMED",
+  "sources_read": [
+    "qc/runs/coldwater-2026-09-30-hardening/per-row-review/prompts/12.md",
+    "qc/README.md",
+    "qc/REVIEW_POLICY.md",
+    "NEW_TASK_AUTHORING_CONTEXT.md: Current staged file and runtime contract",
+    "TASK_AUTHORING_WORKFLOW.md: workspace authoring and verification guidance (read output partially truncated)",
+    ".qc-cache/coldwater-2026-09-30-hardening/rules/WebDev Rubrics QC.xlsx: Quality Checks row 13 (check 12); Internal Quality Checks row 13; Deterministic Checks rows 9, 10, 11, 39",
+    ".qc-cache/coldwater-2026-09-30-hardening/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-2026-09-30-hardening/rules/harbor-webdev-rubric-qc/references/quality-checks.md:53-54",
+    ".qc-cache/coldwater-2026-09-30-hardening/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md: Closed file list; task.toml contract and line 78",
+    ".qc-cache/coldwater-2026-09-30-hardening/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md: Running them; Dockerfile checker overrides and recipes",
+    ".qc-cache/coldwater-2026-09-30-hardening/task/task.toml",
+    ".qc-cache/coldwater-2026-09-30-hardening/task/environment/Dockerfile",
+    ".qc-cache/coldwater-2026-09-30-hardening/task/tests/Dockerfile",
+    ".qc-cache/coldwater-2026-09-30-hardening/rules/projects/webdev-task-template/task.toml",
+    ".qc-cache/coldwater-2026-09-30-hardening/rules/projects/webdev-task-template/environment/Dockerfile",
+    "qc/runs/coldwater-2026-09-30-hardening/manifest.json: input_sha256 and inputs.task"
+  ]
+}

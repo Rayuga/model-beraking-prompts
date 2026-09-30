@@ -1,0 +1,133 @@
+{
+  "schema": 1,
+  "review_type": "bounded_targeted_source_confirmation",
+  "reviewer": "/root/repair_qc_boundaries",
+  "run_id": "coldwater-2026-09-30-repair2",
+  "input_sha256": "0e370a1c0a38e084cfab9099be29660d1022e279c5a6016c849d0e54bdd90c8d",
+  "task_root": ".qc-cache/coldwater-2026-09-30-repair2/task",
+  "prior_report": "qc/runs/coldwater-2026-09-30-repair1/targeted-boundaries.json",
+  "prior_input_sha256": "d1c6ea0282084d88f3504ed70ff2173d04cf1deba385076159a07ae730d7b455",
+  "status": "TARGETED_TASK_SPECIFIC_CONCERNS_ADDRESSED_IN_SOURCE",
+  "full_qc_clearance": false,
+  "independence": "Independently inspected the frozen repair2 manifest and relevant source. No other repair2 reviewer findings or parent runtime results were read. This confirms a new candidate, not a same-hash adjudication of repair1.",
+  "authority": {
+    "rule_inputs_unchanged_from_prior_review": true,
+    "evidence": "Compared repair1 and repair2 inputs.rules objects: equal. Therefore the actual workbook rows and Harbor skill/reference bytes read during the immediately preceding targeted review are unchanged.",
+    "quality_rows": [
+      4,
+      21,
+      23,
+      26,
+      27,
+      28,
+      30,
+      31,
+      32,
+      33,
+      49
+    ],
+    "workbook": ".qc-cache/coldwater-2026-09-30-repair2/rules/WebDev Rubrics QC.xlsx",
+    "skill": ".qc-cache/coldwater-2026-09-30-repair2/rules/harbor-webdev-rubric-qc/SKILL.md",
+    "references": [
+      "harbor-webdev-rubric-qc/references/quality-checks.md",
+      "harbor-webdev-rubric-qc/references/deterministic-checks.md",
+      "harbor-webdev-rubric-qc/references/staged-task-contract.md",
+      "qc/REVIEW_POLICY.md"
+    ]
+  },
+  "confirmations": [
+    {
+      "id": "boundaries-s21-same-origin",
+      "prior_disposition": "Fail P2",
+      "disposition": "Addressed in source",
+      "quality_rows": [
+        27,
+        32,
+        49
+      ],
+      "evidence": "tests/scored/functional/prompt.md:401 now captures the successful update's 'actual absolute local-backend URL, method, relevant headers, credential policy and body'. The same-origin restriction is absent. Step 6 uses that observed URL and options. A correct localhost workspace using the same local backend through a permitted alternative loopback origin no longer lacks the required setup solely because its API URL differs in origin.",
+      "preserves_requirement": "Routes and request formats remain observed rather than guessed; current revision, dedicated monitor, complete fresh readbacks and matching successful write control remain required.",
+      "runtime_status": "NOT EXERCISED"
+    },
+    {
+      "id": "boundaries-canary-async-window",
+      "prior_disposition": "Unmeasured protocol robustness risk",
+      "disposition": "Addressed with an explicit bounded observation window",
+      "quality_rows": [
+        30,
+        32
+      ],
+      "evidence": "tests/scored/functional/prompt.md:403 now requires a five-second browser-timed window after loading, with fresh reads at its end, before the matching positive monitor update. It explicitly says the control must not win a revision race. This removes the prior omission of any settling interval before a deliberate revision-advancing write.",
+      "preserves_requirement": "The complete monitor state must remain unchanged during the bounded observation; the public no-server-evaluation promise is retained.",
+      "runtime_status": "NOT EXERCISED",
+      "limit": "This supplies bounded detection opportunity, not proof that every asynchronous side effect must complete within five seconds."
+    },
+    {
+      "id": "boundaries-s05-title",
+      "disposition": "Earlier source correction preserved",
+      "quality_rows": [
+        27,
+        31
+      ],
+      "evidence": "tests/scored/functional/prompt.md:188-198 retains successful own-document controls, all four blocked parent document/storage operations, a forbidden title marker distinct from the recorded host title and unchanged otherwise-unused storage. Line 197 permits app-owned running/completed title changes. The corresponding criterion remains unchanged from repair1.",
+      "runtime_status": "NOT EXERCISED"
+    },
+    {
+      "id": "boundaries-symlink-disclosure",
+      "disposition": "Earlier source correction preserved",
+      "quality_rows": [
+        4,
+        23,
+        49
+      ],
+      "evidence": "environment/instructions/integration.md:13 remains unchanged: links are supported only beneath /app/node_modules with fully resolved targets also beneath that directory; broken links are unsupported. This discloses the restriction in tests/test.sh:72-83, including rejection of safe links elsewhere under /app.",
+      "runtime_status": "NOT EXERCISED"
+    }
+  ],
+  "inherited_findings": [
+    {
+      "id": "boundaries-inherited-restart-cleanup",
+      "verdict": "Fail",
+      "severity": "P1",
+      "quality_rows": [
+        21,
+        49
+      ],
+      "evidence": "tests/test.sh remains byte-identical to repair1 and the frozen canonical template, SHA256 bd68259276ca4b034654efc8a1723a4e702ed62dbe590af6201565f43eabe5aa. Lines 152-159 can exhaust the old-process TERM poll without requiring death; lines 160-183 launch a replacement and accept any listening process without replacement-PID liveness. tests/tools/restart_mcp.py:47 still reports this as completed restart. Lines 33-40 retain unbounded cleanup wait. S22 continues to rely on actual process restart.",
+      "impact": "An old TERM-resistant in-memory server can answer readiness while its replacement cannot bind, falsely preserving data across an alleged restart. Cleanup can remain blocked. Ordinary golden restart success cannot refute these adverse paths.",
+      "action": "Preserve canonical bytes and retain the inherited blocker until an approved shared-template fix verifies actual process/listener replacement and bounds shutdown/cleanup.",
+      "runtime_status": "NOT EXERCISED"
+    }
+  ],
+  "assurance_limits": [
+    {
+      "id": "canary-capability-scope",
+      "evidence": "environment/instructions/security.md:11 is unchanged and still says source is never evaluated on the server. functional/judge.toml:469 and prompt.md:403 explicitly say the canary is not proof of every possible server evaluation. Evaluation inside a restricted context where fetch is unavailable, with errors swallowed and exact text still stored, remains observationally indistinguishable under this protocol.",
+      "disposition": "Preserve the absolute public requirement and document that this criterion exercises a bounded observable violation class. Do not report a passing canary as universal assurance or add hidden-source/realm grading."
+    },
+    {
+      "id": "canary-five-second-limit",
+      "evidence": "The five-second window is now explicit. No source-only analysis proves server fetch transport and scheduling will complete within that window in every possible execution context.",
+      "disposition": "Report the actual window and observed facts; do not convert its absence of a side effect into an unbounded guarantee."
+    },
+    {
+      "id": "browser-server-attribution",
+      "evidence": "functional/prompt.md:402 requires recording browser requests, and criterion:469 requires separate attribution of browser-originated requests.",
+      "disposition": "A browser-originated mutation alone must not be described as demonstrated server evaluation. Preserve browser-boundary and Auto-run observations under their appropriate outcomes."
+    }
+  ],
+  "validated_hashes": {
+    "tests/scored/functional/prompt.md": "60caea31e78002a373589444ad541d48fe2aee704ea02cf5d89007fa6fe68482",
+    "tests/scored/functional/judge.toml": "4b56232c522d4cf1193430fc2200e7d68e53e941e83ee0f13d8e2e56fe66e18c",
+    "environment/instructions/security.md": "0e8f4eee73845e5716915b795165f7abb1a194166252a1f2e07757f975148e20",
+    "environment/instructions/integration.md": "f56fc9a45f1201ed41a7d6a38d855d6d8d9e4a597670e296306f5df61c6bf506",
+    "tests/test.sh": "bd68259276ca4b034654efc8a1723a4e702ed62dbe590af6201565f43eabe5aa",
+    "tests/tools/restart_mcp.py": "03c1426f00e451f4d86b7547761715328c63cdf299f5f812f46c9fa3b44979b5"
+  },
+  "limitations": [
+    "Targeted source confirmation only; not a complete 53-row quality or 48-row deterministic review.",
+    "No task files, canonical harness, scoring policy or budgets were edited.",
+    "No Docker, browser, provider, configured judge, hosted QC, Oracle or model run was performed.",
+    "No claim that the inherited harness blocker, absolute security assurance or required runtime evidence has been cleared."
+  ]
+}

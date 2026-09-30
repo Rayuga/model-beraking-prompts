@@ -20,7 +20,6 @@ args = ["/tests/tools/restart_mcp.py", "$APP_RESTART_HELPER"]
 [scoring]
 aggregation = "weighted_mean"
 
-
 [[criterion]]
 id = "cw_startup_ready"
 name = "cw_startup_ready"
@@ -96,21 +95,21 @@ id = "cw_completed_stop"
 name = "cw_completed_stop"
 type = "binary"
 weight = 0.40
-description = "S03.completed_stop: After a completed preview and at least one of its authored handlers actually works, Stop reports stopped, prevents further old-handler output and permits a new Run. Removed/static/disabled controls after Stop are valid."
+description = "S03.completed_stop: After a completed preview and at least one of its authored handlers actually works, Stop reports stopped, prevents further old-handler output and permits a new Run. Use the immediate-handler fallback when needed; delayed-interaction credit is not a prerequisite. Removed/static/disabled controls after Stop are valid."
 
 [[criterion]]
 id = "cw_supersede_pending"
 name = "cw_supersede_pending"
 type = "binary"
-weight = 0.90
-description = "S04.supersede_pending: B supersedes genuinely pending A: A's delayed output, DOM and success never become current. Fresh globals are owned by S02."
+weight = 1.40
+description = "S04.supersede_pending: After the matching four-second callback actually fires in the uncancelled control, B supersedes genuinely pending A: no additional A delayed log or thrown error appears, B stays completed, and no late A DOM or success becomes current. Fresh globals are owned by S02."
 
 [[criterion]]
 id = "cw_stop_pending_execution"
 name = "cw_stop_pending_execution"
 type = "binary"
-weight = 0.90
-description = "S04.stop_pending_execution: Stop reports cancellation, prevents the active timer's late output and permits a new Run. Rollback is separate."
+weight = 1.20
+description = "S04.stop_pending_execution: After the matching four-second callback actually fires in the uncancelled control, Stop reports cancellation, prevents the active timer's late log, thrown error and DOM replacement, and permits a new Run. Rollback is separate."
 
 [[criterion]]
 id = "cw_stop_pending_rollback"
@@ -124,7 +123,7 @@ id = "cw_preview_origin_boundary"
 name = "cw_preview_origin_boundary"
 type = "binary"
 weight = 1.25
-description = "S05.preview_origin_boundary: All four parent-document/storage operations are blocked, actual host state is unchanged, and own-document execution remains usable."
+description = "S05.preview_origin_boundary: All four parent-document/storage operations are blocked, the forbidden snippet title is never applied, the otherwise-unused storage key is unchanged, and own-document execution remains usable. Legitimate app-owned title/status changes are allowed."
 
 [[criterion]]
 id = "cw_snippet_network_boundary"
@@ -152,7 +151,7 @@ id = "cw_literal_loop_deadline"
 name = "cw_literal_loop_deadline"
 type = "binary"
 weight = 2.75
-description = "S09.literal_loop_deadline: Both top-level literal loops and the looping Promise callback terminate within the allowed budget margin with a time-limit reason, early logs preserved and successful recovery."
+description = "S09.literal_loop_deadline: The bounded braced, unbraced and Promise-callback loop controls first complete with their computed values. Both top-level infinite literal loops and the looping Promise callback then terminate within the allowed budget margin with a time-limit reason, early logs preserved and successful recovery."
 
 [[criterion]]
 id = "cw_literal_loop_rollback"
@@ -179,8 +178,8 @@ description = "S10.js_error_line: The error identifies line 4 of the exact enter
 id = "cw_js_error_rollback"
 name = "cw_js_error_rollback"
 type = "binary"
-weight = 0.50
-description = "S10.js_error_rollback: The JS failure restores recorded currentLastGood, not failed-partial-dom; an ordinary recovery Run works."
+weight = 0.80
+description = "S10.js_error_rollback: After successful A then distinct successful B, the JS failure restores B, not A or failed-partial-dom. Later execution is scored separately."
 
 [[criterion]]
 id = "cw_html_error_message"
@@ -200,63 +199,63 @@ description = "S11.html_error_line: The error identifies line 6 of the exact com
 id = "cw_html_error_rollback"
 name = "cw_html_error_rollback"
 type = "binary"
-weight = 0.50
-description = "S11.html_error_rollback: The HTML failure restores recorded currentLastGood, not Failed HTML candidate; an ordinary recovery Run works."
+weight = 0.40
+description = "S11.html_error_rollback: The HTML failure restores recorded currentLastGood, not Failed HTML candidate. Later execution is scored separately."
 
 [[criterion]]
 id = "cw_timer_error_message"
 name = "cw_timer_error_message"
 type = "binary"
 weight = 0.25
-description = "S12.timer_error_message: The timer callback's thrown async-error-marker is reported as a failure."
+description = "S12.timer_error_message: Both JS and complete-HTML timer fixtures report their own thrown error marker as a failure."
 
 [[criterion]]
 id = "cw_timer_error_line"
 name = "cw_timer_error_line"
 type = "binary"
 weight = 0.25
-description = "S12.timer_error_line: The timer error identifies entered user-source line 2."
+description = "S12.timer_error_line: The JS timer error identifies entered line 2 and the complete-HTML timer error identifies document line 6, including markup."
 
 [[criterion]]
 id = "cw_timer_error_rollback"
 name = "cw_timer_error_rollback"
 type = "binary"
-weight = 0.50
-description = "S12.timer_error_rollback: The timer failure restores recorded currentLastGood, not async-failed-candidate; an ordinary recovery Run works."
+weight = 0.40
+description = "S12.timer_error_rollback: Both timer failures restore recorded currentLastGood instead of the failed candidate. Later execution is scored separately."
 
 [[criterion]]
 id = "cw_promise_error_message"
 name = "cw_promise_error_message"
 type = "binary"
 weight = 0.25
-description = "S13.promise_error_message: The unhandled promise-error-marker rejection is reported as a failure."
+description = "S13.promise_error_message: Error-object and plain-string unhandled rejections report their own error markers as failures in the specified JS and complete-HTML fixtures."
 
 [[criterion]]
 id = "cw_promise_error_line"
 name = "cw_promise_error_line"
 type = "binary"
 weight = 0.25
-description = "S13.promise_error_line: The unhandled rejection identifies entered user-source line 2."
+description = "S13.promise_error_line: Both JS rejection fixtures identify entered line 2, and the complete-HTML rejection identifies document line 6, including markup. Plain-string reasons must not lose their location."
 
 [[criterion]]
 id = "cw_promise_error_rollback"
 name = "cw_promise_error_rollback"
 type = "binary"
-weight = 0.50
-description = "S13.promise_error_rollback: The rejection restores recorded currentLastGood, not promise-failed-candidate; an ordinary recovery Run works."
+weight = 0.40
+description = "S13.promise_error_rollback: Each rejection restores recorded currentLastGood instead of its failed candidate. Later execution is scored separately."
 
 [[criterion]]
 id = "cw_console_level_stream"
 name = "cw_console_level_stream"
 type = "binary"
-weight = 1.00
+weight = 0.60
 description = "S14.console_level_stream: The four authored console levels have their exact values, order and unambiguous level indicators; console.error alone is a log."
 
 [[criterion]]
 id = "cw_console_value_inspection"
 name = "cw_console_value_inspection"
 type = "binary"
-weight = 1.50
+weight = 0.80
 description = "S15.console_value_inspection: App controls expose object properties, nested deep value and array elements rather than opaque summaries."
 
 [[criterion]]
@@ -270,14 +269,14 @@ description = "S16.console_history: Previously observed log entries remain while
 id = "cw_console_duration"
 name = "cw_console_duration"
 type = "binary"
-weight = 0.30
-description = "S16.console_duration: The completed Run shows a measured duration, not a blank or placeholder."
+weight = 0.10
+description = "S16.console_duration: Observed successful short and delayed runs display elapsed durations consistent with their visibly measured lifetimes, allowing units, rounding and scheduling overhead. The delayed Run schedules its own timer; no duration update after a later preview interaction is required. A constant numeric placeholder does not pass."
 
 [[criterion]]
 id = "cw_console_clear_control"
 name = "cw_console_clear_control"
 type = "binary"
-weight = 0.30
+weight = 0.20
 description = "S16.console_clear_control: Ordinary Clear removes prior rows; unrelated duration/status labels may remain."
 
 [[criterion]]
@@ -326,14 +325,14 @@ description = "S19.editor_line_numbers: The editor displays actual line numbers 
 id = "cw_editor_syntax_colouring"
 name = "cw_editor_syntax_colouring"
 type = "binary"
-weight = 0.45
+weight = 0.25
 description = "S19.editor_syntax_colouring: JS, complete HTML and CSS each have visible syntax colouring under their corresponding filenames."
 
 [[criterion]]
 id = "cw_saved_record_fidelity"
 name = "cw_saved_record_fidelity"
 type = "binary"
-weight = 1.00
+weight = 0.40
 description = "S21.saved_record_fidelity: New drafts save as distinct exact records; loading restores each one's fields. S23's current Save updates its existing identity rather than adding another."
 
 [[criterion]]
@@ -347,22 +346,29 @@ description = "S21.saved_records_browser_reload: Both saved identities and exact
 id = "cw_process_restart_durability"
 name = "cw_process_restart_durability"
 type = "binary"
-weight = 2.50
-description = "S22.process_restart_durability: The one process restart preserves recorded identities/fields/revisions exactly once; a current post-restart Save changes only its target and persists."
+weight = 2.00
+description = "S22.process_restart_durability: The one process restart preserves the recorded identities, exact saved fields and revisions, with each record present exactly once. A later Save failure does not erase these observed readbacks."
+
+[[criterion]]
+id = "cw_process_restart_write"
+name = "cw_process_restart_write"
+type = "binary"
+weight = 0.50
+description = "S22.process_restart_write: After the same completed restart, a valid current-revision Save changes only its target, advances its revision and persists on a fresh read. Use the independent fresh-record fallback if the pre-restart target is unavailable; do not inherit the durability verdict."
 
 [[criterion]]
 id = "cw_stale_save_server_refusal"
 name = "cw_stale_save_server_refusal"
 type = "binary"
-weight = 1.40
-description = "S23.stale_save_server_refusal: An otherwise-valid stale Save is refused with newer fields/revision unchanged. The successful newer Save is its control; S21 owns update fidelity."
+weight = 1.80
+description = "S23.stale_save_server_refusal: In both successive trials with editor roles reversed, an otherwise-valid stale Save is refused with newer fields/revision unchanged. The successful newer Save is its control; S21 owns update fidelity."
 
 [[criterion]]
 id = "cw_stale_save_draft_recovery"
 name = "cw_stale_save_draft_recovery"
 type = "binary"
-weight = 1.60
-description = "S23.stale_save_draft_recovery: The actual dirty editor gets useful conflict feedback, retains all unsaved fields and supports deliberate latest-revision recovery; proactive prevention is valid."
+weight = 2.00
+description = "S23.stale_save_draft_recovery: In both successive trials with editor roles reversed, the actual dirty editor gets useful conflict feedback, retains all unsaved fields and supports deliberate latest-revision recovery; proactive prevention is valid."
 
 [[criterion]]
 id = "cw_title_trimming"
@@ -376,14 +382,14 @@ id = "cw_title_collision_refusal"
 name = "cw_title_collision_refusal"
 type = "binary"
 weight = 0.45
-description = "S24.title_collision_refusal: With an observed successful valid current title write and unused-title recovery, UI and current-revision server writes refuse exact/padded collisions with useful feedback and both complete records/revisions unchanged."
+description = "S24.title_collision_refusal: With successful valid creation/update and unused-title recovery controls, UI and observed server formats refuse exact/padded collisions for NEW creation and current-revision updates, with useful feedback and all complete records/revisions unchanged. Valid-write controls may use unused unpadded titles independently of trimming credit."
 
 [[criterion]]
 id = "cw_title_empty_rejected"
 name = "cw_title_empty_rejected"
 type = "binary"
 weight = 0.20
-description = "S24.title_empty_rejected: With an observed successful valid current title write and unused-title recovery, otherwise-valid empty and whitespace-only titles are refused without saved-state mutation."
+description = "S24.title_empty_rejected: With successful valid creation/update and recovery controls, otherwise-valid empty and whitespace-only titles are refused for NEW creation and current-revision updates without saved-state mutation. Valid-write controls may use unused unpadded titles independently of trimming credit."
 
 [[criterion]]
 id = "cw_title_case_sensitive"
@@ -396,7 +402,7 @@ description = "S24.title_case_sensitive: A case-distinct title coexists under it
 id = "cw_theme_actual_switch"
 name = "cw_theme_actual_switch"
 type = "binary"
-weight = 0.30
+weight = 0.20
 description = "S34.theme_actual_switch: The control switches chrome, editor and console into both actual appearances; either may be the starting theme."
 
 [[criterion]]
@@ -419,4 +425,46 @@ name = "cw_callback_timeout_rollback"
 type = "binary"
 weight = 0.35
 description = "S36.callback_timeout_rollback: The timed-out callback retains/restores recorded currentLastGood rather than failed-loop-candidate; provisional display is optional."
+
+[[criterion]]
+id = "cw_js_error_recovery"
+name = "cw_js_error_recovery"
+type = "binary"
+weight = 0.10
+description = "S10.js_error_recovery: After the observed js failure, a new valid Run produces its own rendered and logged recovery markers. Do not inherit rollback, error-message or line-number verdicts."
+
+[[criterion]]
+id = "cw_html_error_recovery"
+name = "cw_html_error_recovery"
+type = "binary"
+weight = 0.10
+description = "S11.html_error_recovery: After the observed html failure, a new valid Run produces its own rendered and logged recovery markers. Do not inherit rollback, error-message or line-number verdicts."
+
+[[criterion]]
+id = "cw_timer_error_recovery"
+name = "cw_timer_error_recovery"
+type = "binary"
+weight = 0.10
+description = "S12.timer_error_recovery: After the observed timer failure, a new valid Run produces its own rendered and logged recovery markers. Do not inherit rollback, error-message or line-number verdicts."
+
+[[criterion]]
+id = "cw_promise_error_recovery"
+name = "cw_promise_error_recovery"
+type = "binary"
+weight = 0.10
+description = "S13.promise_error_recovery: After the observed promise failure, a new valid Run produces its own rendered and logged recovery markers. Do not inherit rollback, error-message or line-number verdicts."
+
+[[criterion]]
+id = "cw_terminal_durations"
+name = "cw_terminal_durations"
+type = "binary"
+weight = 0.10
+description = "S16.terminal_durations: Already-observed failed, stopped and timed-out runs also show elapsed durations consistent with their recorded lifetimes. Judge the duration evidence independently of rollback or later recovery."
+
+[[criterion]]
+id = "cw_save_load_execution_canary"
+name = "cw_save_load_execution_canary"
+type = "binary"
+weight = 0.20
+description = "S21.save_load_execution_canary: Saving, updating and loading the carrier as text cause no observable execution side effect on its dedicated monitor record, with matching successful write controls. Attribute browser-originated requests separately; this bounded canary is not proof that all server evaluation is absent."
 

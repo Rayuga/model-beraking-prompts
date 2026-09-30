@@ -16,7 +16,7 @@ Keep Auto-run off outside S17 if offered; its absence does not independently fai
 
 A successful completed preview stays interactive until stopped, failed or replaced. Later click/key/input handlers must work after an idle interval. Do not force hidden/disabled controls. Pending DOM display is optional. Failed Runs restore their preceding successful render; it may be static. CSS copies document/styles into fresh execution state without old scripts, active timers or event handlers. JS/HTML start fresh. Ordinary console.error is a level, not an exception. Use only the stated supported literal and bounded unsupported-family fixtures.
 
-Use one continuing public database. Leave unknown `CW gate ` records and unrelated records untouched. Titles belong to shared protocol fixtures, not each outcome row. New creates a separate identity; renaming loaded work may update it. Deliberately handle dirty warnings. Capture actual successful UI request method/path/headers/body; replay only that observed shape in-page from the app origin. Never guess revision fields or IDs. A stale probe uses the same identity's captured old revision after a newer successful write. Title collision probes instead use its CURRENT revision and otherwise-valid fields. Refresh actual state before each independent rejection if an earlier attempt mutated it. Useful refusal plus fresh unchanged complete records is required; no exact HTTP status is prescribed. No sign-in, account or tenant probes.
+Use one continuing public database. Leave unknown `CW gate ` records and unrelated records untouched. Titles belong to shared protocol fixtures, not each outcome row. New creates a separate identity; renaming loaded work may update it. Deliberately handle dirty warnings. Capture actual successful UI request method/path/headers/body; replay only that observed shape in-page using the actual local backend URL and its observed credential policy. Never guess revision fields or IDs. A stale probe uses the same identity's captured old revision after a newer successful write. Title collision probes instead use its CURRENT revision and otherwise-valid fields. Refresh actual state before each independent rejection if an earlier attempt mutated it. Useful refusal plus fresh unchanged complete records is required; no exact HTTP status is prescribed. No sign-in, account or tenant probes.
 
 S23 requires two live editors and the real dirty Save conflict/prevention flow: attempt B's Save when enabled, or observe proactive prevention with useful feedback and exact dirty-field retention. An unexplained missing feature is not prevention. Never force a disabled button. Replay alone cannot prove draft retention; separately replay the observed stale request if prevention suppresses it. With browser_run_code_unsafe, create `const other = await page.context().browser().newContext(); const editorB = await other.newPage();`, navigate B to the public URL, and keep references (for example `page.__cwConflictContext` / `page.__cwConflictEditor`) until the flow ends. Close only that extra context. Tool setup failure follows the evidence-failure guidance.
 
@@ -151,32 +151,39 @@ Click once and actually observe css-timer-start-1 in the console, then css-timer
 
 ### S03 — cw_completed_preview_interactions
 
-About 15 UI actions; execute once in the phase plan below.
+About 16 UI actions, plus roughly four for each fallback if needed; execute once in the phase plan below.
 
 1. With auto-run off, run this scenario's own complete interaction.html document:
 <!doctype html><html><body><p>completed-interaction-ready</p><button id="interaction-button">Try later action</button><input id="interaction-input" aria-label="Later interaction input"><script>console.log('completed-interaction-ready-log'); document.getElementById('interaction-button').addEventListener('click', () => console.log('completed-interaction-click')); document.getElementById('interaction-input').addEventListener('keydown', () => console.log('completed-interaction-key')); document.getElementById('interaction-input').addEventListener('input', () => console.log('completed-interaction-input'));</script></body></html>
-Confirm its initial paragraph and log, and wait for successful completion. Leave the completed preview untouched for at least six seconds, beyond the original run's five-second budget. Click Try later action and observe completed-interaction-click.
+Confirm its initial paragraph and log, and wait for successful completion. If this HTML fixture cannot establish a completed preview, try the equivalent interaction.js fixture once:
+document.body.innerHTML = '<p>completed-interaction-ready</p><button id="interaction-button">Try later action</button><input id="interaction-input" aria-label="Later interaction input">';
+console.log('completed-interaction-ready-log');
+document.getElementById('interaction-button').addEventListener('click', () => console.log('completed-interaction-click'));
+document.getElementById('interaction-input').addEventListener('keydown', () => console.log('completed-interaction-key'));
+document.getElementById('interaction-input').addEventListener('input', () => console.log('completed-interaction-input'));
+Require the same initial paragraph/log and completed state. Use the actually successful fixture for the remaining S03 steps; S02 owns language-dispatch credit independently. If neither fixture establishes a completed preview, S03 lacks its required control; do not infer a pass. Leave the established completed preview untouched for at least six seconds, beyond the original run's five-second budget. Click Try later action and observe completed-interaction-click.
 2. After that action finishes, focus Later interaction input. Leave it focused and untouched for another six seconds, then type one ordinary character without clicking again. Observe both completed-interaction-key and completed-interaction-input. Do not rerun the source between these interactions or infer a handler ran from its source text.
-3. After that interaction completes, use Stop on this completed preview and observe a stopped/cancelled reason. Record the counts of its click, key and input markers. If its old controls remain available, attempt the same click and typing through ordinary browser actions: none of those handler-marker counts may increase. A static, removed or disabled stopped preview is valid; do not force actions onto hidden or disabled controls or require its old handlers to survive Stop.
+3. Establish a working handler on the current completed preview before testing Stop. Reuse the just-observed successful key/input in step 2; if unavailable, try its button once now. If no current handler works, retain the delayed-interaction failure, rerun the fixture that established initial completion (HTML or the JS fallback) once, wait for its initial completion, and immediately click its button. The new click marker must actually appear before Stop; old console history is not this control. Then promptly use Stop and observe a stopped/cancelled reason. Record the counts of its click, key and input markers. If its old controls remain available, attempt the same click and typing through ordinary browser actions: none of those handler-marker counts may increase. A static, removed or disabled stopped preview is valid; do not force actions onto hidden or disabled controls or require its old handlers to survive Stop. If the fallback also lacks a working handler, absence of later output cannot establish completed-Stop credit. Continue to the recovery Run regardless; do not turn this product failure into a tool failure.
 4. Enter and run an ordinary .js snippet rendering completed-stop-recovered and logging completed-stop-recovered-log. Confirm both outputs. This proves stopping the completed preview did not prevent a new Run.
 This scenario owns deliberate later click, keyboard and input behavior after completion and stopping that completed preview. It does not grade language selection, CSS copying, cancellation of an active Run or the deadline of already-pending work. Its fixture and observations are independent of language_dispatch and fresh_cancel.
 
 ### S04 — fresh_cancel
 
-About 18 UI actions; execute once in the phase plan below.
+About 22 UI actions; execute once in the phase plan below.
 
 1. With Auto-run off, reuse the actually successful S03 recovery as currentLastGood. If unavailable, run one ordinary DOM/log control now.
+First run the exact A source in step 2 once without cancellation. Observe both cancel-A-started and its four-second cancel-A-delayed callback. Record the delayed marker and cancel-A-error counts. Its delayed callback must change its own document, emit cancel-A-delayed and report the thrown cancel-A-error. The mutation followed by the error may be too brief to see; do not require a snapshot between those synchronous statements. This observed callback/error is the positive control for both subsequent pending-timer cancellation trials; a pending indicator or initial synchronous log alone is insufficient. Run the short recovery again to restore a known completed currentLastGood before the trials. Compare later marker counts against the observed baseline, not against zero. If the matching callback never works, neither absence of later timer output nor a sibling criterion's verdict proves cancellation.
 2. Run:
 window.__cancelLeak = 'A';
 document.body.innerHTML = '<p id="run-A">candidate-A</p>';
 console.log('cancel-A-started');
-setTimeout(() => console.log('cancel-A-delayed'), 4000);
+setTimeout(() => { document.body.innerHTML = '<p>cancel-A-late-dom</p>'; console.log('cancel-A-delayed'); throw new Error('cancel-A-error'); }, 4000);
 Once cancel-A-started appears, replace and run the following before that timer fires:
 document.body.innerHTML = '<p id="run-B">run-B-' + typeof window.__cancelLeak + '</p>';
 console.log('cancel-B-started');
 Use a single browser automation action for the time-sensitive editor replacement and Run activation if needed. Confirm A was still active when B started; if setup missed the four-second window, redo this setup once rather than call an already-finished run a cancellation.
-3. B's preview says run-B-undefined and cancel-B-started appears. Wait until six seconds after A started: cancel-A-delayed must never appear, and A cannot replace B's DOM or report itself as the current success. A separate notification that A was superseded is optional; prove the actual cancellation from these observations.
-4. Start a separate timer run whose authored source logs stop-started, mutates its own document to a candidate and schedules stop-delayed after four seconds. Showing that candidate while pending is optional; B's last-good preview may stay visible. Use the actual Stop control promptly while the timer run is active. A visible stopped/cancelled reason appears, B's last-good preview is retained or restored, and stop-delayed never appears after waiting past its scheduled time. A subsequent short ordinary run still works. Do not mistake hidden old output for terminated work.
+3. B's preview says run-B-undefined and cancel-B-started appears. Wait until six seconds after this A trial started: the cancel-A-delayed count must not increase above the positive-control baseline, the cancel-A-error count also cannot increase, and A cannot replace B's DOM, turn B into an error or report itself as the current success. Record B's completed status and retained render. A separate notification that A was superseded is optional; prove the actual cancellation from these observations.
+4. Start a separate timer run using the same callback structure as A: log stop-started, show a candidate, then after four seconds replace its document with stop-late-dom, log stop-delayed and throw stop-error. Showing that candidate while pending is optional; B's last-good preview may stay visible. Use the actual Stop control promptly while the timer run is active. A visible stopped/cancelled reason appears, B's last-good preview is retained or restored, and neither stop-delayed nor stop-error appears after waiting past its scheduled time; stop-late-dom cannot replace the restored render. A subsequent short ordinary run still works. Do not mistake hidden old output for terminated work.
 
 Independence refinement: a later JavaScript run needs a positively observed earlier assignment to prove fresh JavaScript execution. For S02.js_fresh_document, also record S04's cancel-A-started after its unconditional window.__cancelLeak assignment, then B's actual preview showing run-B-undefined and cancel-B-started. These are execution facts, not S04's cancellation verdict: if A's cancellation timing fails but the setter and subsequent fresh B Run are observed, the freshness evidence remains usable. Do not add another Run. Independently record actual cancellation, visible Stop feedback and retained/restored last-good render.
 
@@ -193,7 +200,7 @@ try { const value=parent.localStorage.getItem('cw-isolation-probe'); } catch (er
 try { parent.localStorage.setItem('cw-isolation-probe','changed'); } catch (error) { storageWrite='blocked'; }
 document.body.innerHTML='<p>isolation-'+docRead+'-'+docWrite+'-'+storageRead+'-'+storageWrite+'</p>';
 console.log('isolation-results',docRead,docWrite,storageRead,storageWrite);
-All four results must be blocked. Fresh in-page reads of the playground's own title and storage show exactly their earlier values, and the app remains usable.
+All four results must be blocked. Choose a forbidden-title marker different from the recorded host title (substitute a fresh suffix in the snippet if necessary). Fresh in-page reads must never show the snippet's forbidden title, and the otherwise-unused storage key stays exactly unchanged. The app may legitimately change its own title to show running/completed status; that is not parent access by the snippet. The app remains usable.
 3. Run another ordinary own-document DOM update and log. It succeeds, proving the forbidden parent access did not break legitimate use. Unsupported execution has its own criterion. Do not add other sandbox escapes or native-blocking probes.
 
 ### S07 — cw_preview_network_requests_blocked
@@ -228,9 +235,21 @@ Each source is a separate probe, not five lines in one run. For every family, th
 
 ### S09 — cw_execution_budget_termination
 
-About 20 UI actions; execute once in the phase plan below.
+About 29 UI actions; execute once in the phase plan below.
 
-1. Reuse the actually successful S08 recovery DOM/log as currentLastGood; if unavailable, run one ordinary DOM/log control. Record its actual completed render. Then run:
+First establish three supported finite-loop controls, as separate .js Runs. Each must complete and log its computed value; an app that immediately aborts every loop cannot establish deadline enforcement:
+```javascript
+let n=0; while(n<3) { n++; } console.log("finite-braced",n);
+```
+```javascript
+let n=0; while(n++<3); console.log("finite-unbraced",n);
+```
+```javascript
+Promise.resolve().then(() => { let n=0; while(n<3) { n++; } console.log("finite-promise",n); });
+```
+Expect 3, 4 and 3 respectively. These controls may replace the current document; establish or reuse an actually completed DOM/log render afterward for the rollback observations.
+
+1. After the finite-loop controls, run one short ordinary DOM/log control and record that newly completed render as currentLastGood. Do not reuse the earlier S08 snapshot across successful Runs that replaced it. Then run:
 console.log('before-braced-hang');
 while (true) {}
 2. The run is stopped for its five-second budget with a visible time-limit reason. before-braced-hang is preserved in the console, even if it arrives together with the timeout. The preview retains/restores recorded currentLastGood. Check the editor's usability after the run has stopped; the brief does not require unrelated host controls to respond while the loop is executing.
@@ -247,16 +266,16 @@ Allow normal scheduling overhead, but any of these three supported loops continu
 
 ### S10 — cw_js_error_line_and_preview_restore
 
-About 10 UI actions; execute once in the phase plan below.
+About 14 UI actions; execute once in the phase plan below.
 
-1. Reuse the actually successful S09 recovery DOM/log as currentLastGood; if unavailable, run one ordinary DOM/log control. Record its actual completed render.
+1. Reuse the actually successful S09 recovery DOM/log as successful A; if unavailable, run one ordinary DOM/log control. Record its actual completed render. Then run a distinct successful B that renders latest-good-B and logs latest-good-B-completed; observe normal completion and record B as currentLastGood. If either setup fails, still collect the independent error-message and line observations below; do not infer their verdicts from rollback.
 2. Enter exactly these four lines as bad.js, with no added leading blank line:
 document.body.innerHTML='<p>failed-partial-dom</p>';
 const marker = 1;
 const items = [1, 2, 3];
 items.forEeach((n) => n);
-Run it. The console identifies the not-a-function error involving forEeach at user-source line 4. The preview returns to recorded currentLastGood, not failed-partial-dom.
-3. A new valid .js run renders and logs js-error-recovered. Judge the exact entered source lines, not injected wrapper offsets. Logging the error while committing the failed candidate, clearing the prior good render or failing recovery does not pass.
+Run it. The console identifies the not-a-function error involving forEeach at user-source line 4. The preview returns to the most recent successful B (latest-good-B), not earlier A or failed-partial-dom.
+3. A new valid .js run renders and logs js-error-recovered. Judge entered source lines without injected wrapper offsets. Score error message, line, rollback and later recovery independently; a failure of one must not erase directly observed success of another.
 
 ### S11 — cw_html_error_document_line_and_preview_restore
 
@@ -278,25 +297,54 @@ Run it. The console identifies undefinedFunctionCall and line 6 of the entered c
 
 ### S12 — cw_timer_error_line_and_preview_restore
 
-About 10 UI actions; execute once in the phase plan below.
+About 13 UI actions; execute once in the phase plan below.
 
 1. Reuse the actually successful S11 recovery DOM/log as currentLastGood; if unavailable, run one ordinary DOM/log control. Record its actual completed render.
 2. Enter exactly these two lines as delayed-error.js, with no leading blank line:
 document.body.innerHTML='<p>async-failed-candidate</p>';
 setTimeout(() => { throw new Error('async-error-marker'); }, 50);
 Run and wait for the callback. The console names async-error-marker and user-source line 2; the preview restores recorded currentLastGood rather than retaining async-failed-candidate.
-3. A new valid .js run renders and logs timer-error-recovered. The asynchronous error must not commit a half-failed preview or prevent recovery.
+3. Before recovery, run this complete HTML source as delayed-error.html with the same last-good control. The timer error names html-async-error-marker and line 6 of the complete document; the failed candidate cannot replace the last-good render.
+```html
+<!doctype html>
+<html>
+<body>
+<p>html-async-failed-candidate</p>
+<script>
+setTimeout(() => { throw new Error('html-async-error-marker'); }, 50);
+</script>
+</body>
+</html>
+```
+4. A new valid .js run renders and logs timer-error-recovered. Record rollback and later execution as independent outcomes; no recovery verdict erases an observed rollback or vice versa.
 
 ### S13 — cw_promise_rejection_line_and_preview_restore
 
-About 10 UI actions; execute once in the phase plan below.
+About 16 UI actions; execute once in the phase plan below.
 
 1. Reuse the actually successful S12 recovery DOM/log as currentLastGood; if unavailable, run one ordinary DOM/log control. Record its actual completed render.
 2. Enter exactly these two lines as rejected-promise.js, with no leading blank line:
 document.body.innerHTML='<p>promise-failed-candidate</p>';
 Promise.reject(new Error('promise-error-marker'));
 Run and wait. The console reports the unhandled rejection with promise-error-marker and user-source line 2. The preview restores recorded currentLastGood rather than retaining promise-failed-candidate.
-3. A new valid .js run renders and logs promise-error-recovered. The rejection must not be silently reported as success, clear the last-good render or prevent recovery.
+3. Repeat with these exact two lines as plain-rejection.js. A plain-string reason is valid JavaScript and still needs its message and entered line 2:
+```javascript
+document.body.innerHTML='<p>primitive-failed-candidate</p>';
+Promise.reject('primitive-error-marker');
+```
+4. Run this complete document as html-rejection.html. Its unhandled rejection must identify html-promise-error-marker and full document line 6. All three failures restore the same recorded last-good render.
+```html
+<!doctype html>
+<html>
+<body>
+<p>html-promise-failed-candidate</p>
+<script>
+Promise.reject('html-promise-error-marker');
+</script>
+</body>
+</html>
+```
+5. A new valid .js run renders and logs promise-error-recovered. Record rollback and later execution independently; a wrong error message or line does not erase directly observed recovery.
 
 ### S14 — console_levels
 
@@ -320,11 +368,16 @@ Inspect/expand the resulting entries. The object exposes tag and nested, and exp
 
 ### S16 — console_controls
 
-About 10 UI actions; execute once.
+About 13 UI actions; execute once.
 
 1. Run console.log('history-first'); and observe that entry and a measured run duration, not a placeholder.
 2. Run document.body.innerHTML='<p>theme-shared-preview</p>'; console.log('history-second');. Both history entries remain in order. No particular console scroll policy is required.
 3. Execute S34 using this actual completed state and nonempty console; do not repeat its setup Run. Then use Clear console: prior log rows disappear. Empty-state hints and unrelated status/duration labels may remain.
+4. Retain step 1's short successful Run's displayed duration and browser-measured lifetime. For the delayed comparison, enter duration.js and activate Run with this top-level source:
+console.log('duration-run-start');
+setTimeout(() => { document.body.innerHTML = '<p>duration-run-finished</p>'; console.log('duration-run-finished'); }, 4000);
+Observe the start log, then the delayed paragraph/log and successful completion. Measure from this Run action and read its displayed duration immediately on completion, before editing or the next Run. This timer belongs to the original Run, not a later preview click; do not require a completed Run's duration to change after later interactions. Accept seconds, milliseconds or equivalent units and ordinary rounding/overhead. The delayed duration should reflect roughly four seconds (a broad 3–8 second range is acceptable) and differ meaningfully from the short execution; do not demand exact clock agreement. A fixed "0 ms" or other constant label is not a measured duration. A failed timer cannot establish successful-run duration credit, but preserve other console outcomes.
+5. Without repeating failures or waiting again, retain durations immediately after the already-required S04 uncancelled error and Stop, S09 timeout, and S10–S13 errors. Each terminal state needs an elapsed value consistent with its observed lifetime, with coarse rounding allowed for short runs. Error, Stop and timeout duration credit is separate from successful-run measurement. Absence of a required terminal state cannot establish its duration, but preserve other duration observations.
 
 ### S17 — auto_run
 
@@ -348,12 +401,15 @@ Do not prescribe an editor package, DOM implementation or specific syntax palett
 
 ### S21 — save_load
 
-About 18 UI actions; execute once in the phase plan below.
+About 44 UI actions; execute once in the phase plan below.
 
 1. Start a new draft and save title QC Save Alpha, filename qc-alpha.js, source console.log('alpha-body');. Record the successful UI save request and the saved identity.
 2. Start another new draft and save title QC Save Beta, filename qc-beta.html, source <!doctype html><html><body><p>beta-body</p></body></html>.
 3. The library contains both distinct entries. Load Alpha and Beta in turn and inspect the title, filename and exact source. Each matches its own saved data; one never borrows the other's fields.
 4. Reload the browser and load both again. Their identities and exact fields survive. This is a real durable save/load check, not evidence from an unsaved editor buffer.
+5. For the text-only storage boundary, create a separate ordinary monitor record. Demonstrate a successful update and fresh readback, then restore a baseline and capture the current revision plus that successful update's actual absolute local-backend URL, method, relevant headers, credential policy and body. Build a valid update that would change only this monitor to a fresh execution marker. Do not guess routes or touch unknown records.
+6. Keep Auto-run off and do not use Run. Create a separate carrier with source containing an unconditional fetch of the observed absolute monitor URL and the valid observed update options. Save it, update only its source by adding an ordinary comment, and load it again. After each operation freshly read the monitor's complete fields/revision; they must stay at the baseline. Record browser requests so accidental browser execution is distinguished from a server-originated side effect. If the UI prevents a save, attempt its observed valid format once; refusal alone does not prove text-only storage.
+7. Observe the monitor through a five-second browser-timed window after loading, with fresh reads at the end, before issuing the positive control. This gives a pending fire-and-forget fetch a bounded opportunity to complete; do not let the control win a revision race. From the workspace browser, perform the exact still-current monitor update as the matching positive control; fresh readback must show the execution marker and advanced revision. Use the current revision if an earlier product defect already mutated it and retain that failure. This canary detects observable evaluation side effects with a working matching request; it does not prove the absence of every possible server evaluation. Do not inspect private source or invent further execution mechanisms. Text round-trip fidelity remains separately scored.
 
 ### S22 — cw_process_restart_durability
 
@@ -363,27 +419,31 @@ About 20 UI actions; execute once in the phase plan below.
 2. Call the verifier MCP tool restart_app exactly once, wait for its completed restart, then open a fresh browser page at http://localhost:3000. A browser reload alone is insufficient.
 3. The recorded library identities/titles remain exactly once each. Primary and Second load with their own exact saved titles, filenames, source and revisions, including Primary's pre-restart update. Observe the actual loaded fields and server-provided records; do not require running their source.
 4. Edit Primary to console.log('restart-after-save'); and save with its loaded current revision. This succeeds; a fresh read shows the new source and advanced revision, while Second and every unrelated recorded library entry remain unchanged.
+If Primary is unavailable or no longer a usable current record after restart, independently create a fresh ordinary snippet titled QC Restart Write Control and observe its current identity/revision. Edit and save that new record, then read it back. This fallback tests continued writing, not survival of the earlier records. Preserve the already observed durability result even if a later write fails, and preserve valid write evidence even if old-record survival failed.
 
-Independence refinement: Invoke restart_app only once for this whole shared scenario. Record saved field/identity survival, revision survival and the post-restart write separately from that same restart; do not restart again for each outcome.
+Independence refinement: Invoke restart_app only once for this whole shared scenario. The two independent outcomes are S22.process_restart_durability (exact saved identities, fields and revisions survive) and S22.process_restart_write (a valid new change remains writable and durable). Record each from the same restart; do not restart again for another outcome.
 
 ### S23 — persistent_snippets
 
-About 29 UI actions; execute once in the phase plan below.
+About 51 UI actions; execute once in the phase plan below.
 
 1. Create a dedicated saved snippet QC Concurrent Save, filename qc-concurrent.js, source console.log('base-version');. Capture its actual saved identity and revision from browser reads and a successful UI save request. Open that SAME revision in two real editor pages A and B. In B, make all three fields genuinely unsaved: title QC Concurrent Save Draft, filename qc-concurrent-draft.js and source console.log('stale-overwrite');. Confirm each differs from B's loaded baseline and record the exact intended fields. B must remain open and dirty while A saves. A captured old API request alone is not an editor and cannot prove draft preservation.
 2. Save A through the UI with title QC Concurrent Save Updated, filename qc-concurrent.html, source <!doctype html><html><body>first-editor-won</body></html>. Fresh lookup confirms all three changed fields and an advanced revision. Do not reload or replace B's dirty draft.
 3. Attempt Save from B's actual dirty UI. It must explain the stale conflict without overwriting A or discarding B's exact unsaved title, filename and source. Proactive conflict detection that deliberately prevents the stale Save is valid with the same feedback and draft preservation. In that case, also replay the otherwise valid old-revision update in the successful UI request's observed shape to verify that the server itself refuses it. If B sends the stale request normally, observe that actual request and refusal instead. A fresh read shows A's title, filename, source and revision exactly unchanged. An unrelated validation error, missing route or disabled Save without conflict feedback does not establish this behavior.
-4. Only after verifying B's retained dirty fields, deliberately load the latest saved record in B, accepting a discard/recovery confirmation if offered. Reapply B's recorded unsaved title, filename and source through ordinary editing or an optional recovery action; no particular Restore control is required. Save through the UI using the loaded current revision, then reload that saved identity and verify all three exact fields. The write must succeed without creating an extra identity. Close the extra editor after collecting evidence. The stale rejection must not permanently prevent valid saving.
+4. Only after verifying B's retained dirty fields, deliberately load the latest saved record in B, accepting a discard/recovery confirmation if offered. Reapply B's recorded unsaved title, filename and source through ordinary editing or an optional recovery action; no particular Restore control is required. Save through the UI using the loaded current revision, then reload that saved identity and verify all three exact fields. The write must succeed without creating an extra identity. The stale rejection must not permanently prevent valid saving.
+5. Repeat the same conflict once with the roles reversed, keeping the same two editors and saved identity. Load the recovered current record in both. Keep A dirty with title QC Reverse Draft, filename qc-reverse-draft.js and source console.log('reverse-unsaved');. B now successfully saves title QC Reverse Winner, filename qc-reverse-winner.html and source <!doctype html><html><body>second-editor-won</body></html>. Observe B's advanced revision, then attempt A's old-revision Save or its clearly explained proactive prevention. Apply step 3's request/refusal observation to A: all of B's fields and revision must stay unchanged. Independently observe that A retains its exact dirty fields with useful conflict feedback. Finally load the latest record in A, deliberately reapply A's recorded draft and save; fresh readback must show its exact fields under the same identity with an advanced revision. If first-cycle recovery failed, establish a valid current baseline using an ordinary load and Save before this second trial; keep the two outcome verdicts independent. Close the extra editor after both trials. This repeats the same refusal and recovery properties, not a new product feature.
 Use two real pages or independent contexts. The functional prompt supplies a browser-tool context recipe; no fixed UI layout or storage architecture is required.
 
 ### S24 — saved_title_rules
 
-About 28 UI actions; execute once. Use ordinary New and Save throughout; no separate Rename feature is required.
+About 38 UI actions, plus roughly eight if both valid-write fallbacks below are needed; execute once. Use ordinary New and Save throughout; no separate Rename feature is required.
 
-1. Save two independent snippets: title "  QC Title Source  " with two edge spaces, filename title-a.js and source console.log('title-a');, then QC Title Sibling with title-b.js and console.log('title-b');. Record their identities, fields and revisions from the successful UI writes and fresh reads. Source's stored title is QC Title Source. With Source loaded, change its title to "  QC Title Updated  " and Save. It becomes QC Title Updated on the same identity. Record the actual current Save format.
+1. Attempt a new snippet with title "  QC Title Source  " with two edge spaces, filename title-a.js and source console.log('title-a');. For trimming credit, its accepted stored/displayed title must be QC Title Source. If this padded creation is refused, retain that trimming failure and use ordinary New/Save once with unused unpadded title QC Title Source Control and the same filename/source to establish an independent valid creation control. If a write succeeds with an untrimmed title, retain that trimming failure but use the actual created identity and fields. Independently save QC Title Sibling with title-b.js and console.log('title-b');. Record actual identities, complete fields and revisions from successful UI writes and fresh reads.
+With Source loaded, attempt title "  QC Title Updated  " and Save. For trimming credit it must become QC Title Updated on the same identity. If that padded update is refused, retain the trimming failure and Save once under unused unpadded title QC Title Updated Control to establish a valid update control. An accepted but untrimmed update also fails trimming; use its actual current fields/revision for subsequent evidence. Capture the successful creation and current update request formats separately. These unpadded controls supply only independent refusal evidence; they never repair trimming credit. If ordinary creation or update also cannot succeed, the corresponding negative checks lack valid controls and cannot pass by absence. Continue unrelated observations, including the sibling/case-distinct creation test where possible.
 2. Using Source's CURRENT revision and otherwise valid fields, attempt to Save its title as QC Title Sibling through the UI. Observe useful refusal. If the UI prevents the request, replay that observed Save format in-page with the colliding title. Independently try "  QC Title Sibling  ". Both complete records/revisions remain unchanged. Refresh actual state before the next probe if a defective write mutated it.
 3. With otherwise-valid current fields, separately try empty and whitespace-only titles using the observed Save format. Each is refused without changing saved fields or revision. An unrelated error, stale revision or broken endpoint is not title validation.
-4. Save a separate new record titled qc title sibling with its own filename/source. It coexists with QC Title Sibling under a different identity; load each to verify its own fields. Finally Save Source under unused title QC Title Recovered and verify it succeeds without changing either sibling. This successful recovery is the positive control for title refusals. Do not require a particular title-editing layout or title length limit.
+4. Independently test NEW creation using the actually successful creation format from step 1: exact QC Title Sibling, padded "  QC Title Sibling  ", empty and whitespace-only titles, each with otherwise-valid filename/source. Attempt the exact collision through New/Save in the UI; if prevented before a request, replay the observed creation format from the app origin. Fresh reads after each attempt show no new identity and no changes to existing complete records or revisions. Update-only validation does not establish creation validation; a stale revision must never be inserted into a creation request.
+5. Save a separate new record titled qc title sibling with its own filename/source. It coexists with QC Title Sibling under a different identity; load each to verify its own fields. Finally Save Source under unused title QC Title Recovered and verify it succeeds without changing either sibling. This successful recovery is the positive control for title refusals. Do not require a particular title-editing layout or title length limit.
 
 ### S34 — cw_theme_switch_legibility
 

@@ -1,10 +1,12 @@
 # New WebDev task authoring workflow
 
+**29 September:** source review and final delivery use [the three-review QC pipeline](qc/README.md) and [current review policy](qc/REVIEW_POLICY.md). Each independent reviewer covers the whole workbook using the supplied skill. Fix or refute every credible finding, then rebind evidence; no majority vote or portal-pass guarantee.
+
 Read [NEW_TASK_AUTHORING_CONTEXT.md](NEW_TASK_AUTHORING_CONTEXT.md) first. This workflow turns the current staged contract into a repeatable authoring process. It also distinguishes source checks, local execution, paid grading, and platform acceptance.
 
 Use the supplied rubric skill throughout design and final review. Use the breaker skill when hardening an existing task is in scope. Preserve the user's cleanup and unrelated work. Keep authoring reports outside the task folder.
 
-Before accepting a rubric rewrite, test partial-feature counterexamples for every bundled outcome and distinguish a shared scenario from its scoring units. Measure the resolved RewardKit prompt and schema with the installed CLI builders: a larger rubric can exceed the operating system's per-argument launch limit even when all TOML parses. Record source size, browser work and measured full judge latency separately. Do not mark an unmeasured timeout concern resolved or remove the incomplete-evaluation guard to hide it.
+Before accepting a rubric rewrite, test partial-feature counterexamples for every bundled outcome and distinguish a shared scenario from its scoring units. Measure the resolved RewardKit prompt and schema with the installed CLI builders: a larger rubric can exceed the operating system's per-argument launch limit even when all TOML parses. Record source size, browser work and measured full judge latency separately. Do not mark an unmeasured timeout concern resolved. Keep the canonical harness byte-identical; do not add or restore a custom incomplete-evaluation guard to change shared scoring policy.
 
 Apply the latest [QC regression prevention steps](QC_REGRESSION_PREVENTION.md) during stages 2, 4, 5 and 6. In particular, test a valid alternative as well as the golden, read injected context with each criterion, distinguish tool failures, and rebind every changed candidate. Older Colderwater private-source classification and mandatory escape-help recommendations below are historical and superseded by that document.
 

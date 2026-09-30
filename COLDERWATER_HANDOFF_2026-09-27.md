@@ -1,4 +1,52 @@
-# Latest Colderwater handoff — reduced scope, 2026-09-28
+# Latest: fairness repairs verified, 30 September 2026
+
+Current input `4bc53a3f24e6fa46739f9f07d31b7fb8d8c763e796effa0a5200bbdf430b5867`. Use [the repair report](qc/runs/coldwater-2026-09-30-fairness-fix2/REPAIR_REPORT.md). Duration now measures an original Run, title refusal uses independent valid-write controls, and Stop can use an immediate-handler control with an equivalent JS setup when HTML fails. Features, weights, 64 Functional criteria and golden app bytes are unchanged.
+
+Fresh scripted golden:64/64 Functional,2/2 gates,7/7 Polish,11/11 extra runtime regressions; actual PID16 to345 restart. Ten focused cases match expected outcomes, including deliberately failing partial apps. Three targeted independent reviews pass. Full configured Oracle/model/visual grades and a fresh complete53-row QC audit remain unmeasured. Shared-template/policy findings and the uncommitted golden baseline remain; release is NOT CLEARED. No ZIP/upload/provider run/commit/push. Earlier reports below are historical.
+
+---
+
+# Latest: postrepair 53-point audit complete, BLOCKED
+
+Use [the fresh reconciliation](qc/runs/coldwater-2026-09-30-postrepair-audit/per-row-review/RECONCILIATION.md): **39 Pass, 9 Fail, 4 Not exercised, 1 Note** after independent review and documented follow-ups. Task input remains `27f81c18259555d26b61a5a2b0f026f0360b7380bc072523513b0ad2deca9efc`; no task files changed during this audit. There are three bounded task-owned probe-fairness issues, an inherited restart defect, policy/artifact coverage and source-control baseline issues, plus four missing configured-runtime measurements. The exact images built and offline isolation probes passed. Existing scripted golden evidence matches these bytes; Oracle 1 and model scores remain unmeasured. No ZIP or upload clearance was produced. Earlier entries below are history.
+
+---
+
+# Latest: task-owned QC repairs and fresh golden proof, 30 September 2026
+
+Use [repair3](qc/runs/coldwater-2026-09-30-repair3/REPAIR_REPORT.md), input `27f81c18259555d26b61a5a2b0f026f0360b7380bc072523513b0ad2deca9efc`. Fresh scripted golden passes64/64 Functional,2/2 gates,7/7 Polish and11/11 additional runtime checks, with actual PID16 ->338 restart. Functional weight32.70,23 protocols and all shared settings remain. Targeted independent confirmations are complete. Full final-candidate QC and configured Oracle/model scores remain unmeasured; inherited restart defect is reproduced and needs a canonical fix. Earlier entries below are history, not current clearance.
+
+---
+
+# Current status: dedicated 53-point review complete, BLOCKED
+
+The user requested one independent agent per QC quality row. All 53 dedicated agents have finished. The [reconciled audit](qc/runs/coldwater-2026-09-30-hardening/per-row-review/RECONCILIATION.md) reports **36 Pass, 11 Fail, 5 Not exercised, 1 Note**; see the [53-point table](qc/runs/coldwater-2026-09-30-hardening/per-row-review/QC_53_RECONCILED.md) and [workbook](qc/runs/coldwater-2026-09-30-hardening/per-row-review/QC_53_REVIEW.xlsx). Forty-eight deterministic dispositions are also complete (34 Pass, 10 profile Notes, 4 N-A), using local evidence rather than the private portal executables.
+
+Concrete source defects on the unchanged 30 September candidate supersede any earlier impression of clearance. Findings include missing coverage/controls, coupled credit, an unrequired static-title guard, a weak duration probe, a golden primitive-rejection line gap, and inherited runtime-contract/restart issues. Task files and the candidate ZIP remain unchanged. Release is **BLOCKED**. Preserve original reports; a documented row-27 follow-up confirmed the row-31 title witness after the independent phase. The older three-review pipeline summary does not include these supplemental findings and must not be used alone to clear them. Scripted golden success is not a complete Oracle grade.
+
+---
+
+# Current Coldwater hardening ? 30 September 2026
+
+The user authorized stronger existing cancellation, latest-success rollback and repeated two-editor save-conflict probes, plus a modest shift in functional weight. Current frozen candidate: [manifest](qc/runs/coldwater-2026-09-30-hardening/manifest.json); [change and fairness ledger](qc/runs/coldwater-2026-09-30-hardening/HARDENING.md). Source input SHA256: `a6a5219e9c5aa5e19c2b30acb01ca3a1719938a02ea09674cd18e08987bf43a9`.
+
+The rubric still has 58 functional outcomes in 23 shared protocols, total weight32.70. Two weight points moved to lifecycle/conflict handling. Estimated UI work rises370?396; full judge time is unmeasured. Golden source and all frozen harness/settings remain unchanged. This supersedes the older recommendation below to defer all hardening until a Luna baseline: the user subsequently authorized these bounded changes. It does not establish the target score.
+
+Candidate ZIP: [colderwater-playground-devtools.zip](qc/runs/coldwater-2026-09-30-hardening/candidate/colderwater-playground-devtools.zip), SHA256 `9f63a6bde530883634502471f80c707e8f2362c6e612a080bade7d731255aa07`. This is a review candidate, not upload clearance. Three independent full53+48 reviews found no demonstrated task-local source Fail, and fresh scripted golden verification passed58/58 functional facts with one real restart in98.027 seconds. Local release status remains BLOCKED by full-judge/runtime/reward evidence gaps and inherited policy/corpus assurance limits. See that run's SUMMARY.md, QC_REVIEW.xlsx and golden/RUN.md; prior runs below are historical.
+
+---
+
+# Latest Colderwater handoff — independent QC, 2026-09-29
+
+**Calibration target updated by the user, 30 September:** target Luna's final reward at **0.40–0.50**, superseding the earlier broader target for this task. Keep the Oracle target at1.0, both gates working, and polish/visual straightforward. Preserve the template's0.6/0.2/0.2 weights and strict functional floor above0.05. If polish and visual both score1.0, functional0.08–0.15 yields reward0.448–0.490; functional at or below0.05 yields zero instead. This is a calibration goal, not a measured prediction. Establish an exact-candidate Luna baseline before further difficulty changes; use clear product requirements and independent functional outcomes, not evaluator fragility or hidden demands. No uploaded task files or scoring settings changed for this target update.
+
+Current source is frozen in [round3 manifest](qc/runs/coldwater-2026-09-29-round3/manifest.json). Use its [QC summary](qc/runs/coldwater-2026-09-29-round3/SUMMARY.md) for status. The candidate ZIP is under that run's `candidate/`, SHA256 `27e28edd0e97de5b13a81c7bfef0c8872b416474fdad95d50be5156a52b9a247`; it is a review candidate, not an upload clearance.
+
+Three independent complete reviews use both the workbook and rubric skill. First-round review found a missing explicit matching timer control and an overbroad console-retention promise; these are corrected. Frontend tool preferences and filename dispatch are clearer, and unnecessary source/lockfile delivery mandates were removed. Round2 found restart readback and later writing lost independent credit; round3 separates them, with a fresh-record fallback and no extra restart. Canonical harness/settings and all23 golden files remain unchanged. Functional58/23protocols/32.70, Polish7/4 and Visual6. Fresh scripted golden evidence passes58 functional facts with one actual restart; this is not an Oracle score. Full configured judge timing and Oracle/model scores remain unmeasured. Follow [current QC workflow](qc/README.md); older single-pass conclusions below are historical.
+
+---
+
+# Historical Colderwater handoff — reduced scope, 2026-09-28
 
 The current source and review ZIP are the **last-attempt-repair-2026-09-28** candidate. Earlier candidates below are historical and must not be selected as latest.
 

@@ -3,6 +3,7 @@ import hashlib
 import json
 import stat
 import sys
+import tempfile
 import tomllib
 import zipfile
 from decimal import Decimal
@@ -57,8 +58,8 @@ with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED) as bundle:
         member.compress_type = zipfile.ZIP_DEFLATED
         bundle.writestr(member, source.read_bytes())
 sha = hashlib.sha256(archive.read_bytes()).hexdigest()
-extracted = out / ('archive-check-' + sha[:12])
-extracted.mkdir(exist_ok=True)
+extraction_workspace = tempfile.TemporaryDirectory(prefix='webdev-archive-check-')
+extracted = Path(extraction_workspace.name)
 with zipfile.ZipFile(archive) as bundle:
     assert bundle.testzip() is None
     assert len(bundle.namelist()) == len(files)
@@ -82,7 +83,7 @@ for source in (extracted / task.name / 'tests').glob('*/*/judge.toml'):
     parsed = tomllib.loads(source.read_text(encoding='utf-8'))
     dimensions[source.parent.name] = {'criteria': len(parsed['criterion']), 'weight': float(sum(Decimal(str(item['weight'])) for item in parsed['criterion']))}
 assert set(dimensions) == {'render', 'constraints', 'functional', 'polish', 'visual'}
-expected_functional = {'ridgeline-print-storefront': (42, 35), 'colderwater-playground-devtools': (57, 32.7)}[task.name]
+expected_functional = {'ridgeline-print-storefront': (42, 35), 'colderwater-playground-devtools': (58, 32.7)}[task.name]
 assert dimensions['functional'] == dict(zip(('criteria', 'weight'), expected_functional))
 assert dimensions['polish']['criteria'] == {'ridgeline-print-storefront': 7, 'colderwater-playground-devtools': 7}[task.name]
 assert dimensions['visual']['criteria'] == 6

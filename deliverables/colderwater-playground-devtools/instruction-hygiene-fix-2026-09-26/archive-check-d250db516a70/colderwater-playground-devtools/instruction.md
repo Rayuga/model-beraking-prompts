@@ -1,7 +1,0 @@
-Build an offline code playground where people can write JavaScript, complete HTML documents and CSS, run their work, and keep a library of saved snippets. Use TypeScript, React and Vite for the browser app, with Node.js, Express and SQLite for local persistence. There are no accounts or sign-in.
-
-Read the six notes under /instructions before starting. They describe the editor, preview and console, the supported execution boundary, run cancellation and recovery, and the saved-snippet workflows. /assets/seed_data.json records the starting scope; no starter implementation is supplied. Create the useful examples the app opens with as part of your own application.
-
-I want to be able to experiment without losing a good preview or overwriting another open editor's newer changes. The playground should open in a working state, make errors understandable, and remain usable after a snippet is stopped. Keep the interface comfortable with a keyboard and on a narrow screen.
-
-Deliver the app under /app with server.js, package.json, a lockfile and your source. It starts with node /app/server.js on port 3000. Build and include any browser assets during development; the delivered application must not fetch remote assets or install packages when it starts or opens. Follow /instructions/integration.md for the runtime and database path.

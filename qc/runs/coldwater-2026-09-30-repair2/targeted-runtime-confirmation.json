@@ -1,0 +1,145 @@
+{
+  "reviewer": "repair_runtime_review",
+  "scope": "Independent focused confirmation of the original repair1 witnesses on frozen repair2, plus one bounded regression directly introduced by changed primitive-origin selection. Not a full QC review.",
+  "input_sha256": "0e370a1c0a38e084cfab9099be29660d1022e279c5a6016c849d0e54bdd90c8d",
+  "manifest_sha256": "e1f9d5420cdeda8636081df7cc096d7bff4b8b2d6f557880bfef90977de56f26",
+  "runtime_sha256": "758bbf691e9165a83838a7516fa47b21bc1c90b672a0e27cbe9b6545517376fc",
+  "verified_frozen_sources": {
+    "solution/app/src/runtime.ts": {
+      "expected": "758bbf691e9165a83838a7516fa47b21bc1c90b672a0e27cbe9b6545517376fc",
+      "actual": "758bbf691e9165a83838a7516fa47b21bc1c90b672a0e27cbe9b6545517376fc",
+      "matches": true
+    },
+    "tests/scored/functional/prompt.md": {
+      "expected": "60caea31e78002a373589444ad541d48fe2aee704ea02cf5d89007fa6fe68482",
+      "actual": "60caea31e78002a373589444ad541d48fe2aee704ea02cf5d89007fa6fe68482",
+      "matches": true
+    },
+    "tests/scored/functional/judge.toml": {
+      "expected": "4b56232c522d4cf1193430fc2200e7d68e53e941e83ee0f13d8e2e56fe66e18c",
+      "actual": "4b56232c522d4cf1193430fc2200e7d68e53e941e83ee0f13d8e2e56fe66e18c",
+      "matches": true
+    },
+    "environment/instructions/behaviour.md": {
+      "expected": "5daa285ff77fe8e7c3694b79bacf0176be95c09a83aca01bd5b59753a3238640",
+      "actual": "5daa285ff77fe8e7c3694b79bacf0176be95c09a83aca01bd5b59753a3238640",
+      "matches": true
+    },
+    "environment/instructions/security.md": {
+      "expected": "0e8f4eee73845e5716915b795165f7abb1a194166252a1f2e07757f975148e20",
+      "actual": "0e8f4eee73845e5716915b795165f7abb1a194166252a1f2e07757f975148e20",
+      "matches": true
+    }
+  },
+  "status": "All original witnesses pass; one directly introduced primitive-origin regression remains",
+  "original_probe_results": [
+    {
+      "case": "caught_sequence",
+      "expected": "expected",
+      "observed": "expected",
+      "passed": true
+    },
+    {
+      "case": "direct_rejection",
+      "expected": 2,
+      "observed": 2,
+      "passed": true
+    },
+    {
+      "case": "forwarded_rejection",
+      "expected": 2,
+      "observed": 2,
+      "passed": true
+    },
+    {
+      "case": "adopted_rejection",
+      "expected": 2,
+      "observed": 2,
+      "passed": true
+    },
+    {
+      "case": "thrown_primitive",
+      "expected": 2,
+      "observed": 2,
+      "passed": true
+    },
+    {
+      "case": "multiline_thrown_primitive",
+      "expected": 3,
+      "observed": 3,
+      "passed": true
+    },
+    {
+      "case": "async_same_primitive",
+      "expected": 1,
+      "observed": 1,
+      "passed": true
+    },
+    {
+      "case": "caught_same_primitive",
+      "expected": 1,
+      "observed": 1,
+      "passed": true
+    }
+  ],
+  "original_finding_confirmations": [
+    {
+      "id": "throw_sequence_semantics",
+      "result": "Original witness fixed",
+      "evidence": "Actual caught_sequence console emits expected string; the full comma expression is parenthesized as one origin-wrapper argument."
+    },
+    {
+      "id": "rejection_propagation_loses_line",
+      "result": "Original witnesses fixed",
+      "evidence": "Both forwarded_rejection and adopted_rejection now emit line2; direct_rejection remains line2. Runtime uses rejectionLines/adoptedPromises chains."
+    },
+    {
+      "id": "async_primitive_reason_alias",
+      "result": "Original witness fixed, broader provenance issue remains in regression below",
+      "evidence": "async_same_primitive reports line1 after a later caught line3 throw; caught_same_primitive and multiline throw controls also remain correct."
+    },
+    {
+      "id": "s09_last_good_handoff",
+      "result": "Source conflict fixed",
+      "source": "tests/scored/functional/prompt.md:246",
+      "quote": "After the finite-loop controls, run one short ordinary DOM/log control and record that newly completed render as currentLastGood. Do not reuse the earlier S08 snapshot across successful Runs that replaced it.",
+      "evidence": "The numbered protocol now requires a fresh successful DOM/log render after the finite-loop Runs and forbids reuse of stale S08 state."
+    }
+  ],
+  "new_findings": [
+    {
+      "id": "promise_catch_leaves_stale_primitive_origin",
+      "severity": "P2",
+      "check": "solution_covers_every_deliverable",
+      "status": "Fail",
+      "run_verdict": "CONFIRMED paired source-helper experiment; not browser-tested by this reviewer",
+      "source": "solution/app/src/runtime.ts:139",
+      "quote": "addEventListener('unhandledrejection', event => { fail(event.reason, rejectionLine(event.promise) || thrownLines.get(event.reason)?.[0] || 0); event.preventDefault(); });",
+      "counterexample": "Promise.resolve().then(() => { throw 'same'; }).catch(() => {\n  (async () => {\n    throw 'same';\n  })();\n});",
+      "expected_line": 3,
+      "repair1_observed_line": 3,
+      "repair2_observed_line": 1,
+      "explanation": "The first throw is handled by Promise.catch, which does not remove its value-keyed origin entry. The later unhandled intrinsic async-function promise has no mapped promise provenance, and the newly introduced oldest-entry fallback selects the handled line1 instead of its actual line3. The same source reports the correct line3 with frozen repair1, establishing a direct regression.",
+      "public_requirement": "behaviour.md:15 requires actual entered source lines for unhandled rejections; security.md:5 supports ordinary source-written functions and Promise callbacks.",
+      "fix": "Track which primitive origins remain associated with outstanding unhandled promises, including consumption by Promise rejection handlers, without replacing one value-keyed heuristic with another."
+    }
+  ],
+  "commands_executed": [
+    "node qc/runs/coldwater-2026-09-30-repair2/targeted-runtime-probe.cjs",
+    "node qc/runs/coldwater-2026-09-30-repair2/targeted-runtime-catch-control.cjs coldwater-2026-09-30-repair1",
+    "node qc/runs/coldwater-2026-09-30-repair2/targeted-runtime-catch-control.cjs coldwater-2026-09-30-repair2"
+  ],
+  "evidence_sha256": {
+    "qc/runs/coldwater-2026-09-30-repair2/targeted-runtime-probe.cjs": "f7f2c59eebc16c5ca3ed9da23f07a27b11579b4ab63c6ebb96cd3833a6b094fd",
+    "qc/runs/coldwater-2026-09-30-repair2/targeted-runtime-probe-results.json": "5b024ab8dd74c0d2c761db70b07ed9f81fe4c31e9a8a4779138b24aea42c6da6",
+    "qc/runs/coldwater-2026-09-30-repair2/targeted-runtime-catch-control.cjs": "7965e1976b1aaff5da6adc782d82ddbae075198a215c4f45451145e677f770a1",
+    "qc/runs/coldwater-2026-09-30-repair2/targeted-runtime-catch-coldwater-2026-09-30-repair1-results.json": "208373ddd3910401071f6fb541670303e40e9c7c07af4d8f5b2b6ac209819781",
+    "qc/runs/coldwater-2026-09-30-repair2/targeted-runtime-catch-coldwater-2026-09-30-repair2-results.json": "b55719ef11276e5ee16e5abe80d3270397ca98a5e29df3c43f64e63038642959"
+  },
+  "limitations": [
+    "No Docker, provider, full judge, Oracle, hosted QC or browser run was executed for this confirmation.",
+    "Experiments use extracted unchanged source helpers after TypeScript erasure, Acorn child-first walking, and explicit browser stubs; they establish helper semantics only.",
+    "No other new reviewer findings or parent-produced result files were used as independent proof.",
+    "The confirmation does not grant full 53-quality/48-deterministic clearance or evaluate an unbounded JavaScript catalogue."
+  ]
+}

@@ -1,0 +1,168 @@
+{
+  "schema": 1,
+  "review_type": "bounded_targeted_source_review",
+  "reviewer": "/root/repair_qc_boundaries",
+  "run_id": "coldwater-2026-09-30-repair1",
+  "input_sha256": "d1c6ea0282084d88f3504ed70ff2173d04cf1deba385076159a07ae730d7b455",
+  "task_root": ".qc-cache/coldwater-2026-09-30-repair1/task",
+  "status": "TARGETED_REVIEW_WITH_REMAINING_FINDINGS",
+  "full_53_row_clearance": false,
+  "scope": [
+    "S21 save/load execution canary",
+    "S05 host-title allowance",
+    "public symlink delivery restriction",
+    "inherited restart and cleanup limitations"
+  ],
+  "independence": "Read the frozen task, manifest, workbook rows and skill references. Did not read other reviewers' findings for repair1. Earlier advisory analysis and the historical hardening reconciliation informed the bounded assignment; this is not a complete independent 53-row review.",
+  "authority": {
+    "workbook": ".qc-cache/coldwater-2026-09-30-repair1/rules/WebDev Rubrics QC.xlsx",
+    "quality_rows_read": [
+      4,
+      21,
+      23,
+      26,
+      27,
+      28,
+      30,
+      31,
+      32,
+      33,
+      49
+    ],
+    "internal_rows_read": [
+      4,
+      21,
+      23,
+      26,
+      27,
+      28,
+      30,
+      31,
+      32,
+      33,
+      49
+    ],
+    "deterministic_rows_read": [
+      "check-canonical-shared-files.py",
+      "check-verifier-contract.py",
+      "check-runtime-contract-strings.py",
+      "check-rubric-prompt.py"
+    ],
+    "references": [
+      "qc/README.md",
+      "qc/REVIEW_POLICY.md",
+      "TASK_AUTHORING_WORKFLOW.md",
+      "NEW_TASK_AUTHORING_CONTEXT.md",
+      ".qc-cache/coldwater-2026-09-30-repair1/rules/harbor-webdev-rubric-qc/SKILL.md",
+      ".qc-cache/coldwater-2026-09-30-repair1/rules/harbor-webdev-rubric-qc/references/quality-checks.md",
+      ".qc-cache/coldwater-2026-09-30-repair1/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md",
+      "harbor-webdev-rubric-qc/references/staged-task-contract.md"
+    ]
+  },
+  "findings": [
+    {
+      "id": "boundaries-s21-same-origin",
+      "verdict": "Fail",
+      "severity": "P2",
+      "quality_rows": [
+        27,
+        32,
+        49
+      ],
+      "title": "S21 unnecessarily restricts the observed backend request to same origin",
+      "evidence": "tests/scored/functional/prompt.md:401 requires 'that successful update's actual absolute same-origin URL'. The public integration.md:5,11 requires a single local Node server on 0.0.0.0:3000 serving UI/API, but does not require the browser's API requests to use its exact origin. tests/gates/constraints/prompt.md:20 expressly rejects same-origin restrictions. The frozen workbook quality row 23 likewise says there is no same-origin requirement.",
+      "counterexample": "A correct app served at http://localhost:3000 sends observed Save requests to http://127.0.0.1:3000 with appropriate CORS. It still uses the required one local server and database. S21 cannot capture a same-origin successful update for that otherwise conforming app and risks an unavailable-evidence or failed outcome.",
+      "fix": "Capture the actual absolute local-backend URL and observed request/credential policy, without requiring same origin or inventing/rebasing an endpoint.",
+      "run_verdict": "NOT EXERCISED",
+      "evidence_kind": "Source-derived conforming alternative; no alternate app was launched."
+    },
+    {
+      "id": "boundaries-inherited-restart-cleanup",
+      "verdict": "Fail",
+      "severity": "P1",
+      "quality_rows": [
+        21,
+        49
+      ],
+      "title": "Canonical helper still cannot guarantee actual restart and bounded cleanup",
+      "evidence": "tests/test.sh:152-159 sends TERM and polls for five seconds without requiring old-group death. Lines 160-183 launch a replacement, overwrite app.pid and accept any HTTP listener without replacement-PID liveness. tests/tools/restart_mcp.py:47 translates exit zero into 'the server was relaunched'. tests/test.sh:33-40 waits without a deadline during cleanup. S22 at functional/prompt.md:410 relies on completed restart. Frozen task and frozen template test.sh have identical SHA256 bd68259276ca4b034654efc8a1723a4e702ed62dbe590af6201565f43eabe5aa.",
+      "counterexample": "An in-memory server that ignores SIGTERM can remain the responding listener while the replacement fails to bind; the helper reports completion and may award durability without process replacement. A correct server with a slow graceful shutdown can similarly be misidentified, and an uncooperative child can stall cleanup.",
+      "fix": "Keep the shared script unchanged for this task-local repair and retain the inherited blocker pending a canonical owner-approved fix that bounds shutdown/cleanup and verifies old-group death, new-PID liveness and listener replacement.",
+      "run_verdict": "NOT EXERCISED",
+      "evidence_kind": "Unchanged source control-flow witness; no resistant-process, cleanup or full-verifier run was performed in this review."
+    }
+  ],
+  "positive_observations": [
+    {
+      "id": "boundaries-s05-title",
+      "verdict": "Pass",
+      "verdict_scope": "Source-level correction of the identified host-title false failure only",
+      "quality_rows": [
+        27,
+        31
+      ],
+      "evidence": "functional/prompt.md:197 permits app-owned running/completed title changes, requires a forbidden marker distinct from the observed host title, and still requires all four blocked access results plus unchanged otherwise-unused origin storage. functional/judge.toml:126 agrees. The earlier static-title condition is removed without relaxing the snippet boundary. Own-document controls remain at prompt.md:188,198.",
+      "limitation": "No browser isolation or alternate dynamic-title app run was performed."
+    },
+    {
+      "id": "boundaries-symlink-disclosure",
+      "verdict": "Pass",
+      "verdict_scope": "Source-level repair of the previously undisclosed packaging restriction only",
+      "quality_rows": [
+        4,
+        23,
+        49
+      ],
+      "evidence": "environment/instructions/integration.md:13 now allows links only beneath /app/node_modules with fully resolved targets also beneath that directory and excludes broken links. This states the supported restriction imposed by test.sh:72-83, including rejection of safe /app/public links. tests/test.sh remains byte-identical to the template.",
+      "limitation": "This does not change or certify the shared symlink implementation; no filesystem fixture or full entrypoint was run."
+    },
+    {
+      "id": "boundaries-s21-controlled-observable",
+      "verdict": "Pass",
+      "verdict_scope": "Bounded protocol design improvements, subject to the same-origin finding and stated limits",
+      "quality_rows": [
+        26,
+        28,
+        30,
+        32,
+        33
+      ],
+      "evidence": "functional/prompt.md:401-403 now allocates a dedicated monitor and carrier, establishes a successful monitor update/readback, captures current revision and actual request options, tests create/update/load without manual Run, reads complete monitor state and requires a final matching successful request. The criterion at functional/judge.toml:469 names the observable side-effect outcome rather than claiming universal non-evaluation proof. It distinguishes browser requests and keeps source fidelity separately scored. Public security.md:11 retains the absolute no-server-evaluation promise.",
+      "limitation": "A working browser write does not establish every execution environment's network capability. The canary is distinguishing evidence for an important violation class, not universal assurance."
+    }
+  ],
+  "residual_limits": [
+    {
+      "id": "boundaries-canary-assurance",
+      "quality_rows": [
+        26,
+        32
+      ],
+      "disposition": "Explicit assurance limitation, not an instruction to weaken the public requirement",
+      "evidence": "A server can evaluate source inside a context where fetch is unavailable and swallow the resulting error while storing exact text. This violates security.md:11 but produces the same browser observations as text-only storage. The repaired prompt and criterion correctly disclose this finite-canary limit.",
+      "recommendation": "Keep a coverage/assurance record stating which observable violation class is exercised. Do not claim that a passing canary proves all server evaluation absent or add private-source/hidden-realm grading."
+    },
+    {
+      "id": "boundaries-canary-async-window",
+      "quality_rows": [
+        30,
+        32
+      ],
+      "disposition": "Unmeasured protocol robustness risk",
+      "evidence": "functional/prompt.md:402 requests a fresh monitor read after each operation but prescribes no settling interval before line 403 intentionally performs the same monitor update. A fire-and-forget server fetch may still be pending; the positive control can advance the revision and make a late canary request stale. No such race was executed here.",
+      "recommendation": "Use a stated broad bounded observation window before the final positive write, informed by the successful control's response/readback latency and a scheduling margin; record its limit rather than claiming unbounded detection."
+    }
+  ],
+  "checks_executed": [
+    "Read-only manifest SHA256 comparison of existing frozen task/rules files; no mismatches printed.",
+    "Direct openpyxl reads of relevant actual Quality Checks, Internal Quality Checks and Deterministic Checks workbook rows.",
+    "Read exact S05/S21 protocol and criterion lines, public notes, shared test.sh and restart_mcp.py.",
+    "Compared frozen task and template test.sh SHA256: identical."
+  ],
+  "limitations": [
+    "This is a targeted source review, not a 53-quality/48-deterministic release review or pipeline clearance.",
+    "No task files were modified. Only this external review JSON was authored.",
+    "No Docker, provider, browser, hosted QC, full judge, Oracle or model run was performed.",
+    "Parent-run golden testing was in progress and was not consumed as evidence."
+  ]
+}
