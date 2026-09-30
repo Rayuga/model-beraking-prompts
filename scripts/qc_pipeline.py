@@ -107,6 +107,13 @@ def preflight(task, template):
                 std=tomllib.loads(text(template/rel/'judge.toml'))
                 add('judge header:'+dim,d['judge']==std['judge'] and d['scoring']==std['scoring'])
                 rows=d['criterion'];ids += [r['id'] for r in rows];counts[dim]=len(rows);timeouts[dim]=d['judge']['timeout']
+                # RewardKit 0.1.7 uses these names as response-schema keys.
+                # TOML parsing alone accepts display names that its real loader rejects.
+                names=[r.get('name') for r in rows]
+                add('criterion schema names:'+dim,
+                    all(isinstance(n,str) and re.fullmatch(r'[a-zA-Z0-9_-]{1,64}',n) for n in names)
+                    and len(names)==len(set(names)),
+                    'Pinned RewardKit identifier contract; does not replace real loader/schema verification')
                 add('typed criteria:'+dim,bool(rows) and all(r['weight']>0 and r['description'].strip() and r['type'] in {'binary','likert'} for r in rows))
                 if dim=='visual':add('visual anchors',all(r['type']=='likert' and r['points']==5 and all(re.search(r'^'+str(i)+r':',r['description'],re.M) for i in range(1,6)) for r in rows))
                 prompt=text(task/rel/'prompt.md')

@@ -86,6 +86,7 @@ async function main() {
   await page.locator('#off-cand').fill('UI precision candidate');
   await page.locator('#off-base').fill('50000.01');
   await page.locator('#off-sign').fill('101.01');
+  await page.locator('#off-rel').fill('2.99');
   await page.locator('#off-units').fill('7');
   await page.locator('#off-fair').fill('1.50');
   await page.locator('#off-strike').fill('1.00');
@@ -101,6 +102,10 @@ async function main() {
   assert.equal(offer.start_date, '2026-01-31T12:30:00.125Z');
   assert.equal(offer.composition.base_salary_cents, 5000001);
   record('invalid date rejected, draft retained, UTC millisecond instant saved');
+  const breakdown = await page.locator('article.entity').evaluateAll((nodes, id) => nodes.find(n => n.dataset.entity === id).innerText, offerId);
+  for (const label of ['base salary','signing bonus','relocation','equity units','fair value per unit','strike price per unit','equity intrinsic','equity annualized','committed run-rate','approval band basis','required tier']) assert.ok(breakdown.includes(label), 'Missing visible compensation field: '+label);
+  for (const value of ['$50,000.01','$101.01','$2.99','7 units','$1.50','$1.00','$3.50','$0.88','$50,000.89','$50,051.40']) assert.ok(breakdown.includes(value), 'Missing together-view value: '+value);
+  record('complete populated compensation breakdown in one readable view');
   assert.equal(await page.getByRole('button', { name: 'Approve ' + offerId, exact: true }).count(), 0);
   await login('approver');
   await nav('Offers');
@@ -115,6 +120,10 @@ async function main() {
   await page.locator('input[name="base"]').fill('200000.01');
   await page.getByRole('button', { name: 'Apply revision', exact: true }).click();
   await page.locator('.drawer-form .error').filter({ hasText: /.+/ }).waitFor();
+  const budgetError=await page.locator('.drawer-form .error').innerText();
+  assert.ok(budgetError.includes('available headroom $100,000.01'), budgetError);
+  assert.ok(budgetError.includes('shortfall $100,000.88'), budgetError);
+  record('revision refusal shows available replacement budget and exact shortfall', {message:budgetError});
   assert.equal(await page.locator('input[name="base"]').inputValue(), '200000.01');
   assert.equal(await page.locator('#detail-backdrop').isVisible(), true);
   record('over-budget revision remains open with error and entered amount');

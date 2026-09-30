@@ -141,8 +141,9 @@ the signing bonus, because the signing-bonus clawback schedule (section 6) fully
 (two years), and amortizing it over its own vesting term is how the desk weighs a one-time payment against
 an annual approval threshold. The band basis, like the run-rate, excludes relocation entirely.
 
-Relocation is a one-time reimbursement. It appears on the offer and is paid, but it is never part of either
-composed figure above.
+Relocation is a one-time reimbursement handled by payroll outside HireOps. HireOps records the agreed
+amount on each offer version; approval, revision and rescission do not post or reverse a relocation payment
+here. It is never part of either composed figure above.
 
 The committed run-rate and the approval-band basis are two different figures answering two different
 questions. They are built from almost the same inputs, which is exactly why one is so easy to show in
