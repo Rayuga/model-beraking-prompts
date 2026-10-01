@@ -216,7 +216,10 @@ app.get('/api/bootstrap', auth(), (req, res) => {
       .map((a) => ({ ...a, figures: safeParse(a.figures_json) })),
     users: all('SELECT id,name,email,role,authority_tier FROM users ORDER BY id'),
     employees: all('SELECT * FROM employees ORDER BY id'),
-    audit: all('SELECT * FROM audit_log ORDER BY id DESC LIMIT 5000'),
+    change_sets: all('SELECT * FROM change_sets ORDER BY id').map(r => ({id:r.id, actor_id:r.actor_id,
+      operation_key:r.operation_key, state:r.state, preview:JSON.parse(r.preview_json),
+      receipt:r.receipt_json ? JSON.parse(r.receipt_json) : null})),
+    audit: all('SELECT * FROM audit_log ORDER BY id DESC'),
   });
 });
 function safeParse(s) { try { return JSON.parse(s); } catch { return null; } }
@@ -271,11 +274,8 @@ function snapshot(o) {
   const view = offerView(o);
   return { ...view, headroom_cents: R.headroom(db, o.req_id).headroom_cents };
 }
-function validateDashboardTotal() {
-  R.sumSafe(...all('SELECT id FROM requisitions').map(r => R.headroom(db, r.id).headroom_cents));
-}
+
 function receipt(action, actor, before, after, settlement = {}) {
-  validateDashboardTotal();
   afterImage(after.id, action, actor.id, { actor_id: actor.id, actor_name: actor.name, actor_role: actor.role, before, after, ...settlement });
   audit(actor.id, `OFFER_${{ APPROVE: 'APPROVED', REVISE: 'REVISED', RESCIND: 'RESCINDED' }[action]}`, after.id,
     `${before.candidate}: ${before.id} ${before.status} -> ${after.id} ${after.status}; `
@@ -300,7 +300,6 @@ app.post('/api/requisitions', auth(), (req, res) => {
   db.transaction(() => {
     db.prepare('INSERT INTO requisitions (id,title,dept,budget_cents,stated_headroom_scalar_cents,note) VALUES (?,?,?,?,?,?)')
       .run(id, String(b.title || 'Untitled requisition'), String(b.dept || 'General'), budget, 0, b.note == null ? null : String(b.note));
-    validateDashboardTotal();
     audit(req.user.id, 'REQUISITION_CREATED', id, String(b.title || ''));
   })();
   res.json({ created: true, ...reqView(one('SELECT * FROM requisitions WHERE id=?', id)) });
@@ -407,6 +406,9 @@ app.post('/api/offers/:id/rescind', auth('finance_controller'), (req, res) => {
     contra_minted: claw.clawback_cents > 0, equity_cancelled_units: ec ? ec.cancelled_units : 0,
     equity_vested_units: ec ? ec.vested_units : 0, req_headroom_cents: after.headroom_cents, req_headroom_display: money(after.headroom_cents) });
 });
+
+require('./change-sets')({app, db, R, auth, reject, idValue, economics, economicKeys,
+  storedOffer, snapshot, movement, remit, mintGrant, receipt, audit, now, uid, one, all});
 
 // ================================================================= append-only trail (edits/deletes refused)
 function trailImmutable(_req, res) {

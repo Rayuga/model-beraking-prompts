@@ -1,13 +1,5 @@
 'use strict';
-/* HireOps SPA shell.
- *
- * A multi-workspace operations client: a primary navigation (Dashboard,
- * Requisitions, Offers, Equity Table, Referrals, Audit Trail), a headline metric
- * dashboard, a light/dark theme control, and a details drawer used both for
- * read-only record detail and for the revise / rescind action forms (so no native
- * prompt() or raw JSON blob is ever shown to the operator). The domain workspaces
- * are supplied by window.renderWorkspaces (js/hireops.js), which loads first.
- */
+/* HireOps transaction desk: shared record views and accessible operation forms. */
 
 const ROLE_LABELS = {
   recruiter: 'Recruiter',
@@ -19,7 +11,7 @@ const ROLE_LABELS = {
 const ROMAN = { 1: 'I', 2: 'II', 3: 'III' };
 
 const WORKSPACES = [
-  { id: 'dashboard', label: 'Dashboard' },
+  { id: 'changes', label: 'Coordinated Changes' },
   { id: 'requisitions', label: 'Requisitions' },
   { id: 'offers', label: 'Offers' },
   { id: 'equity', label: 'Equity Table' },
@@ -41,7 +33,7 @@ const el = (tag, props = {}, kids = []) => {
   return n;
 };
 
-let STATE = { user: null, boot: null, view: 'dashboard' };
+let STATE = { user: null, boot: null, view: 'changes' };
 
 async function api(method, path, body) {
   let res;
@@ -222,50 +214,6 @@ function openForm(title, fields, submitLabel, buildRequest) {
 
 const HELPERS = () => ({ el, actionButton, openDetail, openForm, api, flash, refresh, money, fmtTime, userName, roleLabel, romanTier: (t) => ROMAN[t] || t });
 
-function metricCard(label, value) {
-  return el('article', { class: 'metric' }, [
-    el('span', { text: label }),
-    el('strong', { text: value == null ? '—' : String(value) }),
-  ]);
-}
-
-function renderDashboard(boot) {
-  const reqs = boot.requisitions || [];
-  const offers = boot.offers || [];
-  const headroomTotal = reqs.reduce((a, r) => a + (Number(r.headroom_cents) || 0), 0);
-  const pending = offers.filter((o) => o.status === 'PENDING').length;
-  const committed = offers.filter((o) => o.status === 'COMMITTED').length;
-  const grants = (boot.equity_grants || []).filter((g) => g.state === 'LIVE').length;
-  const activity = (boot.audit || []).slice(0, 12);
-  return el('section', { class: 'page active', 'data-workspace': 'dashboard' }, [
-    el('h1', { text: 'Dashboard' }),
-    el('p', { class: 'muted', text: 'Headline recruiting, cost and budget-headroom metrics across all open requisitions.' }),
-    el('div', { class: 'metrics' }, [
-      metricCard('Open requisitions', reqs.length),
-      metricCard('Total budget headroom', money(headroomTotal)),
-      metricCard('Committed offers', committed),
-      metricCard('Pending approvals', pending),
-    ]),
-    el('div', { class: 'metrics' }, [
-      metricCard('Live equity grants', grants),
-      metricCard('Referral accruals', (boot.referral_accruals || []).length),
-      metricCard('Remittance rows', (boot.remittances || []).length),
-      metricCard('Signed-in as', roleLabel(boot.user) || '—'),
-    ]),
-    el('section', { class: 'panel' }, [
-      el('h2', { text: 'Recent activity' }),
-      el('div', { class: 'activity' }, activity.length ? activity.map((ev) => el('div', { class: 'event' }, [
-        el('div', {}, [
-          el('strong', { text: ev.action }),
-          el('span', { class: 'muted', text: ` · ${ev.subject}` }),
-          ev.detail ? el('div', { class: 'muted', text: ev.detail }) : null,
-        ]),
-        el('small', { text: `${userName(ev.actor_id)}${ev.created_at ? ' · ' + fmtTime(ev.created_at) : ''}` }),
-      ])) : [el('p', { class: 'muted', text: 'No activity recorded yet.' })]),
-    ]),
-  ]);
-}
-
 function setView(view) {
   STATE.view = view;
   $('#flash').innerHTML = '';
@@ -298,7 +246,7 @@ function renderAll() {
   root.innerHTML = '';
   const pages = window.renderWorkspaces ? window.renderWorkspaces(boot, HELPERS()) : [];
   const byId = Object.fromEntries(pages.map((p) => [p.dataset.workspace, p]));
-  byId.dashboard = renderDashboard(boot);
+  byId.changes = window.renderChangeSets(boot, HELPERS());
   for (const ws of WORKSPACES) {
     const page = byId[ws.id];
     if (!page) continue;
@@ -322,12 +270,6 @@ async function refresh() {
   return r;
 }
 
-function applyTheme(theme) {
-  document.documentElement.dataset.theme = theme;
-  try { localStorage.setItem('hireops-theme', theme); } catch { /* ignore */ }
-  $('#theme-toggle').textContent = theme === 'dark' ? 'Light mode' : 'Dark mode';
-}
-
 function showApp() {
   $('#login-view').hidden = true;
   $('#app-view').hidden = false;
@@ -346,9 +288,6 @@ function showLogin() {
 }
 
 async function boot() {
-  let saved = 'light';
-  try { saved = localStorage.getItem('hireops-theme') || 'light'; } catch { /* ignore */ }
-  applyTheme(saved);
   const done = pendingState($('#login-form button[type="submit"]'), $('#login-form'), 'Checking sign-in…');
   const me = await api('GET', '/api/auth/me');
   done();
@@ -362,20 +301,15 @@ $('#login-form').addEventListener('submit', async (e) => {
   const done = pendingState($('#login-form button[type="submit"]'), $('#login-form'), 'Signing in…');
   const r = await api('POST', '/api/auth/login', { email: $('#email').value, password: $('#password').value });
   done();
-  if (r.ok) { STATE.user = r.data; STATE.view = 'dashboard'; showApp(); await refresh(); }
+  if (r.ok) { STATE.user = r.data; STATE.view = 'changes'; showApp(); await refresh(); }
   else $('#login-error').textContent = (r.data && r.data.error) || 'sign-in failed';
 });
 
 $('#logout').addEventListener('click', async () => {
   await api('POST', '/api/auth/logout');
-  STATE = { user: null, boot: null, view: 'dashboard' };
+  STATE = { user: null, boot: null, view: 'changes' };
   closeDetail();
   showLogin();
-});
-
-$('#theme-toggle').addEventListener('click', () => {
-  const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
-  applyTheme(next);
 });
 
 $('#detail-close').addEventListener('click', closeDetail);

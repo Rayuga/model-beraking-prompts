@@ -12,6 +12,8 @@ esac
 node - "$database_path" <<'JS'
 const fs = require('node:fs');
 const targets = new Set([process.argv[2], process.argv[2] + '-wal', process.argv[2] + '-shm']);
+// A fresh installation has no database to reset and needs no process scan.
+if (![...targets].some(target => fs.existsSync(target))) process.exit(0);
 for (const pid of fs.readdirSync('/proc').filter(name => /^\d+$/.test(name))) {
   let files;
   try { files = fs.readdirSync(`/proc/${pid}/fd`); }

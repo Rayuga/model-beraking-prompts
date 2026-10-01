@@ -35,15 +35,14 @@ from the session the server issued, never from anything a request body claims.
 
 Revising a committed offer belongs to the recruiter, any approver, or the finance controller. The comp
 partner prices a package when it is raised but doesn't reopen one after it is signed, and the auditor
-changes nothing at all. Opening a requisition is different: anyone signed in may open one, auditor
-included, because a requisition on its own commits no money.
+changes nothing at all. Provide requisition creation for the Recruiter. Other signed-in roles may also open requisitions;
+that intake convenience is optional and commits no money.
 
 An approver's tier is fixed at seed (tier 1, 2 or 3). It isn't the same thing as the offer's own band,
 though confusingly the two use the same numbering. Section 3 has the bands.
 
 Recruiters, comp partners, approvers and finance controllers may all raise a new offer. The auditor may
-not. The separate revision and approval permissions above still apply. Show an approver's specific held
-tier beside their signed-in identity so the desk can tell which authority is currently active.
+not. The separate revision and approval permissions above still apply. The supplied authority tiers remain fixed.
 
 ### A note on what's here
 
@@ -87,17 +86,13 @@ money or unit totals must fit the exact integer range 0 through 9,007,199,254,74
 whose result cannot be represented exactly. A signed ledger adjustment may be negative. Use exact
 arithmetic through multiplication and division, then round only the named final result.
 
-### The seed roster
+### The starting data
 
-The starting data loads from `/assets/` exactly as written, with the ids as given. It carries seven
-requisitions across four departments, each with its own annualized budget; a roster of offers spanning the
-three statuses an offer is seeded in, DRAFT (started, never raised), PENDING (raised, awaiting approval)
-and COMMITTED (approved), including offers carried far enough past their start date to make vesting
-arithmetic meaningful; three referring employees
-distinct from any candidate; and, for the offers already committed, the equity grants, signing remittances
-and referral accruals that approving them would itself have minted. Every composed figure (intrinsic equity
-value, annualized equity, committed run-rate, band basis, headroom, vested percentages) is derived at read
-time from these raw rows. None of it is a stored composite to be trusted on its own.
+Use the supplied users, referring employees, constants and reference moment. The operational
+requisition, offer and ledger rows are demonstration history: importing them is optional. If imported,
+their old planning scalars are never financial authority. New work must derive composed values from its
+stored raw terms and append-only movements. Restart must retain that work rather than replace it with
+demonstration data.
 
 ---
 
@@ -167,15 +162,14 @@ exactly $350,000.00 is already Band III.
 
 An approver's own seeded tier must be at least the offer's required tier, not an exact match. A tier-3
 (Band III) approver may sign an offer of any band; a tier-1 (Band I) approver may sign only a Band I offer.
-An approver whose tier falls short is refused, naming both the held tier and the tier the offer requires.
+An approver whose tier falls short is refused.
 
 Dual control: the approver must be a person distinct from whoever raised the offer. Nobody signs
 their own offer, regardless of tier.
 
 The budget gate: an offer's committed run-rate, not its band basis, must fit inside the
 requisition's remaining headroom (section 4) for the approval to go through. An offer that clears the
-authority and dual-control checks but would overrun the requisition's headroom is still refused, naming the
-shortfall.
+authority and dual-control checks but would overrun the requisition's headroom is still refused.
 
 ---
 
@@ -204,15 +198,10 @@ be the one netted live from the movement rows, every time.
 
 Raising an offer creates it in one step, straight at status PENDING, ready for an approver. There's no
 save-a-draft-then-raise-it dance to build: whoever raises it fills the form in and the offer exists as
-PENDING. The same goes for opening a requisition, which any signed-in role may do (section 1).
+PENDING. Opening a requisition likewise creates it directly (section 1).
 
-Whoever raises an offer gives it an id, and so does whoever opens a requisition. We type these in
-ourselves and we are not tidy about it — the export's `OFF-…` and `REQ-…` are just what the last system
-happened to use. Take whatever id you are given and store it as given. Don't require a prefix, a
-pattern, a length or a numbering scheme; the only thing that matters is that an id isn't blank and isn't
-already taken by another record of the same kind. Whitespace-only ids are blank; otherwise preserve every
-character, including surrounding spaces and punctuation. A duplicate is refused without replacing the
-existing record. These ids must work through the ordinary screens for the entire offer lifecycle.
+Record identifiers may be generated or entered by the operator. Their format and input controls are
+yours; preserve stable associations and history when records are revised or transferred.
 
 Raising an offer also names a requisition, a candidate, a compensation package, and the offer's own start
 date — the day the hire is due to begin. Both vesting clocks in section 6 are measured from that date, so
@@ -248,7 +237,7 @@ A revision can change base salary, signing bonus, relocation, equity units, equi
 strike price. Candidate, requisition, offer start date, referring employee and referred hire start date
 remain those of the original hire. Each revision receives a fresh unique id; the app may choose it.
 The new run-rate must fit the current headroom **plus the immediate predecessor's run-rate**. Equality
-fits. Refuse an overrun with the available amount and shortfall, leaving the entire prior state intact.
+fits. Refuse an overrun, leaving the entire prior state intact.
 Revision uses the roles listed in section 1; it does not require another approval or a new tier check.
 
 The linked original and its revisions form one hire history, with only one current committed offer.
@@ -371,16 +360,12 @@ Sign-in is by email and password; every seeded account uses `Hireops!2026`. Iden
 session the server issued and from nothing else. Every decision is recomputed from stored records at the
 moment it is made.
 
-Anything arriving in a request body is a claim, not a permission. A caller who puts a chosen band, a
-chosen approver, a chosen committed amount, or a chosen clawback figure into the body gets exactly the same
-answer as a caller who sent none of it: the band and required tier come from the offer's own stored
-composition, the approver from the signed-in session, the clawback from the rescission's own stored
-effective date — never from the body.
-
-Some clients attach optional claims named `claimedActorId`, `claimedRole`, `claimedTier`, `claimedBand`,
-`claimedCommittedCents`, `claimedClawbackCents`, and `claimedCancelledUnits` to otherwise valid action
-requests. These are not ordinary input fields or alternate permissions. Ignore them: adding or changing
-them must not alter whether the action succeeds or what it records. The rest of the request format is yours.
+Client-supplied computed claims are not permissions or authoritative settlement facts. A chosen band,
+approver, committed amount or clawback cannot override the offer's stored composition, the signed-in
+session, or the valid rescission effective date used by the server. Legitimate editable compensation terms
+and the operator's effective-date input remain ordinary business inputs. An interface may omit computed
+claims, ignore them and recompute, or reject unsupported/contradictory claims without any settlement
+effects. It must never settle using forged computed claims; its normal supported operation must still work.
 
 An unauthenticated caller reads and writes nothing operational. The discipline is `401` for a caller with no
 valid session, and `403` for a caller whose role doesn't reach the action, or whose authority tier doesn't
@@ -405,12 +390,9 @@ authority, totals or computed settlement values cannot override stored facts.
 
 ## 9. What the screens have to show
 
-We argue about numbers all day, so the numbers have to be visible, not held in the database and summarized
-as "calculated." Show money as dollars and cents, equity as whole units, and rates as percentages. A
-compensation breakdown should carry the base salary, signing bonus, relocation and equity together with the
-equity's intrinsic and annualized value, the committed run-rate, and the approval band basis and tier side by
-side — they are different figures, and a screen that shows only one of run-rate or band basis is not showing
-the other.
+Expose the raw compensation terms and each defined derived figure in ordinary product views. Show
+money as dollars and cents, units as whole shares and rates as percentages. Run-rate and approval-band
+basis are different figures and both must be available; they need not fit in one viewport or one layout.
 
 A requisition should show its headroom netted live from commitment activity, not a static budget figure that
 does not move when an offer is approved, revised or rescinded, and we want to see the movements behind it,
@@ -423,9 +405,77 @@ halves and its retention cliff date, read against the reference moment.
 
 A rescinded offer should show what vested, what was clawed back or cancelled, and what the effective date
 was. The audit trail is its own screen: every approve, revise and rescind lands there as a readable line
-with a before → after summary, and it has to still be there after a reload or a fresh sign-in. And the
-landing screen should carry the headline figures we open the app for: how many requisitions are open, what
-headroom is left across them, how many offers are committed and how many approvals are waiting.
+with a before → after summary, and it has to still be there after a reload or a fresh sign-in. A separate aggregate dashboard is not required.
 
 Where a rule above defines a figure, that defined figure is the one the screen has to show. The readings
 these rules reject are named so you can avoid them, not so you can display them.
+
+## 10. Runtime file paths
+
+The runtime may launch Node from a working directory other than the application directory. It runs as an
+unprivileged user and may launch a writable copy of the submitted application. Resolve bundled UI and
+seed files relative to the entry/module directory or another explicit absolute path, never by assuming
+the current working directory is `/app`. Honor the supplied `DB_PATH` for persistent storage. The launch
+environment contains `PATH`, `HOME`, `NODE_PATH`, `PORT` and `DB_PATH`; do not rely on inherited shell
+variables. `HOME` points to the writable application copy, and `/app/server.js` remains the submitted entry.
+
+## 11. Coordinated compensation changes
+
+Finance can prepare a change set containing two through four distinct current COMMITTED offers. Each
+member selects its current offer, a destination requisition (which may be its existing requisition), and
+all six replacement compensation terms. Use ordinary labelled form controls; a raw JSON editor is not
+the operator workflow. Any signed-in person may read saved previews and receipts, but only the Finance
+actor who prepared a change set may commit it. Other roles may neither prepare nor commit one. The
+normal session-based 401/403 rules apply to these operations as well.
+
+The operator supplies a nonblank operation key. The key belongs to that signed-in actor and identifies
+one immutable intent: the source offer identities, destination requisitions and replacement terms.
+Reordering members does not change intent. Reusing the key with that same intent returns the same saved
+preview or committed result; changing any member, destination or compensation term with that key is a
+conflict (409), with no new economic effects. Use a new key for corrected or changed intent. No particular
+HTTP route, request schema, key prefix or generated record format is prescribed.
+
+Preview computes each member's old/new run-rate, signing adjustment and replacement equity terms, and
+each touched requisition's before/after headroom. It preserves the original source offer and requisition
+identities. Preview is durable but reserves no budget, supersedes no offer, creates no grant/payment/
+referral and writes no successful settlement receipt. An invalid shape (fewer than two or more than four
+members, repeated source, missing target, or invalid compensation) must not save a valid change set.
+
+Calculate final headroom per requisition as current headroom plus all selected old commitments released
+from that requisition, minus all replacement commitments assigned to it. Final headroom must be
+nonnegative and all stored money/unit results must remain exact safe integers. Validate the complete
+set, not a sequence of intermediate budgets: fully funded cycles and offsetting changes must succeed.
+Insufficient final headroom refuses the entire preview or commit. Existing signing, equity, rounding
+and relocation rules remain unchanged.
+
+A saved preview captures the exact current source leaves and the economic state of every source and
+destination requisition it touches. At commit, reject 409 if any source is no longer current COMMITTED,
+or if any commitment-changing operation has happened on any touched requisition since preview. This
+includes changes made and then reversed: equal headroom is not proof that the preview is still current.
+A pending offer creation, an unrelated requisition's settlement, or another preview alone must not
+invalidate it. Repeating an old preview request must not silently refresh its captured state. Prepare a
+new key after a conflict. The representation of versions or freshness tokens is up to you.
+
+Commit uses the saved intent and recomputes/validates stored facts; values or identities in a request
+cannot override that intent or the signed-in actor. All members commit atomically. Each receives a new
+COMMITTED successor on its destination requisition; its old row remains on the old requisition as
+SUPERSEDED. Keep candidate, original creator/approver, original offer/grant date and referral identity/
+start unchanged. Append a reversal on the source and a new commitment on the destination. Append the
+signed difference in signing bonus, supersede the prior grant and mint the replacement grant only when
+units are positive. Do not duplicate or move the original referral accrual. Later ordinary revisions and
+rescissions use the successor's destination budget and original vesting anchors.
+
+Write the usual immutable member audit lines/after-images plus one durable batch receipt identifying
+the actor, operation, all old/new offer identities, source/destination requisitions, all before/after
+headrooms, compensation and signed adjustments. Every member's receipt reflects the same complete
+before/after transaction, not an intermediate half-posted balance. A failed commit leaves every member
+and all economic/history records as they were immediately before the attempt; generic access logs may
+grow. A draft record can remain after a conflict. Never post a successful batch receipt for a refusal.
+
+Concurrent commits of the same saved operation both return the one original committed result and create
+only one set of effects. Two different outstanding previews touching the same requisition cannot both
+commit from the old state: one succeeds and the other conflicts, with no partial loser. Disjoint previews
+remain independently committable. Once committed, retrying the same operation returns its original
+immutable receipt without revalidating current leaves or budgets, even after later changes or restart.
+Check current session authorization before returning a cached write result. Read-only receipt access is
+available to all signed-in roles through ordinary history views.

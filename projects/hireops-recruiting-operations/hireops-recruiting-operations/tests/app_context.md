@@ -17,7 +17,9 @@ All accounts use password `Hireops!2026`.
 
 ## Key screens
 
-Dashboard, Requisitions, Offers, Equity Table, Referrals and Audit Trail.
+Coordinated Changes, Requisitions, Offers, Equity Table, Referrals and Audit Trail.
+Operational demonstration rows may be absent; prepare your own controls.
+Finance prepares and commits coordinated changes; all signed-in roles can read them.
 The reference moment is 2026-08-01T00:00:00Z. Referral retention uses that
 moment; rescission vesting uses its supplied effective date. The app may use
 any route layout and suitable labels. Discover navigation and operation

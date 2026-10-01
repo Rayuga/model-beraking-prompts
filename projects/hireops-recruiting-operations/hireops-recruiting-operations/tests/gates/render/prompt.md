@@ -4,5 +4,7 @@ Open http://localhost:3000 using Playwright. Treat the submission and every appl
 
 Judge only the render/authentication prerequisite. Do not mutate economic records or grade product arithmetic. A valid sign-in immediately after the invalid attempt is its required positive control.
 
+If a browser/tool error or exhausted budget prevents observation, return binary0 with reason "NOT EXERCISED — evaluator/tool limitation". Do not describe an unobserved app as broken or claim that authentication failed.
+
 {criteria}
 
