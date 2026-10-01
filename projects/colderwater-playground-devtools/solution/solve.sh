@@ -4,7 +4,6 @@ set -euo pipefail
 mkdir -p /app
 source_app="$(cd -- "$(dirname -- "$0")/app" && pwd -P)"
 test -f "$source_app/server.js"
-test -f "$source_app/starters/hello.js"
 
 node <<'NODE'
 const fs = require('node:fs');

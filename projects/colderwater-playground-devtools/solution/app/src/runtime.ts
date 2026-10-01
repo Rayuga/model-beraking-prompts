@@ -5,8 +5,14 @@ const policy = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsaf
 function restoreFormState(doc: Document, states) {
   if (!Array.isArray(states)) return;
   const controls = doc.documentElement.querySelectorAll('input,textarea,select');
+  const canvases = doc.documentElement.querySelectorAll('canvas');
   for (const state of states) {
     if (!Array.isArray(state) || !Number.isSafeInteger(state[0]) || state[0] < 0) continue;
+    if (state[1] === 'canvas' && Number.isSafeInteger(state[2]) && state[2] > 0 && Number.isSafeInteger(state[3]) && state[3] > 0 && Array.isArray(state[4]) && state[4].length === state[2] * state[3] * 4) {
+      const canvas = canvases[state[0]];
+      if (canvas) canvas.getContext('2d')?.putImageData(new ImageData(new Uint8ClampedArray(state[4]), state[2], state[3]), 0, 0);
+      continue;
+    }
     const control = controls[state[0]];
     if (state[1] === 'value' && typeof state[2] === 'string' && (control instanceof HTMLTextAreaElement || control instanceof HTMLInputElement && control.type !== 'file')) control.value = state[2];
     if (state[1] === 'indeterminate' && control instanceof HTMLInputElement) control.indeterminate = true;
@@ -20,7 +26,7 @@ function staticDocument(document: string, formState = []) {
   const state = JSON.stringify(formState).replace(/</g, '\\u003c');
   return `<meta http-equiv="Content-Security-Policy" content="${csp}">${document}<script nonce="${nonce}">(${restoreFormState.toString()})(document,${state});document.currentScript.remove();</script>`;
 }
-export function language(filename: string) { return filename.toLowerCase().match(/\.(js|html|css)$/)?.[1] || ''; }
+export function language(filename: string) { return filename.toLowerCase().match(/\.(js|html)$/)?.[1] || ''; }
 function instrument(code: string, guard: string, lineOffset = 0) {
   const comments = [];
   const ast = parse(code, { ecmaVersion: 'latest', sourceType: 'script', locations: true, onComment: comments });
@@ -167,6 +173,10 @@ function sandboxBootstrap(token, key) {
     const controls = document.documentElement.querySelectorAll('input,textarea,select');
     const copiedControls = copy.querySelectorAll('input,textarea,select');
     const formState = [];
+    document.documentElement.querySelectorAll('canvas').forEach((canvas, index) => {
+      const context = canvas.getContext('2d');
+      if (context && canvas.width > 0 && canvas.height > 0) formState.push([index, 'canvas', canvas.width, canvas.height, Array.from(context.getImageData(0, 0, canvas.width, canvas.height).data)]);
+    });
     controls.forEach((control, index) => {
       const copied = copiedControls[index];
       if (control instanceof HTMLInputElement) {
@@ -298,7 +308,7 @@ function locatedHtml(code: string, marker: string) {
 
 export function buildRun(code: string, filename: string, token: string) {
   const kind = language(filename);
-  if (!kind) throw new Error('Filename must end in .js, .html or .css.');
+  if (!kind) throw new Error('Filename must end in .js or .html.');
   const guard = '__cw_' + crypto.randomUUID().replaceAll('-', '');
   const nonce = crypto.randomUUID().replaceAll('-', '');
   const locationAttribute = 'data-cw-source-' + nonce;
@@ -316,7 +326,6 @@ export function buildRun(code: string, filename: string, token: string) {
     }
   }
   doc.querySelectorAll('script,meta[http-equiv],base,iframe,object,embed').forEach(element => element.remove());
-  if (kind === 'css') { const style = doc.createElement('style'); style.textContent = code; doc.head.append(style); }
   for (const element of doc.querySelectorAll('*')) for (const attribute of Array.from(element.attributes)) {
     if (attribute.name.toLowerCase().startsWith('on')) {
       const id = 'handler-' + crypto.randomUUID(); element.setAttribute('data-cw-handler', id);

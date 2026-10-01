@@ -1,9 +1,9 @@
-I'd like a small code playground for trying out browser ideas. I want to write JavaScript, HTML or CSS, see the result beside the editor, and keep useful snippets in a library. No accounts or sign-in; it's a local tool.
+I'd like a small playground for trying out browser ideas in JavaScript and complete HTML files. Keep the editor, preview and console together, with a shared library for the snippets worth keeping. No accounts or sign-in; it's a local tool.
 
-The annoying part with playgrounds is losing something that was working. If my next attempt throws an error or I stop it, I'd like the last good preview back, with enough information in the console to find the mistake. It should also cope with two open editors without quietly overwriting the newer saved work.
+The annoying part is losing something that was working. If my next attempt breaks or I stop it, bring back the actual last good preview, including changes I'd made using its controls. Re-running the original source isn't enough if that loses what I typed. I also want to go back through saved versions without losing newer work, especially when I've got two editors open.
 
-Please read the six notes in /instructions before you start. They cover the editor, how runs behave, the library and the kinds of code this tool supports. /assets/seed_data.json describes the starting scope. There isn't a starter app to finish, so please make your own examples as well as the interface.
+Please read the six notes in /instructions before starting. They cover running code, saved history and the limits of the playground. /assets/seed_data.json describes the starting scope; there's no starter app to finish.
 
-Opening it should feel ready to use: useful code, a preview and some console feedback already there. I also need to start a fresh draft and return to something I saved earlier. Keep it comfortable with a keyboard and on a narrow screen, and offer light and dark themes.
+I need to start a fresh draft, save it and come back later. Make the interface comfortable with a keyboard and on a narrow screen. A single clear colour scheme is enough.
 
 The finished app goes in /app. Our setup and start command are in /instructions/integration.md. External fonts, scripts and CDN assets are fine for the app itself.

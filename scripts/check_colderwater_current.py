@@ -1,8 +1,9 @@
-"""Current reduced-scope source guards; runtime and semantic review are separate."""
+﻿"""Current history-candidate guards. Source guards are not semantic or runtime QC."""
 import re
 import tomllib
 from decimal import Decimal
 from pathlib import Path
+
 
 def check_task(task):
     task=Path(task)
@@ -30,45 +31,28 @@ def check_task(task):
     prompt=read('tests/scored/functional/prompt.md');context=read('tests/app_context.md')
     protocols=set(re.findall(r'^### (S\d{2})\b',prompt,re.M))
     keys=[re.match(r'(S\d{2})\.([a-z0-9_]+):',r['description'].strip()) for r in rows]
-    add('79 independent functional outcomes at32.85',len(rows)==79 and sum(Decimal(str(c['weight'])) for c in rows)==Decimal('32.85'))
-    add('restart survival examples and later writing have independent credit',by_id['cw_process_restart_durability']['weight']==1.8 and by_id['cw_process_restart_write']['weight']==0.5 and by_id.get('cw_restart_example_inventory',{}).get('weight')==0.2 and 'do not inherit the durability verdict' in by_id['cw_process_restart_write']['description'])
-    add('23 bounded protocols exactly cover every evidence key',len(protocols)==23 and all(keys) and {m[1] for m in keys if m}==protocols and len({m[0] for m in keys if m})==len(rows))
+    add('80 functional outcomes at45.25',len(rows)==80 and sum(Decimal(str(c['weight'])) for c in rows)==Decimal('45.25'))
+    add('22 protocols cover unique evidence keys',len(protocols)==22 and all(keys) and {m[1] for m in keys if m}==protocols and len({m[0] for m in keys if m})==len(rows))
     add('no dangling scenario references',set(re.findall(r'\bS\d{2}\b',prompt+context))<=protocols)
-    add('fixed harness has no custom incomplete zero rule','EVALUATION_INCOMPLETE' not in prompt+context+read('tests/test.sh') and 'validate_suite' not in read('tests/test.sh'))
-    add('no hidden CSS or private-file classification probes',all(k not in by_id for k in ['cw_css_global_freshness','cw_working_files_private']) and not any(x in prompt for x in ['matched-realm','private-looking','/package.json','/app.db-wal']))
-    add('looping Promise callback covered','promise-loop-entered' in prompt and 'looping Promise callback' in by_id['cw_literal_loop_deadline']['description'])
-    add('shared callback deadline uses positive marker control',all(x in prompt for x in ['nested-control-done','late-callback-entered','forbidden-nested-completion','}, 3000); }, 3000);']) and 'ten-second observation' in by_id['cw_callback_shared_run_deadline']['description'])
-    add('Auto-run negatives have working positive control',all('dead Auto-run feature cannot pass' in by_id[k]['description'] for k in ['cw_autorun_off_stays_idle','cw_autorun_off_cancels_queue']))
-    add('pending cancellation has matching successful timer control',all('callback actually fires in the uncancelled control' in by_id[k]['description'] for k in ['cw_supersede_pending','cw_stop_pending_execution']) and 'count must not increase above the positive-control baseline' in prompt)
-    add('withdrawn CSS copy outcomes absent and simple CSS run covered',all(k not in by_id for k in ['cw_css_apply_snapshot','cw_css_inert_copy','cw_css_pending_timer_cancelled','cw_css_pending_preview','cw_css_timer_recovery']) and 'built-in sample page' in by_id['cw_css_builtin_preview']['description'] and 'css-timer-' not in prompt)
-    add('network proof has local positive control and cleanup',all(x in prompt for x in ['controlPassed: true','route.fulfill','context.unroute','context.__cwNetworkProbe']))
-    add('dirty Save tests actual three-field editor and recovery',all(x in prompt for x in ['title QC Concurrent Save Draft','filename qc-concurrent-draft.js',"source console.log('stale-overwrite');",'Reapply B\'s recorded unsaved title, filename and source']) and 'A request replay alone cannot prove dirty-editor behavior' in context)
-    add('restart early with only New and Save','immediately S22' in prompt and 'Call the verifier MCP tool restart_app exactly once' in prompt)
-    add('no during-loop responsiveness demand','Do not require unrelated controls to respond during a loop' in prompt)
-    polish=dimensions['polish']['criterion'];pids={c['id'] for c in polish}
-    add('six Polish outcomes avoid Functional feedback duplicate',len(polish)==6 and sum(c['weight'] for c in polish)==3 and 'interaction_feedback' not in pids and {'cw_controls_have_names','cw_controls_keyboard_reachable','cw_controls_focus_visible','cw_keyboard_library_navigation'}<=pids)
-    add('standard editor escape needs no help text','Standard editor escape keys are valid without documentation' in read('tests/scored/polish/judge.toml'))
+    add('no custom incomplete-zero rule','EVALUATION_INCOMPLETE' not in prompt+context+read('tests/test.sh') and 'validate_suite' not in read('tests/test.sh'))
+    add('no hidden execution-realm or private-file classifier',not any(x in prompt for x in ['matched-realm','private-looking','/package.json','/app.db-wal']))
+    removed={'cw_startup_ready','cw_usable_examples','cw_example_separate','cw_restart_example_inventory','cw_css_builtin_preview','cw_pending_css_supersession','cw_theme_actual_switch','cw_theme_work_preserved','cw_title_trimming','cw_title_collision_refusal','cw_title_empty_rejected','cw_title_case_sensitive','cw_title_refusal_recovery'}
+    add('withdrawn features have no scored owners',not(removed&set(by_id)))
     public=read('instruction.md')+'\n'+'\n'.join(p.read_text(encoding='utf-8') for p in (task/'environment/instructions').glob('*.md'))
-    add('removed workflows no longer requested',not re.search(r'\b(rename|renaming|duplicate makes|deleting|Importing|Export downloads|importing over|draggable|bracket matching)\b',public,re.I))
-    add('public runtime and product request intact',all(s in public for s in ['node /app/server.js','/app/app.db','five seconds','two open editors']))
-    add('launch contract discloses variable current directory','current working directory may be outside /app' in public and 'rather than assuming where the command was started' in public)
-    add('restart example inventory has public coverage and independent observation','same built-in example choices, without extra copies' in public and 'S22.restart_example_inventory' in prompt and 'If saved records fail, still compare the example inventory' in prompt)
-    add('public CSS uses built-in sample without prior-style copy', 'For CSS, apply the stylesheet to a small built-in sample page' in public and 'copy of the last successful document' not in public)
-    add('extension capitalization is optional and has no duplicate outcome', 'cw_extension_case' not in by_id and not re.search(r'case.insensitive|capitals in the extension|uppercase extension', public+context, re.I) and all('dispatch.'+ext in prompt for ext in ['js','html','css']) and not any('dispatch.'+ext in prompt for ext in ['JS','HTML','CSS']) and 'other extension capitalizations is optional' in prompt)
-    add('completed Stop retention is independently scored', by_id.get('cw_completed_stop_preview',{}).get('weight')==0.1 and by_id['cw_completed_stop']['weight']==0.2 and 'independently of handler suppression' in by_id['cw_completed_stop_preview']['description'])
-    add('restart readback covers all actual saved fields', 'every actual saved record' in by_id['cw_process_restart_durability']['description'] and 'exact source and revision' in by_id['cw_process_restart_durability']['description'])
-    add('public launch names all injected environment variables', all(v in public for v in ['PATH=', 'NODE_PATH=', 'HOME', 'PORT=', 'DB_PATH']))
-    add('public packaging discloses exact symlink exception',all(s in public for s in ['Symbolic links are unsupported except links beneath /app/node_modules','fully resolved targets also stay beneath /app/node_modules','Broken links are unsupported']))
-    add('rollback and recovery have separate owners',all('cw_'+kind+'_error_recovery' in by_id and 'Later execution is scored separately' in by_id['cw_'+kind+'_error_rollback']['description'] for kind in ['js','html','timer','promise']))
-    add('plain rejection and complete HTML async line probes',all(s in prompt for s in ["Promise.reject('primitive-error-marker')", "Promise.reject('html-promise-error-marker')", "new Error('html-async-error-marker')"]))
-    add('finite braced unbraced and Promise loops control termination',all(s in prompt for s in ['finite-braced','finite-unbraced','finite-promise','Expect 3, 4 and 3']))
-    add('title refusals cover creation as well as updates','NEW creation' in by_id['cw_title_collision_refusal']['description'] and 'NEW creation' in by_id['cw_title_empty_rejected']['description'])
-    add('duration requires observed elapsed measurement and terminal states','constant numeric placeholder' in by_id['cw_console_duration']['description'] and 'cw_terminal_durations' in by_id)
-    add('isolation permits legitimate host title updates','Legitimate app-owned title/status changes are allowed' in by_id['cw_preview_origin_boundary']['description'])
-    add('text-only storage has bounded controlled canary without universal assurance claim','cw_save_load_execution_canary' in by_id and 'not proof that all server evaluation is absent' in by_id['cw_save_load_execution_canary']['description'])
-    add('HOME is staging rather than guaranteed app location','HOME is a writable staging directory and may differ from the directory containing server.js' in public)
-    add('installer refuses unverifiable or active database reset', all(s in read('solution/solve.sh') for s in ['bigint: true','error.code === \'ENOENT\'','if (gone(error)) continue; throw error;','cannot safely reset the database']))
-    add('pending replacement observes each supported language', all(k in by_id for k in ['cw_supersede_pending','cw_pending_html_supersession','cw_pending_css_supersession']) and all(s in prompt for s in ['replacement.html','replacement.css','the shared matching A callback control']))
-    add('later interaction error has independent message line and rollback credit', all(k in by_id for k in ['cw_completed_error_message','cw_completed_error_line','cw_completed_error_rollback']) and all(s in prompt for s in ['late-interaction-failure','interactionLastGood','line 5','failed-partial-picture']))
-    add('unsupported execution probes have visible authored markers', all(s in prompt for s in ['unsupported-eval-executed','unsupported-function-executed','unsupported-wasm-completed','unsupported-worker-executed','unsupported-import-executed','quoted inside an error explanation is not evidence']))
+    add('withdrawn requirements absent from public notes',not re.search(r'light and dark themes|supply.*examples|CSS styles its built-in|titles.*unique|trim spaces at their edges',public,re.I))
+    add('public launch contract preserved',all(x in public for x in ['node /app/server.js','/app/app.db','current working directory may be outside /app','DB_PATH','PORT=','NODE_PATH=','HOME','PATH=','Symbolic links are unsupported except links beneath /app/node_modules']))
+    add('history and retry promises public',all(x in public for x in ['immutable snapshot','same attempt','exactly one','process restart','two editors','unsaved fields']))
+    add('history has independently owned outcomes',all(x in by_id for x in ['cw_history_snapshots','cw_history_inspection_draft','cw_history_inspection_no_execution','cw_history_restore','cw_restore_retry','cw_history_reload','cw_history_stale_restore','cw_history_stale_restore_draft','cw_racing_saves','cw_racing_save_restore','cw_history_restart','cw_restore_retry_restart']))
+    add('actual input-state rollback probe',all(x in prompt for x in ['user-edited-preview-741','Do not edit or rerun the source to set it','recorded user-entered value']))
+    add('queued-run probes have continuing positive controls',all(x in prompt for x in ['manual_consumes_queue','document_switch_cancels_queue','Next make a genuine edit','measured-delay-plus-margin']))
+    add('safe script-string fixture is authored data',"const scriptText = '</script><script>not executable</script>'" in prompt)
+    add('network proof has local controls and cleanup',all(x in prompt for x in ['controlPassed: true','route.fulfill','context.unroute','context.__cwNetworkProbe']))
+    add('looping Promise and complete HTML async errors covered',all(x in prompt for x in ['promise-loop-entered','html-async-error-marker','html-promise-error-marker','finite-promise']))
+    add('no during-loop responsiveness demand','Do not require unrelated controls to respond during a loop' in prompt)
+    add('rollback and later execution separate',all('cw_'+k+'_error_recovery' in by_id and 'cw_'+k+'_error_rollback' in by_id for k in ['js','html','timer','promise']))
+    add('actual dirty-editor evidence required','A request replay alone cannot prove dirty-editor behavior' in context and 'two real editors' in prompt)
+    polish=dimensions['polish']['criterion']
+    add('six independent Polish outcomes',len(polish)==6 and sum(c['weight'] for c in polish)==3 and {'cw_controls_have_names','cw_controls_keyboard_reachable','cw_controls_focus_visible','cw_keyboard_library_navigation'}<={c['id'] for c in polish})
+    add('standard editor escape accepted','Standard editor escape keys are valid without documentation' in read('tests/scored/polish/judge.toml'))
+    add('installer refuses unverifiable reset',all(x in read('solution/solve.sh') for x in ['bigint: true','cannot safely reset the database','if (gone(error)) continue; throw error;']))
     return {'task':str(task),'scope':'Source regression guards; not a hosted QC verdict or Oracle measurement','passed':all(c['passed'] for c in checks),'checks':checks}

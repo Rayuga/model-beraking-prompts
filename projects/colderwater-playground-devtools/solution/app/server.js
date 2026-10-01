@@ -40,11 +40,11 @@ function findRecord(id) {
 }
 function fields(body) {
   if (!body || typeof body !== 'object' || Array.isArray(body)) throw problem('Supply a title, filename and code.');
-  const title = typeof body.title === 'string' ? body.title.trim() : '';
+  const title = typeof body.title === 'string' ? body.title : '';
   const filename = typeof body.filename === 'string' ? body.filename.trim() : '';
-  if (!title || title.length > 120) throw problem('Use a title of 1–120 characters.');
-  if (!filename || filename.length > 180 || /[\x00-\x1f/\\]/.test(filename) || !/\.(js|html|css)$/i.test(filename)) {
-    throw problem('Use a filename ending in .js, .html or .css, without directory paths.');
+  if (title.length > 120) throw problem('Use a title of at most 120 characters.');
+  if (!filename || filename.length > 180 || /[\x00-\x1f/\\]/.test(filename) || !/\.(js|html)$/i.test(filename)) {
+    throw problem('Use a filename ending in .js or .html, without directory paths.');
   }
   if (typeof body.code !== 'string') throw problem('Code must be text.');
   return { title, filename, code: body.code };
@@ -57,10 +57,9 @@ function matchingRevision(body, current) {
     throw problem('This snippet changed in another editor. Your edits are kept; reload the latest version before trying again.', 409, 'REVISION_CONFLICT', current);
   }
 }
-function uniqueTitle(title, exceptId = 0) {
-  if (db.prepare('SELECT 1 FROM snippets WHERE title = ? AND id != ?').get(title, exceptId)) {
-    throw problem('A snippet with that title already exists. Choose another title.', 409, 'TITLE_CONFLICT');
-  }
+function snapshot(record, restoredFrom = null) {
+  db.prepare('INSERT INTO snippet_revisions (snippet_id, revision, title, filename, code, created_at, restored_from) VALUES (?, ?, ?, ?, ?, ?, ?)')
+    .run(record.id, record.revision, record.title, record.filename, record.code, record.updated_at, restoredFrom);
 }
 
 app.get('/api/snippets', (_req, res) => res.json(db.prepare('SELECT * FROM snippets ORDER BY updated_at DESC, id DESC').all()));
@@ -68,10 +67,11 @@ app.get('/api/snippets/:id', (req, res) => res.json(findRecord(recordId(req.para
 app.post('/api/snippets', (req, res) => {
   const result = db.transaction(() => {
     const value = fields(req.body);
-    uniqueTitle(value.title);
     const inserted = db.prepare('INSERT INTO snippets (title, filename, code, revision, updated_at) VALUES (?, ?, ?, 1, ?)')
       .run(value.title, value.filename, value.code, new Date().toISOString());
-    return findRecord(Number(inserted.lastInsertRowid));
+    const created = findRecord(Number(inserted.lastInsertRowid));
+    snapshot(created);
+    return created;
   }).immediate();
   res.status(201).json(result);
 });
@@ -80,10 +80,40 @@ app.put('/api/snippets/:id', (req, res) => {
     const current = findRecord(recordId(req.params.id));
     matchingRevision(req.body, current);
     const value = fields(req.body);
-    uniqueTitle(value.title, current.id);
     db.prepare('UPDATE snippets SET title = ?, filename = ?, code = ?, revision = revision + 1, updated_at = ? WHERE id = ?')
       .run(value.title, value.filename, value.code, new Date().toISOString(), current.id);
-    return findRecord(current.id);
+    const saved = findRecord(current.id);
+    snapshot(saved);
+    return saved;
+  }).immediate();
+  res.json(result);
+});
+app.get('/api/snippets/:id/history', (req, res) => {
+  const current = findRecord(recordId(req.params.id));
+  res.json(db.prepare('SELECT * FROM snippet_revisions WHERE snippet_id = ? ORDER BY revision DESC').all(current.id));
+});
+app.post('/api/snippets/:id/restore', (req, res) => {
+  const result = db.transaction(() => {
+    const current = findRecord(recordId(req.params.id));
+    const { sourceRevision, operationId } = req.body || {};
+    if (!Number.isSafeInteger(sourceRevision) || sourceRevision < 1 || typeof operationId !== 'string' || !operationId || operationId.length > 160) {
+      throw problem('Choose a saved revision and retry this restore from its original editor.');
+    }
+    const prior = db.prepare('SELECT * FROM restore_operations WHERE snippet_id = ? AND operation_id = ?').get(current.id, operationId);
+    if (prior) {
+      if (prior.base_revision !== req.body.revision || prior.source_revision !== sourceRevision) throw problem('This restore attempt already refers to different work.', 409, 'OPERATION_CONFLICT');
+      return JSON.parse(prior.result_json);
+    }
+    matchingRevision(req.body, current);
+    const old = db.prepare('SELECT * FROM snippet_revisions WHERE snippet_id = ? AND revision = ?').get(current.id, sourceRevision);
+    if (!old) throw problem('That saved revision was not found.', 404, 'NOT_FOUND');
+    db.prepare('UPDATE snippets SET title = ?, filename = ?, code = ?, revision = revision + 1, updated_at = ? WHERE id = ?')
+      .run(old.title, old.filename, old.code, new Date().toISOString(), current.id);
+    const restored = findRecord(current.id);
+    snapshot(restored, sourceRevision);
+    db.prepare('INSERT INTO restore_operations (snippet_id, operation_id, base_revision, source_revision, result_json) VALUES (?, ?, ?, ?, ?)')
+      .run(current.id, operationId, current.revision, sourceRevision, JSON.stringify(restored));
+    return restored;
   }).immediate();
   res.json(result);
 });
@@ -97,7 +127,6 @@ app.delete('/api/snippets/:id', (req, res) => {
 });
 
 app.use('/api', (_req, res) => res.status(404).json({ error: 'Endpoint not found.' }));
-app.use('/starters', express.static(path.join(root, 'starters'), { fallthrough: false }));
 app.use(express.static(path.join(root, 'public'), { dotfiles: 'deny' }));
 app.get('/', (_req, res) => res.sendFile(path.join(root, 'public', 'index.html')));
 app.use((_req, res) => res.status(404).json({ error: 'Not found.' }));
@@ -117,7 +146,7 @@ app.listen(Number(process.env.PORT || 3000), '0.0.0.0', () => {
   connection.pragma('foreign_keys = ON');
   connection.exec(`CREATE TABLE IF NOT EXISTS snippets (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    title TEXT NOT NULL UNIQUE,
+    title TEXT NOT NULL,
     filename TEXT NOT NULL,
     code TEXT NOT NULL,
     revision INTEGER NOT NULL DEFAULT 1 CHECK(revision > 0),
@@ -125,6 +154,18 @@ app.listen(Number(process.env.PORT || 3000), '0.0.0.0', () => {
   )`);
   const columns = connection.prepare('PRAGMA table_info(snippets)').all();
   if (!columns.some(c => c.name === 'revision')) connection.exec('ALTER TABLE snippets ADD COLUMN revision INTEGER NOT NULL DEFAULT 1');
+  connection.exec(`CREATE TABLE IF NOT EXISTS snippet_revisions (
+    snippet_id INTEGER NOT NULL REFERENCES snippets(id) ON DELETE CASCADE,
+    revision INTEGER NOT NULL,
+    title TEXT NOT NULL, filename TEXT NOT NULL, code TEXT NOT NULL,
+    created_at TEXT NOT NULL, restored_from INTEGER,
+    PRIMARY KEY (snippet_id, revision)
+  ); CREATE TABLE IF NOT EXISTS restore_operations (
+    snippet_id INTEGER NOT NULL REFERENCES snippets(id) ON DELETE CASCADE,
+    operation_id TEXT NOT NULL, base_revision INTEGER NOT NULL, source_revision INTEGER NOT NULL,
+    result_json TEXT NOT NULL, PRIMARY KEY (snippet_id, operation_id)
+  ); INSERT OR IGNORE INTO snippet_revisions (snippet_id, revision, title, filename, code, created_at)
+    SELECT id, revision, title, filename, code, updated_at FROM snippets;`);
   db = connection;
   console.log('Colderwater ready on port ' + (process.env.PORT || 3000));
 });
