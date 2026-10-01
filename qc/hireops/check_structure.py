@@ -23,6 +23,8 @@ def main():
  bash=Path('C:/Users/00518507/AppData/Local/Programs/Git/bin/bash.exe')
  for rel in ['tests/test.sh','solution/solve.sh']:run('bash-n:'+rel,[bash,'-n',task/rel])
  node=ROOT/'.tools/hireops/node.exe'
+ if not node.is_file():
+  node=shutil.which('node') or node
  for p in sorted((task/'solution/app').rglob('*.js')):run('node-check:'+p.relative_to(task).as_posix(),[node,'--check',p])
  run('python-ast-check',[sys.executable,'-c',"import ast,sys;[ast.parse(open(p,encoding='utf-8').read(),filename=p) for p in sys.argv[1:]]",task/'tests/tools/score.py',task/'tests/tools/restart_mcp.py'])
  save(out/'commands.json',commands)
@@ -48,7 +50,7 @@ def main():
   annual=half(intrinsic,c['equity_annualization_years']);runrate=o['base_salary_cents']+annual;basis=runrate+half(o['signing_bonus_cents'],2)
   tier=1 if basis<c['band_edges_cents']['II_floor'] else 2 if basis<c['band_edges_cents']['III_floor'] else 3
   figures[o['id']]={'status':o['status'],'intrinsic_cents':intrinsic,'annual_cents':annual,'runrate_cents':runrate,'basis_cents':basis,'tier':tier}
- def group(rows,key): 
+ def group(rows,key):
   d=collections.defaultdict(list)
   for r in rows:d[r[key]].append(r)
   return d

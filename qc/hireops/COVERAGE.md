@@ -1,6 +1,6 @@
 # HireOps bidirectional coverage ledger
 
-Authoring ledger, 2026-09-30. This is not a QC clearance or a claim of golden execution. Candidate source is still being edited; freeze and bind hashes after authoring. All IDs below refer to tests/gates or tests/scored. Functional has 45 independently scored rows sharing ten scenario protocols; Polish has 9; Visual has 5. Both gates have one row. Shared canonical reward remains 0.6/0.2/0.2 with functional floor0.05.
+Authoring ledger, updated 2026-10-01 after the independent-credit repair. This is not a QC clearance or an Oracle result. All IDs below refer to tests/gates or tests/scored. Functional has 86 independently scored rows sharing ten scenario protocols; Polish has 14; Visual has 6. Both gates have one row. Shared canonical reward remains 0.6/0.2/0.2 with functional floor0.05. The evidence-gap notes in the table were written before the source-bound local runs; use the latest QC run and raw archive for measured results.
 
 ## Source and evidence legend
 
@@ -14,7 +14,7 @@ Golden source support is an inspection target, NOT a passing test:
 - G-views: solution/app/public/js/hireops.js renderWorkspaces and public/js/app.js, styles.css; src/index.js compositionView/offerView/referralAccrualView/reqView/bootstrap.
 - G-audit: src/index.js audit/afterImage and action transaction callsites; public/js/hireops.js history UI.
 
-No row in this ledger has fresh golden browser evidence attached yet. Root's forthcoming tests must record criterion-level results and distinguish source inspection, API tests, browser/MCP tests, image runs and configured judge runs. A source function existing is not sufficient evidence.
+Earlier source-bound local domain, browser and MCP results are archived separately. They are not configured judge scores. A source function existing is not sufficient evidence.
 
 ## Forward public-promise map
 
@@ -26,11 +26,11 @@ No row in this ledger has fresh golden browser evidence attached yet. Root's for
 | Any signed-in role may open requisition, including Auditor | hro_req_identity plus hro_raise_roles / P1,P5 | G-actions; positive matrix pending |
 | Recruiter, Comp, all Approvers and Finance may raise; Auditor cannot | hro_offer_identity,hro_raise_roles / P1,P5 | G-actions; server replay and UI controls pending |
 | Newly raised offer starts PENDING, captures candidate, req, six inputs and separate dates | hro_offer_identity / P1 | G-actions/G-views; fresh UI read pending |
-| Caller IDs nonblank, exact spaces /?# retained, no prefix/length restriction | hro_req_identity,hro_offer_identity / P1 | G-actions; exact product response/UI comparison pending |
+| Caller IDs nonblank, exact spaces /?# retained, no prefix/length restriction through creation and later routing | hro_req_identity,hro_offer_identity,hro_offer_id_lifecycle,hro_offer_id_rescission / P1 | G-actions; compare saved creation and later actions independently |
 | Same-kind duplicate and whitespace-only IDs refused, originals unchanged; cross-kind names allowed | hro_duplicate_identity / P1 | G-actions; positive and negative witnesses pending |
-| Nonnegative integer cents/shares; negative/fraction/nonfinite/nonnumeric/unsafe reject | hro_numeric_validation / P2 | G-rules/G-actions; invalid create/revise/budget pending |
-| Exact safe integer input/computed limits; overflow refuses; signed adjustments allowed | hro_numeric_validation,hro_revision_signing / P2,P4 | G-rules; max-safe zero-spread positive and doubled-spread overflow pending |
-| Valid date-only UTC and millisecond Z instants; impossible/missing required dates refused | hro_date_validation / P2 | G-rules/G-actions; offer/referral/effective-date cases pending |
+| Nonnegative integer cents/shares; negative/fraction/nonfinite/nonnumeric/unsafe reject | hro_numeric_validation,hro_offer_create_validation,hro_offer_revision_validation / P2 | G-rules/G-actions; score budget, create and revision separately |
+| Exact safe integer input/computed limits; overflow refuses; signed adjustments allowed | hro_computed_overflow,hro_revision_signing / P2,P4 | G-rules; max-safe zero-spread positive and doubled-spread overflow |
+| Valid date-only UTC and millisecond Z instants; impossible/missing required dates refused | hro_date_validation,hro_rescission_date_validation / P2 | G-rules/G-actions; offer/referral and rescission dates score independently |
 | Intrinsic units*max(fair-strike,0), including equal/below strike | hro_intrinsic / P3 | G-rules/G-views; three-way spread evidence pending |
 | Annual intrinsic/4 rounded once half-up, including quarter/half cent | hro_annual / P3 | G-rules; intrinsic.01 and.02 cases pending |
 | Run-rate base+annual equity, excludes bonus/relocation | hro_runrate / P3,P4 | G-rules/G-views |
@@ -57,7 +57,7 @@ No row in this ledger has fresh golden browser evidence attached yet. Root's for
 | Finance-only rescission; all other seeded roles403 | hro_rescission_role / P5 | G-auth/G-actions |
 | Effective date stored; latest run-rate released exactly once | hro_release / P4 | G-actions/G-views |
 | Signing vest-first40%@12,+5/month,cap24; retained half-up then subtract | hro_claw,hro_caps / P4,P7 | G-rules; odd cents12/13mo,24/32mo |
-| Latest lineage bonus basis, original clock, appended contra; final net vested, no old payment rewrite | hro_claw,hro_history / P4 | G-actions/netSigningOutflow |
+| Latest lineage bonus basis, original clock, appended contra; final net vested, no old payment rewrite | hro_claw,hro_history,hro_revision_ledger_history / P4 | G-actions/netSigningOutflow |
 | Equity vest-first20%@12,+4/month,cap32; retained units half-up then subtract | hro_cancel,hro_caps / P4,P7 | G-rules;13 units@20%,7@24% and68% |
 | Only latest replacement grant cancels; old grants untouched | hro_cancel,hro_revision_equity / P4 | G-actions/G-store |
 | UTC original-anchor anniversaries clamp day, preserve time/ms, no iterative drift, before-start zero | hro_months / P7 | G-rules; Feb29/ms pair,Jan31-to-Mar30,before-start |
@@ -66,24 +66,24 @@ No row in this ledger has fresh golden browser evidence attached yet. Root's for
 | Stale ancestor and repeated approve/revise/rescind refuse without effects | hro_stale / P4,P9 | G-actions; compare saved business state and receipts |
 | Overlapping affordable approvals cannot overcommit; whole settlement commits atomically | hro_competing / P6 | G-actions transaction; Promise.all observed requests, winner-only side effects |
 | Current server session identity/role/tier overrides body claims; claims ignored on otherwise valid request | hro_claim_identity / P9 | G-auth/G-actions; no rejection exception for harmless forged claims |
-| Stored inputs override claimed band,commitment,clawback,cancel values; claims ignored | hro_claim_economics / P9 | G-rules/G-actions; normal successful request control |
+| Stored inputs override the named optional approval and rescission claims | hro_claim_approval_economics,hro_claim_rescission_economics / P9 | G-rules/G-actions; separate successful omitted-claim controls |
 | Anonymous operational reads401 with no records | hro_anon_read / P9 | G-auth; authenticated populated positive control |
-| Anonymous operational writes401, no new record; previous valid write persists | hro_anon_write / P9 | G-auth/G-store; independent-context readback |
-| Readable per-action actor/target and before-after audit text, all three action types | hro_audit_text / P4 or separate ordinary controls | G-audit/G-views |
-| Structured immutable receipt with actor/headroom/relevant computed before-after state | hro_afterimage / P4 | G-audit; observe at creation then after subsequent actions |
+| Anonymous operational writes401, no new record; previous valid write persists | hro_anon_req_create,hro_anon_offer_create,hro_anon_approve,hro_anon_revise,hro_anon_rescind / P9 | G-auth/G-store; separate successful controls and fresh readback for each family |
+| Readable per-action actor/target and before-after audit text, with fresh-sign-in persistence | hro_audit_text,hro_audit_revision,hro_audit_rescission,hro_audit_readback / P4 | G-audit/G-views; score actions and readback separately |
+| Structured immutable receipt with actor/headroom/relevant computed before-after state | hro_afterimage,hro_afterimage_revision,hro_afterimage_rescission,hro_afterimage_history / P4 | G-audit; score each action and history separately |
 | Refusals leave all business/economic/action-receipt data unchanged | hro_stale plus rejection-owning rows / P4,P9 | G-store/G-actions/G-audit; generic security logs may grow |
 | All required product screens/visible dollar cents/whole units/rates; input economics alongside derived values | hro_offer_identity,hro_intrinsic,hro_annual,hro_runrate,hro_basis,hro_bands,hro_grant,hro_claw,hro_cancel | G-views; assert presented raw equity terms and amounts, not only API |
 | Dashboard open requisitions,total headroom,committed count,pending approvals update | hro_dashboard / P10 | G-views/bootstrap; state-relative deltas tolerate gates |
-| Data and audit available after reload/fresh sign-in as other role | hro_readback,hro_history / P4,P10 | G-store/G-views; independent context required |
+| Data and audit available after reload/fresh sign-in as other role | hro_readback,hro_history,hro_revision_ledger_history,hro_audit_readback / P4,P10 | G-store/G-views; independent context required |
 | Restart retains fresh writes, all recorded lineage/ledger/audit; seed idempotence | hro_restart / P10 last | G-store; one real restart_app, ordinary fresh pending control |
 | Light/dark switching; preference survives reload | hro_pol_theme,hro_pol_theme_saved | G-views; rendered before/after plus reload |
 | Phone operation/no keyboard lockout; reachable navigation and forms, visible focus | hro_pol_mobile,hro_pol_keyboard | G-views; actual390x844 and pointer-free route |
-| Screen-reader navigation/main landmarks,headings,labels | hro_pol_semantics | G-views; rendered accessibility tree only |
+| Screen-reader navigation/main landmarks,headings,labels | hro_pol_semantics,hro_pol_headings,hro_pol_labels | G-views; rendered accessibility tree only |
 | Legible success/error feedback, correction preserves entered valid fields | hro_pol_outcomes,hro_pol_preserve | G-views; invalid then corrected successful form |
 | Readable empty/loading/failure states | hro_pol_empty,hro_pol_loading,hro_pol_outcomes | G-views; actual pending observation or supported response delay |
 | Polished visual design/headline prominence/readability | five hro_vis_* rows | G-views/styles; anchored independent visual properties |
 
-Monetary historical immutability has one owner: hro_history compares original commitment/reversal/replacement/payment/adjustment amounts, IDs and links after later transitions. It does not regrade offer/grant/audit/snapshot or refusal invariants owned elsewhere. Signed-in name is explicitly required by hro_accounts alongside role/tier.
+Monetary historical immutability has two owners: hro_history compares original approval movement/payment records and hro_revision_ledger_history compares reversal/replacement/adjustment records after later transitions. Neither regrades offer/grant/audit/snapshot or refusal invariants owned elsewhere. Signed-in name is explicitly required by hro_accounts alongside role/tier.
 
 ## Runtime requirements that browser grading cannot fully prove
 

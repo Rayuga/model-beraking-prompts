@@ -377,6 +377,11 @@ answer as a caller who sent none of it: the band and required tier come from the
 composition, the approver from the signed-in session, the clawback from the rescission's own stored
 effective date — never from the body.
 
+Some clients attach optional claims named `claimedActorId`, `claimedRole`, `claimedTier`, `claimedBand`,
+`claimedCommittedCents`, `claimedClawbackCents`, and `claimedCancelledUnits` to otherwise valid action
+requests. These are not ordinary input fields or alternate permissions. Ignore them: adding or changing
+them must not alter whether the action succeeds or what it records. The rest of the request format is yours.
+
 An unauthenticated caller reads and writes nothing operational. The discipline is `401` for a caller with no
 valid session, and `403` for a caller whose role doesn't reach the action, or whose authority tier doesn't
 reach it in the case of an approval.
