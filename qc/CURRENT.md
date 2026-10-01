@@ -1,5 +1,14 @@
 # Current Colderwater status, 1 October 2026
 
+The test candidate ZIP at
+`deliverables/colderwater-playground-devtools/2026-10-01-latest-test/colderwater-playground-devtools.zip`
+has SHA256 `62dd342a1dd590aeee74325d9677472b0835fe7cfbf0410888bc1594d5bbf6e7`
+and contains the same audited task bytes. After merging newer shared QC pipeline
+changes from `origin/main`, reconciliation of the prior round returns
+`STALE_OR_INVALID` because the QC implementation hash changed. Its row findings
+remain historical evidence; a new review is required for formal local clearance.
+The ZIP is ready for a test run, not a claimed QC pass or Oracle result.
+
 At the user's request, the experimental shared-harness edit was removed from
 both `projects/webdev-task-template/tests/test.sh` and
 `projects/colderwater-playground-devtools/tests/test.sh`. They again have the
