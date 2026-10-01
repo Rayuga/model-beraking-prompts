@@ -30,7 +30,7 @@ def check_task(task):
     prompt=read('tests/scored/functional/prompt.md');context=read('tests/app_context.md')
     protocols=set(re.findall(r'^### (S\d{2})\b',prompt,re.M))
     keys=[re.match(r'(S\d{2})\.([a-z0-9_]+):',r['description'].strip()) for r in rows]
-    add('75 independent functional outcomes at32.40',len(rows)==75 and sum(Decimal(str(c['weight'])) for c in rows)==Decimal('32.40'))
+    add('79 independent functional outcomes at32.85',len(rows)==79 and sum(Decimal(str(c['weight'])) for c in rows)==Decimal('32.85'))
     add('restart survival examples and later writing have independent credit',by_id['cw_process_restart_durability']['weight']==1.8 and by_id['cw_process_restart_write']['weight']==0.5 and by_id.get('cw_restart_example_inventory',{}).get('weight')==0.2 and 'do not inherit the durability verdict' in by_id['cw_process_restart_write']['description'])
     add('23 bounded protocols exactly cover every evidence key',len(protocols)==23 and all(keys) and {m[1] for m in keys if m}==protocols and len({m[0] for m in keys if m})==len(rows))
     add('no dangling scenario references',set(re.findall(r'\bS\d{2}\b',prompt+context))<=protocols)
@@ -54,6 +54,7 @@ def check_task(task):
     add('launch contract discloses variable current directory','current working directory may be outside /app' in public and 'rather than assuming where the command was started' in public)
     add('restart example inventory has public coverage and independent observation','same built-in example choices, without extra copies' in public and 'S22.restart_example_inventory' in prompt and 'If saved records fail, still compare the example inventory' in prompt)
     add('public CSS uses built-in sample without prior-style copy', 'For CSS, apply the stylesheet to a small built-in sample page' in public and 'copy of the last successful document' not in public)
+    add('extension capitalization is optional and has no duplicate outcome', 'cw_extension_case' not in by_id and not re.search(r'case.insensitive|capitals in the extension|uppercase extension', public+context, re.I) and all('dispatch.'+ext in prompt for ext in ['js','html','css']) and not any('dispatch.'+ext in prompt for ext in ['JS','HTML','CSS']) and 'other extension capitalizations is optional' in prompt)
     add('completed Stop retention is independently scored', by_id.get('cw_completed_stop_preview',{}).get('weight')==0.1 and by_id['cw_completed_stop']['weight']==0.2 and 'independently of handler suppression' in by_id['cw_completed_stop_preview']['description'])
     add('restart readback covers all actual saved fields', 'every actual saved record' in by_id['cw_process_restart_durability']['description'] and 'exact source and revision' in by_id['cw_process_restart_durability']['description'])
     add('public launch names all injected environment variables', all(v in public for v in ['PATH=', 'NODE_PATH=', 'HOME', 'PORT=', 'DB_PATH']))
@@ -65,4 +66,9 @@ def check_task(task):
     add('duration requires observed elapsed measurement and terminal states','constant numeric placeholder' in by_id['cw_console_duration']['description'] and 'cw_terminal_durations' in by_id)
     add('isolation permits legitimate host title updates','Legitimate app-owned title/status changes are allowed' in by_id['cw_preview_origin_boundary']['description'])
     add('text-only storage has bounded controlled canary without universal assurance claim','cw_save_load_execution_canary' in by_id and 'not proof that all server evaluation is absent' in by_id['cw_save_load_execution_canary']['description'])
+    add('HOME is staging rather than guaranteed app location','HOME is a writable staging directory and may differ from the directory containing server.js' in public)
+    add('installer refuses unverifiable or active database reset', all(s in read('solution/solve.sh') for s in ['bigint: true','error.code === \'ENOENT\'','if (gone(error)) continue; throw error;','cannot safely reset the database']))
+    add('pending replacement observes each supported language', all(k in by_id for k in ['cw_supersede_pending','cw_pending_html_supersession','cw_pending_css_supersession']) and all(s in prompt for s in ['replacement.html','replacement.css','the shared matching A callback control']))
+    add('later interaction error has independent message line and rollback credit', all(k in by_id for k in ['cw_completed_error_message','cw_completed_error_line','cw_completed_error_rollback']) and all(s in prompt for s in ['late-interaction-failure','interactionLastGood','line 5','failed-partial-picture']))
+    add('unsupported execution probes have visible authored markers', all(s in prompt for s in ['unsupported-eval-executed','unsupported-function-executed','unsupported-wasm-completed','unsupported-worker-executed','unsupported-import-executed','quoted inside an error explanation is not evidence']))
     return {'task':str(task),'scope':'Source regression guards; not a hosted QC verdict or Oracle measurement','passed':all(c['passed'] for c in checks),'checks':checks}

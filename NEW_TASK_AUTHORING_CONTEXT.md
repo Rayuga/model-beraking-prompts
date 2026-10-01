@@ -1,6 +1,6 @@
 # New WebDev task authoring context
 
-**29 September review entry point:** use [local QC](qc/README.md) and [review policy](qc/REVIEW_POLICY.md). They require both the workbook and skill, three independent full reviews, hash-bound evidence and reconciliation. Keep shared harness code unchanged; do not restore historical custom incomplete-evaluation guards. Previous task outcomes below are history, not current clearance.
+**1 October review entry point:** use [local QC](qc/README.md) and [review policy](qc/REVIEW_POLICY.md). Current user instructions require ONE audit round with a separate fresh reviewer for each of 53 quality rows, plus review of all 48 deterministic rows, using both workbook and skill. Finish and reconcile the round, then fix confirmed defects before another round. Do not repeat three full audits. Keep hash-bound evidence and shared harness policy unchanged; historical reports remain history. Justified timeout changes below five hours are authorized per lead guidance, but no automatic increase is permitted and current budgets remain unchanged without a measured reason.
 
 Reviewed against the supplied repository sources on **26 September 2026**. Start here, then follow [TASK_AUTHORING_WORKFLOW.md](TASK_AUTHORING_WORKFLOW.md). These documents describe the new **staged** task family. Historical releases remain in their existing folders; their configuration is not the starter for new work.
 

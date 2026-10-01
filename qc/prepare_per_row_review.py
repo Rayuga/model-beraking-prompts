@@ -7,10 +7,26 @@ import openpyxl
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--run', required=True, help='Existing prepared run, relative to workspace')
-parser.add_argument('--evidence', required=True, help='Raw evidence index, relative to workspace')
+parser.add_argument('--evidence', help='Raw evidence index (required only for historical supplemental audits)')
 args = parser.parse_args()
 base = (root / args.run).resolve()
 assert base.is_relative_to(root / 'qc/runs') and (base/'manifest.json').is_file()
+sys.path.insert(0, str(root/'scripts'))
+from qc_pipeline import read, review_mode, verify_frozen
+current_manifest=read(base/'manifest.json')
+if review_mode(current_manifest)=='single-per-row':
+    problems=verify_frozen(base,current_manifest)
+    if problems:raise ValueError('; '.join(problems))
+    if args.evidence:
+        allowed=set(current_manifest['inputs']['review_contract']['evidence_index'])
+        allowed.add((base/'raw-evidence-index.json').relative_to(root).as_posix())
+        if Path(args.evidence).as_posix() not in allowed:
+            raise ValueError('Use the frozen evidence index or run/raw-evidence-index.json; do not overwrite prepared assignments')
+    print(json.dumps({'directory':str(base/'per-row-review'),'prompts':53,
+                      'deterministic_prompt':'prompts/deterministic.md','review_mode':'single-per-row',
+                      'note':'Already prepared by qc_pipeline.py; no reports or prompts overwritten.'}))
+    raise SystemExit(0)
+if not args.evidence:parser.error('--evidence is required for a historical supplemental audit')
 out = base / 'per-row-review'
 out.mkdir(exist_ok=True)
 (out/'prompts').mkdir(exist_ok=True)

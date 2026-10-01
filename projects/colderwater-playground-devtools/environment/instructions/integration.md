@@ -4,7 +4,7 @@ TypeScript, React and Vite would be convenient for the browser app, but the fron
 
 Put the finished app in /app. We start it with node /app/server.js, and the current working directory may be outside /app. Resolve local files from their actual location rather than assuming where the command was started. It needs to listen on 0.0.0.0:3000, serve the workspace at / and answer GET /api/health successfully and promptly. The routes and file layout under /app are up to you.
 
-The launch environment supplies PORT=3000, NODE_PATH=/usr/local/lib/node_modules and PATH=/usr/local/bin:/usr/bin:/bin. HOME points to the directory containing the running app copy. Use DB_PATH for the database location when it is supplied.
+The launch environment supplies PORT=3000, NODE_PATH=/usr/local/lib/node_modules and PATH=/usr/local/bin:/usr/bin:/bin. HOME is a writable staging directory and may differ from the directory containing server.js. Resolve application files from their actual location. Use DB_PATH for the database location when it is supplied.
 
 The database is /app/app.db unless DB_PATH supplies a different location. Saved snippets, identities and revisions need to survive a browser reload and a complete process restart over the same database. After restarting, I should have the same built-in example choices, without extra copies, and no duplicate saved records.
 

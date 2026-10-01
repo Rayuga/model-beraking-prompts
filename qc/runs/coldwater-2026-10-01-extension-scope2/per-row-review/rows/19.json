@@ -1,0 +1,37 @@
+{
+  "number": 19,
+  "id": "solution_honors_the_runtime_contract_and_is_self_contained",
+  "reviewer": "row-reviewer-19",
+  "input_sha256": "ce4b8f85ae12d3b7c3fe222c948c79364600e082541c3b04f1a16039a553cea8",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-2026-10-01-extension-scope2/rules/WebDev Rubrics QC.xlsx: Quality Checks!A20:D20 (quality row 19), Internal Quality Checks!A20:D20, Deterministic Checks!A34:C34; both complete quality/deterministic inventories read and enumerated (53/48)",
+    ".qc-cache/coldwater-2026-10-01-extension-scope2/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-2026-10-01-extension-scope2/rules/harbor-webdev-rubric-qc/references/quality-checks.md:83-85",
+    ".qc-cache/coldwater-2026-10-01-extension-scope2/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md:62",
+    ".qc-cache/coldwater-2026-10-01-extension-scope2/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md",
+    ".qc-cache/coldwater-2026-10-01-extension-scope2/rules/projects/webdev-task-template/solution/solve.sh",
+    ".qc-cache/coldwater-2026-10-01-extension-scope2/rules/projects/webdev-task-template/environment/instructions/integration.md",
+    ".qc-cache/coldwater-2026-10-01-extension-scope2/rules/projects/webdev-task-template/environment/Dockerfile",
+    "qc/README.md; qc/REVIEW_POLICY.md; NEW_TASK_AUTHORING_CONTEXT.md:104-108,287; TASK_AUTHORING_WORKFLOW.md:64-72,267",
+    ".qc-cache/coldwater-2026-10-01-extension-scope2/task/instruction.md; task/environment/instructions/integration.md; task/environment/assets/seed_data.json (all under the same frozen root)",
+    ".qc-cache/coldwater-2026-10-01-extension-scope2/task/solution/solve.sh:1-26; task/solution/app/server.js:1-130; task/solution/app/package.json (all under the same frozen root)",
+    ".qc-cache/coldwater-2026-10-01-extension-scope2/task/environment/Dockerfile; task/tests/Dockerfile; task/tests/test.sh:87-110 (all under the same frozen root)",
+    "qc\\runs\\coldwater-2026-10-01-extension-scope2\\raw-evidence-index.json; LOCAL_PROOF_SUMMARY.json (same run)",
+    "qc\\runs\\coldwater-2026-10-01-extension-scope2\\golden\\drivers\\launch_workflow.py:1-110; golden/run-golden-20261001-051714/{RESULTS.json actual_app_files,post-results.json S22 facts,actual-restart.json} (same run)",
+    "qc\\runs\\coldwater-2026-10-01-extension-scope2\\final-source-checks\\shell-syntax.json",
+    "qc/repairs/coldwater-2026-10-01-ready-loop/dbpath-probe/probe.py; results/RESULTS.json; results/command.json (same probe directory)",
+    "qc\\runs\\coldwater-2026-10-01-extension-scope2\\row19-runtime\\probe.py; command.json; RESULTS.json; stdout.log; stderr.log; host-result.json; install/app raw logs (same probe directory)"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "Bounded installer-lifecycle defect, not an observed ordinary-start or hosted Oracle failure. TASK_AUTHORING_WORKFLOW.md:267 explicitly says an installation-only reset must refuse active database use; NEW_TASK_AUTHORING_CONTEXT.md:287 asks for active-install-refusal evidence. The frozen solution/solve.sh:14-25 scans /proc descriptors then removes /app/app.db, app.db-wal and app.db-shm. It treats failure to find an accessible matching descriptor as proof that deletion is safe. In the isolated no-network Docker probe, initial install copied every frozen app file byte-for-byte, bash -n returned 0, and an active root-owned server made the installer return 1 with its intended refusal. But after starting node /app/server.js from /tmp as UID 65534 with the documented sanitized environment and saving a record (HTTP 201), the same installer returned 0 and removed the still-open canonical database. row19-runtime/RESULTS.json records active_unprivileged_refused=false and active_unprivileged_database_still_exists=false; probe.py:98-103 shows the exact successful-save/active-install sequence. The actual shared test.sh:87-110 also uses UID 65534, so this is a supported app process identity, although running solve.sh concurrently with that verifier process is not part of the normal install-before-start sequence. Scope qualification: workbook row 19 and Harbor quality-checks ?19 do not explicitly require concurrent reinstallation; the public integration note specifies startup and process-restart durability, not running the installer while an app is live. The active-install obligation above comes from the repository authoring workflow. Do not infer an Oracle-grade failure from this optional execution ordering. Positive runtime evidence: the fresh probe observed / and /api/health HTTP 200, external working directory /tmp, exact record retention across ordinary restart, fresh empty library after a closed reinstall, and UID-65534 startup/restart using /app/alternate/data.sqlite without creating /app/app.db. Frozen server.js:8 honors DB_PATH, lines 100-102 resolve browser assets from __dirname, and lines 113-129 create only a guarded schema without seed insertion; the seed contains no user records. solve.sh has its shebang, LF bytes, no pkill or NODE_ENV=production, and confines writes to /app. Current scripted golden app-file hashes match the frozen app exactly; its S22 facts show five example choices before/after a real restart and unchanged saved record identities/revisions. All 102 current_golden, five current_source_checks, nine unchanged_golden_dbpath_control, and 14 current_agent_image_build_and_smoke indexed artifact hashes were verified with no mismatch. The older DB_PATH control is reused only for identical server SHA256 17d8b0e5b9cfb56a92ddd3323dcf6d1f9d3d5dde948a809b2cbdc41694cc45a4. Adversarial check: the indexed ignores-db-path mutation passes ordinary save/read when the selected path happens to equal the default, but fails the nonadjacent-path check; both the unchanged server control and fresh probe honor the conforming alternative DB_PATH. Public network allowance supersedes the internal workbook row's stale no-network wording. These are scripted local observations, not configured judge scores or private deterministic checker execution. New raw artifacts are bound in row19-runtime/artifact-hashes.json; RESULTS.json SHA256 837a5e5659c1742c389e8c20a7248577de4679dfdf62b618666cafbfedd0005a.",
+  "counterexample": "Run the frozen installer, give /app to UID 65534 as the shared launcher does, start node /app/server.js from /tmp with DB_PATH=/app/app.db, successfully save a record, and while that server remains live run bash /task/solution/solve.sh as container root. In the measured image sha256:46fefc505dbcabf0d6cb4e54fea8f0880acde2f7896587750af967427598977d it exits 0 and unlinks the open database, contradicting the repository active-install refusal requirement. This is a concurrent reinstall counterexample; normal initial install and process restart passed.",
+  "suggested_fix": "Make the installer refuse a database reset whenever it cannot establish that the canonical database is closed, including descriptor visibility limitations across process UIDs; retain the successful closed-install and ordinary-restart behavior and remeasure both active-user cases in a new candidate.",
+  "run_verdict": "CONFIRMED"
+}

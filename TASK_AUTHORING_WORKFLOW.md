@@ -1,6 +1,6 @@
 # New WebDev task authoring workflow
 
-**29 September:** source review and final delivery use [the three-review QC pipeline](qc/README.md) and [current review policy](qc/REVIEW_POLICY.md). Each independent reviewer covers the whole workbook using the supplied skill. Fix or refute every credible finding, then rebind evidence; no majority vote or portal-pass guarantee.
+**1 October:** source review and final delivery use [the single-round QC pipeline](qc/README.md) and [current review policy](qc/REVIEW_POLICY.md). Run ONE audit round with one separate fresh reviewer per each of 53 quality rows and a separate complete review of 48 deterministic rows, using the workbook and supplied skill. Finish the round, reconcile all findings, and fix confirmed defects before another round. Historical three-full-review reports remain intact. A credible finding blocks; no majority vote or portal-pass guarantee. The user permits justified timeout changes below five hours per lead guidance, with a recorded reason and authorization; current budgets remain unchanged without a measured reason.
 
 Read [NEW_TASK_AUTHORING_CONTEXT.md](NEW_TASK_AUTHORING_CONTEXT.md) first. This workflow turns the current staged contract into a repeatable authoring process. It also distinguishes source checks, local execution, paid grading, and platform acceptance.
 

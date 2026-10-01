@@ -9,6 +9,10 @@ parser.add_argument('--run',required=True)
 args=parser.parse_args()
 base=(root/args.run).resolve()
 assert base.is_relative_to(root/'qc/runs')
+sys.path.insert(0,str(root/'scripts'))
+from qc_pipeline import read, review_mode, reconcile
+if review_mode(read(base/'manifest.json'))=='single-per-row':
+    raise SystemExit(reconcile(base))
 out=base/'per-row-review'
 assignment=json.loads((out/'assignment.json').read_text(encoding='utf-8'))
 manifest=json.loads((base/'manifest.json').read_text(encoding='utf-8'))

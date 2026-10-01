@@ -1,12 +1,12 @@
-# Review policy, 29 September 2026
+# Review policy, 1 October 2026
 
-Read this alongside the supplied skill; it records repository-specific lessons, not replacement rubric rows. The current user asked for three independent parallel reviews using both the workbook and skill. The workbook inventory is 53 quality rows and 48 deterministic rows. The latter are applied manually when private checker executables are unavailable; do not label a manual review a portal checker run.
+Read this alongside the supplied skill; it records repository-specific lessons, not replacement rubric rows. The current user requires ONE audit round with one separate fresh reviewer context for each of the 53 quality rows, using both workbook and skill. The 48 deterministic rows also require a complete separate review. Finish this round, reconcile findings, and fix confirmed defects before another round; do not perform three duplicate full audits. Deterministic rows may be applied manually when private checker executables are unavailable; do not label a manual review a portal checker run.
 
 ## Independence and reconciliation
 
-Each reviewer reads the frozen task, workbook, skill references and template. Different starting angles reduce shared blind spots: requirements and coverage; conforming alternatives and weak apps; actual tools, runtime and workload. Each still reviews every row. A third opinion does not cancel a demonstrated defect. Adjudication needs the counterexample, the relevant public requirement, concrete evidence and another reviewer's confirmation.
+Each quality reviewer reads the frozen task, workbook, skill references and template as needed to review exactly one assigned row deeply. Use a fresh context per row, with no access to other reviewers' verdicts until the round finishes. A separate reviewer covers all 48 deterministic rows. Scheduling in batches is allowed when concurrency is limited; do not reuse a quality reviewer context for another row. Inspect requirements and coverage, conforming alternatives and weak apps, and actual tools/runtime whenever relevant to the assigned row. A demonstrated defect blocks. Adjudication needs the counterexample, relevant public requirement, concrete evidence and a different assigned reviewer's confirmation after independent reviews finish.
 
-The pipeline validates records and hashes; it cannot prove a reviewer read a document, independently reasoned, or correctly interpreted a log. Even three distinct reports can share a mistaken assumption. Inspect disagreements and findings substantively.
+The pipeline validates records and hashes; it cannot prove a reviewer read a document, used a fresh context, independently reasoned, or correctly interpreted a log. Distinct report IDs are necessary recordkeeping, not proof of independence. Inspect findings substantively. Historical manifests without mode retain the three-full-review contract; never rewrite their reports or present their old clearance as current.
 
 ## Specific lessons that override broad historical advice
 
@@ -22,7 +22,7 @@ The pipeline validates records and hashes; it cannot prove a reviewer read a doc
 
 **Tool feasibility comes before rubric cleverness.** Use available browser contexts and restart tools. Avoid hidden execution-realm probes, private-source classifiers, one-second timing distinctions and an arbitrary app-route assumption. Define ambiguous or missing evidence consistently across prompt, context and criterion.
 
-**Workload is measured, not inferred from a timeout number.** Keep canonical budgets. Reduce scope and redundant browser work together; removing a criterion alone can create a coverage gap. Scripted Playwright duration is not LLM judge duration. Preserve partial product evidence and report evaluator failures honestly; do not patch frozen test.sh or its policy to manufacture a score.
+**Workload is measured, not inferred from a timeout number.** Keep canonical budgets unless a specific justified change is authorized. The user permits justified timeout changes below five hours per lead guidance; this is not an automatic increase. Record the concrete workload reason, exact setting and authorization and adapt the checker narrowly before freezing such a candidate. Current budgets remain unchanged because no full configured timing measurement justifies a particular increase. Reduce scope and redundant browser work together; removing a criterion alone can create a coverage gap unless the public scope also changes. Scripted Playwright duration is not LLM judge duration. Preserve partial product evidence and report evaluator failures honestly; do not patch frozen test.sh or its policy to manufacture a score.
 
 **A fix can invalidate more than the changed line.** Recheck brief, all injected prompts, criteria, golden behavior, reward, tool feasibility and workload as one candidate. Do not reuse old Oracle or model scores after changing their inputs.
 
@@ -34,4 +34,4 @@ The user reports that source QC uses three reviews and Opus 5.5. We have not ind
 
 ## Repeated findings and alleged nondeterminism
 
-Compare candidate manifests and exact check IDs, quoted lines, public requirements and run conditions. A previously passed check that later fails after edits does not prove reviewer nondeterminism. On identical inputs, differing judgments are evidence of review variability, but the counterexample still needs adjudication. Keep all three original reports and every decision; do not select the most favorable result. Changes to the skill, workbook or checker implementation are input changes too.
+Compare candidate manifests and exact check IDs, quoted lines, public requirements and run conditions. A previously passed check that later fails after edits does not prove reviewer nondeterminism. On identical inputs, differing judgments are evidence of review variability, but the counterexample still needs adjudication. Keep every original row report, the deterministic report and every decision, as well as historical three-review reports; do not select the most favorable result. Changes to the skill, workbook or checker implementation are input changes too.

@@ -1,0 +1,1 @@
+The initial row22-runtime attempt exited before any smoke checks because it assumed /tests/Dockerfile was retained in the image. The corrected probe records frozen Dockerfile hash and immutable image identity without asserting absent in-image source. This does not establish full build provenance or configured grading. Original failed logs are retained.

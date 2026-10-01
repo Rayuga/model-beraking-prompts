@@ -1,0 +1,40 @@
+{
+  "number": 11,
+  "id": "timeouts_fit_the_work",
+  "reviewer": "row-reviewer-11",
+  "input_sha256": "ce4b8f85ae12d3b7c3fe222c948c79364600e082541c3b04f1a16039a553cea8",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-2026-10-01-extension-scope2/rules/WebDev Rubrics QC.xlsx: Quality Checks!A12:D12; Internal Quality Checks!A12:D12 (both sheets and Deterministic Checks read; row 11 has no additional annotation)",
+    ".qc-cache/coldwater-2026-10-01-extension-scope2/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-2026-10-01-extension-scope2/rules/harbor-webdev-rubric-qc/references/quality-checks.md: check 11",
+    ".qc-cache/coldwater-2026-10-01-extension-scope2/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md: task.toml, test.sh and restart-tool budgets",
+    ".qc-cache/coldwater-2026-10-01-extension-scope2/rules/harbor-webdev-rubric-qc/scripts/list_checks.py (executed; exit 0 and row 11 enumerated)",
+    ".qc-cache/coldwater-2026-10-01-extension-scope2/rules/projects/webdev-task-template/task.toml:18,21,27",
+    ".qc-cache/coldwater-2026-10-01-extension-scope2/rules/projects/webdev-task-template/tests/test.sh:33-58,115-124,130-183,203-227",
+    ".qc-cache/coldwater-2026-10-01-extension-scope2/rules/projects/webdev-task-template/tests/tools/restart_mcp.py:11,34-43",
+    ".qc-cache/coldwater-2026-10-01-extension-scope2/rules/projects/webdev-task-template/tests/gates/{render,constraints}/judge.toml:1-6 and tests/scored/{functional,polish,visual}/judge.toml:1-6",
+    ".qc-cache/coldwater-2026-10-01-extension-scope2/task/task.toml:18,21,27,31-32",
+    ".qc-cache/coldwater-2026-10-01-extension-scope2/task/tests/test.sh:33-58,115-124,130-183,203-227",
+    ".qc-cache/coldwater-2026-10-01-extension-scope2/task/tests/tools/restart_mcp.py:11,34-43",
+    ".qc-cache/coldwater-2026-10-01-extension-scope2/task/tests/gates/{render,constraints}/judge.toml:1-6 and tests/scored/{functional,polish,visual}/judge.toml:1-6; criterion counts parsed",
+    ".qc-cache/coldwater-2026-10-01-extension-scope2/task/tests/scored/functional/prompt.md:9-23,98-113 and protocol action/timing estimates",
+    ".qc-cache/coldwater-2026-10-01-extension-scope2/task/instruction.md; task/environment/instructions/integration.md:5-13",
+    ".qc-cache/coldwater-2026-10-01-extension-scope2/task/environment/Dockerfile; task/tests/Dockerfile (read and compared to frozen template)",
+    "qc/README.md: Runtime evidence; qc/REVIEW_POLICY.md: workload and runtime evidence",
+    "qc/runs/coldwater-2026-10-01-extension-scope2/raw-evidence-index.json (current hash d3c56b90b8608c10e885e29e95d62cf39f79a8c09fd65038ad9a09e5cb7313f0; all 315 listed artifact hashes verified, no missing/mismatch)",
+    "qc/runs/coldwater-2026-10-01-extension-scope2/golden/host-golden-all-20261001T051712Z/command.json and RESULT.json (metadata read)",
+    "qc/runs/coldwater-2026-10-01-extension-scope2/golden/run-golden-20261001-051714/RESULTS.json (timing/driver/source-binding fields) and actual-restart.json"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P1",
+  "evidence": "Static suite arithmetic is correct: both gate judges are 600s (judge.toml:4), so sequential 600+600=1200<1500; scored judges are 9000+900+900=10800<11100; 1500+11100=12600<13200, leaving 600s outside suites. test.sh:207 explicitly uses --max-concurrent-agent 1. Agent/build budgets are canonical 7200/600s (task.toml:18,21); no measured cold-build or builder completion establishes sufficiency. However liveness does not have a nested wall-clock bound: test.sh:50 and :138 call urllib.request.urlopen(url, timeout=2).read(), and :116-122 / :171-177 perform 120 iterations with 0.25s sleep. Two full socket timeouts per iteration take approximately 120*(2+2+0.25)=510s, excluding process overhead; the restart wrapper instead kills its helper after 55s (restart_mcp.py:11,39), so that inner wait does not fit its outer budget. A response that continuously delivers body bytes need not finish .read() at all; the initial readiness call has no surrounding wall-clock timeout. Cleanup also has an unbounded wait after SIGTERM (test.sh:33-38), so the 600s apparent verifier margin is not a guaranteed total bound. These bytes are unchanged shared-template code: current and frozen-template test.sh both hash bd68259276ca4b034654efc8a1723a4e702ed62dbe590af6201565f43eabe5aa; restart_mcp.py both hash 03c1426f00e451f4d86b7547761715328c63cdf299f5f812f46c9fa3b44979b5. Offline Python 3.12 socket reproduction used a localhost server returning seven bytes at 0.5s intervals, then the exact urlopen(...,timeout=2).read() expression: it completed in 3.000s, proving 2s is not a total-request bound. The first local attempt hit the host proxy (HTTP 400); the corrected run explicitly disabled proxies for this local fixture and succeeded. This is a library-semantics reproduction, not an execution of the frozen verifier container. Positive current golden evidence: actual-restart.json reports one successful canonical MCP call in 5.599140s (SHA256 8ad9a4a2e7aada61c4f4a45a07574b540de4e9c0fb7f9ff9f2c8556bc5080ada), which does not exercise the slow/unending response case. Independently, required full configured workload remains unmeasured: raw-evidence-index.json explicitly lists Full configured judge completion/workload as not_measured and runtime-evidence.json is absent. The current golden RESULTS.json says browser_driver=direct pinned Playwright, paid_provider=false and wall_seconds=116.595608784; host RESULT.json says provider_or_platform=false and wall_seconds=119.594. Their verified hashes are c7e553fb3c51a25f29e60ef1d417f3471547c0b37e4b1887d4c2f8eeee97050d and b119ada03db5a35e8c41de84cb7695f286726a11e46dd44c54aefdbd2a47b8e7. This is not timing for claude-code/z-ai/glm-5.3-flashx. Functional has 74 outcomes across 23 shared protocols and acknowledges at prompt.md:102,113 that action estimates/batching do not establish full 9000s judge completion. No Oracle, model or portal result is inferred.",
+  "counterexample": "Broken-app/source witness: a server whose health response sends a byte every 0.5s indefinitely keeps the initial .read() alive although each socket operation stays below 2s; the client can spend the entire 13200s verifier window without starting a judge. A nonanswering listener also makes the restart readiness loop capable of roughly 510s while its MCP parent aborts at 55s. A SIGTERM-ignoring app can leave final cleanup waiting indefinitely. These do not pass the row merely because suite constants add up. Conforming-alternative workload risk (not an observed failure): a complete app with legitimate app-specific dialogs and different controls can require additional browser discovery and permitted retries across the 23 protocols; source action estimates and the 116.6s scripted golden cannot rule out the configured LLM judge exceeding 9000s and losing grading evidence. No measured false failure or precise replacement budget is claimed.",
+  "suggested_fix": "Escalate the shared-template liveness/cleanup defect with a separately reviewable bounded-deadline and termination proposal; do not edit this task to bypass canonical code. Before clearance, obtain authorized hash-bound cold-build, builder and full configured-judge timing evidence on this candidate, including allowed alternate interaction paths; keep current budgets unless measured workload justifies an explicitly authorized change below five hours.",
+  "run_verdict": "PARTIAL"
+}

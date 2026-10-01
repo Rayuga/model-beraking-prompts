@@ -1,0 +1,42 @@
+{
+  "number": 21,
+  "id": "verifier_entrypoint_is_safe_and_always_scores",
+  "reviewer": "row-reviewer-21",
+  "input_sha256": "6a1e1645d3f5518ba2b935fdb339053a96ae6cbfbaeb48546616d752f3133ca2",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-2026-10-01-lifecycle-controls/rules/WebDev Rubrics QC.xlsx: Quality Checks row 22 (check 21), Internal Quality Checks row 22; actual workbook cells and comments read with openpyxl",
+    ".qc-cache/coldwater-2026-10-01-lifecycle-controls/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-2026-10-01-lifecycle-controls/rules/harbor-webdev-rubric-qc/references/quality-checks.md:92-94",
+    ".qc-cache/coldwater-2026-10-01-lifecycle-controls/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md:98-111",
+    ".qc-cache/coldwater-2026-10-01-lifecycle-controls/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md:40-50",
+    ".qc-cache/coldwater-2026-10-01-lifecycle-controls/rules/projects/webdev-task-template/tests/test.sh",
+    ".qc-cache/coldwater-2026-10-01-lifecycle-controls/task/tests/test.sh",
+    ".qc-cache/coldwater-2026-10-01-lifecycle-controls/task/tests/tools/score.py",
+    ".qc-cache/coldwater-2026-10-01-lifecycle-controls/task/tests/Dockerfile",
+    ".qc-cache/coldwater-2026-10-01-lifecycle-controls/task/environment/instructions/integration.md:5-15",
+    ".qc-cache/coldwater-2026-10-01-lifecycle-controls/task/tests/scored/functional/judge.toml:360-378",
+    "qc/README.md",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/coldwater-2026-10-01-lifecycle-controls/raw-evidence-index.json",
+    "qc/runs/coldwater-2026-10-01-lifecycle-controls/final-source-checks/shell-syntax.json",
+    "qc/proposals/coldwater-shared-harness/evidence/results.json: original variant raw observations",
+    "qc/proposals/coldwater-shared-harness/evidence/original-cleanup-term-ignored/cleanup.sh and server.js",
+    "qc/proposals/coldwater-shared-harness/evidence/original-term_ignored/generate-helper.sh, server.js and app-restart.log",
+    "qc/proposals/coldwater-shared-harness/evidence/original-scored_error/suite.sh, logs/scored/rewardkit.log and logs/reward.json",
+    "qc/proposals/coldwater-shared-harness/evidence/original-scored_timeout/logs/reward.json",
+    "qc/proposals/coldwater-shared-harness/evidence/original-successful_grade/logs/reward.json and original-gate_product_failure/logs/reward.json",
+    "qc/runs/coldwater-2026-10-01-extension-scope2/launcher-timeout-control/run.py, command.json, source-binding.json, RESULTS.json and stdout.log"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P1",
+  "evidence": "The task and frozen template test.sh are byte-identical SHA256 bd68259276ca4b034654efc8a1723a4e702ed62dbe590af6201565f43eabe5aa, matching the indexed original controls. Independently hashed all 181 shared-harness artifacts, all 6 liveness-control artifacts and all 5 current source-check artifacts: no mismatches. Static comparison confirms current reward/cleanup functions and helper-generation block occur unchanged in the original control scripts; the suite tail is identical after only its scorer-path substitution. Current score.py SHA256 13de2b3885967e22aa13ded3bf33c354e3e741e85be871612c04e996eef5c04e and scoring.toml SHA256 95f70d6e06aae5e765b2309d88c444aa36d4cd82763ea2212781b6a99311bbba equal the control copies. Positive: task/tests/test.sh:60-61 writes zero before grading and installs the EXIT trap; :68-83 rejects missing entry/symlink escape; :104-111 launches UID 65534 with env -i; :115-125 probes readiness; :213-227 orders gates before scored. Indexed shell syntax has returncode 0. Existing successful synthetic suite control yields 0.7000 and failed-product gate yields 0 with scored skipped. Confirmed defect 1: task/tests/test.sh:224-225 exits immediately when the scored suite fails, bypassing score.py and write_zero_reward. The gate-only result already written at :217 remains graded=1/no_op=0. Original scored_error and scored_timeout controls retain reward=0, gates_passed=1, graded=1, no_op=0 (original-scored_error/logs/reward.json:7-12), despite evaluator failure. This conflicts with staged-task-contract.md:109 requiring plain zero on failure and misattributes evaluator failure to a graded submission. Confirmed defect 2: task/tests/test.sh:153-169 proceeds after a five-second SIGTERM wait without proving termination, overwrites app.pid, then accepts any HTTP responder (:170-183). Original term_ignored control reports exit 0/ready=1 but old_alive=true, old and after PID=34, volatile-marker retained; app-restart.log:5 records EADDRINUSE for the replacement and :21 still says ready=1. This undermines the complete-process-restart requirement in integration.md:9 and the durability evidence. Confirmed defect 3: cleanup waits without a bound at task/tests/test.sh:37 before ensure_reward at :39. The exact extracted cleanup with an ignoring child timed out after 10.012 seconds and required external kill; its initial zero reward existed, so this is a completion defect, not evidence that the reward file was absent. Additional bounded liveness concern: test.sh:50 and :138 call urlopen(..., timeout=2).read() without a wall-clock deadline. Hash-bound liveness control stdout.log:1 shows successful read after 3.5188 seconds under a two-second socket timeout. This proves the timeout is not a whole-response bound; an indefinitely trickling body can stall before the suite. This control was an expression test, not full launcher execution. These are existing extracted/synthetic controls, not configured judge results. No provider/process-security probes were run or repeated. Full configured judge and completed isolation measurements remain unavailable; no Oracle, model or portal claim is made.",
+  "counterexample": "Broken app: keep saved snippets only in process memory and install a SIGTERM handler that leaves the server alive. The existing original-term_ignored control demonstrates that restart_app can report success while the same PID and volatile marker survive, allowing apparent restart-durability evidence for a non-durable app. Conforming alternative: an otherwise correct durable app can pass gates, then encounter a judge/RewardKit timeout or error; the current tail reports graded=1/no_op=0 and zero functional credit without completed scoring. An ordinary graceful-shutdown handler that takes longer than five seconds also faces an overlapping replacement and false readiness. An app that ignores SIGTERM can keep EXIT cleanup waiting indefinitely.",
+  "suggested_fix": "Escalate these shared-template defects to the harness owner; preserve task/template bytes until an authorized shared fix. The shared fix should bound process shutdown and force termination when needed, verify old-process exit and replacement-process readiness before reporting restart success, bound readiness by elapsed time, and write the defined evaluator-failure zero/no-op record on any scored-suite failure while retaining diagnostics. Freeze a new candidate and rerun targeted controls after authorized changes; do not alter scoring policy or increase budgets to hide the failures.",
+  "run_verdict": "CONFIRMED"
+}

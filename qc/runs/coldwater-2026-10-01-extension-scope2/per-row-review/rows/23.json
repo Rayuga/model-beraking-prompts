@@ -1,0 +1,32 @@
+{
+  "number": 23,
+  "id": "verifier_and_instruction_agree_on_the_runtime_contract",
+  "reviewer": "row-reviewer-23",
+  "input_sha256": "ce4b8f85ae12d3b7c3fe222c948c79364600e082541c3b04f1a16039a553cea8",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-2026-10-01-extension-scope2/rules/WebDev Rubrics QC.xlsx: Quality Checks A24:D24 (quality #23); Internal Quality Checks A24:H24; Quality Checks and Deterministic Checks sheets read and enumerated as 53 and 48 using list_checks.py",
+    ".qc-cache/coldwater-2026-10-01-extension-scope2/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-2026-10-01-extension-scope2/rules/harbor-webdev-rubric-qc/references/quality-checks.md:100-102",
+    ".qc-cache/coldwater-2026-10-01-extension-scope2/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md",
+    ".qc-cache/coldwater-2026-10-01-extension-scope2/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md:50,60-64",
+    "qc/README.md; qc/REVIEW_POLICY.md",
+    ".qc-cache/coldwater-2026-10-01-extension-scope2/rules/projects/webdev-task-template/instruction.md; environment/instructions/integration.md; tests/test.sh (entire source; identical SHA256 to frozen task launcher)",
+    ".qc-cache/coldwater-2026-10-01-extension-scope2/task/instruction.md; environment/instructions/integration.md; environment/instructions/overview.md; environment/assets/seed_data.json",
+    ".qc-cache/coldwater-2026-10-01-extension-scope2/task/tests/test.sh; tests/Dockerfile; tests/app_context.md; tests/tools/restart_mcp.py; task.toml; environment/Dockerfile; solution/solve.sh; solution/app/server.js",
+    "qc/runs/coldwater-2026-10-01-extension-scope2/raw-evidence-index.json: current index read; relevant row19 runtime and CLI admission artifact hashes checked; full judge/workload, Oracle, Luna and empirical reward ranking remain explicitly unmeasured",
+    "qc/runs/coldwater-2026-10-01-extension-scope2/row19-runtime/RESULTS.json: raw launch observations only, SHA256 837a5e5659c1742c389e8c20a7248577de4679dfdf62b618666cafbfedd0005a; declared HOME=/app launch controls do not test canonical HOME=/tmp/submission",
+    "qc/runs/coldwater-2026-10-01-extension-scope2/row23-home-probe-v2/RESULTS.json: SHA256 4d77ca47bf9dd84ab7d2fe7e89fb381c2d571860a8df7529a39c1db3d23a69bb; command, fixture source, launcher prefixes, raw logs and source-binding read; every artifact hash verified"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P1",
+  "evidence": "The stated entry, port, health/root routes, PORT/NODE_PATH/PATH/DB_PATH, seed, server packages, arbitrary CWD and symlink restrictions otherwise match: task/environment/instructions/integration.md:3-15 versus task/tests/test.sh:48-56,68-111 and both Dockerfiles. Network remains public and no same-origin defect is asserted. Confirmed mismatch: frozen task/environment/instructions/integration.md:7 says \"HOME points to the directory containing the running app copy.\" The normal writable-/app branch of tests/test.sh:97-111 launches /app/server.js and uses /app/app.db but sets HOME=/tmp/submission; restart lines 160-167 repeat that assignment. Task and frozen template test.sh both hash to bd68259276ca4b034654efc8a1723a4e702ed62dbe590af6201565f43eabe5aa, so this is a task-note contract defect, not authorization to change shared harness logic. CONFIRMED by row23-home-probe-v2/RESULTS.json, source-binding.json and case raw logs: exact frozen launch prefix through restart-helper generation ran in no-network disposable image sha256:46fefc505dbcabf0d6cb4e54fea8f0880acde2f7896587750af967427598977d, with fresh app/database and no published ports. A golden-derived server generated the same public/index.html bytes under HOME/public and served __dirname/public. With only HOME corrected to /app, GET / was 200 and its body SHA256 was the exact golden index hash 8d29a2ddbebbb17a2e1cb35f3b6eebef6ece5f8da8aedcacf11a39accddcf9d0; unchanged canonical launch produced GET / 404 while GET /api/health remained 200. The process logged /app/server.js and HOME=/tmp/submission. All v2 artifact and source-binding hashes verified. Weak-app control: a server returning 503 for every route passes the launcher reachability predicate because HTTPError is accepted (test.sh:51-52), but this is only liveness admission; Render/Constraints still perform actual outcome checks, and no claim that this weak app earns a score is made. The first probe attempt is preserved separately in row23-home-probe; its measurement failed on /proc environ permission and provides no verdict. No RewardKit, full configured judge, Oracle, model or hosted score was measured.",
+  "counterexample": "A conforming implementation uses the explicitly documented HOME app directory to generate its HTML entry on startup, while Express serves the public directory relative to server.js. The tested alternative copies public/index.html.in to HOME/public/index.html and otherwise preserves the golden server, bundle and runtime behavior. It serves byte-identical golden HTML under the promised HOME=/app relationship, but the actual launcher generates the entry in /tmp/submission while serving /app/public, producing 404 for the workspace and exposing a correct-under-contract alternative to a gate failure. This is a demonstrated runtime false-fail mechanism, not a measured judge score.",
+  "suggested_fix": "Correct the task-authored integration note to say HOME is a writable staging directory that can differ from the entrypoint directory; require resolving app files from the entrypoint/module location and continue honoring DB_PATH, while preserving the protected shared launcher.",
+  "run_verdict": "CONFIRMED"
+}

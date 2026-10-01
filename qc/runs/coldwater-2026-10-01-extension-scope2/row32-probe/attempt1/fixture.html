@@ -1,0 +1,36 @@
+<!doctype html><meta charset="utf-8"><title>Row 32 late-refusal control</title>
+<label>Filename <input id="filename" value="probe.js"></label>
+<label>Source <textarea id="source"></textarea></label><button id="run">Run</button>
+<p id="status">Ready</p><section id="preview"></section><pre id="console"></pre>
+<script>
+// Deliberately bounded protocol fixture, not a complete playground submission.
+// Mode 'late' has the defect under review: validation reports failure after execution.
+window.probeMode = 'early';
+const source = document.querySelector('#source'), filename = document.querySelector('#filename');
+const status = document.querySelector('#status'), preview = document.querySelector('#preview');
+const output = document.querySelector('#console');
+addEventListener('message', event => {
+  if (event.data?.row32Log) output.textContent += event.data.row32Log + '\n';
+});
+function forbidden(code) {
+  return /\beval\s*\(|new\s+Function\s*\(|new\s+WebAssembly\.Module\s*\(|new\s+Worker\s*\(|\bimport\s*\(/.test(code);
+}
+document.querySelector('#run').onclick = async () => {
+  const code = source.value, rejected = forbidden(code);
+  status.textContent = 'Running';
+  function refuse() { status.textContent = 'Unsupported execution refused'; output.textContent += 'Unsupported execution refused\n'; }
+  if (rejected && window.probeMode === 'early') { refuse(); return; }
+  const candidate = document.createElement('iframe');
+  candidate.style.display = 'none';
+  const bootstrap = '<script>console.log=(...a)=>parent.postMessage({row32Log:a.map(String).join(" ")},"*");<\/script>';
+  candidate.srcdoc = filename.value.endsWith('.html') ? bootstrap + code : bootstrap + '<script>' + code + '<\/script>';
+  const loaded = new Promise(resolve => candidate.onload = resolve);
+  document.body.appendChild(candidate);
+  await loaded;
+  await new Promise(resolve => setTimeout(resolve, 200));
+  if (rejected) { candidate.remove(); refuse(); return; }
+  preview.replaceChildren(candidate);
+  candidate.style.display = 'block';
+  status.textContent = 'Complete';
+};
+</script>
