@@ -24,7 +24,7 @@ Auto-run should wait for a short pause in typing, with each later edit starting 
 
 A saved snippet has an identity, a title, a filename and its exact source. Save updates the record I'm editing. A new draft makes a separate record. Loading should bring back the title, filename and source unchanged.
 
-Use the .js or .html filename to choose the execution mode without a separate selector. Titles are just display names; records have their own identities.
+Use the .js or .html filename to choose the execution mode without a separate selector. Titles are just display names; two saved snippets can share one. Each record has its own identity.
 
 Two editors may have the same saved snippet open. Each successful saved change gets a revision, and Save refers to the revision that editor loaded. If another editor has moved it on, refuse the old operation without changing any field or revision. Keep my unsaved work so I can compare it with the latest copy, reload that copy and deliberately reapply my edit. We may keep editing from both windows, so this needs to keep working whichever editor saves first next time.
 

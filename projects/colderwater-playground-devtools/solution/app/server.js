@@ -41,7 +41,7 @@ function findRecord(id) {
 function fields(body) {
   if (!body || typeof body !== 'object' || Array.isArray(body)) throw problem('Supply a title, filename and code.');
   const title = typeof body.title === 'string' ? body.title : '';
-  const filename = typeof body.filename === 'string' ? body.filename.trim() : '';
+  const filename = typeof body.filename === 'string' ? body.filename : '';
   if (title.length > 120) throw problem('Use a title of at most 120 characters.');
   if (!filename || filename.length > 180 || /[\x00-\x1f/\\]/.test(filename) || !/\.(js|html)$/i.test(filename)) {
     throw problem('Use a filename ending in .js or .html, without directory paths.');

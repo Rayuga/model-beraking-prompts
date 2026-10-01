@@ -31,7 +31,7 @@ def check_task(task):
     prompt=read('tests/scored/functional/prompt.md');context=read('tests/app_context.md')
     protocols=set(re.findall(r'^### (S\d{2})\b',prompt,re.M))
     keys=[re.match(r'(S\d{2})\.([a-z0-9_]+):',r['description'].strip()) for r in rows]
-    add('80 functional outcomes at45.25',len(rows)==80 and sum(Decimal(str(c['weight'])) for c in rows)==Decimal('45.25'))
+    add('82 functional outcomes at45.25',len(rows)==82 and sum(Decimal(str(c['weight'])) for c in rows)==Decimal('45.25'))
     add('22 protocols cover unique evidence keys',len(protocols)==22 and all(keys) and {m[1] for m in keys if m}==protocols and len({m[0] for m in keys if m})==len(rows))
     add('no dangling scenario references',set(re.findall(r'\bS\d{2}\b',prompt+context))<=protocols)
     add('no custom incomplete-zero rule','EVALUATION_INCOMPLETE' not in prompt+context+read('tests/test.sh') and 'validate_suite' not in read('tests/test.sh'))
@@ -42,7 +42,8 @@ def check_task(task):
     add('withdrawn requirements absent from public notes',not re.search(r'light and dark themes|supply.*examples|CSS styles its built-in|titles.*unique|trim spaces at their edges',public,re.I))
     add('public launch contract preserved',all(x in public for x in ['node /app/server.js','/app/app.db','current working directory may be outside /app','DB_PATH','PORT=','NODE_PATH=','HOME','PATH=','Symbolic links are unsupported except links beneath /app/node_modules']))
     add('history and retry promises public',all(x in public for x in ['immutable snapshot','same attempt','exactly one','process restart','two editors','unsaved fields']))
-    add('history has independently owned outcomes',all(x in by_id for x in ['cw_history_snapshots','cw_history_inspection_draft','cw_history_inspection_no_execution','cw_history_restore','cw_restore_retry','cw_history_reload','cw_history_stale_restore','cw_history_stale_restore_draft','cw_racing_saves','cw_racing_save_restore','cw_history_restart','cw_restore_retry_restart']))
+    add('history has independently owned outcomes',all(x in by_id for x in ['cw_history_snapshots','cw_history_inspection_draft','cw_history_inspection_saved_head','cw_history_inspection_no_execution','cw_history_restore','cw_restore_retry','cw_history_reload','cw_history_stale_restore','cw_history_stale_restore_draft','cw_racing_saves','cw_racing_save_restore','cw_history_restart','cw_restore_retry_restart']))
+    add('navigation protections have independent owners',all(x in by_id for x in ['cw_document_switch_cancels_queue','cw_document_switch_open_does_not_run']))
     add('actual input-state rollback probe',all(x in prompt for x in ['user-edited-preview-741','Do not edit or rerun the source to set it','recorded user-entered value']))
     add('queued-run probes have continuing positive controls',all(x in prompt for x in ['manual_consumes_queue','document_switch_cancels_queue','Next make a genuine edit','measured-delay-plus-margin']))
     add('safe script-string fixture is authored data',"const scriptText = '</script><script>not executable</script>'" in prompt)

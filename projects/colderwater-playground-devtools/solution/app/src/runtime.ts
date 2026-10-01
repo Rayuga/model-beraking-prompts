@@ -326,14 +326,17 @@ export function buildRun(code: string, filename: string, token: string) {
     }
   }
   doc.querySelectorAll('script,meta[http-equiv],base,iframe,object,embed').forEach(element => element.remove());
-  for (const element of doc.querySelectorAll('*')) for (const attribute of Array.from(element.attributes)) {
-    if (attribute.name.toLowerCase().startsWith('on')) {
-      const id = 'handler-' + crypto.randomUUID(); element.setAttribute('data-cw-handler', id);
-      const at = location(element)?.handlers.get(attribute.name.toLowerCase()) || 0;
-      scripts.push({ text: `document.querySelector('[data-cw-handler="${id}"]').addEventListener(${JSON.stringify(attribute.name.slice(2))}, function(event){${attribute.value}});`, line: kind === 'html' ? sourceLine(at) : 0 });
-      element.removeAttribute(attribute.name);
+  for (const element of doc.querySelectorAll('*')) {
+    const handlerId = 'handler-' + crypto.randomUUID();
+    for (const attribute of Array.from(element.attributes)) {
+      if (attribute.name.toLowerCase().startsWith('on')) {
+        element.setAttribute('data-cw-handler', handlerId);
+        const at = location(element)?.handlers.get(attribute.name.toLowerCase()) || 0;
+        scripts.push({ text: `document.querySelector('[data-cw-handler="${handlerId}"]').addEventListener(${JSON.stringify(attribute.name.slice(2))}, function(event){${attribute.value}});`, line: kind === 'html' ? sourceLine(at) : 0 });
+        element.removeAttribute(attribute.name);
+      }
+      if (['href', 'src', 'action', 'formaction'].includes(attribute.name) && /^\s*(javascript:|https?:|\/\/)/i.test(attribute.value)) element.removeAttribute(attribute.name);
     }
-    if (['href', 'src', 'action', 'formaction'].includes(attribute.name) && /^\s*(javascript:|https?:|\/\/)/i.test(attribute.value)) element.removeAttribute(attribute.name);
   }
   const clearLocations = root => {
     for (const element of root.querySelectorAll('*')) {

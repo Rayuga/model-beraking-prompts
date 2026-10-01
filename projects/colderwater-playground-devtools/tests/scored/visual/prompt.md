@@ -40,7 +40,7 @@ which normalizes to zero. Do not repeat gate runs/saves or demand their generate
 titles/identities. This public playground has no sign-in.
 
 Review the editor, preview frame surround, console and saved-snippets surface at desktop width, and at least two relevant
-surfaces at roughly 390 by 844. Review the offered appearance for colour and contrast; one theme is enough. Use the content and saved library that are currently present. An empty console or library is a valid state to review. Do not require a new save, code execution, import or destructive action to earn visual credit. Judge the playground chrome around the preview, not the visual design of arbitrary user-authored snippet output. The library may be a panel, drawer or page; no particular location is required.
+surfaces at roughly 390 by 844. Review the offered appearance for colour and contrast; one theme is enough. Use the content and saved library that are currently present. An empty console or library is a valid state to review. Do not require a new save, code execution or destructive action to earn visual credit. Judge the playground chrome around the preview, not the visual design of arbitrary user-authored snippet output. The library may be a panel, drawer or page; no particular location is required.
 
 Use the five integer anchors written for each criterion: 1 through 5.
 RewardKit 0.1.7 normalizes (raw - 1) / 4; raw 1 contributes zero and raw 5
