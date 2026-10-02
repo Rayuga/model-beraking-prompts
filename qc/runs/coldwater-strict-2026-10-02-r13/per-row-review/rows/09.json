@@ -1,0 +1,34 @@
+{
+  "number": 9,
+  "id": "agent_environment_and_network_posture_are_correct",
+  "reviewer": "row-reviewer-09",
+  "input_sha256": "8470a993bd214b41a71259c1dbcf3d6fdcc40bdcd6c59b90a16adfe615f40ee7",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/WebDev Rubrics QC.xlsx :: Quality Checks row 9 (sheet row 10), Internal Quality Checks row 9 and row 52 annotation, Deterministic Checks rows for check-no-literal-secrets.py, check-allow-internet.sh, check-no-allow-internet-true.sh, check-nproc.sh, check-dockerfile-platform.sh",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/harbor-webdev-rubric-qc/references/quality-checks.md (check 9, lines 43-45; neighbouring checks 10-12, 15, 52)",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (task.toml block, lines 45-77)",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/projects/webdev-task-template/task.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/projects/webdev-task-template/environment/Dockerfile",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/task.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/environment/Dockerfile",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/environment/assets/seed_data.json and environment/instructions/*.md (secret-pattern scan)",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/instruction.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/solution/solve.sh",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/tests/Dockerfile",
+    "qc/runs/coldwater-strict-2026-10-02-r13/raw-evidence-index.json (all listed artifact SHA256 values recomputed and matched)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "task.toml:20-24 reads `[environment]` / `build_timeout_sec = 600.0` / `network_mode = \"public\"` / `cpus = 2` / `memory_mb = 4096`. These are identical to the frozen template task.toml and to the task.toml block in references/staged-task-contract.md (`cpus = 2`, `memory_mb = 4096`); a diff of the task's task.toml against the template shows only name, description, keywords and metadata text changed. `[environment].docker_image` is absent and `allow_internet` is not present anywhere in task.toml, as check 9 in quality-checks.md requires. No env table or literal exists under `[environment]`. The only credential-shaped values in task.toml are in the frozen `[verifier.env]` block (task.toml:34 `ANTHROPIC_AUTH_TOKEN = \"${OPENROUTER_API_KEY}\"`, :35 `ANTHROPIC_API_KEY = \"\"`), a ${VAR} template and an empty string, which the skill lists as intentional and which belong to row 10 rather than the agent image. environment/Dockerfile is byte-identical to the template Dockerfile (diff empty): `FROM node:22-bookworm-slim`, a single `ENV NODE_PATH=/usr/local/lib/node_modules`, no ARG, no token, no private registry login; git identity is the placeholder `turing@local.invalid`. A pattern scan of task.toml, instruction.md and everything under environment/ (Dockerfile, six instruction notes, 149-byte seed_data.json) for provider key shapes (sk-, sk-or-, AKIA, ghp_, xox), PEM blocks and the words api key / secret / password / token / bearer returned only the two verifier lines above and the word `tokens` in ui.md:13 (syntax colouring). Sanity of 2 CPU / 4096 MB for this workload: the agent image is a slim Node image with express and better-sqlite3 preinstalled globally; the reference install (solution/solve.sh) only copies a prebuilt app and performs no compile; an agent that chooses to npm install and run a Vite/TypeScript build fits comfortably in 4 GB, and the Dockerfile has no bare `nproc` or `--platform` pin. Measurement limits: the scripted golden run on these bytes ran in the agent image but the index does not record that the 2 CPU / 4096 MB limits were enforced; the hosted Oracle run that completed under these same [environment] values was on an earlier candidate (ZIP eda58464), so it is supporting evidence for the unchanged block only, not a measurement of these bytes. This row is a static configuration check and nothing in it depends on the missing configured-judge run.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

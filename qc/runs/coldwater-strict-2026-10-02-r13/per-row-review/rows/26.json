@@ -1,0 +1,33 @@
+{
+  "number": 26,
+  "id": "dimensions_cover_every_graded_requirement",
+  "reviewer": "row-reviewer-26",
+  "input_sha256": "8470a993bd214b41a71259c1dbcf3d6fdcc40bdcd6c59b90a16adfe615f40ee7",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/WebDev Rubrics QC.xlsx (Quality Checks row 26; Internal Quality Checks row 26 annotation: flows may combine several verifiers)",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/harbor-webdev-rubric-qc/references/quality-checks.md (section 26)",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/projects/webdev-task-template (file list only; template criteria not needed for a coverage map)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/instruction.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/environment/instructions/{overview,behaviour,integration,policy,security,ui}.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/environment/assets/seed_data.json",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/tests/app_context.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/tests/gates/{render,constraints}/{prompt.md,judge.toml}",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/tests/scored/{functional,polish,visual}/{prompt.md,judge.toml}",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/tests/scoring.toml",
+    "qc/runs/coldwater-strict-2026-10-02-r13/raw-evidence-index.json (all 22 artifact SHA256 values recomputed and matched)"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P3",
+  "evidence": "Method: built a requirement -> criterion map from instruction.md and the six notes against the 3 gate, 42 functional, 6 polish and 3 visual criteria. Coverage is otherwise very complete: every sentence of behaviour.md (fresh document, console order, error/rejection message and line, output kept, last-good restore for throw/stop/time limit, fresh interaction budget, stop, superseded run, save/reload/restart, stale save refusal and kept draft, live library, editing state kept, newer-revision notice, history inspect/restore/retry/stale restore), security.md (parent page, storage, library, own-route and outside fetch, five dynamic-evaluation forms with harmless control) and ui.md (custom surface, readout, typing/join, Home/End/Ctrl+Home/End, column memory, graphemes, Shift+Arrow, caret in view, mouse selection, copy, replace/paste undo, block indent incl. single-line selection and next-line exclusion, both modifier clicks, same-line carets, burst undo/redo with slow typing, visible and keyboard Undo/Redo, caret restore after Undo, disabled Undo/Redo, idempotent Format with no extra Undo step, find/replace incl. literal dot/bracket, wrap, self-containing replacement, redo cleared, JS/HTML colouring, JS/HTML format, format error, labels, focus, editor escape hint, worded feedback, focus return, dirty marker, 390 px) maps to a named criterion. Non-browser items (SQLite, DB_PATH, cwd, symlinks, no build step) are harness/launch concerns, not criterion gaps, per REVIEW_POLICY 'A browser exchange cannot prove SQLite'.\n\nGaps found (stated behaviour with no criterion touching it):\n1. ui.md:9 'The burst lasts for as long as I keep typing at those carets, however slowly, and ends only when a caret moves or I do something else.' The 'however slowly' half is graded (cw_multi_caret_typing_atomic: 'pauses between the keys do not matter'), but no criterion checks that a burst ENDS at a caret move or other action. cw_multi_caret_typing_atomic types one burst only ('without moving a caret or doing anything else in between'); cw_same_line_carets says 'Undo behaviour is not judged here'; cw_undo_restores_caret says 'Press Undo repeatedly until both markers are gone', which accepts any grouping.\n2. security.md:5 'Save source as text.' No criterion saves, reloads and compares a snippet whose source contains refused dynamic code (eval/Function/Worker/import) or markup-sensitive HTML. cw_dynamic_code_refused only runs such drafts; cw_shared_saved_record prescribes 'one new .js snippet with ... a short unique source'; the other save criteria leave the fixture type to the judge and never name refused constructs.\n3. Weaker, reported for completeness: behaviour.md:3 'the editor must continue to hold the exact source used for Run' is only checked for a syntax-error draft (cw_error_message_and_line: 'the draft must be exactly as entered'); for a successful Run it is covered only indirectly (cw_js_format_semantics_and_undo compares Undo against the original one-line source, and the prompt rule 'Check that the editor holds it before acting'). behaviour.md:3 'the text of the Error or rejected value' is graded only with Error objects, not a rejected plain value; that is a leg of an existing flow and I do not count it as a gap.\n\nNo run measures these gaps: the scripted golden tests (qc/repairs/coldwater-2026-10-02-strict/tests/*.cjs) contain no burst-boundary or save-of-refused-source check, and no configured judge run exists for these bytes.",
+  "counterexample": "Broken app that scores full marks on gap 1: an editor that keeps one open undo group for all multi-caret typing until the carets are cleared, so typing AB at three carets, moving the carets with ArrowLeft, and typing CD is undone by a single Undo (removing all twelve characters). This contradicts 'ends only when a caret moves' yet passes cw_multi_caret_typing_atomic, cw_multi_caret_delete, cw_same_line_carets and cw_undo_restores_caret. Broken app for gap 2: a server that rejects (or strips the call from) any Save whose source contains eval( or new Worker(, or that stores .html source HTML-escaped; every save criterion can pass with plain .js fixtures, so the stated 'Save source as text' goes ungraded.",
+  "suggested_fix": "Either grade or drop each sentence. Gap 1: add one leg to cw_multi_caret_typing_atomic (or a small new criterion): after the MULTI burst, press ArrowLeft once, type two more characters, then one Undo must remove only those two per caret and a second Undo the MULTI burst; or remove the 'and ends only when a caret moves or I do something else' clause from ui.md. Gap 2: in cw_dynamic_code_refused (or cw_save_reload_restart) save one refused draft, reload, and confirm the library returns the exact source; or delete 'Save source as text.' from security.md. Any change needs a new candidate and re-review of the touched criteria and workload.",
+  "run_verdict": "NOT EXERCISED"
+}

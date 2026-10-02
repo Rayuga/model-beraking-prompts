@@ -17,7 +17,7 @@ Each criterion is scored from 0 to 5 using the anchors written in it. Those anch
 
 - Do not read implementation files and do not infer behavior from styling. Reading computed styles is allowed.
 - Do not score feature correctness, keyboard access or narrow-screen behavior here; other dimensions grade those.
-- Do not penalize which colours the app chose; judge only whether they are used consistently. Do not penalize the content that authored code draws in the preview.
+- Do not penalize the app's choice of hues as a matter of taste. Contrast, legibility and consistent use of colour are still judged where a criterion names them. Do not penalize the content that authored code draws in the preview.
 - If a browser tool errors, retry once, then give that criterion the lowest score you can justify from what you saw and move on; never run shell or install commands.
 
 {criteria}

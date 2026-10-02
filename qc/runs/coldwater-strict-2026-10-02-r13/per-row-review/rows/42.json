@@ -1,0 +1,32 @@
+{
+  "number": 42,
+  "id": "reward_ranking_is_monotone",
+  "reviewer": "row-reviewer-42",
+  "input_sha256": "8470a993bd214b41a71259c1dbcf3d6fdcc40bdcd6c59b90a16adfe615f40ee7",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/WebDev Rubrics QC.xlsx (Quality Checks row 42; Internal Quality Checks row 42 annotation 'we need to monitor this one'; neighbouring rows 43/44 for scope)",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/harbor-webdev-rubric-qc/references/quality-checks.md (section 42 and 43/44)",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/projects/webdev-task-template/tests/{scoring.toml,tools/score.py,test.sh} (diffed against the task copies: identical)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/instruction.md and environment/instructions/{overview,behaviour,policy,security,ui,integration}.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/tests/scoring.toml, tests/tools/score.py, tests/test.sh (suite section), tests/app_context.md, task.toml (timeouts)",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/tests/gates/{render,constraints}/{judge.toml,prompt.md}",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/tests/scored/{functional,polish,visual}/{judge.toml,prompt.md} (all 42 + 6 + 3 criteria read in full)",
+    "qc/runs/coldwater-strict-2026-10-02-r13/raw-evidence-index.json (all 22 artifact SHA256 values recomputed and matching)",
+    "qc/repairs/coldwater-2026-10-02-strict/results/{editor,runtime,polish,restart}.json",
+    "run-outputs/.../run-4e686738-.../colderwater-playground-devtools__Rc3y2sT/{result.json,verifier/reward.json,verifier/scored/reward-details.json} (earlier candidate)"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": "P3",
+  "evidence": "No weight, gate or criterion arrangement was found that lets a worse app outscore a better one, within the template-fixed shaped policy. (1) Policy: tests/scoring.toml has gates render=0.0/constraints=0.0, weights functional 0.6 / polish 0.2 / visual 0.2, floor functional=0.05; scoring.toml, score.py and test.sh are byte-identical to the frozen template. score.py: 'reward = round(weighted, 4) if gates_passed and floors_passed else 0.0' with a non-negative weighted mean, so reward is non-decreasing in every dimension score; function carries more mass than craft. (2) Gates do not exclude a stronger app for unrelated difficulty: the render gate is load-and-type only ('Do not press Run, do not save anything and do not judge any other feature here'), which removes the inversion seen in the hosted run on the earlier candidate where a model app scored 0 at the render gate because Run was broken. The constraints gate grades two hard public requirements (ui.md 'Don't use a textarea, input or contenteditable element as the document surface'; behaviour.md 'A fresh page must read the saved record from the running app') and allows the publicly permitted plumbing input ('A small input or textarea that is used only to receive keyboard or clipboard events is allowed'). The in-dimension gate in the three scored prompts is the same load-and-type condition. (3) Functional weights sum to 58.5 over 42 binary criteria (1.0 to 2.0 each), so the floor needs more than 2.925 weight, i.e. at least three working product behaviours; polish and visual cannot be farmed below it. (4) Dead-feature credit was checked criterion by criterion: every negative has a preceding working control that fails the criterion when the feature is dead (format error, dynamic code refusal, preview isolation, Stop, superseded run, fresh document, stale save A-control, newer-revision baseline, live update 'If A's library never shows B's snippet, this criterion fails'), cw_undo_redo_availability fails when 'the app has no visible Undo and Redo controls', cw_unsaved_marker fails when 'no unsaved indication appears after the edit'. app_context.md: 'a criterion whose steps need a working Run fails if Run does not work', and the visual prompt says 'A Run that fails is not a reason to lower a visual score', so dimensions do not double-penalise or cross-reward. (5) The one place where a less complete app is exempt, polish cw_controls_keyboard_and_focus ('A control the app does not have at all is scored elsewhere, not here'), was costed: that criterion is worth 0.2/6 = 0.033 reward, while omitting any listed control loses more in functional (Find/Replace 5.0 weight = 0.051; Format 4.5 = 0.046; Stop 3.5 = 0.036; library or Save fails the gate), so omission never nets a gain. (6) Evaluator-time inversion (a complete app takes longer to grade than a fail-fast broken one, and an expired scored suite yields reward 0): the hosted Oracle run on the earlier candidate finished the whole verifier in about 41.5 minutes (verifier 10:10:47 to 10:52:12) against a 11100 s scored budget and 9000 s functional judge timeout. Risk stays true because (a) no configured judge run exists for these bytes, so judge duration and gate verdicts on the current criteria (42 functional, reworded gates) are unmeasured; the scripted golden results show all 3 gate, 42 functional and 6 polish checks true on these bytes but are not a judge run; and (b) a narrow residual in cw_history_restore_retry: 'If the restore was not sent as a request you can record and replay and the app offers no retry control, say so and leave this one step out without failing the criterion for it' gives an app that restores over a non-replayable channel (for example a WebSocket message) credit for the duplicate-restore step without evidence, while an HTTP app with the same duplicate-on-retry defect fails the 1.5-weight criterion (about 0.015 reward). The two apps are equal rather than ordered in quality, the clause follows the review policy's tool-feasibility rule, and failing unobservable transports would add a hidden HTTP requirement, so this is recorded as a bounded P3 observation and not a failure.",
+  "counterexample": null,
+  "suggested_fix": "Optional: none required for this row. If the owner wants to close the residual, keep the skip clause but record in the criterion reasoning that the retry step was not observed; do not change shared scoring policy. A configured judge run on these bytes is still needed to measure gate verdicts and judge duration.",
+  "run_verdict": "NOT EXERCISED"
+}

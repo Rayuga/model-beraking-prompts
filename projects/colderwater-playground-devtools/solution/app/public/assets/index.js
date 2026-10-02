@@ -34463,7 +34463,7 @@ function mountCodeEditor(host, callbacks = {}) {
         printWidth: 80,
         semi: true
       });
-      const formatted = result.replace(/\n$/, "");
+      const formatted = result.replace(/\n$/, "") + (before.endsWith("\n") ? "\n" : "");
       if (formatted === before) {
         message.textContent = "Already formatted.";
         editor.focus();

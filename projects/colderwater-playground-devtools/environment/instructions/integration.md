@@ -1,6 +1,6 @@
-# How we start the app
+# How I start the app
 
-Put the finished app in /app. We start it with node /app/server.js from a working directory that may be outside /app. Resolve files from their actual location. Listen on 0.0.0.0:3000, serve the workspace at / and answer GET /api/health promptly.
+Put the finished app in /app. I start it with node /app/server.js from a working directory that may be outside /app. Resolve files from their actual location. Listen on port 3000 on 0.0.0.0 (PORT is set to 3000 at launch), serve the workspace at / and answer GET /api/health promptly.
 
 The launch image supplies Node 22, Express and better-sqlite3 through NODE_PATH. You may choose your routes and frontend tools. Include everything needed at runtime; opening the finished app must not require an install or build step. The app may load external fonts, scripts and other CDN assets, but user-entered preview code has the boundary in security.md.
 

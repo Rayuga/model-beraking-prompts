@@ -1,0 +1,37 @@
+{
+  "number": 24,
+  "id": "grading_wiring_is_structurally_correct",
+  "reviewer": "row-reviewer-24",
+  "input_sha256": "8470a993bd214b41a71259c1dbcf3d6fdcc40bdcd6c59b90a16adfe615f40ee7",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/WebDev Rubrics QC.xlsx (Quality Checks sheet row 25 = check 24; Internal Quality Checks row 25; Deterministic Checks rows for check-rubric-schema.py, check-scoring-policy.py, check-verifier-contract.py)",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/harbor-webdev-rubric-qc/references/quality-checks.md (check 24)",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (scoring.toml, judge.toml, restart server sections)",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (scoring-policy, rubric-schema, verifier-contract)",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/projects/webdev-task-template/tests/** and task.toml (diffed against the task)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/tests/scoring.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/tests/gates/render/{judge.toml,prompt.md}",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/tests/gates/constraints/{judge.toml,prompt.md}",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/tests/scored/functional/{judge.toml,prompt.md}",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/tests/scored/polish/{judge.toml,prompt.md}",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/tests/scored/visual/{judge.toml,prompt.md}",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/tests/test.sh (lines 127-228)",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/tests/tools/{score.py,restart_mcp.py} (byte comparison with template)",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/tests/Dockerfile, tests/app_context.md, task.toml",
+    "qc/runs/coldwater-strict-2026-10-02-r13/raw-evidence-index.json (hashes of run_golden.sh, results/runtime.json, results/restart.json recomputed and matching)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Source/parser review only (tomllib parse of scoring.toml and all five judge.toml files, byte comparison with the frozen template); this is not a run of the private check-rubric-schema.py / check-scoring-policy.py and not a configured judge run on these bytes. (1) tests/scoring.toml is byte-identical to the template: [gates] render = 0.0, constraints = 0.0; [weights] functional 0.6 / polish 0.2 / visual 0.2 (sum 1.0); [floors] functional = 0.05; the directories tests/gates/{render,constraints} and tests/scored/{functional,polish,visual} all exist, each with judge.toml and prompt.md, so the fixed dimensions sit in the right suite. (2) Every judge.toml has [judge] judge = \"claude-code\" (matches REWARDKIT_JUDGE in task.toml), mode = \"batched\", timeout, isolated = false, prompt_template = \"prompt.md\"; none has model, reasoning_effort, temperature or [judge].weight. The [judge] block and MCP declarations are identical to the template in all five files. (3) Every dimension declares the playwright stdio server (command playwright-mcp, args --headless --isolated --executable-path=/usr/local/bin/chromium --no-sandbox). Only scored/functional/judge.toml lines 14-18 declare the second server: name = \"verifier\", command = \"/usr/local/bin/python3\", args = [\"/tests/tools/restart_mcp.py\", \"$APP_RESTART_HELPER\"]. tests/test.sh line 193 has export APP_RESTART_HELPER=\"$LOG_DIR/app-restart.sh\" after generating and chmod 755 the helper (lines 127-192); test.sh, tools/restart_mcp.py, tools/score.py and tests/Dockerfile are byte-identical to the template, and the Dockerfile copies /usr/local from the node runtime and COPY . /tests, so the path resolves. Exactly one criterion (cw_save_reload_restart) calls restart_app, consistent with the single-use tool, and functional/prompt.md line 31 names the restart_app tool of the verifier MCP server; no prompt sends the judge to a shell (each says never run shell or install commands). (4) Criteria: render 1 binary (all_pass), constraints 2 binary (all_pass), functional 42 binary (weighted_mean, weights 1.0/1.5/2.0), polish 6 binary, visual 3 likert with points = 5 exactly as the template. All 54 ids are unique across the task, id equals name, every weight is positive, every description is non-empty, every criterion has only the template's keys. Gates are binary only. (5) Prompts resolve: each prompt_template file exists, is LF, and contains exactly two placeholders, {app_context} and {criteria}; test.sh lines 195-201 substitute {app_context} from the non-empty tests/app_context.md (4050 bytes), which contains no braces, and no judge.toml description contains a brace, so no stray placeholder can break templating. (6) Budgets nest: gate judges 600 + 600 = 1200 < 1500; scored judges 9000 + 900 + 900 = 10800 < 11100; 1500 + 11100 = 12600 < [verifier].timeout_sec 13200. Counterexample attempts: a second dimension declaring the restart server, a duplicated id across dimensions, a likert gate criterion, a missing {criteria}, or a weight key in [judge] would each be a defect; none is present. Residual, not a defect of this row: the two workbook copies in the frozen rules differ in bytes (rules/WebDev Rubrics QC.xlsx sha256 6d44970b... versus harbor-webdev-rubric-qc/assets/WebDev_Rubrics_QC.xlsx d7b5d607...); I used the former as the assignment directs. The Internal Quality Checks sheet still words row 24 for the retired reward.toml layout; the Quality Checks sheet and the skill's staged contract are the current wording and were applied. No configured judge run exists for these exact bytes; the hosted run on an earlier candidate shows only that the same template wiring launched and graded there.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PASS"
+}

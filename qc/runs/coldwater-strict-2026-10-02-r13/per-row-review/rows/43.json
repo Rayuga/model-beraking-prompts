@@ -1,0 +1,36 @@
+{
+  "number": 43,
+  "id": "gates_apply_before_shaping_and_carry_no_reward_mass",
+  "reviewer": "row-reviewer-43",
+  "input_sha256": "8470a993bd214b41a71259c1dbcf3d6fdcc40bdcd6c59b90a16adfe615f40ee7",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/WebDev Rubrics QC.xlsx (Quality Checks row 43; Internal Quality Checks row 43; rows 39/44 and Deterministic check-scoring-policy.py for scope boundaries)",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/harbor-webdev-rubric-qc/references/quality-checks.md (### 43)",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (scoring.toml, test.sh, tools sections)",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/projects/webdev-task-template/tests/{scoring.toml,test.sh,tools/score.py}",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/tests/scoring.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/tests/test.sh",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/tests/tools/score.py",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/tests/gates/{render,constraints}/{judge.toml,prompt.md}",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/tests/scored/{functional,polish,visual}/{judge.toml,prompt.md}",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/tests/app_context.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/task.toml",
+    "qc/runs/coldwater-strict-2026-10-02-r13/raw-evidence-index.json",
+    "run-outputs/.../run-4e686738-.../colderwater-playground-devtools__Rc3y2sT/verifier/reward.json (earlier candidate, hash verified)",
+    "run-outputs/.../run-6e537d14-.../colderwater-playground-devtools__2KqFPi3/verifier/{reward.json,ctrf.json,gates/reward.json} and result.json / gates/reward-details.json hashes (earlier candidate, hashes verified)"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": "P3",
+  "evidence": "Wiring. tests/scoring.toml:1-11 is '[gates] render = 0.0 / constraints = 0.0', '[weights] functional = 0.6 / polish = 0.2 / visual = 0.2', '[floors] functional = 0.05'. Gates are not keys of [weights], so they hold no reward mass; score.py:46 computes 'weighted = sum(w * scores[k] for k, w in weights.items()) / sum(weights.values())' over weights only. score.py:41 'gates_passed = all(scores[k] > floor for k, floor in gates.items())', :44 sets every scored dimension to 0.0 unless 'scored_ran', :48 'reward = round(weighted, 4) if gates_passed and floors_passed else 0.0', :83 'return 0 if gates_passed else 1'. test.sh:212-222 removes any old scored directory, runs the gates suite, runs score.py, and on status 1 does 'exit 0' before test.sh:224 'run_suite scored 11100', so a failed gate skips the scored suite and keeps a zero reward; a gates-suite timeout or crash exits with the pre-written zero (test.sh:60, 213-215). All five judge.toml [judge] blocks carry no weight key; both gates use aggregation = \"all_pass\" with binary criteria (render 1, constraints 2). scoring.toml, test.sh and tools/score.py are byte-identical to the frozen template (sha256 95f70d6e..., bd682592..., 13de2b38... on both sides).\n\nExecuted check (frozen score.py against synthetic suite outputs written only to the session scratch directory, removed afterwards; not a judge run): render=0 with a perfect scored/reward.json present -> exit 1, reward 0.0, functional/polish/visual reported 0.0; constraints=0 -> exit 1, reward 0.0; gates pass with functional 0, polish 1, visual 1 -> reward 0.0, floors_passed 0 (weighted_score 0.4 is not paid); functional 0.0427 (2.5 of 58.5) -> reward 0.0; functional exactly 0.05 -> reward 0.0 (strict '>'); functional 0.0513 (3.0 of 58.5) -> reward 0.4308; functional 1, polish 1, visual 0.9167 -> 0.9833, i.e. exactly 0.6+0.2+0.2*0.9167 with no gate contribution; missing gate key -> exit 2, which test.sh:221 turns into the plain zero.\n\nFloor versus this task's criteria. Functional has 42 binary criteria, total weight 58.5, so the floor needs more than 2.925 weight: at least two criteria (1.5+1.5 or 2.0+1.0) or three weight-1.0 criteria. I looked for functional criteria a non-working app could pass by doing nothing and found none: every refusal/negative criterion names a working control that fails the criterion if absent (cw_format_error_keeps_draft 'or if the valid control did not format'; cw_dynamic_code_refused 'or if the harmless control draft is refused'; cw_preview_isolation 'or if ordinary own-preview DOM and console activity did not work'; cw_stale_save_refused 'or if A's control Save did not succeed'; cw_stale_save_keeps_draft 'or if B's Save was not refused'; cw_stop_cancels_pending_work and cw_newer_run_supersedes 'or if the control marker never appeared'; cw_newer_revision_notice_keeps_draft requires the notice to appear). app_context.md also states 'a criterion whose steps need a working Run fails if Run does not work'. The cheapest gate-passing shell (typing editor plus server save, nothing else) therefore earns at most what its real behaviours earn: e.g. cw_long_line_editing (1.0) + cw_save_reload_restart (1.5) = 2.5/58.5 = 0.0427, below the floor, reward 0. Gates themselves are not vacuous: render requires real typing into the editor, constraints requires a real Save read back after browser storage is cleared, so a static shell or a localStorage mock is zeroed before shaping.\n\nRun evidence (earlier candidate only, artifact hashes re-verified against raw-evidence-index.json): Oracle verifier/reward.json shows render 1.0, constraints 1.0, functional 1.0, polish 1.0, visual 0.9167, reward 0.9833 (no gate mass); the GPT-5.6 Luna trial shows gates/reward.json {constraints 1.0, render 0.0}, reward 0.0, gates_passed 0, ctrf floor/scored entries 'skipped', and the verifier directory has no scored/ folder, i.e. the scored suite was skipped.\n\nResidual risk (why risk=true): no configured judge run exists for these bytes, and no run on any candidate has exercised the gates-pass/floor-fail path with a real judge; that path is shown only by executing score.py on synthetic inputs. Also note the size of the cliff the template values create: one criterion step above the floor (3.0/58.5) pays the full polish+visual share, so an attractive app with only about three working editor/save behaviours and a dead Run could score up to 0.43 in theory (more realistically about 0.3, since cw_controls_feedback_and_labels and cw_focus_returns_to_code need working Format/Replace). That is a partly working app, not a non-working one, the floor value and weights are template-controlled, and the render gate on these bytes no longer requires Run (reduced to load-and-type since the hosted run), so this is recorded as an observation for rows 39/42/44 rather than a defect of this row.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL"
+}

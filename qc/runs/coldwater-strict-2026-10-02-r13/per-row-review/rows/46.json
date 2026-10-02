@@ -1,0 +1,33 @@
+{
+  "number": 46,
+  "id": "tests_and_key_are_out_of_agent_reach",
+  "reviewer": "row-reviewer-46",
+  "input_sha256": "8470a993bd214b41a71259c1dbcf3d6fdcc40bdcd6c59b90a16adfe615f40ee7",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/WebDev Rubrics QC.xlsx: Quality Checks row 47 (check 46) and Internal Quality Checks row 47 (no extra annotation on this row); Deterministic Checks rows for check-instruction-hygiene / check-assets-referenced",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/harbor-webdev-rubric-qc/references/quality-checks.md (section 46)",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (file list, launch steps, judge block)",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (dockerfile, solve-contract, instruction-hygiene procedures)",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/projects/webdev-task-template (environment/Dockerfile, tests/Dockerfile, tests/.dockerignore, tests/test.sh, tests/tools/*, task.toml, tests/scoring.toml, judge.toml headers)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/environment/Dockerfile",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/environment/instructions/*.md, task/instruction.md, task/environment/assets/seed_data.json",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/task.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/tests/Dockerfile, tests/.dockerignore, tests/test.sh, tests/tools/restart_mcp.py, all five tests/*/*/judge.toml headers and criterion descriptions, first line of each prompt.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/solution/solve.sh and solution/app/server.js (grep for grader paths, env and process access)",
+    "qc/runs/coldwater-strict-2026-10-02-r13/raw-evidence-index.json (all 22 artifact SHA256 values recomputed and matched); directory listing of the hosted run's verifier folder for the earlier candidate"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Agent image (task/environment/Dockerfile) copies only 'COPY instructions/ /instructions/' and 'COPY assets/ /assets/'; it installs only express@5.1.0 and better-sqlite3@12.4.1 globally, so it ships no criteria, no judge CLI, no RewardKit, no tests/ and no solution/. It is byte-identical to the frozen template Dockerfile (diff empty). Readable-copy check: a grep of instruction.md and environment/ for judge|rubric|rewardkit|criteri|/tests|/logs|score|grad|verifier returns nothing; none of the 54 criterion ids appears in the public files; no 12-word run of any criterion description appears verbatim in instruction.md or /instructions/*.md. seed_data.json holds only an empty snippets list and a one-line note. Verifier isolation (task.toml): '[verifier] environment_mode = \"separate\"', 'artifacts = [\"/app\", \"/assets\"]', and the key is only a template '${OPENROUTER_API_KEY}' inside [verifier.env]; no literal secret anywhere in the task. tests/Dockerfile: 'COPY . /tests' then 'chmod -R go-rwx /tests'; RewardKit, claude-code and playwright-mcp exist only there. tests/test.sh (identical to template): 'umask 077', 'chmod 700 \"$LOG_DIR\"', 'chmod -R go-rwx /tests', rejects any symlink under /app that resolves outside /app/node_modules, and launches the submission with 'setsid env -i PATH=... NODE_PATH=... HOME=... PORT=\"3000\" DB_PATH=... setpriv --reuid=65534 --regid=65534 --clear-groups node', so the submitted server holds none of the verifier environment (no token), cannot read /tests, and cannot write reward.txt, reward.json, app.pid or the restart '.used' marker in the root-only log directory. The restart tool runs the helper with env={'PATH': SAFE_PATH}. tests/tools/score.py, restart_mcp.py, scoring.toml, test.sh, both Dockerfiles and .dockerignore diff empty against the template; task.toml differs only in name, description, keywords and metadata. The golden server.js reads only DB_PATH/SQLITE_PATH/PORT from the environment and does not touch /tests, /logs or /proc; solve.sh writes only under /app (its /proc scan only checks for open handles on /app/app.db). Residual, not measured and not task-specific: no run exercised the verifier image on these bytes, and I could not inspect installed harbor-rewardkit 0.1.7 to confirm how the judge prompt is passed to the judge process (if on the command line, an unprivileged process in the same container could read it from /proc/<pid>/cmdline at grading time; /proc/<pid>/environ and thus the token stay root-only). That is a property of the shared frozen template and of grading time only (the building agent is already finished), so it is recorded as a note rather than a defect of this task. Public network during the build is the declared delivery profile and is not reported.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

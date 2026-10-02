@@ -1,0 +1,38 @@
+{
+  "number": 52,
+  "id": "task_security_and_secrets",
+  "reviewer": "row-reviewer-52",
+  "input_sha256": "8470a993bd214b41a71259c1dbcf3d6fdcc40bdcd6c59b90a16adfe615f40ee7",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    "rules/WebDev Rubrics QC.xlsx: Quality Checks row 52 (sheet row 53), Internal Quality Checks row 52 annotation, Deterministic Checks check-no-literal-secrets.py",
+    "rules/harbor-webdev-rubric-qc/assets/WebDev_Rubrics_QC.xlsx (same rows)",
+    "rules/harbor-webdev-rubric-qc/SKILL.md",
+    "rules/harbor-webdev-rubric-qc/references/quality-checks.md section 52 (and 9, 10, 14 for adjacent scope)",
+    "rules/projects/webdev-task-template: task.toml, environment/Dockerfile, tests/Dockerfile, tests/test.sh, tests/tools/*, tests/.dockerignore (byte-compared with the task)",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/coldwater-strict-2026-10-02-r13/raw-evidence-index.json (all 22 artifact hashes recomputed)",
+    "task/task.toml",
+    "task/environment/Dockerfile",
+    "task/environment/assets/seed_data.json",
+    "task/environment/instructions/security.md",
+    "task/tests/Dockerfile",
+    "task/solution/solve.sh",
+    "task/solution/app/package.json",
+    "task/solution/app/package-lock.json (resolved/integrity fields)",
+    "task/solution/app/index.html, public/index.html, public/runner.html, static/runner.html, vite.config.mjs",
+    "task/solution/app/server.js and src/runtime.ts (targeted lines)",
+    "Pattern scans over every file in task/ (instruction.md, environment/, solution/ including the built public/assets/index.js, tests/ including all judge.toml, prompt.md and app_context.md)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Static review of all 41 task files; this row needs no runtime measurement. (1) Credentials: a regex scan of the whole tree for provider key shapes (sk-, sk-or-, sk-ant-, AKIA, gh*_ tokens, xox*, AIza, PEM private-key blocks, JWTs, Bearer literals) returned no match. The only credential-bearing lines are task.toml:34 `ANTHROPIC_AUTH_TOKEN = \"${OPENROUTER_API_KEY}\"` (a ${VAR} template) and task.toml:35 `ANTHROPIC_API_KEY = \"\"`, both part of the frozen [verifier.env] block; task.toml differs from the template only in name, description, keywords, difficulty, category, provenance and arena_slice. Every other password/secret/token keyword hit is a syntax-highlighting 'token' or the per-run preview handshake token generated with crypto.randomUUID() (solution/app/src/runtime.ts:386). The product has no sign-in, so no demo credentials exist. (2) Personal data: the only e-mail address in the tree is the template's `turing@local.invalid` (environment/Dockerfile:20); environment/assets/seed_data.json is `{\"snippets\": [], \"note\": ...}` with no people or organisations. (3) Host paths: no Windows or Unix user path, user name or workspace name appears anywhere, including the 1.9 MB built bundle solution/app/public/assets/index.js, which also carries no sourceMappingURL. (4) Remote fetch: solution/solve.sh fetches nothing (it checks the database is not open, removes it and runs `cp -a \"$source_app/.\" \"$target/\"`); the golden ships a prebuilt bundle and its HTML references only same-origin `/assets/index.js` and `/assets/index.css`; package.json pins all ten dependencies to exact versions and all 178 package-lock.json entries resolve to https://registry.npmjs.org/ with an integrity hash. environment/Dockerfile and tests/Dockerfile are byte-identical to the frozen template and pin every npm and pip package by version. URLs inside the bundle are only XML namespace constants and library documentation strings (w3.org, react.dev/errors, prettier.io, wikipedia, bugzilla), none fetched. The only URL outside the bundle and lockfile is task.toml:33 `https://openrouter.ai/api` from the frozen block. (5) Injection: no instruction-override or score-steering text (ignore/disregard/system prompt/award/always pass and similar) exists in the instructions, seed, prompts, app_context or criteria. The preview-isolation criterion (tests/scored/functional/judge.toml:326) asks the judge to type a probe that sets a 'distinctive hostile marker' and calls fetch from the sandboxed preview; that is a grading fixture aimed at the app under test, not a payload aimed at the judge or builder, and it matches the public requirement in environment/instructions/security.md. Not counted as defects under this row: base images use tags rather than digests (`FROM node:22-bookworm-slim`, `FROM python:3.12-slim`), which is template-controlled and belongs to rows 10 and 15; public network is correct per the delivery profile. All 22 hashes in raw-evidence-index.json match the files on disk; that evidence does not bear on this row.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

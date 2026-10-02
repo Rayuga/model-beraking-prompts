@@ -1,0 +1,36 @@
+{
+  "number": 11,
+  "id": "timeouts_fit_the_work",
+  "reviewer": "row-reviewer-11",
+  "input_sha256": "8470a993bd214b41a71259c1dbcf3d6fdcc40bdcd6c59b90a16adfe615f40ee7",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/WebDev Rubrics QC.xlsx :: Quality Checks row 12 (check 11), Internal Quality Checks row 12, Deterministic Checks rows 29 and 33",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/harbor-webdev-rubric-qc/references/quality-checks.md (check 11)",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (check-scoring-policy timeout nesting)",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/projects/webdev-task-template/{task.toml,tests/test.sh,tests/*/*/judge.toml timeouts}",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/task.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/tests/test.sh",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/tests/{gates/render,gates/constraints,scored/functional,scored/polish,scored/visual}/judge.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/tests/tools/restart_mcp.py (timeout lines)",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/tests/Dockerfile",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/environment/Dockerfile",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/solution/solve.sh",
+    "qc/runs/coldwater-strict-2026-10-02-r13/raw-evidence-index.json (all 22 artifact hashes recomputed and matching)",
+    "run-outputs/.../run-4e686738-561e-4222-9cdd-bd2b5604e0c1/colderwater-playground-devtools__Rc3y2sT/{result.json,trial.log,verifier/app-restart.log,verifier/gates/reward-details.json,verifier/scored/reward-details.json,verifier/scored/rewardkit.log} (earlier candidate)"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "NESTING (static, these bytes). task.toml:18 `[agent] timeout_sec = 7200.0`; task.toml:21 `build_timeout_sec = 600.0`; task.toml:27 `[verifier] timeout_sec = 13200.0` (3 h 40 min, below the five-hour limit). tests/test.sh:213 `run_suite gates 1500`, tests/test.sh:224 `run_suite scored 11100`, tests/test.sh:207 `timeout \"$budget_sec\" rewardkit --max-concurrent-agent 1` (judges run one at a time, so the sum is the right bound). judge.toml line 4 in each dimension: render `timeout = 600`, constraints `timeout = 600`, functional `timeout = 9000`, polish `timeout = 900`, visual `timeout = 900`. Arithmetic: gate judges 600 + 600 = 1200 < 1500 (300 s slack); scored judges 9000 + 900 + 900 = 10800 < 11100 (300 s slack); budgets 1500 + 11100 = 12600 < 13200 (600 s slack). Liveness: test.sh:116-122 loops 120 times with `sleep 0.25` and a 2 s per-URL urlopen timeout (test.sh:50), nominally 30 s and at the extreme about 120 x (2+2+0.25) = 510 s for a port that accepts and hangs, still inside the 600 s slack outside the suites. Restart: restart_mcp.py:11 `HELPER_TIMEOUT_SEC = 55` covers the helper's 5 s kill wait plus 30 s nominal readiness loop; single use, so it costs the 9000 s functional judge at most 55 s. All of these values are byte-identical to the frozen template: tests/test.sh, tests/tools/restart_mcp.py, tests/tools/score.py, tests/Dockerfile and tests/scoring.toml compare equal to rules/projects/webdev-task-template, and task.toml differs from the template only in identity/metadata lines (name, description, keywords, difficulty, difficulty_explanation, category, provenance, arena_slice); the template judge timeouts are the same 600/600/9000/900/900. No timeout was raised, so no authorization record is needed. They also match the reference in staged-task-contract.md:111 (`gates 1500, scored 11100, verifier 13200`).\n\nSUFFICIENCY. Agent build: environment/Dockerfile is a slim Node image with one apt layer and two global npm packages; hosted environment_setup took about 15 s (10:10:27 -> 10:10:42, likely cached) against 600 s. solve.sh only checks for open DB handles and copies a prebuilt app (`cp -a \"$source_app/.\" \"$target/\"`), oracle agent_execution about 1.4 s against 7200 s. Workload on these bytes: 1 render + 2 constraints gate criteria, 42 functional, 6 polish, 3 visual criteria (counted from the frozen judge.toml files). Only timing evidence for a configured judge is the hosted Oracle run on an EARLIER candidate (41 functional criteria): result.json verifier started_at 2026-10-02T10:10:47.879726Z, finished_at 2026-10-02T10:52:12.660962Z = about 2485 s for verifier image setup plus all five judges, against a 12600 s combined suite budget; app-restart.log `app-restart pid=1961 ready=1 at 2026-10-02T10:30:56Z` shows the functional judge was mid-run about 20 min in; exception_info None, graded 1. That is roughly 5x headroom overall and at least 3.6x for functional even if all 2485 s were attributed to it.\n\nWHAT IS NOT MEASURED (reason risk=true). No configured judge run exists for these bytes (raw-evidence-index scope says so). The export records no per-judge durations, so the margin of the three short timeouts (render 600, constraints 600, polish 900 for six criteria including a 390 px resize-and-reload criterion, visual 900) is not individually known even on the earlier candidate; only that each finished without timing out there. Since then the render gate was changed (reduced to load-and-type, which shrinks it), one functional criterion was added and several criteria reworded, so the earlier total is supporting evidence, not a measurement. Scripted golden duration is not judge duration and is not used here. A weak or slow submission (target-model app) could make the judge spend longer than the golden did; no scored-suite run on a model app exists (the only model run stopped at the render gate). Verifier-image build time (tests/Dockerfile installs Chromium with deps, claude-code, codex) against any build limit is not separately recorded, though it completed in the hosted run.\n\nADVERSARIAL TRY. Broken app that could pass: none relevant to this row; a slow or hanging app cannot gain reward from a timeout because test.sh writes zero first and `run_suite` failure exits with the zero/gate record. Conforming alternative that could fail: a correct app on which the polish judge needs more than 900 s for six criteria would be zeroed for the whole scored suite (test.sh:224-226 `if ! run_suite scored 11100; then exit 0`), an evaluator failure attributed to the submission; this is a template-wide property, not shown to occur, and the earlier hosted run finished all scored judges without it.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

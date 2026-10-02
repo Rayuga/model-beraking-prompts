@@ -88,7 +88,7 @@ export function mountCodeEditor(host, callbacks = {}) {
         plugins: [babelPlugin, estreePlugin, htmlPlugin],
         tabWidth: 2, useTabs: false, printWidth: 80, semi: true
       });
-      const formatted = result.replace(/\n$/, '');
+      const formatted = result.replace(/\n$/, '') + (before.endsWith('\n') ? '\n' : '');
       if (formatted === before) {message.textContent = 'Already formatted.'; editor.focus(); return;}
       pushUndo();
       const priorLine = state.caret.line;

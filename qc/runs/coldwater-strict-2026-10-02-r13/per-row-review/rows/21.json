@@ -1,0 +1,38 @@
+{
+  "number": 21,
+  "id": "verifier_entrypoint_is_safe_and_always_scores",
+  "reviewer": "row-reviewer-21",
+  "input_sha256": "8470a993bd214b41a71259c1dbcf3d6fdcc40bdcd6c59b90a16adfe615f40ee7",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/WebDev Rubrics QC.xlsx :: Quality Checks row 22 (check 21) and Internal Quality Checks row 22 (no extra annotation); Deterministic Checks rows check-verifier-contract.py and check-scoring-policy.py",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/harbor-webdev-rubric-qc/references/quality-checks.md (check 21)",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (tests/test.sh ordered contract, tests/tools)",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/projects/webdev-task-template/tests/{test.sh,tools/score.py,tools/restart_mcp.py,Dockerfile,scoring.toml,.dockerignore} and task.toml",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/tests/test.sh (all 227 lines)",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/tests/tools/score.py",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/tests/tools/restart_mcp.py",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/tests/Dockerfile",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/tests/scoring.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/task.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/tests/{gates,scored}/*/judge.toml (judge headers and timeouts)",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/environment/instructions/integration.md (launch line)",
+    "qc/runs/coldwater-strict-2026-10-02-r13/raw-evidence-index.json (hashes of run_golden.sh, restart.json and three hosted artifacts re-computed and matching)",
+    "run-outputs/coldwater-playground-devtools/.../run-4e686738-.../colderwater-playground-devtools__Rc3y2sT/verifier/{reward.json,reward.txt,app-restart.sh,app-restart.log,app.pid} (Oracle, earlier candidate)",
+    "run-outputs/coldwater-playground-devtools/.../run-4e686738-.../colderwater-playground-devtools__xnZRzWm/verifier/{reward.json,reward.txt} (nop, earlier candidate)",
+    "run-outputs/coldwater-playground-devtools/.../run-6e537d14-.../colderwater-playground-devtools__2KqFPi3/verifier/reward.json (model, earlier candidate)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "STATIC (these bytes). tests/test.sh (sha256 bd682592...), tools/score.py, tools/restart_mcp.py, tests/Dockerfile, scoring.toml and .dockerignore are byte-identical (diff) to the frozen template; `bash -n` passes; LF only; no `exec` builtin (only `find ... -exec chmod`, line 86). Contract walk: (1) test.sh:60-61 `write_zero_reward` then `trap cleanup EXIT`; cleanup (33-40) ends in `ensure_reward`; the zero record (line 8) carries reward, all five dimensions, gates_passed, floors_passed, weighted_score, graded, no_op. (2) line 68 `if [[ ! -f /app/server.js ]]; then exit 0`; lines 72-83 refuse any symlink outside /app/node_modules or whose `readlink -f` target leaves /app/node_modules, before any chmod/chown/cp. (3) lines 90-95 copy /app to /tmp/submission; lines 104-111 launch with `setsid env -i PATH NODE_PATH HOME PORT DB_PATH setpriv --reuid=65534 --regid=65534 --clear-groups node \"$APP_ENTRY\"`; umask 077, LOG_DIR 700 and `chmod -R go-rwx /tests` keep the unprivileged app away from the rubric and the reward files. (4) lines 115-125 probe /api/health then / for up to 120 tries and `exit 0` (zero kept) when not ready, before any rewardkit call. (5) lines 127-193 helper by heredoc + sed, chmod 755, `export APP_RESTART_HELPER`; functional judge.toml passes `$APP_RESTART_HELPER` to restart_mcp.py. (6) lines 195-201 substitute {app_context}; tests/app_context.md exists. (7) line 213 gates suite first (`timeout 1500 rewardkit ...`), failure -> exit 0 with zero; 217-222 score.py: 0 continues, 1 exits keeping the detailed record, other -> write_zero_reward. (8) line 224 scored suite (11100), then line 227 `score.py \"$LOG_DIR\" || write_zero_reward`. Every exit path I enumerated (missing judge env, missing server.js, symlink escape, cp/chown failure under set -e, not live, gates suite crash/timeout, score.py exit 1 / 2, scored suite crash/timeout, score.py failure, normal end) leaves a non-empty reward.txt and reward.json because the zero is written before the first fallible grading step and score.py writes complete records. Budgets nest: gates 600+600=1200<1500; scored 9000+900+900=10800<11100; 1500+11100=12600<13200. The brief states the cwd assumption (integration.md:3 'from a working directory that may be outside /app'). ACTUAL RUN (earlier candidate only, not these bytes): the hosted Oracle's verifier/app-restart.sh is identical to the helper the current test.sh lines 128-183 would generate (diff after placeholder substitution: no difference), so the same entrypoint logic produced reward.txt 0.9833 with graded=1 on the full path and `app-restart pid=1961 ready=1`; the nop trial produced the plain zero record (graded=0, no_op=1, reward 0.0) via the missing-server.js path; the model trial produced render=0.0, gates_passed=0, reward 0.0, graded=1 via the score.py exit-1 path. Scripted golden on these bytes launched the app the way test.sh does (uid 65534, env -i, cwd /tmp) and survived one restart (restart.json hash verified), but did not run tests/test.sh itself. NOT EXERCISED on any bytes: scored-suite timeout/crash path and score.py exit-2 path (read only). NOTES, both in template-controlled bytes, neither a task-authoring defect: (a) P3 - when the scored suite fails after gates pass, line 224-226 exits keeping the post-gates record (reward 0.0, gates_passed=1, graded=1, no_op=0) rather than the 'plain zero' that contract step 8 words; a reward is still written and it is 0, but an evaluator failure there is recorded as graded. (b) P3 - the restart helper sends only SIGTERM and waits 5 s (test.sh:154-158) and its probe cannot tell the old process from the new one, so an app that ignores SIGTERM would keep in-memory state, the relaunch would die on EADDRINUSE, and restart_app would still report success; latent, requires an app that swallows SIGTERM, not observed.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL"
+}

@@ -1,0 +1,35 @@
+{
+  "number": 20,
+  "id": "solution_is_frozen_and_deterministic",
+  "reviewer": "row-reviewer-20",
+  "input_sha256": "8470a993bd214b41a71259c1dbcf3d6fdcc40bdcd6c59b90a16adfe615f40ee7",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/WebDev Rubrics QC.xlsx (Quality Checks row 21 = check 20; Internal Quality Checks row 21, no extra annotation or cell comment)",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/harbor-webdev-rubric-qc/references/quality-checks.md (section 20)",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/projects/webdev-task-template/solution/solve.sh",
+    "qc/REVIEW_POLICY.md",
+    "task/solution/solve.sh",
+    "task/solution/app/server.js",
+    "task/solution/app/package.json, package-lock.json, vite.config.mjs, index.html",
+    "task/solution/app/src/app.tsx, runtime.ts, custom-editor.js, style.css (searched for random, clock and network use)",
+    "task/solution/app/public/index.html, runner.html, assets/index.js, assets/index.css",
+    "task/environment/assets/seed_data.json, task/environment/Dockerfile, task/task.toml",
+    "task/instruction.md, task/environment/instructions/*.md, task/tests/app_context.md, task/tests/*/*/judge.toml and prompt.md (searched for time, order, seed and id demands)",
+    "task/tests/test.sh, task/tests/Dockerfile (launch and dependency lines)",
+    "qc/runs/coldwater-strict-2026-10-02-r13/raw-evidence-index.json (all 22 artifact hashes recomputed, 0 mismatches)",
+    "qc/repairs/coldwater-2026-10-02-strict/run_golden.sh, results/*.json, scripts/build_colderwater_golden.sh"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Static install: task/solution/solve.sh ends with `rm -f -- \"$target/app.db\" \"$target/app.db-wal\" \"$target/app.db-shm\"` and `cp -a \"$source_app/.\" \"$target/\"`; it runs no npm install, no build and no download, so /app receives the committed bytes only. The preceding node block only reads /proc to refuse deleting an open database. Runtime dependencies express@5.1.0 and better-sqlite3@12.4.1 are exact pins in both environment/Dockerfile and tests/Dockerfile; package.json pins every dependency exactly and package-lock.json has 178 resolved entries, all registry.npmjs.org, each with an integrity hash. Committed build equals a build of the committed source: I copied the frozen src, static and config into a scratch directory outside the workspace, ran `npm ci --ignore-scripts` and `npx vite build`, and the four outputs matched the committed public/ files byte for byte (index.js sha256 db9fae02..., index.css e665bd18..., index.html c1e493e0..., runner.html ed4a5811...). The frozen task is byte-identical to projects/colderwater-playground-devtools (diff -rq), which is tracked in git with no uncommitted change. No boot-time fetch: public/index.html loads only /assets/index.js and /assets/index.css; the http(s) strings in the bundle are XML namespaces and library error/documentation text; the stylesheet has no url() or @import; server.js makes no outbound request and sets `connect-src 'self'`. No seeded rows to vary: seed_data.json is `\"snippets\": []` and server.js at boot only creates tables and backfills revisions from existing rows, so a fresh install always starts with an empty library and AUTOINCREMENT ids from 1. Nondeterministic values exist but none is a pinned or graded value: server.js lines 71, 84, 111 write `new Date().toISOString()` into updated_at, which only orders the library list (`ORDER BY updated_at DESC, id DESC`); crypto.randomUUID is used for console entry keys, the restore operationId and preview nonces/tokens (app.tsx 45, 85; runtime.ts 27, 317, 318, 335, 386). A search of all judge.toml criteria, prompts, app_context.md and the six public notes found no criterion that reads a timestamp, a library order, a specific id value or a date; history is ordered by revision number. Time-limit criteria measure elapsed durations with real waits, which is the product behaviour itself, and no fixed clock is specified or needed. Scripted golden results on these bytes (editor.json, runtime.json, polish.json, persist-before.json, persist-after.json, restart.json) show every listed check true with empty pageErrors, across a real process restart; that run rebuilt the bundle first and the frozen bytes still match, consistent with a reproducible build. Limits: this is source review plus my own rebuild and the owner's scripted run; no configured judge run exists for these bytes, and none is needed to decide this row. The rebuild used host Node v24.19.0, not the image's Node 22, which does not affect the result since the build is never run at install time.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "CONFIRMED"
+}

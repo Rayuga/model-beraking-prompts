@@ -100,8 +100,6 @@ const stateFile = '/state/restart.json';
     let head = await api(a, '/api/snippets/' + record.id);
     assert.equal(head.revision, 4); assert.equal(head.code, 'let rev = 1;');
     assert.deepEqual((await api(a, '/api/snippets/' + record.id + '/history')).map(item => item.revision), [4, 3, 2, 1]);
-    await a.getByRole('button', { name: 'Retry same restore' }).click(); await t.sleep(800);
-    assert.equal((await api(a, '/api/snippets/' + record.id)).revision, 4);
     await t.fresh(b); await lib(b, record.title).click(); await t.sleep(400);
     await t.setSource(a, 'let rev = 5;'); await save(a).click(); await t.sleep(600);
     await b.getByRole('button', { name: /^Revision 2/ }).click();
@@ -109,6 +107,23 @@ const stateFile = '/state/restart.json';
     head = await api(a, '/api/snippets/' + record.id);
     assert.equal(head.revision, 5); assert.equal(head.code, 'let rev = 5;');
     assert.ok((await api(a, '/api/snippets/' + record.id + '/history')).some(item => item.code === 'let rev = 5;'));
+  });
+
+  await check('cw_restore_request_repeat_safe', async () => {
+    const record = await create(a, 'rep-' + stamp, 'rep.js', 'let rep = 1;');
+    await t.setSource(a, 'let rep = 2;'); await save(a).click(); await t.sleep(600);
+    let seen = null;
+    const grab = req => { if (req.method() === 'POST' && /restore/.test(req.url())) seen = { url: req.url(), body: req.postData(), type: req.headers()['content-type'] }; };
+    a.on('request', grab);
+    await a.getByRole('button', { name: /^Revision 1/ }).click();
+    await a.getByRole('button', { name: 'Restore selected revision' }).click(); await t.sleep(800);
+    a.off('request', grab);
+    assert.ok(seen, 'restore request recorded');
+    assert.equal((await api(a, '/api/snippets/' + record.id)).revision, 3);
+    const status = await a.evaluate(async r => (await fetch(r.url, { method: 'POST', headers: { 'content-type': r.type }, body: r.body })).status, seen);
+    assert.ok(status < 500, 'replay status ' + status);
+    assert.equal((await api(a, '/api/snippets/' + record.id)).revision, 3);
+    assert.equal((await api(a, '/api/snippets/' + record.id + '/history')).length, 3);
   });
 
   await check('cw_live_library_update', async () => {

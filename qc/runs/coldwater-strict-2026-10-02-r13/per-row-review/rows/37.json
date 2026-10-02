@@ -1,0 +1,32 @@
+{
+  "number": 37,
+  "id": "later_dimensions_tolerate_earlier_mutations",
+  "reviewer": "row-reviewer-37",
+  "input_sha256": "8470a993bd214b41a71259c1dbcf3d6fdcc40bdcd6c59b90a16adfe615f40ee7",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/WebDev Rubrics QC.xlsx (Quality Checks row 38 = check 37; Internal Quality Checks row 38, no annotation on this row)",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/harbor-webdev-rubric-qc/references/quality-checks.md (section 37)",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/projects/webdev-task-template/tests (file list; test.sh flow compared with the task's)",
+    "qc/REVIEW_POLICY.md",
+    "task/instruction.md, task/environment/instructions/*.md, task/environment/assets/seed_data.json",
+    "task/tests/app_context.md, task/tests/test.sh, task/tests/scoring.toml",
+    "task/tests/gates/{render,constraints}/{prompt.md,judge.toml}",
+    "task/tests/scored/{functional,polish,visual}/{prompt.md,judge.toml}",
+    "task/solution/app/src/app.tsx and src/style.css (New, openRecord, library CSS)",
+    "qc/runs/coldwater-strict-2026-10-02-r13/raw-evidence-index.json",
+    "qc/repairs/coldwater-2026-10-02-strict/run_golden.sh and results/{editor,runtime,persist-before,persist-after,polish,restart}.json, results/golden-1440-history.png"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": "P3",
+  "evidence": "Shared state that survives between dimensions is only the SQLite library and the restarted server process; each judge uses its own playwright-mcp --isolated browser (all five judge.toml args), so browser storage, viewport, clipboard and drafts do not cross dimensions. The seed is empty (environment/assets/seed_data.json: \"snippets\": []) and no criterion quotes a seeded value, count or id. The rubric is state-relative throughout: tests/app_context.md:23 \"Saved records are identified by the server, not by title, and the library may already hold records from earlier checks. Do not assume an empty library and do not delete records that earlier checks created.\"; app_context.md:27 \"After the restart tool has been used, open fresh pages instead of reusing pages opened before the restart.\"; app_context.md:22 \"Use fresh scratch drafts for editor checks.\" The gate that mutates first says \"Leave the saved record in place\" (gates/constraints/judge.toml:32). Every saving criterion in functional and polish creates its own record with \"a unique title\" (cw_preview_isolation, cw_save_reload_restart, cw_stale_save_refused, cw_stale_save_keeps_draft \"with a new snippet\", cw_history_restore_retry, cw_live_library_update, cw_live_update_keeps_editing_state, cw_newer_revision_notice_keeps_draft, cw_undo_redo_availability, cw_unsaved_marker) and grades revisions relative to what it observed (\"exactly one new revision\", \"note its library entry, its revision and its history ... same revision\"). Runtime criteria build their own last-good control rather than relying on an earlier picture (cw_time_limit_recovery, cw_stop_cancels_pending_work, cw_last_good_recovery), use fresh distinctive markers, and tolerate leftover console lines (cw_basic_run_output: \"console lines from the first Run may still be listed\"). The restart is confined to one criterion, once (functional/prompt.md:31), on the same DB_PATH (test.sh:160-167), and polish/visual start fresh sessions afterwards. Polish narrow-width restores the viewport and visual sets its own 1440x900 and its own ten-line draft (visual/prompt.md:11-12). Measured: the scripted golden ran editor, runtime, persist (with a real process restart), then polish against one database on these bytes (run_golden.sh; all listed result hashes re-verified equal to raw-evidence-index.json); every criterion true after accumulated mutations, and golden-1440-history.png shows the golden with 13 accumulated records, a scrolling library and an intact editor/preview/console layout. Golden New resets filename to snippet.js and openRecord clears the conflict notice (solution/app/src/app.tsx:60,99), so stale per-page state does not leak between criteria. Not measured: no configured judge run exists for these bytes; the hosted Oracle 41/41 Functional, 6/6 Polish result is for an earlier candidate and is not a measurement here, hence risk=true. Note (P3, within one dimension, not a cross-dimension seed assumption): several Run criteria after the .html criteria do not restate the filename (cw_time_limit_recovery, cw_stop_cancels_pending_work, cw_newer_run_supersedes, cw_preview_isolation, cw_dynamic_code_refused, cw_output_before_failure_kept say only \"run a draft\"), while cw_basic_run_output, cw_js_format_semantics_and_undo, cw_error_message_and_line and cw_last_good_recovery do say to make sure of the filename. A judge that keeps editing the page left at .html by cw_interaction_starts_fresh_budget / cw_last_good_recovery without pressing New could run JavaScript in HTML mode and fail a conforming app. Mitigated by app_context.md:6 (filename chooses the mode) and :22 (fresh scratch drafts), so it is recorded as latent robustness, not a Fail.",
+  "counterexample": null,
+  "suggested_fix": "Optional hardening: add one application note such as \"Before each Run check, make sure the filename ending matches the kind of draft you enter (.js unless the criterion says .html)\" instead of repeating it in only some criteria.",
+  "run_verdict": "PARTIAL"
+}

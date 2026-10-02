@@ -151,7 +151,7 @@ const { assert } = t;
     await t.setSource(page, text);
     await t.clickAt(page, 0, 3); await t.clickAt(page, 1, 5, { modifiers: ['Alt'] }); await t.clickAt(page, 2, 4, { modifiers: ['Control'] });
     assert.equal(await editor.locator('.caret').count(), 3);
-    await page.keyboard.type('MULTI');
+    await page.keyboard.type('MUL'); await t.sleep(3000); await page.keyboard.type('TI');
     assert.equal(await t.source(page), 'redMULTI one\ngreenMULTI two\nblueMULTI three');
     await key('ControlOrMeta+Z'); assert.equal(await t.source(page), text);
     await key('ControlOrMeta+Shift+Z'); assert.equal(await t.source(page), 'redMULTI one\ngreenMULTI two\nblueMULTI three');

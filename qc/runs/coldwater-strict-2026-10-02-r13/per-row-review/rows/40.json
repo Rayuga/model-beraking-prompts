@@ -1,0 +1,39 @@
+{
+  "number": 40,
+  "id": "reward_is_graded_not_binary_and_discriminates",
+  "reviewer": "row-reviewer-40",
+  "input_sha256": "8470a993bd214b41a71259c1dbcf3d6fdcc40bdcd6c59b90a16adfe615f40ee7",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/WebDev Rubrics QC.xlsx (Quality Checks row 41 = check 40; Internal Quality Checks row 41, no cell comment on this row)",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/harbor-webdev-rubric-qc/references/quality-checks.md (check 40 and neighbours 39-44)",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/rules/projects/webdev-task-template/tests/scoring.toml and tests/tools (diffed against the task: identical)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/tests/scoring.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/tests/tools/score.py",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/tests/gates/render/judge.toml and prompt.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/tests/gates/constraints/judge.toml and prompt.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/tests/scored/functional/judge.toml and prompt.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/tests/scored/polish/judge.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/tests/scored/visual/judge.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/tests/app_context.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/instruction.md and environment/instructions/*.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r13/task/task.toml",
+    "qc/runs/coldwater-strict-2026-10-02-r13/raw-evidence-index.json (all 22 artifact SHA256 values recomputed and matching)",
+    "run-outputs/.../run-4e686738.../colderwater-playground-devtools__Rc3y2sT/verifier/reward.json (earlier candidate, Oracle)",
+    "run-outputs/.../run-6e537d14.../colderwater-playground-devtools__2KqFPi3/verifier/gates/reward-details.json (earlier candidate)",
+    "qc/repairs/coldwater-2026-10-02-strict/results/editor.json, runtime.json, polish.json, restart.json"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": "low",
+  "evidence": "Structure (source reading, not a judge run). tests/scoring.toml: gates render=0.0, constraints=0.0; weights functional 0.6, polish 0.2, visual 0.2; floor functional 0.05; byte-identical to the template, as is tests/tools/score.py, which computes a weighted mean and zeroes it only on a failed gate or floor. Scored suites use aggregation=weighted_mean: functional has 42 binary criteria with weights 1.0-2.0 summing to 58.5 (no criterion above 3.4% of the dimension), polish 6 binary, visual 3 likert with anchors 0-5. So the reward takes many distinct values between 0 and 1.\n\nNo single precondition inside the scored suite. Grouping functional weight by what a criterion's steps need: editor-only criteria (typing, navigation, graphemes, mouse selection, indent, caret-in-view, long line, three multi-caret criteria, undo caret, four find/replace criteria, two colouring criteria, format error) = 24.5/58.5 (42%); criteria that need Run (two format criteria, basic run, html preview, errors, rejections, kept output, fresh document, console order, interaction budget, last-good, time limit, Stop, supersede, isolation, dynamic code) = 23.0/58.5 (39%); persistence and multi-tab criteria = 11.0/58.5 (19%). The most widely shared sub-feature, Undo, is a step in 13 criteria worth 19.5/58.5 (33%). tests/app_context.md states the independence explicitly: 'Run may be broken in a submitted app. Criteria that do not depend on Run are still scored on their own steps', and functional/prompt.md says 'Never carry a verdict across criteria ... a failure in one must not fail another whose own steps passed'.\n\nGates are narrow. render has one criterion, cw_workspace_loads_and_takes_typing ('This checks only that the app is running and its editor accepts typing ... Do not press Run'). constraints has cw_custom_document_surface (public hard rule in environment/instructions/ui.md: 'Don't use a textarea, input or contenteditable element as the document surface') and cw_shared_saved_record (one save, storage clear, reload, reopen; required by integration.md and by qc/REVIEW_POLICY.md 'Gates must exclude convincing dead apps'). The functional prompt's 'Global browser gate' repeats only load-and-type.\n\nReasoned partial apps (my estimates, not measurements): blank, static or textarea-based app -> 0 through a gate; thin app with typing, navigation, plain Run, console order and plain Save only -> functional about 7.5/58.5 = 0.13, reward about 0.25; solid editor with working Save but Run broken -> functional about 0.55-0.6, reward about 0.65; reference -> 0.98. These are four separated levels, and the 0.05 floor (3 weight points) does not swallow the thin app.\n\nMeasured evidence and its limit. raw-evidence-index.json hashes all verify. On these bytes there are only scripted golden checks (results/*.json: all criteria true), which say nothing about spread. The only hosted rewards are from an earlier candidate and are all-or-nothing: Oracle 0.9833, nop 0, GPT-5.6 Luna 0 with the scored suites skipped because the old render gate required Run. The render gate has since been reduced to load-and-type, which removes that collapse on paper, but no partial-quality app has ever been scored by the configured judge on these bytes, so a non-zero, non-oracle reward has not been observed. That missing measurement is why risk is true.\n\nNotes that do not change the verdict: (1) cw_shared_saved_record as a gate means an app with a strong editor and runtime but a broken Save scores 0 rather than about 0.6; this is a deliberate, policy-backed hard requirement, but it is the place where the reward is most binary. (2) Many criteria are long conjunctions (cw_history_restore_retry, cw_preview_isolation, cw_error_message_and_line), so mid-quality apps will sit low; the 42-criterion count still leaves a spread. (3) The two format criteria (3.5 weight) need a working Run to confirm unchanged meaning, so a Run-less app loses formatter credit as well.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}
