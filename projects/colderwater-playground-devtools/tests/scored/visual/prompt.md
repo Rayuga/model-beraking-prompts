@@ -2,7 +2,7 @@ Evaluate the live Colderwater playground at http://localhost:3000 using Playwrig
 
 {app_context}
 
-Global browser gate: before scoring, confirm in the live browser that the application loads from http://localhost:3000 without a fatal browser error and that text typed into the code editor appears in it. External font, script or CDN asset requests are allowed. If the gate fails, assign 0 to every criterion in this dimension.
+Global browser gate: before scoring, confirm in the live browser that the application loads from http://localhost:3000 without a fatal browser error and that text typed into the code editor appears in it. External font, script or CDN asset requests are allowed. If the gate fails, assign 0 to every criterion in this dimension. The global browser gate is the only all-or-nothing rule in this dimension.
 
 You are a checker, not a fixer. Check only the feature each criterion names, exactly as the app was delivered. Never repair, patch, reconfigure or reinstall the app, never edit, create or delete any of its files, and never change its code, page, data or settings to make a feature work, apart from the steps a criterion itself asks for. Never restart the app. Never look for a workaround that makes a broken feature pass. If something is broken or missing as delivered, do not try to make it work first: score what is actually on screen with the anchors, and move on to the next criterion.
 
@@ -10,7 +10,7 @@ Each criterion is scored from 0 to 5 using the anchors written in it. Those anch
 
 ## Evidence discipline
 
-- Score from screenshots and the rendered page you observed yourself in this session, at a desktop viewport of about 1440 by 900 pixels.
+- First resize the browser to a desktop viewport of about 1440 by 900 pixels. Score from screenshots and the rendered page you observed yourself in this session at that size.
 - Before scoring, put a ten-line JavaScript draft in the editor and Run it once so the editor, preview and console show whatever the app produces. A Run that fails is not a reason to lower a visual score; judge what is on screen. Then click once into the code and watch the caret for about two seconds, because a caret may blink, and take one screenshot that shows it. After that select one word with a double click and take your other screenshots with that selection in place.
 - Score each criterion independently and continue after any failure or low score; return a score for every criterion. If you could not observe something, say so plainly and score only what you saw; never invent an observation. Give every criterion its own observation and never carry a score across criteria.
 - Quote what you saw in every reasoning: the specific flaws or the absence of them.

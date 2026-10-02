@@ -123,10 +123,9 @@ function App() {
   useEffect(() => { let disposed = false; if (!record) { setHistory([]); return; } api('/api/snippets/' + record.id + '/history').then(items => { if (!disposed) setHistory(items); }).catch(error => { if (!disposed) log('error', [error.message]); }); return () => { disposed = true; }; }, [record?.id, record?.revision, snippets.find(item => item.id === record?.id)?.revision]);
   useEffect(() => { if (consoleHost.current && following.current) consoleHost.current.scrollTop = consoleHost.current.scrollHeight; }, [entries]);
   useEffect(() => {
-    const beforeUnload = event => { if (current.current.dirty) { event.preventDefault(); event.returnValue = ''; } };
     const keydown = event => { if (event.defaultPrevented || !(event.ctrlKey || event.metaKey)) return; if (event.key === 'Enter') { event.preventDefault(); commands.current.run(); } else if (event.key.toLowerCase() === 's') { event.preventDefault(); commands.current.save(); } else if (event.shiftKey && event.key.toLowerCase() === 'k') { event.preventDefault(); commands.current.clear(); } };
-    addEventListener('beforeunload', beforeUnload); addEventListener('keydown', keydown);
-    return () => { removeEventListener('beforeunload', beforeUnload); removeEventListener('keydown', keydown); };
+    addEventListener('keydown', keydown);
+    return () => { removeEventListener('keydown', keydown); };
   }, []);
   useEffect(() => {
     if (initialised.current) return; initialised.current = true;

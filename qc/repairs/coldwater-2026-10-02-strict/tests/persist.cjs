@@ -89,7 +89,7 @@ const stateFile = '/state/restart.json';
     assert.equal(await t.source(b), 'let v = "from B";//');
   });
 
-  await check('cw_history_restore_retry', async () => {
+  await check('cw_history_restore_adds_revision', async () => {
     const record = await create(a, 'hist-' + stamp, 'hist.js', 'let rev = 1;');
     await t.setSource(a, 'let rev = 2;'); await save(a).click(); await t.sleep(600);
     await t.setSource(a, 'let rev = 3;'); await save(a).click(); await t.sleep(600);

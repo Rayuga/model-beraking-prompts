@@ -20,6 +20,10 @@ const { assert } = t;
     assert.ok(await page.getByRole('log', { name: 'Console output' }).isVisible());
     await t.setSource(page, ''); await page.keyboard.type('gateprobe');
     assert.equal(await t.source(page), 'gateprobe');
+    // A reload with unsaved typed text must not be held up by a leave-page dialog.
+    let dialogs = 0; const count = () => { dialogs += 1; }; page.on('dialog', count);
+    await page.reload(); await t.sleep(500); page.off('dialog', count);
+    assert.equal(dialogs, 0, 'reload with a dirty draft opened a dialog');
     await t.fresh(page); assert.ok(await editor.isVisible()); assert.deepEqual(page.errors, []);
   });
 

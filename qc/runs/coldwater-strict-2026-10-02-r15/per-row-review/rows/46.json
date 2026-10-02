@@ -1,0 +1,34 @@
+{
+  "number": 46,
+  "id": "tests_and_key_are_out_of_agent_reach",
+  "reviewer": "row-reviewer-46",
+  "input_sha256": "128f56cd7807a629d141a24b134d93ebb3b15d10f20a8b709d40a95d88471cc5",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    "rules/WebDev Rubrics QC.xlsx: Quality Checks row 47 (check 46) and Internal Quality Checks row 47 (check 46); Deterministic Checks rows for check-dockerfiles.py, check-instruction-hygiene.py, check-solve-contract.py, check-verifier-contract.py",
+    "rules/harbor-webdev-rubric-qc/SKILL.md",
+    "rules/harbor-webdev-rubric-qc/references/quality-checks.md (check 46 and neighbours 45-52)",
+    "rules/harbor-webdev-rubric-qc/references/staged-task-contract.md",
+    "rules/projects/webdev-task-template: environment/Dockerfile, tests/Dockerfile, tests/.dockerignore, tests/test.sh, tests/scoring.toml, tests/tools/score.py, tests/tools/restart_mcp.py (compared byte-for-byte, CR-insensitive, with the task copies)",
+    "qc/REVIEW_POLICY.md",
+    "task/task.toml",
+    "task/instruction.md",
+    "task/environment/Dockerfile",
+    "task/environment/instructions/integration.md, policy.md (read in full); all six notes and assets/seed_data.json scanned for grader vocabulary and criterion ids",
+    "task/tests/Dockerfile, tests/.dockerignore, tests/test.sh, tests/app_context.md",
+    "task/tests/{gates,scored}/*/judge.toml [judge] blocks; isolation lines of all five prompt.md files",
+    "task/solution/solve.sh; task/solution/app/server.js environment and filesystem references",
+    "qc/runs/coldwater-strict-2026-10-02-r15/raw-evidence-index.json and its 22 artifacts under F:/Documents/turing-workspace/cw-strict-worktree (hashes recomputed); qc/repairs/coldwater-2026-10-02-strict/run_golden.sh; hosted verifier/reward.json of run 4e686738"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Source review of the frozen bytes; no defect found in this row's scope. (1) Agent image ships no grading material: task/environment/Dockerfile:14-15 copies only 'COPY instructions/ /instructions/' and 'COPY assets/ /assets/'; it installs only express@5.1.0 and better-sqlite3@12.4.1 (no rewardkit, no judge CLI, no Playwright), and never references tests/ or solution/. The file is identical to the frozen template. (2) Grading is isolated: task.toml:28 'environment_mode = \"separate\"' with task.toml:2 'artifacts = [\"/app\", \"/assets\"]'; tests/Dockerfile:43-44 'COPY . /tests' and 'RUN chmod +x /tests/test.sh && chmod -R go-rwx /tests' exist only in the verifier image. (3) No readable rubric copy in the agent's world: a scan of instruction.md, the six /instructions notes and seed_data.json for judge|rubric|criteri|rewardkit|reward|/tests|/logs|verifier|scoring|gate|likert|weight|playwright|grader|placeholders returned zero hits, and none of the 55 criterion ids from the five judge.toml files appears in any agent-visible file; seed_data.json is 149 bytes with an empty snippets list. (4) The submission cannot write or read the reward at grading time: tests/test.sh:3 'umask 077', :11 'chmod 700 \"$LOG_DIR\"', :12 'chmod -R go-rwx /tests', and :104-111 launch the app with 'setsid env -i ... setpriv --reuid=65534 --regid=65534 --clear-groups node \"$APP_ENTRY\"', so the app process has no ANTHROPIC_AUTH_TOKEN/OPENROUTER key in its environment and no access to /tests or /logs/verifier; test.sh:72-83 refuses any symlink in /app that is not inside /app/node_modules resolving inside /app/node_modules, which blocks pointing a submitted file at /tests or /logs. The key exists only as the template '${OPENROUTER_API_KEY}' in [verifier.env] (task.toml:34), never in the agent phase. (5) Shared files test.sh, tests/Dockerfile, .dockerignore, scoring.toml, tools/score.py, tools/restart_mcp.py are identical to the frozen template (diff after CR stripping: SAME for all seven compared files), so no task-specific weakening exists. (6) solution/solve.sh writes only under /app (grep for /tests|/logs|/solution: no hits) and the golden server.js reads only DB_PATH/SQLITE_PATH/PORT from the environment. (7) All five prompts carry the untrusted-submission line and 'never run shell or install commands'; the functional judge.toml wires only playwright and the single-use verifier restart server. Counterexamples tried: (a) a broken app that tries to read /tests/scored/functional/judge.toml or write /logs/verifier/reward.json from server.js at grading time is stopped by uid 65534 against root-owned mode-700 trees; (b) a submission shipping /app/rubric -> /tests is refused by the symlink loop and scores the pre-written zero; (c) an agent searching its own container finds no /tests, no rewardkit and no criterion text; (d) a conforming app using node_modules/.bin symlinks that stay inside /app/node_modules is not rejected, and integration.md:11 states that rule publicly. Evidence hashes: 18 of 22 indexed artifacts match as stored; the four hosted-run JSON files of run 4e686738 (result.json, verifier/reward.json, verifier/scored/reward-details.json, verifier/gates/reward-details.json) hash differently in the worktree because they are checked out with CRLF (core.autocrlf=true); their LF-normalised SHA256 values match the index (4a9b1934..., bcfe3714..., bacbf94c..., 5b001eb8...). Notes, not defects: N1 no configured-judge or hosted run exists for these exact bytes, so isolation is established from source and from template identity, not from a run; the earlier hosted run (reward.json 0.9833, graded 1) used the same isolation files but a different candidate. N2 the index hashes for those four hosted files are reproducible only on LF bytes; a reviewer hashing the worktree files directly sees a mismatch. N3 residual, template-controlled: the claude-code judge runs as root in the container that holds /tests, so reward integrity against a submission that tries to instruct the judge rests on the prompt-level untrusted-input rule (row 45 scope), not on a filesystem boundary.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

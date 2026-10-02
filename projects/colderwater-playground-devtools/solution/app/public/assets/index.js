@@ -40531,12 +40531,6 @@ function App() {
     if (consoleHost.current && following.current) consoleHost.current.scrollTop = consoleHost.current.scrollHeight;
   }, [entries]);
   useEffect(() => {
-    const beforeUnload = (event) => {
-      if (current2.current.dirty) {
-        event.preventDefault();
-        event.returnValue = "";
-      }
-    };
     const keydown = (event) => {
       if (event.defaultPrevented || !(event.ctrlKey || event.metaKey)) return;
       if (event.key === "Enter") {
@@ -40550,10 +40544,8 @@ function App() {
         commands.current.clear();
       }
     };
-    addEventListener("beforeunload", beforeUnload);
     addEventListener("keydown", keydown);
     return () => {
-      removeEventListener("beforeunload", beforeUnload);
       removeEventListener("keydown", keydown);
     };
   }, []);
