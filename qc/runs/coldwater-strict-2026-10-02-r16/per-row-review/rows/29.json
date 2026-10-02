@@ -1,0 +1,36 @@
+{
+  "number": 29,
+  "id": "global_browser_gate_is_present_and_correct_in_every_dimension",
+  "reviewer": "row-reviewer-29",
+  "input_sha256": "5c36bbfa4c7ec159eddd5e15f96ee996c3d83606f97dabd754c167f8a08a6d75",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/WebDev Rubrics QC.xlsx (Quality Checks sheet row 30 = check 29; Internal Quality Checks row for check 29; no cell comments present)",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/harbor-webdev-rubric-qc/references/quality-checks.md (check 29)",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (prompt contract, line 156)",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (check-rubric-prompt.py)",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/projects/webdev-task-template/tests/{gates/render,gates/constraints,scored/functional,scored/polish,scored/visual}/prompt.md",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/tests/gates/render/{prompt.md,judge.toml}",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/tests/gates/constraints/{prompt.md,judge.toml}",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/tests/scored/{functional,polish,visual}/prompt.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/tests/scored/functional/judge.toml (grep for origin wording only)",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/tests/app_context.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/tests/scoring.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/tests/test.sh (lines 205-227)",
+    "qc/runs/coldwater-strict-2026-10-02-r16/raw-evidence-index.json (all 22 artifact hashes recomputed and matched: 16 scripted-golden artifacts on raw bytes, 6 hosted-run JSON files on LF-normalised bytes)",
+    "qc/repairs/coldwater-2026-10-02-strict/results/{runtime,polish,persist-before}.json (gate criterion results)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "REAL GATE IN GATE DIMENSIONS. tests/scoring.toml lists render and constraints under [gates]; both gate judge.toml files use aggregation = \"all_pass\" with binary criteria; tests/test.sh lines 213-221 run the gates suite first and exit before the scored suite when score.py reports a gate failure. gates/render/prompt.md line 5: \"A blank page, a generic error, an unavailable server, or a static shell whose editor cannot be typed into fails.\" Its single criterion cw_workspace_loads_and_takes_typing (gates/render/judge.toml line 23) requires load, real typing visible in the editor, and a successful reload. Server backing (the app has a shared library, no sign-in per app_context.md line 10) is carried by the constraints gate criterion cw_shared_saved_record (gates/constraints/judge.toml line 32): save through the UI, clear this origin's browser storage, reload, read back exact title, filename and source, reload again. That is a real successful operation with a storage-independent readback, as REVIEW_POLICY 'Gates must exclude convincing dead apps' asks, not a health ping.\n\nIN-DIMENSION GATE IN EVERY SCORED PROMPT. scored/functional/prompt.md line 5, scored/polish/prompt.md line 5 and scored/visual/prompt.md line 5 carry the identical paragraph: \"Global browser gate: before scoring, confirm in the live browser that the application loads from http://localhost:3000 without a fatal browser error and that text typed into the code editor appears in it. External font, script or CDN asset requests are allowed. If the gate fails, assign 0 to every criterion in this dimension. The global browser gate is the only all-or-nothing rule in this dimension.\" This hard-zeros (no partial credit) and is stricter than the frozen template's gate, which only requires loading plus sign-in when sign-in exists; the typing leg is what excludes a static shell. visual/prompt.md line 9 keeps the zeroing consistent with the anchored scale: \"Apart from a failed global browser gate, 0 is used only when the thing being judged is not shown at all.\" No auth leg is needed because the app has no sign-in.\n\nNO SAME-ORIGIN REQUIREMENT. All five prompts state that external font, script or CDN asset requests are allowed; app_context.md line 32 repeats it. A grep of tests/**/*.md and *.toml for same-origin/cross-origin finds no gate wording; the only 'origin' hits in gate files are 'this origin's browser storage' (storage clearing scope) which does not constrain where assets load from.\n\nCOUNTEREXAMPLE ATTEMPTS. Broken apps: (a) blank page or crashed server fails render and every scored gate; (b) static HTML mock with a non-interactive code picture fails the typing leg in all five places; (c) typable editor with localStorage-only saves passes render but fails cw_shared_saved_record after storage clearing, so reward is 0; (d) textarea or CodeMirror wrapper fails cw_custom_document_surface. Conforming alternatives: a canvas-drawn editor can still show the typed word (app_context.md line 29 tells the judge to read text from screenshots); an app that raises a beforeunload dialog on reload is covered by the render criterion (\"a reload that waits for that dialog is not a failure\") and app_context.md line 23; an app loading fonts or libraries from a CDN is explicitly allowed. I found no conforming app that the gate wording would zero.\n\nRUNTIME EVIDENCE. Scripted golden results on these bytes report cw_workspace_loads_and_takes_typing true (results/runtime.json), cw_custom_document_surface true (results/polish.json) and cw_shared_saved_record true (results/persist-before.json). These are scripted Playwright checks, not a configured judge run. The only hosted judge run is on an earlier candidate (render gate then required Run; it has since been reduced to load-and-type), so no configured judge has executed the current gate wording; that is recorded as a note, not as a waiver, and does not by itself change this row's source-determinable verdict.\n\nNOTES (not defects). (1) The scored in-dimension gate restates load and typing but not the server-backing leg; the workbook says 'plus auth/backing checks when the app has them'. The frozen template's scored gate also has no backing leg, backing is hard-gated by cw_shared_saved_record before the scored suite can run, and adding a save-and-clear-storage step to each scored session would add workload and library records, so I do not treat this as a defect. (2) The render gate adds a reload leg that the scored in-dimension gate does not repeat; harmless asymmetry. (3) Workbook Internal sheet wording for check 29 still says 'cross-origin apps'; the public sheet's current wording ('must NOT require same-origin') governs and the task follows it.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PASS"
+}

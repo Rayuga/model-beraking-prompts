@@ -1,0 +1,39 @@
+{
+  "number": 37,
+  "id": "later_dimensions_tolerate_earlier_mutations",
+  "reviewer": "row-reviewer-37",
+  "input_sha256": "5c36bbfa4c7ec159eddd5e15f96ee996c3d83606f97dabd754c167f8a08a6d75",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/WebDev Rubrics QC.xlsx (Quality Checks row 37 at sheet row 38; Internal Quality Checks row 37 at sheet row 38)",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/harbor-webdev-rubric-qc/references/quality-checks.md (section 37, lines 153-154)",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/projects/webdev-task-template/tests/test.sh, tests/scoring.toml, tests/app_context.md, tests/scored/functional/prompt.md and judge.toml (state/restart passages)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/tests/app_context.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/tests/test.sh",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/tests/scoring.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/tests/gates/render/prompt.md and judge.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/tests/gates/constraints/prompt.md and judge.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/tests/scored/functional/prompt.md and judge.toml (all 43 criteria)",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/tests/scored/polish/prompt.md and judge.toml (all 6 criteria)",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/tests/scored/visual/prompt.md and judge.toml (all 3 criteria)",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/environment/assets/seed_data.json",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/solution/app/server.js (routes, DB_PATH, table creation) and src/style.css (library rules)",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/instruction.md and environment/instructions/*.md (grep for seed/library statements)",
+    "qc/runs/coldwater-strict-2026-10-02-r16/raw-evidence-index.json",
+    "qc/repairs/coldwater-2026-10-02-strict/results/golden-1440-history.png",
+    "run-outputs/.../run-4e686738-561e-4222-9cdd-bd2b5604e0c1/colderwater-playground-devtools__Rc3y2sT/verifier/reward.json and verifier/scored/reward-details.json (earlier candidate)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "All five dimensions grade one running app on one database (tests/test.sh: single node process, DB_PATH fixed, 'rewardkit --max-concurrent-agent 1', gates suite then scored suite; every judge.toml has isolated = false; the functional restart helper restarts on the same DB_PATH). The persistent shared state is therefore the saved library and its revision history. No criterion in any dimension depends on that state being pristine. (1) There is no seeded content to quote: environment/assets/seed_data.json is '\"snippets\": []', and no criterion quotes a library count, a seeded title, an absolute record id or an empty-library state. (2) tests/app_context.md line 24, injected into every prompt, is explicitly state-relative: 'Saved records are identified by the server, not by title, and the library may already hold records from earlier checks. Do not assume an empty library and do not delete records that earlier checks created.' Line 23: 'Use fresh scratch drafts for editor checks.' (3) Every criterion that reads saved state first creates its own record with a unique title and grades only that record: constraints cw_shared_saved_record ('Create one new .js snippet with a unique title ... Leave the saved record in place'); functional cw_save_reload_restart ('give it an exact unique title' ... 'the same single record' / 'duplicated or missing' are scoped to that titled record), cw_stale_save_refused, cw_stale_save_keeps_draft ('with a new snippet'), cw_history_restore_adds_revision ('Build three saved revisions of one snippet'), cw_restore_request_repeat_safe ('exactly three revisions for the snippet'), cw_live_library_update, cw_live_update_keeps_editing_state, cw_newer_revision_notice_keeps_draft, cw_preview_isolation (judge-chosen hostile marker 'must not appear in the page title or in the library'); polish cw_undo_redo_availability and cw_unsaved_marker ('Save a snippet with a unique title' / 'Save a snippet so the draft equals the saved revision'). Revision counts are per own snippet, never global. (4) Browser-side state does not leak between dimensions: each judge launches its own playwright-mcp with '--isolated', so the localStorage entry set by cw_preview_isolation, the storage clearing in constraints and any unsaved-draft storage stay within one dimension. (5) The scored-dimension gates only need 'the application loads ... and that text typed into the code editor appears in it', which holds whatever the library contains. (6) Visual puts its own ten-line draft in the editor and scores what is on screen; its anchors do not presuppose an empty library, and the reference bounds the library ('.library{max-height:36%}' with overflow:auto in src/style.css), confirmed by golden-1440-history.png showing 'Saved snippets 14' with the layout intact (file hashes in the evidence index verified for run_golden.sh, runtime.json, persist-after.json, restart.json, polish.json, golden-1440.png, tests/persist.cjs). Supporting run evidence on an EARLIER candidate only: the hosted Oracle run (scored/reward-details.json LF-normalised sha256 bacbf94c... verified) ran polish and visual after functional on a mutated library; cw_unsaved_marker passed reading 'Loaded #2 · revision 4 · Saved' and the visual judge scored a workspace showing 'Saved snippets 10' at 0.75/1.0/1.0 without any failure attributed to carried-over records. That run is not a measurement of these bytes; the row is decided from the frozen prompt and criterion text. Counterexample search: a broken app cannot gain credit from earlier-dimension leftovers because each stateful criterion demands a record with a title/marker the judge invents in that criterion; a conforming app that sorts the library alphabetically, paginates it or auto-opens the latest record is not failed by any wording that presumes position, count or emptiness. Notes (not defects): (a) cw_save_reload_restart restarts the single shared process; if a submission does not come back after restart, any dimension rewardkit runs afterwards meets a dead app and its in-dimension gate zeros it. This is template-controlled behaviour (tests/test.sh is byte-identical to the template) and reflects a real product failure of a public requirement ('survive ... complete process restarts'), not a pristine-seed assumption. (b) Visual layout is scored with however many library records earlier dimensions left (roughly 15-25); a submission with an unbounded library list is judged on a longer page than a pristine run would show. The anchors are state-neutral and the judge grades what is observed, so this is ordinary state-relative grading. (c) No configured-judge run exists on these exact bytes; execution order of polish/visual relative to functional inside the scored suite is decided by rewardkit and was not measured here, but the conclusion holds for any order since no dimension assumes pristine state.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

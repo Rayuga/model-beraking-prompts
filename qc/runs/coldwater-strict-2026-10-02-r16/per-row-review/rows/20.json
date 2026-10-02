@@ -1,0 +1,32 @@
+{
+  "number": 20,
+  "id": "solution_is_frozen_and_deterministic",
+  "reviewer": "row-reviewer-20",
+  "input_sha256": "5c36bbfa4c7ec159eddd5e15f96ee996c3d83606f97dabd754c167f8a08a6d75",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/WebDev Rubrics QC.xlsx (Quality Checks row 21 = check 20; Internal Quality Checks row 21; no cell comments on the row)",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/harbor-webdev-rubric-qc/references/quality-checks.md (section 20)",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/projects/webdev-task-template (file list; solution/solve.sh and solution/app/server.js layout)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/solution/solve.sh",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/solution/app/server.js",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/solution/app/package.json, package-lock.json, vite.config.mjs, index.html, public/index.html, public/runner.html, static/runner.html, public/assets/index.css, src/style.css",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/solution/app/src/app.tsx, src/runtime.ts, src/custom-editor.js and public/assets/index.js (pattern searches for random, clock, fetch and URL use; not read line by line)",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/environment/Dockerfile, environment/assets/seed_data.json, task.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/tests/Dockerfile, tests/test.sh (launch and DB lines), tests/scored/functional/judge.toml (time, order, restore and live-update criteria), tests/app_context.md (searched)",
+    "qc/runs/coldwater-strict-2026-10-02-r16/raw-evidence-index.json and qc/repairs/coldwater-2026-10-02-strict/results/*.json"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Static committed baseline: solution/solve.sh only checks the source exists, refuses to reset an open database, then runs `rm -f -- \"$target/app.db\" \"$target/app.db-wal\" \"$target/app.db-shm\"` and `cp -a \"$source_app/.\" \"$target/\"`. It contains no npm, vite, curl, wget or git call, so nothing is built, installed or downloaded at install time; the prebuilt public/assets/index.js (1.9 MB, unminified) and index.css are committed. public/assets/index.css is byte-identical to src/style.css and public/runner.html to static/runner.html. Runtime needs only express and better-sqlite3, pinned identically in both images (environment/Dockerfile and tests/Dockerfile: `express@5.1.0`, `better-sqlite3@12.4.1`); package.json pins every dependency to an exact version and package-lock.json agrees. No boot-time fetch: server.js requires only node:path, node:fs, express and better-sqlite3; the only fetch in src/app.tsx:12 is the same-origin API helper; the bundle contains no off-origin URL other than XML namespace and documentation strings; server.js:16 sends `default-src 'self'` and `connect-src 'self'`. Seeding is deterministic and empty: seed_data.json has `\"snippets\": []` and server.js creates empty tables only (the single INSERT OR IGNORE backfills revisions from existing rows). Ids are AUTOINCREMENT integers and revisions are counters (`revision = revision + 1`), not random. Nondeterministic sources exist but touch no pinned or graded value: `new Date().toISOString()` at server.js:71, 84, 111 fills updated_at/created_at, which no criterion, prompt or app_context line grades (search for timestamp/date/clock across tests/ and instructions found none) and which src/app.tsx does not render; `crypto.randomUUID()` in src/app.tsx:45, 85 and src/runtime.ts:27, 317, 318, 335, 386 produces console-entry keys, a restore operationId and preview message nonces, all opaque; the one `Date.now()` in the bundle is inside the bundled diff library's timeout option. The task defines no fixed clock and no graded rule uses time, so the skill's fixed-clock clause has nothing to apply to. Evidence files: all 13 script and result hashes I recomputed under qc/repairs/coldwater-2026-10-02-strict match raw-evidence-index.json; those results show every scripted criterion true with empty pageErrors, and restart.json shows the saved record at revision 2 with history [2, 1] after a real process restart. Notes, not defects: (1) the library list is ordered `updated_at DESC, id DESC` (server.js:65), a wall-clock order, but no criterion grades list position and id breaks ties; (2) the live library refresh polls every 2000 ms (src/app.tsx:138) against a ten-second criterion window, which is a fixed interval and not a pinned value; (3) I did not rebuild the bundle, so byte reproducibility of public/assets/index.js from src is unmeasured, and that does not matter here because solve.sh never rebuilds; distinctive literals from all three source files are present in the bundle; (4) I could not recompute the input SHA256 itself because the manifest algorithm is not stated in the assignment; (5) no configured judge run exists for these bytes, so judge-observed stability across runs is unmeasured.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL"
+}

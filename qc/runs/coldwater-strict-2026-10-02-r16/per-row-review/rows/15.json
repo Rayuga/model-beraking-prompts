@@ -1,0 +1,41 @@
+{
+  "number": 15,
+  "id": "dockerfile_builds_the_declared_world",
+  "reviewer": "row-reviewer-15",
+  "input_sha256": "5c36bbfa4c7ec159eddd5e15f96ee996c3d83606f97dabd754c167f8a08a6d75",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/WebDev Rubrics QC.xlsx (Quality Checks row 16 = check 15; Internal Quality Checks row 16; Deterministic Checks rows for check-dockerfiles.py, check-dockerfile-references.sh, check-fixtures.py, check-package-manifest-deps-preinstalled.py, check-runtime-deps-in-both-images.py)",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/harbor-webdev-rubric-qc/references/quality-checks.md (section 15)",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (Dockerfile, NODE_PATH and launch lines)",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/projects/webdev-task-template/environment/Dockerfile",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/projects/webdev-task-template/tests/Dockerfile",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/projects/webdev-task-template/tests/test.sh",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/environment/Dockerfile",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/environment/assets/seed_data.json",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/environment/instructions/integration.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/instruction.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/task.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/solution/solve.sh",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/solution/app/package.json",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/solution/app/server.js (require lines)",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/tests/Dockerfile",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/tests/test.sh",
+    "qc/runs/coldwater-strict-2026-10-02-r16/raw-evidence-index.json (all 22 artifact hashes recomputed and matching; hosted-run JSON after LF normalisation)",
+    "qc/repairs/coldwater-2026-10-02-strict/run_golden.sh (read only, not rerun)",
+    "qc/repairs/coldwater-2026-10-02-strict/results/runtime.json"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "environment/Dockerfile is byte-identical to the frozen template environment/Dockerfile (diff empty), LF only. Pinned base: line 1 `FROM node:22-bookworm-slim` (tag pin, template-controlled; no digest). Runtime dependencies pre-installed and version-pinned: lines 9-12 `RUN npm install -g --no-audit --no-fund express@5.1.0 better-sqlite3@12.4.1`, with line 3 `ENV NODE_PATH=/usr/local/lib/node_modules` matching the NODE_PATH that tests/test.sh:106 passes at launch; the same two pins are in tests/Dockerfile:20-21, so the app can start in the verifier image. Assets staged: line 14 `COPY instructions/ /instructions/`, line 15 `COPY assets/ /assets/`, line 16 `chmod -R a+rX /instructions /assets`; both source directories exist (six notes, seed_data.json parses), and the brief names exactly /instructions and /assets/seed_data.json. /app is created, git-initialised and holds only .gitkeep (lines 17-23). No COPY/ADD of solution/ or tests/. task.toml has no [environment].docker_image. No run-time install: solve.sh only removes the database files and runs `cp -a \"$source_app/.\" \"$target/\"` (no npm, no build); server.js requires only node:path, node:fs, express and better-sqlite3 (lines 2-5); the other package.json entries (react, prettier, acorn, @lezer/html, vite, typescript) are compiled into the committed public/assets/index.js and are not resolved by Node at start. Run evidence on these bytes: run_golden.sh installs with solve.sh into an agent-image container and launches with env -i, NODE_PATH and uid 65534 from /tmp; results/runtime.json records cw_workspace_loads_and_takes_typing true, so express and better-sqlite3 resolved without any install. Notes (not defects): (1) apt packages on lines 5-7 are unpinned, which the workbook's check-dockerfiles.py row classes as a NOTE and which is template-controlled. (2) The golden's package.json lists packages that are not in the agent image; under the project's public network the workbook's check-package-manifest-deps-preinstalled.py row makes this a NOTE, and none is needed at run time. (3) The scripted golden used a locally tagged image (`cw-editor-agent-r3`) whose build from these exact Dockerfile bytes is not hash-bound in the evidence index, and the hosted build was of an earlier candidate; no build log for this candidate was supplied. Because the Dockerfile equals the template and contains nothing task-specific beyond the two COPY sources, I do not treat this as an open risk for this row, but it is not a measured build of these bytes. (4) integration.md tells the builder the image supplies 'Node 22, Express and better-sqlite3 through NODE_PATH', which matches the Dockerfile exactly. Counter-checks tried: a builder app that requires a package other than express/better-sqlite3 must vendor it under /app (permitted by integration.md, node_modules links allowed), so a conforming alternative is not blocked by the image; a broken app gains nothing from the image because /app is empty apart from .gitkeep.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL"
+}

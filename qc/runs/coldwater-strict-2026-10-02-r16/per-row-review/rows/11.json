@@ -1,0 +1,36 @@
+{
+  "number": 11,
+  "id": "timeouts_fit_the_work",
+  "reviewer": "row-reviewer-11",
+  "input_sha256": "5c36bbfa4c7ec159eddd5e15f96ee996c3d83606f97dabd754c167f8a08a6d75",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/WebDev Rubrics QC.xlsx :: Quality Checks row 12 (check 11) and Internal Quality Checks row 12 (no cell comments or extra annotation columns on that row); Deterministic Checks rows 29 and 33",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/harbor-webdev-rubric-qc/references/quality-checks.md (section 11)",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (task.toml block, test.sh contract, budget nesting line 111, restart_mcp line 163)",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (check-scoring-policy, check-rubric-schema)",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/projects/webdev-task-template (task.toml, tests/test.sh, tests/Dockerfile, environment/Dockerfile, tests/tools/restart_mcp.py, five judge.toml timeouts)",
+    "qc/REVIEW_POLICY.md (line 25, workload is measured)",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/task.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/tests/test.sh",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/tests/gates/{render,constraints}/judge.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/tests/scored/{functional,polish,visual}/judge.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/tests/tools/restart_mcp.py",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/environment/Dockerfile",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/solution/solve.sh (head)",
+    "qc/runs/coldwater-strict-2026-10-02-r16/raw-evidence-index.json",
+    "run-outputs/coldwater-playground-devtools/runs-export/runs-export/runs-export/run-4e686738-561e-4222-9cdd-bd2b5604e0c1/colderwater-playground-devtools__Rc3y2sT/result.json and verifier/reward.json (earlier candidate)"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "ARITHMETIC (frozen bytes). task.toml: [agent].timeout_sec = 7200.0; [environment].build_timeout_sec = 600.0; [verifier].timeout_sec = 13200.0. tests/test.sh line 207 runs each suite as `timeout \"$budget_sec\" rewardkit --max-concurrent-agent 1 ...`, with `run_suite gates 1500` and `run_suite scored 11100`. Judge timeouts (judge.toml line 4 in each): gates/render 600, gates/constraints 600, scored/functional 9000, scored/polish 900, scored/visual 900. Nesting: each gate judge 600 < 1500, and even run serially (max-concurrent-agent 1) 600+600 = 1200 < 1500 (300 s slack). Each scored judge <= 9000 < 11100, and serially 9000+900+900 = 10800 < 11100 (300 s slack). Budgets: 1500 + 11100 = 12600 < 13200, leaving 600 s for app copy, launch, liveness and two score.py calls. Liveness: startup probe is 120 iterations x 0.25 s sleep (nominal 30 s; absolute worst case with both 2 s URL timeouts on every iteration is 120 x 4.25 = 510 s < 600 s slack). Restart helper: up to 5 s kill wait + 30 s readiness = about 35 s nominal, inside restart_mcp.py HELPER_TIMEOUT_SEC = 55. All values equal the reference in staged-task-contract.md (gates 1500, scored 11100, verifier 13200, agent 7200, build 600) and the frozen template; tests/test.sh, tests/Dockerfile, environment/Dockerfile and tests/tools/restart_mcp.py are byte-identical to the template (diff clean), so no timeout was changed and no authorization record is needed. 13200 s = 3 h 40 min, below the five-hour limit. BUILD: environment/Dockerfile is node:22-bookworm-slim + one apt layer (ca-certificates git procps sqlite3) + global express@5.1.0 and better-sqlite3@12.4.1 (prebuilt binary), a realistic cold build of a few minutes at most against 600 s; hosted environment_setup took about 15 s (10:10:27.4 to 10:10:42.1, likely cached, so not a cold-build measurement). AGENT: 7200 s for a hard custom-editor full-stack app with dependencies preinstalled is the template value; no measured target-model build on these bytes exists to show it is too short or too long. WORKLOAD: Functional has 43 criteria in one batched judge with 9000 s, about 209 s per criterion; polish 6 criteria in 900 s; visual 3 in 900 s; gates 1 and 2 criteria in 600 s each. MEASURED (earlier candidate only, ZIP eda58464 / QC input 4f93c627): result.json LF-normalised sha256 4a9b1934f5dd01ffeb55ddb86dc19d4272c57d13c67bb70c9925e6fb3850073f matches the index; verifier.started_at 2026-10-02T10:10:47.88Z, verifier.finished_at 10:52:12.66Z = 2485 s for both gates plus Functional 41/41, Polish 6/6 and Visual, reward 0.9833, with timeout_multiplier 1.0 and no overrides. That is 19 percent of the 13200 s verifier timeout and under 28 percent of the Functional judge timeout alone, so adding two Functional criteria (41 to 43) leaves large headroom. The export has no per-suite durations, so the split between gates and scored is not measured. RISK (why risk=true): no configured judge run exists for these exact bytes; scripted golden duration is not judge duration; the one timing is the Oracle app on an earlier candidate, and a slower or partially broken model app (where the judge retries and waits out the roughly ten-second time-limit criteria) is unmeasured. This missing measurement is not waived; it is not a defect in the configured values.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PASS"
+}

@@ -1,0 +1,33 @@
+{
+  "number": 46,
+  "id": "tests_and_key_are_out_of_agent_reach",
+  "reviewer": "row-reviewer-46",
+  "input_sha256": "5c36bbfa4c7ec159eddd5e15f96ee996c3d83606f97dabd754c167f8a08a6d75",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/WebDev Rubrics QC.xlsx (Quality Checks row 47 = check 46; Internal Quality Checks row 47; no cell comments on that row)",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/harbor-webdev-rubric-qc/references/quality-checks.md (check 46)",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (tests/, test.sh, verifier.env sections)",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/projects/webdev-task-template (task.toml, environment/Dockerfile, tests/Dockerfile, tests/.dockerignore, tests/test.sh, tests/tools, tests/scoring.toml, judge.toml files; diffed against the task)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/task.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/environment/Dockerfile",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/environment/instructions/*.md and environment/assets/seed_data.json (searched; integration.md diffed)",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/instruction.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/tests/Dockerfile, tests/.dockerignore, tests/test.sh",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/solution/solve.sh and solution file list",
+    "qc/runs/coldwater-strict-2026-10-02-r16/raw-evidence-index.json and manifest.json (hashes re-computed)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Workbook row 46: 'The agent can't read the criteria it's graded on or influence the reward - grading is isolated in the verifier.' Skill quality-checks.md check 46: 'the agent image ships no criteria, no judge client, no RewardKit, and no readable copy of the rubric; grading is isolated in the verifier image.' (1) Agent image: task/environment/Dockerfile is byte-identical to the frozen template (diff empty); it installs only 'express@5.1.0' and 'better-sqlite3@12.4.1' plus apt 'ca-certificates git procps sqlite3', and copies only 'COPY instructions/ /instructions/' and 'COPY assets/ /assets/'. The build context is environment/, so tests/ and solution/ cannot enter the image; there is no rewardkit, claude-code, codex or Playwright there. (2) No rubric copy in the agent's world: a case-insensitive search of task/instruction.md and task/environment/** for 'cw_', rubric, judge, criteri, rewardkit, gate, scor, grader, verifier, /tests, likert, weight returned zero matches; seed_data.json is '{\"snippets\": [], \"note\": ...}' only. (3) Isolation: task/task.toml '[verifier] ... environment_mode = \"separate\"', 'artifacts = [\"/app\", \"/assets\"]', and the frozen [verifier.env] block with 'ANTHROPIC_AUTH_TOKEN = \"${OPENROUTER_API_KEY}\"' (template placeholder, no literal key; the differences from the template task.toml are only name/description/keywords/metadata). (4) Reward path: tests/test.sh, tests/Dockerfile, tests/.dockerignore, tests/tools/score.py, tests/tools/restart_mcp.py and tests/scoring.toml are byte-identical to the template. test.sh runs 'umask 077', 'chmod 700 \"$LOG_DIR\"', 'chmod -R go-rwx /tests', and starts the submission with 'env -i ... setpriv --reuid=65534 --regid=65534 --clear-groups node \"$APP_ENTRY\"', so the submitted process has no judge credentials in its environment and cannot read /tests or read/write the reward files; symlinks leaving /app are rejected ('*) exit 0'); the reward is written only by write_zero_reward/score.py as root. tests/Dockerfile ends 'COPY . /tests' + 'chmod -R go-rwx /tests'. (5) Hashes: all 43 frozen task file hashes in manifest.json match the current bytes and the canonical digest of manifest inputs recomputes to 5c36bbfa...; all 22 artifact hashes in raw-evidence-index.json match (16 raw, 6 hosted-run JSON as LF-normalised). Runtime evidence: no verifier run exists on these bytes; the hosted run on an EARLIER candidate recorded nop = 0 and a verifier-written reward, which is consistent with but not a measurement of this candidate. The verdict rests on static inspection of files that are identical to the frozen template. Notes (not defects of this task): (a) in the shared verifier the submitted app (uid 65534) runs in the same container as the judge, so anything the harness puts on a root process command line would be readable through /proc/<pid>/cmdline at grading time, and the app still serves the pages the judge reads (prompt-injection handling belongs to row 45); this is template-controlled shared policy, identical in every task, and an agent cannot use it at build time to read the criteria. (b) rules/WebDev Rubrics QC.xlsx and rules/harbor-webdev-rubric-qc/assets/WebDev_Rubrics_QC.xlsx are not byte-identical; row 46 text reads the same in the Quality and Internal sheets of the former, the latter was not separately parsed.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

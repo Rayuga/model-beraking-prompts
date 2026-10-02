@@ -1,0 +1,39 @@
+{
+  "number": 23,
+  "id": "verifier_and_instruction_agree_on_the_runtime_contract",
+  "reviewer": "row-reviewer-23",
+  "input_sha256": "5c36bbfa4c7ec159eddd5e15f96ee996c3d83606f97dabd754c167f8a08a6d75",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    "qc/runs/coldwater-strict-2026-10-02-r16/per-row-review/prompts/23.md",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/WebDev Rubrics QC.xlsx (Quality Checks row 23; Internal Quality Checks row 23 annotation; Deterministic Checks check-runtime-contract-strings.py, check-runtime-deps-in-both-images.py)",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/harbor-webdev-rubric-qc/references/quality-checks.md (check 23 and neighbours 4, 19, 21, 22, 49)",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/projects/webdev-task-template (tests/test.sh, tests/Dockerfile, environment/Dockerfile, tests/tools/restart_mcp.py, environment/instructions/integration.md)",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/instruction.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/environment/instructions/{overview,integration,policy,security,behaviour,ui}.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/environment/assets/seed_data.json",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/environment/Dockerfile",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/task.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/tests/test.sh",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/tests/Dockerfile",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/tests/app_context.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/tests/{gates,scored}/*/{prompt.md,judge.toml} (grep for health, routes, DB, entry, seed, restart assumptions)",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/solution/solve.sh and solution/app/server.js (contract lines), solution/app/package.json",
+    "qc/runs/coldwater-strict-2026-10-02-r16/raw-evidence-index.json (all 22 artifact hashes recomputed: 16 match raw bytes, 6 hosted-run JSON match LF-normalised bytes)",
+    "qc/repairs/coldwater-2026-10-02-strict/run_golden.sh, results/restart.json, results/persist-after.json (read only, not rerun)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Every launch assumption in tests/test.sh maps to a public statement, all in environment/instructions/integration.md (instruction.md:3 tells the agent to read the six notes; instruction.md:5 gives /app and /). (1) Entry: test.sh:68 `if [[ ! -f /app/server.js ]]` and test.sh:111 `node \"$APP_ENTRY\"` <-> integration.md:3 'I start it with node /app/server.js'. (2) Working directory outside /app (test.sh never cds; image WORKDIR /tests) <-> integration.md:3 'from a working directory that may be outside /app. Resolve files from their actual location.' (3) Port and bind: test.sh:108 `PORT=\"3000\"`, probe test.sh:48 `http://127.0.0.1:3000/api/health`, `http://127.0.0.1:3000/`, judges on http://localhost:3000 (app_context.md:4) <-> integration.md:3 'Listen on port 3000 on 0.0.0.0 (PORT is set to 3000 at launch), serve the workspace at / and answer GET /api/health promptly'. The probe accepts any HTTP answer including an HTTPError, so no status or body shape is assumed that the brief does not give. (4) Database: test.sh:98 `APP_DB=\"/app/app.db\"`, test.sh:109 `DB_PATH=\"$APP_DB\"`, and the non-writable fallback test.sh:99-102 that launches /tmp/submission/server.js with DB_PATH=/tmp/submission/app.db <-> integration.md:9 'The default database path is /app/app.db. If DB_PATH is set, open that absolute path instead, including when the app runs from a writable copy outside /app.' (5) Dependencies: test.sh:105-106 PATH and `NODE_PATH=\"/usr/local/lib/node_modules\"` with env -i <-> integration.md:5 'The launch image supplies Node 22, Express and better-sqlite3 through NODE_PATH ... Include everything needed at runtime; opening the finished app must not require an install or build step'; both Dockerfiles install express@5.1.0 and better-sqlite3@12.4.1 globally on node:22-bookworm-slim binaries with the same NODE_PATH (environment/Dockerfile:3,9-11; tests/Dockerfile:1,4,9,20-21). (6) Symlink refusal test.sh:72-83 <-> integration.md:11 'Symbolic links are unsupported except links under /app/node_modules whose resolved targets also stay under /app/node_modules.' (7) Restart helper (test.sh:127-193, same env and DB) <-> integration.md:7 and :9 'must survive page reloads and complete process restarts', 'Keep the same records and revision history after a process restart'. (8) Seed: test.sh:88 only makes /assets readable; instruction.md:3 and integration.md:7 name /assets/seed_data.json, task.toml:2 lists it as an artifact, and the seed holds no records, so no seeded state is assumed by the launch. (9) No accounts: policy.md:3 and app_context.md:10 agree; nothing signs in. No prompt or criterion names a route other than / and the public /api/health (grep of all five prompt.md and judge.toml files), and no same-origin requirement appears. tests/test.sh, tests/Dockerfile, environment/Dockerfile and tests/tools/restart_mcp.py are byte-identical (after CR stripping) to the frozen template. The golden server.js honours the same facts (server.js:7 __dirname root, :8 DB_PATH, :12 /api/health, :142 listen on PORT/0.0.0.0). Measured support: the scripted golden run on these bytes launched the app as uid 65534 with env -i, PORT, NODE_PATH, DB_PATH and cwd /tmp, and cw_save_reload_restart passed across a real process replacement (results/restart.json, results/persist-after.json); hashes verified. Limitation: that run was in the agent image with HOME=/app, not through tests/test.sh in the verifier image, and the hosted configured-judge run is of an earlier candidate; a launch of these exact bytes through test.sh is not measured. This row's claim is a cross-file agreement established by reading, which holds. Notes, none a defect: (a) test.sh:107 injects HOME=/tmp/submission, which no public note names; it points at a writable directory and a conforming app has no reason to depend on it, and it is template-controlled. (b) The unprivileged uid 65534 is not stated publicly; test.sh:87 chowns /app to that uid and falls back to a writable copy, and the copy case is stated, so no conforming app is disadvantaged. (c) The restart helper sends SIGTERM to the process group and waits at most 5 s before starting the new process; an app that traps SIGTERM and lingers would keep the port, but the brief asks for 'complete process restarts' and default Node behaviour exits, template-controlled. (d) NODE_PATH resolution works for require() but not for ESM import; this is identical in the agent image, so an agent choosing ESM sees the same failure while building, not a verifier-only surprise. (e) Readiness window is about 30 s (test.sh:116-122); the brief says 'promptly' and forbids install or build at start, without a number. Weak-app probe: a server that answers only /api/health passes the launch gate but that is by design; the render gate handles it and it is outside this row. Conforming-alternative probe: an app that uses its own routes, stores WAL files next to DB_PATH, bundles extra modules in /app/node_modules, or is launched from the /tmp/submission copy is launched correctly by test.sh under the stated contract; I found none that the launch would reject.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL"
+}

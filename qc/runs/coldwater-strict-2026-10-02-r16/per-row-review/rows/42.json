@@ -1,0 +1,37 @@
+{
+  "number": 42,
+  "id": "reward_ranking_is_monotone",
+  "reviewer": "row-reviewer-42",
+  "input_sha256": "5c36bbfa4c7ec159eddd5e15f96ee996c3d83606f97dabd754c167f8a08a6d75",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/WebDev Rubrics QC.xlsx: Quality Checks row 42 and neighbours 39-45; Internal Quality Checks row 42 annotation ('we need to monitor this one')",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/harbor-webdev-rubric-qc/references/quality-checks.md section 42 (and 43, 44)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/projects/webdev-task-template/tests/{scoring.toml,tools/score.py,test.sh} (byte-compared with the task copies, identical apart from line endings)",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/tests/scoring.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/tests/tools/score.py",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/tests/test.sh",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/task.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/instruction.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/environment/instructions/*.md (all six)",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/tests/app_context.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/tests/gates/{render,constraints}/{judge.toml,prompt.md}",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/tests/scored/{functional,polish,visual}/{judge.toml,prompt.md}",
+    "qc/runs/coldwater-strict-2026-10-02-r16/raw-evidence-index.json (all 22 artifact hashes recomputed: 16 scripted-golden files match raw bytes, 6 hosted-run JSON files match LF-normalised bytes)",
+    "hosted run 4e686738 verifier/reward.json and run 6e537d14 verifier/gates/reward-details.json (earlier candidate)",
+    "qc/repairs/coldwater-2026-10-02-strict/results/{editor,runtime,polish,restart}.json"
+  ],
+  "verdict": "Note",
+  "risk": true,
+  "severity": "P3",
+  "evidence": "Static design: no inversion found. tests/scoring.toml:1-11 has gates render/constraints at 0.0, weights functional 0.6 / polish 0.2 / visual 0.2, floor functional 0.05; score.py:46-48 computes a positively weighted mean zeroed by gates and floor, so an app that passes a superset of another app's criteria can never score lower. All three scored judge.toml files use aggregation = \"weighted_mean\" with positive weights only (functional 43 criteria, total weight 59.0, range 1.0-2.0; polish 6 x 1.0; visual 3 likert x 1.0); both gates use all_pass with binary criteria. Function carries more mass than craft at dimension level (0.6 vs 0.4, template-fixed; scoring.toml, score.py and test.sh are identical to the frozen template). Dead-feature credit, the usual source of a worse app outscoring a better one, is closed criterion by criterion: negatives carry a positive control (e.g. cw_stale_save_keeps_draft 'If B's Save was accepted there is no refused Save to observe and this criterion fails'; cw_live_update_keeps_editing_state 'If A's library never shows B's snippet, this criterion fails as well'; cw_preview_isolation 'treat a probe that stays silent as not performed, which fails this criterion'; cw_dynamic_code_refused 'or if the harmless control draft is refused'; cw_undo_redo_availability 'or if the app has no visible Undo and Redo controls'). The render gate is now only load-and-type ('This checks only that the app is running and its editor accepts typing ... Do not press Run'), and Run is scored by cw_basic_run_output, so a strong editor with a broken Run is no longer zeroed below a weak app as it was in hosted run 6e537d14 on the earlier candidate; app_context.md:30 keeps Run-independent criteria scoreable. Lesser points (not defects of this row): (1) per-criterion mass: one polish criterion is worth 0.2/6 = 0.0333 of reward and one visual likert step 0.2/15 = 0.0133, while the heaviest functional criterion (weight 2.0) is worth 0.6*2/59 = 0.0203 and a weight-1.0 one 0.0102. So an app that only lacks focus return after Save (cw_focus_returns_to_code, -0.0333) scores below an app that only lets a stale Save overwrite the record (cw_stale_save_refused, weight 1.5, -0.0153). The two apps are not ordered by dominance and the dimension weights are template policy, so this is recorded for row 44 rather than failed here. (2) cw_controls_keyboard_and_focus says 'A control the app does not have at all is scored elsewhere, not here', so omitting Find/Replace/Format makes that one criterion easier; the omission costs more elsewhere (find/replace criteria 5.0/59 = 0.051, format criteria 4.5/59 = 0.046, plus cw_focus_returns_to_code and cw_controls_feedback_and_labels at 0.0333 each), so the net ranking is not inverted. (3) constraints gate cw_shared_saved_record hard-zeros a strong editor whose Save is broken while a weak app with working Save keeps a non-zero reward; shared persistence is a stated hard requirement (behaviour.md:9, integration.md:7) and qc/REVIEW_POLICY.md asks gates to use 'an actual successful operation and independent-context readback', so this is the intended gate, not an inversion. (4) a more complete app gives the functional judge more steps to perform inside its 9000 s timeout, and test.sh:224-226 leaves reward 0 if the scored suite does not finish; the only timing datum is the hosted Oracle trial of about 42 minutes on the earlier 41-criterion candidate, well inside the budget. Missing measurement (why risk=true): no configured judge run exists for these bytes, and no partial or mutated weak app has been graded on any candidate with the scored suites, so the ordering of non-zero partial apps is unmeasured. The hosted evidence is Oracle 0.9833, nop 0 and one model at 0 (gate failure) on an earlier candidate; the scripted golden results on these bytes (3 gate, 43 functional, 6 polish all true) show only that the reference passes. qc/REVIEW_POLICY.md requires a hash-bound runtime record for reward ordering before local clearance; that record is absent.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

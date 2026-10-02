@@ -1,0 +1,32 @@
+{
+  "number": 12,
+  "id": "no_prebuilt_image_shadows_the_agent_dockerfile",
+  "reviewer": "row-reviewer-12",
+  "input_sha256": "5c36bbfa4c7ec159eddd5e15f96ee996c3d83606f97dabd754c167f8a08a6d75",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/WebDev Rubrics QC.xlsx :: Quality Checks row 13 (check 12) and Internal Quality Checks row 13 (no cell comments)",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/WebDev Rubrics QC.xlsx :: Deterministic Checks (Dockerfile/image-related checkers; none owns docker_image)",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/harbor-webdev-rubric-qc/references/quality-checks.md (checks 9, 12, 15)",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (task.toml section, line 78)",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/projects/webdev-task-template/task.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/projects/webdev-task-template/environment/Dockerfile",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/task.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/environment/Dockerfile",
+    "qc/runs/coldwater-strict-2026-10-02-r16/manifest.json (hashes of task.toml and environment/Dockerfile)",
+    "qc/runs/coldwater-strict-2026-10-02-r16/raw-evidence-index.json"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Workbook check 12: '[environment].docker_image isn't set while the agent Dockerfile still has active build steps (which would skip the Dockerfile entirely)'; skill quality-checks.md:54 and staged-task-contract.md:78 say the same ('must be absent while the Dockerfile has active build steps'). Frozen task/task.toml:20-24 is the whole [environment] table: 'build_timeout_sec = 600.0', 'network_mode = \"public\"', 'cpus = 2', 'memory_mb = 4096'. Parsed with tomllib: environment keys are exactly build_timeout_sec, network_mode, cpus, memory_mb; [verifier.environment] holds only network_mode. A case-insensitive recursive grep for 'docker_image' and 'allow_internet' over the whole frozen task and the frozen template returns no match, and the task ships no compose/yaml file that could substitute an image. The agent Dockerfile has active build steps that must run (task/environment/Dockerfile:1 'FROM node:22-bookworm-slim', :5 apt install, :9-12 'npm install -g ... express@5.1.0 better-sqlite3@12.4.1', :14-15 'COPY instructions/ /instructions/' and 'COPY assets/ /assets/', :16-23 chmod and git init of /app), so the absence of docker_image is the required state. The task's [environment] table and environment/Dockerfile are byte-identical to the frozen template (diff of task.toml differs only in [task]/[metadata] identity fields; Dockerfile sha256 0a75419e... equals the template's in manifest.json). Hashes re-computed for task.toml (6d547769...) and environment/Dockerfile (0a75419e...) match manifest.json. This is a static property fully decided by the frozen bytes; no runtime measurement is required for it. The raw evidence index holds no run on these bytes that exercises the agent image build through the harness (scripted golden ran in a locally built agent image; the hosted run was on an earlier candidate; its result.json LF-normalised hash 4a9b1934... verified), hence run_verdict NOT EXERCISED. Counterexample attempts: (a) broken variant - a docker_image key placed under another table or spelled differently, or an image override in a compose file - none exists; (b) conforming alternative that could wrongly fail - none, since the task matches the template exactly.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

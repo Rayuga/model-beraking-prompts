@@ -1,0 +1,37 @@
+{
+  "number": 22,
+  "id": "verifier_image_can_launch_and_grade",
+  "reviewer": "row-reviewer-22",
+  "input_sha256": "5c36bbfa4c7ec159eddd5e15f96ee996c3d83606f97dabd754c167f8a08a6d75",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/WebDev Rubrics QC.xlsx :: Quality Checks row 23 (check 22) and Internal Quality Checks row 23 (check 22, no extra annotation beyond the description); Deterministic Checks rows for check-dockerfiles.py and check-runtime-deps-in-both-images.py",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/harbor-webdev-rubric-qc/references/quality-checks.md (section 22)",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (MCP server and test.sh contract lines)",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (Dockerfile checkers)",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/projects/webdev-task-template/tests/Dockerfile, tests/test.sh, tests/tools/, environment/Dockerfile (diffed against the task)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/tests/Dockerfile",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/tests/test.sh",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/tests/tools/restart_mcp.py (imports)",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/tests/{gates,scored}/*/judge.toml (MCP command/args lines)",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/task.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/environment/Dockerfile",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/solution/solve.sh, solution/app/server.js (requires), solution/app/package.json, solution/app/public (URL scan of the built bundle)",
+    "qc/runs/coldwater-strict-2026-10-02-r16/raw-evidence-index.json (all 22 artifact hashes recomputed and matched; hosted-run JSON matched on LF-normalised bytes)",
+    "qc/repairs/coldwater-2026-10-02-strict/run_golden.sh and results/runtime.json",
+    "run-outputs/.../run-4e686738-561e-4222-9cdd-bd2b5604e0c1/colderwater-playground-devtools__Rc3y2sT/verifier/reward.json (earlier candidate)"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "Source review of tests/Dockerfile finds every component the row names, pinned, and matching what test.sh and the judge.toml files invoke. (1) Playwright MCP and browser: Dockerfile:19 '@playwright/mcp@0.0.79'; Dockerfile:34-38 installs Chromium with the Playwright bundled in that pinned package ('node \"$PW_CLI\" install --with-deps chromium') into PLAYWRIGHT_BROWSERS_PATH=/opt/playwright-browsers, makes it world-readable and links it to /usr/local/bin/chromium, which is exactly the path all five judge.toml files pass ('command = \"playwright-mcp\"', '--executable-path=/usr/local/bin/chromium'). The Chromium revision is therefore fixed by the pinned package. (2) Judge CLI: Dockerfile:17 '@anthropic-ai/claude-code@2.1.281', matching task.toml:31 'REWARDKIT_JUDGE = \"claude-code\"'. (3) RewardKit: Dockerfile:31 'pip3 install --no-cache-dir harbor-rewardkit==0.1.7'; the patch at Dockerfile:41 asserts its anchor text, so a drifted package fails the build rather than silently changing behaviour. (4) python3 for the restart server: base 'python:3.12-slim' provides /usr/local/bin/python3, the command in scored/functional/judge.toml:17-18; restart_mcp.py imports only the standard library (json, subprocess, sys, pathlib). (5) App runtime: Node is copied from 'node:22-bookworm-slim' (Dockerfile:1,4); Dockerfile:20-21 installs 'express@5.1.0' and 'better-sqlite3@12.4.1', the same versions as environment/Dockerfile:10-11, with NODE_PATH=/usr/local/lib/node_modules in both images and in test.sh:106. solution/app/server.js requires only node:path, node:fs, express and better-sqlite3; the front end is a prebuilt bundle under public/ with no off-origin script/style loads found, so the remaining package.json dependencies (react, prettier, acorn, @lezer/html, vite, typescript) are build-time only and are not needed in the verifier image. (6) Launch helpers used by test.sh are present: util-linux (setpriv, setsid) and procps at Dockerfile:13, 'timeout' from coreutils in the base. (7) tests/Dockerfile, tests/test.sh, tests/tools/ and environment/Dockerfile are byte-identical to the frozen template (diff produced no output), so no task-specific drift was introduced. Run evidence: all hashes in raw-evidence-index.json verify. The scripted golden run on these bytes used a locally tagged verifier image only as the Playwright/Chromium host (run_golden.sh:15,29) and the agent image for the app, with the test.sh launch line reproduced (uid 65534, env -i, NODE_PATH, DB_PATH, PORT); runtime.json shows 15/15 true with no page errors. That shows the browser stack and the app's two server dependencies work, but it is not tests/test.sh running in the verifier image. The hosted run that did launch, grade and write a reward (Oracle 0.9833) was on an earlier candidate. No full configured verifier launch exists for these exact bytes, so risk stays true and the run verdict is NOT EXERCISED. Notes (not defects under the delivery profile): base images are tag-pinned, not digest-pinned ('python:3.12-slim', 'node:22-bookworm-slim'), so the Debian release under python:3.12-slim can move between builds; apt packages are unpinned, which the workbook treats as a NOTE under check-dockerfiles.py; global npm installs have no lockfile so transitive dependencies of express, claude-code and playwright-mcp can float; '@openai/codex@0.151.0' is shipped but unused by the configured judge. All of these are template-controlled lines.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

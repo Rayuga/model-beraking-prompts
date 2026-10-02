@@ -1,0 +1,41 @@
+{
+  "number": 19,
+  "id": "solution_honors_the_runtime_contract_and_is_self_contained",
+  "reviewer": "row-reviewer-19",
+  "input_sha256": "5c36bbfa4c7ec159eddd5e15f96ee996c3d83606f97dabd754c167f8a08a6d75",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/WebDev Rubrics QC.xlsx (Quality Checks row 19; Internal Quality Checks row 19; Deterministic Checks check-solve-contract.py, check-runtime-contract-strings.py)",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/harbor-webdev-rubric-qc/references/quality-checks.md (section 19)",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/rules/projects/webdev-task-template/solution/solve.sh",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/solution/solve.sh",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/solution/app/server.js",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/solution/app/package.json",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/solution/app/vite.config.mjs",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/solution/app/public/{index.html,runner.html,assets/index.js,assets/index.css}",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/solution/app/src/runtime.ts (runner URL lines 390-392)",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/instruction.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/environment/instructions/integration.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/environment/Dockerfile",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/tests/Dockerfile",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/tests/test.sh",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/tests/tools/restart_mcp.py",
+    ".qc-cache/coldwater-strict-2026-10-02-r16/task/task.toml",
+    "qc/runs/coldwater-strict-2026-10-02-r16/raw-evidence-index.json",
+    "qc/repairs/coldwater-2026-10-02-strict/run_golden.sh and results/{build.log,editor.json,runtime.json,polish.json,persist-before.json,restart.log,persist-after.json}"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "Static: solution/solve.sh starts '#!/bin/bash', has 0 CR bytes, passes bash -n, and writes only under /app ('target=/app', 'rm -f -- \"$target/app.db\" \"$target/app.db-wal\" \"$target/app.db-shm\"', 'cp -a \"$source_app/.\" \"$target/\"' lines 4, 38-39); nothing goes to /tests, /logs/verifier or /solution; no pkill, no NODE_ENV=production, no pip, no nproc, no install or build step. It creates /app/server.js, the entry test.sh requires (tests/test.sh:68, 97). server.js passes node --check; resolves files from '__dirname' (line 7), so a cwd outside /app works; honours DB_PATH first ('process.env.DB_PATH || process.env.SQLITE_PATH || path.join(root, 'app.db')' line 8), default /app/app.db as integration.md:9 states; listens on 'Number(process.env.PORT || 3000), '0.0.0.0'' (line 142); registers GET /api/health before any database middleware (line 12); serves / from public/index.html (lines 130-131). Its only non-builtin requires are express and better-sqlite3, both supplied at NODE_PATH=/usr/local/lib/node_modules in the agent image (environment/Dockerfile:3, 9-11) and the verifier image (tests/Dockerfile:9, 20-21) at the same pins, as integration.md:5 promises. The frontend is shipped prebuilt: public/assets/index.js (1,915,177 bytes) has no bare-module import statements and no fetched external URL (only XML namespace and doc strings); public/assets/index.css is byte-identical to src/style.css and public/runner.html to static/runner.html. No node_modules, symlinks or *.db files are under solution/. Schema creation uses CREATE TABLE IF NOT EXISTS and INSERT OR IGNORE and seeds no rows, so a restart is idempotent. Runtime: every artifact hash in raw-evidence-index.json observation 1 matches the current files (sha256sum, 16/16), and the frozen task tree is byte-identical to projects/colderwater-playground-devtools (diff -rq, no output), which is what run_golden.sh mounted. That run executed 'bash /solution/solve.sh' in a clean agent-image container, chowned /app to 65534 and launched with 'cd /tmp && exec setsid env -i PATH=... NODE_PATH=/usr/local/lib/node_modules HOME=/app PORT=3000 DB_PATH=/app/app.db setpriv --reuid=65534 --regid=65534 --clear-groups node /app/server.js'; all listed criteria returned true with pageErrors [], and after a real process replacement (restart.log pid_before 37, pid_after 66) persist-after.json reports cw_save_reload_restart true. Risk stays true because that run used the agent image and a hand-written launch line, not tests/test.sh in the verifier image; the only verifier-image launch on record is the hosted Oracle run on an earlier candidate (ZIP eda58464), which is not a measurement of these bytes. Notes, none a defect in this row: (1) solve.sh departs from the two-line template with a /proc scan that refuses to reinstall while app.db is open; it is skipped on a fresh /app because 'if (databases.length)' is false, but on a reinstall as a non-root user an EACCES on /proc/<pid>/fd is rethrown and aborts the install (P3, not on the Oracle path). (2) cp -a never removes stale files from an earlier install (P3, not applicable to a fresh /app). (3) src/, package-lock.json, tsconfig.json and vite.config.mjs are copied to /app but unused at runtime; package.json lists dependencies that are not installed locally, which is harmless because the server needs only the two NODE_PATH modules. (4) runtime.ts:390-392 loads the preview runner from the other loopback hostname on the same port (localhost <-> 127.0.0.1), which depends on the 0.0.0.0 listen the contract requires and on the judge browsing by one of those two names (app_context.md uses http://localhost:3000). (5) SQLITE_PATH is an undocumented fallback, inert under env -i.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL"
+}
