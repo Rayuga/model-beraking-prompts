@@ -188,14 +188,14 @@ const { assert } = t;
   });
 
   await check('cw_find_forward_backward_wrap', async () => {
-    await t.setSource(page, 'needle a\nb needle\nneedle c\nNeedle d');
+    await t.setSource(page, 'app.run( a\nb app.run(\napp.run( c\nApp.run( d\nappXrun( e');
     await key('ControlOrMeta+Home');
-    await find.fill('needle');
+    await find.fill('app.run(');
     const seen = [];
     for (let i = 0; i < 4; i++) { await next.click(); seen.push([await t.cursor(page), await t.copied(page)]); }
-    assert.deepEqual(seen.map(s => s[1]), ['needle', 'needle', 'needle', 'needle']);
+    assert.deepEqual(seen.map(s => s[1]), ['app.run(', 'app.run(', 'app.run(', 'app.run(']);
     assert.deepEqual(seen.map(s => s[0].match(/Ln (\d+)/)[1]), ['1', '2', '3', '1']);
-    await previous.click(); assert.match(await t.cursor(page), /Ln 3/); assert.equal(await t.copied(page), 'needle');
+    await previous.click(); assert.match(await t.cursor(page), /Ln 3/); assert.equal(await t.copied(page), 'app.run(');
   });
 
   await check('cw_replace_current', async () => {
@@ -224,6 +224,8 @@ const { assert } = t;
     assert.equal(edited.replace('!', ''), text);
     assert.ok(await redoBtn.isDisabled());
     await key('ControlOrMeta+Shift+Z'); assert.equal(await t.source(page), edited);
+    await page.keyboard.down('Control'); await page.keyboard.press('k'); await page.keyboard.up('Control');
+    assert.equal(await t.source(page), edited, 'an unhandled Ctrl chord inserts nothing');
   });
 
   await check('cw_replace_self_containing_text', async () => {
@@ -250,9 +252,10 @@ const { assert } = t;
   }, text);
 
   await check('cw_js_semantic_coloring', async () => {
-    const text = 'function total(n) {\n  // note\n  let plain = n;\n  return plain + 42 + "text".length;\n}\ntotal(1);';
+    const text = 'function total(n) {\n  // note\n  let plain = n;\n  return plain + 42 + "text".length;\n}\nconsole.log(total(1));';
     await t.setFile(page, 'colour.js'); await t.setSource(page, text);
     assert.deepEqual(await styleOf('let'), await styleOf('return'));
+    assert.deepEqual(await styleOf('log'), [(await styleOf('total'))[0]]);
     const fn = await styleOf('total'), kw = await styleOf('function'), str = await styleOf('"text"'), num = await styleOf('42'), com = await styleOf('// note');
     assert.equal(fn.length, 2); assert.equal(fn[0], fn[1]);
     const plain = (await styleOf('n'))[0] || (await editor.evaluate(root => { const s = getComputedStyle(root); return `${s.color}|${s.fontWeight}|${s.fontStyle}`; }));

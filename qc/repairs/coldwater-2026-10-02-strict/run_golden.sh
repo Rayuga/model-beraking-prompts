@@ -21,8 +21,11 @@ bash "$root/scripts/build_colderwater_golden.sh" "$work" > "$out/build.log" 2>&1
 docker rm -f "$name" > /dev/null 2>&1
 docker run -d --name "$name" --entrypoint sleep -v "$root/projects/colderwater-playground-devtools/solution:/solution:ro" "$app_image" infinity > /dev/null
 docker exec "$name" bash /solution/solve.sh || exit 1
-start_app() { docker exec -d "$name" bash -c 'cd / && exec node /app/server.js >> /tmp/app.log 2>&1'; sleep 2; }
-app_pid() { docker exec "$name" pgrep -x node | head -1; }
+# Launch the way tests/test.sh does: unprivileged uid, cleared environment,
+# DB_PATH set, working directory outside /app.
+docker exec "$name" chown -R 65534:65534 /app
+start_app() { docker exec -d "$name" bash -c 'cd /tmp && exec setsid env -i PATH=/usr/local/bin:/usr/bin:/bin NODE_PATH=/usr/local/lib/node_modules HOME=/app PORT=3000 DB_PATH=/app/app.db setpriv --reuid=65534 --regid=65534 --clear-groups node /app/server.js >> /tmp/app.log 2>&1'; sleep 2; }
+app_pid() { docker exec "$name" pgrep -n -x node; }
 browser() { docker run --rm --network "container:$name" --entrypoint node -v "$here/tests:/t:ro" -v "$out:/state" "$browser_image" "$@"; }
 start_app
 

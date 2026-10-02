@@ -65,3 +65,28 @@ Round `qc/runs/coldwater-strict-2026-10-02-r2` (input `af036c0a`, 54 independent
 Not changed: the row 2 note on the voice of the six notes, and the preview self-navigation observation from row 17, which is unverified; `security.md` now says the preview must not be able to read anything over the network.
 
 After these fixes the task has 1 render gate, 2 constraints gates, 40 Functional criteria (weight 56.5), 6 Polish and 3 Visual. The scripted golden passes all 49 gate, Functional and Polish checks with a real restart.
+
+## QC round r3 and the fixes that followed
+
+Round `qc/runs/coldwater-strict-2026-10-02-r3` (input `034080d9`) was BLOCKED with fewer findings: 34 Pass, 10 Fail, 3 Not exercised, 6 Note on the quality rows; 37 Pass, 1 Fail, 6 Note, 4 N-A on the deterministic rows. The fixes below are in the candidate frozen as `qc/runs/coldwater-strict-2026-10-02-r4`, which has not been reviewed yet.
+
+| Finding (rows) | Fix |
+|---|---|
+| Stop control could leave an interval running and time the golden out (18) | The criterion says the interval cancels itself on its first tick and nothing is left running. |
+| Script rule contradicted the replay step (48) | The judge notes allow exactly two script uses: clearing storage and replaying a recorded request. |
+| Render gate did not set a .js filename (29) | The gate and the three scored gate sentences say so. |
+| Undo "once or twice" (27, 28, 31) | Now "repeatedly until gone". |
+| Multi-caret gesture ambiguous (6) | The notes require both Alt+Click and Ctrl/Cmd+Click. |
+| Keyboard criterion counted a disabled Stop (31) | Disabled controls are not counted; the editor exit keys must be shown on screen. |
+| Feedback after a successful Run or Save not asked (4) | The notes now ask for it, and say the current Find match is selected. |
+| Outside fetch had no decidable bar (30, 32) | Both fetches use no-cors mode and must reject; the public address is tried only if it loads in a normal tab. |
+| Timing had no verdict when the repeat is void (32) | Stated: the criterion fails as not demonstrated. Supersession uses a distinct control marker. |
+| Coverage gaps (26) | Find uses a literal with a dot and a bracket; Run on a syntax error is graded; new criterion `cw_run_starts_fresh_document`; "similar requests" removed from the notes. |
+| Legs beyond the notes (27) | Stale restore now only requires the newer revision to survive; the last-good leg was removed from the refusal criterion; "without being run again" removed. |
+| Storage clear incomplete (29, 35) | Cache Storage, origin private file system and service workers added. |
+| Surface gate wording (42) | The plumbing field is allowed as long as it is not what shows the source. |
+| `/app/app.db` literal in solve.sh (deterministic) | solve.sh derives the path from one variable. |
+| Golden details (17) | Member calls are coloured as functions, Enter in the Replace box returns focus to the code, vertical moves snap to whole characters, unhandled Ctrl chords insert nothing. |
+| Launch path unmeasured (19, 21, 23) | The scripted golden now launches the app as test.sh does. |
+
+After these fixes the task has 1 render gate, 2 constraints gates, 41 Functional criteria (weight 57.5), 6 Polish and 3 Visual. The scripted golden passes all 50 gate, Functional and Polish checks with a real restart. Rows 11, 40 and 42 stay Not exercised until a configured judge run exists.

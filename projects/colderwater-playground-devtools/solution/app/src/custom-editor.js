@@ -61,7 +61,7 @@ export function mountCodeEditor(host, callbacks = {}) {
   ]) host.querySelector('#' + id).addEventListener('click', () => {command(); editor.focus();});
   host.querySelector('#format-btn').addEventListener('click', () => formatDocument());
   host.querySelector('#replace-box').addEventListener('keydown', event => {
-    if (event.key === 'Enter') { event.preventDefault(); replaceCurrent(); }
+    if (event.key === 'Enter') { event.preventDefault(); replaceCurrent(); editor.focus(); }
     if (event.key === 'Escape') { event.preventDefault(); editor.focus(); }
   });
 
@@ -136,6 +136,10 @@ export function mountCodeEditor(host, callbacks = {}) {
                 (node.init?.type === 'FunctionExpression' || node.init?.type === 'ArrowFunctionExpression')) add(node.id.start, node.id.end, 'function');
             if (node.type === 'CallExpression' && node.callee?.type === 'Identifier') {
               add(node.callee.start, node.callee.end, 'function');
+            }
+            if (node.type === 'CallExpression' && node.callee?.type === 'MemberExpression' &&
+                !node.callee.computed && node.callee.property?.type === 'Identifier') {
+              add(node.callee.property.start, node.callee.property.end, 'function');
             }
             // Words the tokenizer reports as plain names but that act as keywords here.
             const word = (at, text) => { if (value.startsWith(text, at)) add(at, at + text.length, 'keyword'); };
@@ -341,7 +345,7 @@ export function mountCodeEditor(host, callbacks = {}) {
       else insertText('  ');
       return;
     }
-    if (event.key.length === 1 && !event.altKey) {
+    if (event.key.length === 1 && !event.altKey && !event.ctrlKey && !event.metaKey) {
       event.preventDefault();
       insertText(event.key);
     }
@@ -789,7 +793,7 @@ export function mountCodeEditor(host, callbacks = {}) {
         ? Math.max(0, state.caret.line - 1)
         : Math.min(state.lines.length - 1, state.caret.line + 1);
       const preferred = state.preferredCol ?? state.caret.col;
-      next = { line: targetLine, col: Math.min(preferred, state.lines[targetLine].length) };
+      next = { line: targetLine, col: snapToGrapheme(state.lines[targetLine], Math.min(preferred, state.lines[targetLine].length)) };
     }
     state.caret = normalizePos(next);
     state.extraCarets = [];
@@ -885,6 +889,16 @@ export function mountCodeEditor(host, callbacks = {}) {
     if (p.col < state.lines[p.line].length) return { line: p.line, col: nextGraphemeBoundary(state.lines[p.line], p.col) };
     if (p.line < state.lines.length - 1) return { line: p.line + 1, col: 0 };
     return p;
+  }
+
+  // Never leave the caret inside an emoji or between a letter and its accent.
+  function snapToGrapheme(text, index) {
+    let boundary = 0;
+    for (const segment of graphemeSegmenter.segment(text)) {
+      if (segment.index > index) break;
+      boundary = segment.index;
+    }
+    return index >= text.length ? text.length : boundary;
   }
 
   function previousGraphemeBoundary(text, index) {

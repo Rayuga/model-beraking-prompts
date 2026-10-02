@@ -43,6 +43,12 @@ const { assert } = t;
     assert.match(await t.consoleText(page), /js-boom-marker.*line 4/);
     await runSource('boom.html', '<!doctype html>\n<html>\n<body>\n<h1>Title</h1>\n<p>text</p>\n<script>\nconst x = 1;\nthrow new Error("html-boom-marker");\n</script>\n</body>\n</html>');
     assert.match(await t.consoleText(page), /html-boom-marker.*line 8/);
+    const broken = 'const list = [1, 2;\nconsole.log(list);';
+    const before = (await t.consoleText(page)).length;
+    await runSource('syntax.js', broken);
+    assert.match((await t.consoleText(page)).slice(before), /error/i);
+    assert.match(await t.status(page), /Error/);
+    assert.equal(await t.source(page), broken);
   });
 
   await check('cw_promise_rejection_message_and_line', async () => {
@@ -68,6 +74,14 @@ const { assert } = t;
     text = await t.consoleText(page);
     await t.sleep(5000); text = await t.consoleText(page);
     assert.ok(text.includes('before-stop') && !text.includes('late'), text);
+  });
+
+  await check('cw_run_starts_fresh_document', async () => {
+    await runSource('first.js', 'const p = document.createElement("p"); p.textContent = "first-marker"; document.body.append(p); window.leftover = "kept";');
+    assert.match(await body().innerText(), /first-marker/);
+    await runSource('second.js', 'const p = document.createElement("p"); p.textContent = "second-marker " + typeof window.leftover; document.body.append(p);');
+    const text = await body().innerText();
+    assert.match(text, /second-marker undefined/); assert.ok(!text.includes('first-marker'), text);
   });
 
   await check('cw_console_levels_in_order', async () => {
@@ -130,9 +144,8 @@ const { assert } = t;
 
   await check('cw_newer_run_supersedes', async () => {
     const oldDraft = 'setTimeout(() => { document.body.textContent = "old-marker"; console.log("old-marker"); }, 4000);';
-    await runSource('old.js', oldDraft, 4800);
-    assert.equal(await body().innerText(), 'old-marker');
-    await page.getByRole('button', { name: 'Clear console' }).click();
+    await runSource('old.js', oldDraft.replaceAll('old-marker', 'ctl-marker'), 4800);
+    assert.equal(await body().innerText(), 'ctl-marker'); assert.match(await t.consoleText(page), /ctl-marker/);
     await runSource('old.js', oldDraft, 500);
     await t.setSource(page, 'document.body.textContent = "new-marker"; console.log("new-marker");');
     await t.run(page);
@@ -156,10 +169,10 @@ const { assert } = t;
     await runSource('storage.js', 'try { console.log("stored:" + localStorage.getItem("cw-probe")); localStorage.setItem("cw-probe", "changed"); } catch (e) { console.log("storage-blocked"); }\ndocument.body.textContent = "done";');
     text = await t.consoleText(page);
     assert.match(text, /storage-blocked/); assert.ok(!text.includes('stored:'));
-    await runSource('net.js', 'fetch("http://localhost:3000/api/health").then(r => console.log("net-status:" + r.status)).catch(() => console.log("net-blocked"));', 1500);
+    await runSource('net.js', 'fetch("http://localhost:3000/api/health", { mode: "no-cors" }).then(r => console.log("net-status:" + r.type)).catch(() => console.log("net-blocked"));', 1500);
     text = await t.consoleText(page);
     assert.match(text, /net-blocked/); assert.ok(!text.includes('net-status:'));
-    await runSource('net2.js', 'fetch("https://example.com/").then(r => console.log("ext-status:" + r.status)).catch(() => console.log("ext-blocked"));', 2500);
+    await runSource('net2.js', 'fetch("https://example.com/", { mode: "no-cors" }).then(r => console.log("ext-status:" + r.type)).catch(() => console.log("ext-blocked"));', 2500);
     text = await t.consoleText(page);
     assert.match(text, /ext-blocked/); assert.ok(!text.includes('ext-status:'));
     assert.equal(await page.title(), title);
@@ -171,8 +184,8 @@ const { assert } = t;
     await runSource('words.js', '// eval Function WebAssembly Worker import\nconst words = "eval(1) new Function() WebAssembly new Worker() import(x)";\ndocument.body.textContent = "words-ok";\nconsole.log("words-marker");');
     assert.equal(await body().innerText(), 'words-ok'); assert.match(await t.consoleText(page), /words-marker/);
     const cases = {
-      eval: 'document.body.textContent = "r" + eval("1+1");',
-      fn: 'document.body.textContent = "r" + new Function("return 2")();',
+      eval: 'eval("document.body.textContent = \\"payload-ran\\"; console.log(\\"payload-ran\\")");',
+      fn: 'new Function("document.body.textContent = \\"payload-ran\\"; console.log(\\"payload-ran\\")")();',
       wasm: 'new WebAssembly.Module(new Uint8Array([0,97,115,109,1,0,0,0]));\ndocument.body.textContent = "wasm-ran";',
       worker: 'const w = new Worker(URL.createObjectURL(new Blob(["postMessage(1)"])));\nw.onmessage = () => { document.body.textContent = "worker-ran"; };',
       imp: 'import("data:text/javascript,export default 1").then(() => { document.body.textContent = "import-ran"; });'
@@ -183,6 +196,7 @@ const { assert } = t;
       const added = (await t.consoleText(page)).slice(before);
       assert.match(added, /outside this playground|unsupported|refused|not allowed|blocked/i, name + ': ' + added);
       assert.equal(await body().innerText(), 'words-ok', name);
+      assert.ok(!/payload-ran|wasm-ran|worker-ran|import-ran/.test(added), name + ' payload');
     }
   });
 

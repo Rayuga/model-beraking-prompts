@@ -108,6 +108,7 @@ const stateFile = '/state/restart.json';
     await b.getByRole('button', { name: 'Restore selected revision' }).click(); await t.sleep(800);
     head = await api(a, '/api/snippets/' + record.id);
     assert.equal(head.revision, 5); assert.equal(head.code, 'let rev = 5;');
+    assert.ok((await api(a, '/api/snippets/' + record.id + '/history')).some(item => item.code === 'let rev = 5;'));
   });
 
   await check('cw_live_library_update', async () => {

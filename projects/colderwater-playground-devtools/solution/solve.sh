@@ -1,13 +1,14 @@
 #!/bin/bash
 set -euo pipefail
 
-mkdir -p /app
+target=/app
+mkdir -p "$target"
 source_app="$(cd -- "$(dirname -- "$0")/app" && pwd -P)"
 test -f "$source_app/server.js"
 
-node <<'NODE'
+CW_DB="$target/app.db" node <<'NODE'
 const fs = require('node:fs');
-const databaseFiles = ['/app/app.db', '/app/app.db-wal', '/app/app.db-shm'];
+const databaseFiles = ['', '-wal', '-shm'].map(suffix => process.env.CW_DB + suffix);
 const gone = error => error.code === 'ENOENT' || error.code === 'ESRCH';
 try {
   const databases = databaseFiles.flatMap(path => {
@@ -34,5 +35,5 @@ try {
 }
 NODE
 
-rm -f -- /app/app.db /app/app.db-wal /app/app.db-shm
-cp -a "$source_app/." /app/
+rm -f -- "$target/app.db" "$target/app.db-wal" "$target/app.db-shm"
+cp -a "$source_app/." "$target/"

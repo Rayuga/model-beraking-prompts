@@ -2,7 +2,7 @@ Evaluate the live Colderwater playground at http://localhost:3000 using Playwrig
 
 {app_context}
 
-Global browser gate: before scoring, confirm in the live browser that the application loads from http://localhost:3000 without a fatal browser error, that text typed into the code editor appears in it, and that Run shows that program's output in the preview. External font, script or CDN asset requests are allowed. If the gate fails, assign 0 to every criterion in this dimension.
+Global browser gate: before scoring, confirm in the live browser that the application loads from http://localhost:3000 without a fatal browser error, that text typed into the code editor appears in it, and that with a filename ending in .js Run shows that program's output in the preview. External font, script or CDN asset requests are allowed. If the gate fails, assign 0 to every criterion in this dimension.
 
 Each criterion is scored from 0 to 5 using the anchors written in it; 0 is used only when the thing being judged is not shown at all.
 
@@ -17,7 +17,7 @@ Each criterion is scored from 0 to 5 using the anchors written in it; 0 is used 
 
 - Do not read implementation files and do not infer behavior from styling. Reading computed styles is allowed.
 - Do not score feature correctness, keyboard access or narrow-screen behavior here; other dimensions grade those.
-- Do not penalize the palette chosen by the app or the content that authored code draws in the preview.
+- Do not penalize which colours the app chose; judge only whether they are used consistently. Do not penalize the content that authored code draws in the preview.
 - If a browser tool errors, retry once, then give that criterion the lowest score you can justify from what you saw and move on; never run shell or install commands.
 
 {criteria}

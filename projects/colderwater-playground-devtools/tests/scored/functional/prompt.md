@@ -2,7 +2,7 @@ Evaluate the live Colderwater playground at http://localhost:3000 using Playwrig
 
 {app_context}
 
-Global browser gate: before scoring, confirm in the live browser that the application loads from http://localhost:3000 without a fatal browser error, that text typed into the code editor appears in it, and that Run shows that program's output in the preview. External font, script or CDN asset requests are allowed. If the gate fails, assign 0 to every criterion in this dimension.
+Global browser gate: before scoring, confirm in the live browser that the application loads from http://localhost:3000 without a fatal browser error, that text typed into the code editor appears in it, and that with a filename ending in .js Run shows that program's output in the preview. External font, script or CDN asset requests are allowed. If the gate fails, assign 0 to every criterion in this dimension.
 
 ## Evidence discipline
 
@@ -17,9 +17,9 @@ Global browser gate: before scoring, confirm in the live browser that the applic
 
 ## Action rules
 
-- Use real browser interaction for graded actions: real key presses, mouse clicks, drags and modifier-clicks. Do not dispatch synthetic events, do not change the app's DOM or state from script, and do not read implementation files to infer success. Reading the rendered DOM and computed styles is allowed.
+- Use real browser interaction for graded actions: real key presses, mouse clicks, drags and modifier-clicks. Do not dispatch synthetic events, do not change the app's DOM or state from script except for the two uses named in the application notes, and do not read implementation files to infer success. Reading the rendered DOM and computed styles is allowed.
 - Match controls by purpose and label, never by exact wording or selectors. Native dialogs are valid UI.
-- Do not guess URL paths or API routes. Replaying a request you recorded from the app's own network activity is allowed where a criterion says so.
+- Do not guess URL paths or API routes. Replaying a request you recorded from the app's own network activity, with an in-page fetch from the app page using the same method, path and body, is allowed where a criterion says so.
 - You may choose the exact fixture text for each criterion. Check that the editor holds it before acting.
 - Grade only the steps written in each criterion. Extra probes must not fail a criterion when its listed steps passed.
 - Where waiting is required, wait the stated time; do not shorten it.

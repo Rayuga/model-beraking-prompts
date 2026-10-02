@@ -34415,6 +34415,7 @@ function mountCodeEditor(host, callbacks = {}) {
     if (event.key === "Enter") {
       event.preventDefault();
       replaceCurrent();
+      editor.focus();
     }
     if (event.key === "Escape") {
       event.preventDefault();
@@ -34518,6 +34519,9 @@ function mountCodeEditor(host, callbacks = {}) {
             if (node.type === "VariableDeclarator" && node.id?.type === "Identifier" && (node.init?.type === "FunctionExpression" || node.init?.type === "ArrowFunctionExpression")) add(node.id.start, node.id.end, "function");
             if (node.type === "CallExpression" && node.callee?.type === "Identifier") {
               add(node.callee.start, node.callee.end, "function");
+            }
+            if (node.type === "CallExpression" && node.callee?.type === "MemberExpression" && !node.callee.computed && node.callee.property?.type === "Identifier") {
+              add(node.callee.property.start, node.callee.property.end, "function");
             }
             const word = (at4, text) => {
               if (value.startsWith(text, at4)) add(at4, at4 + text.length, "keyword");
@@ -34718,7 +34722,7 @@ function mountCodeEditor(host, callbacks = {}) {
       else insertText("  ");
       return;
     }
-    if (event.key.length === 1 && !event.altKey) {
+    if (event.key.length === 1 && !event.altKey && !event.ctrlKey && !event.metaKey) {
       event.preventDefault();
       insertText(event.key);
     }
@@ -35111,7 +35115,7 @@ function mountCodeEditor(host, callbacks = {}) {
     } else if (key === "ArrowUp" || key === "ArrowDown") {
       const targetLine = key === "ArrowUp" ? Math.max(0, state.caret.line - 1) : Math.min(state.lines.length - 1, state.caret.line + 1);
       const preferred = state.preferredCol ?? state.caret.col;
-      next = { line: targetLine, col: Math.min(preferred, state.lines[targetLine].length) };
+      next = { line: targetLine, col: snapToGrapheme(state.lines[targetLine], Math.min(preferred, state.lines[targetLine].length)) };
     }
     state.caret = normalizePos(next);
     state.extraCarets = [];
@@ -35202,6 +35206,14 @@ function mountCodeEditor(host, callbacks = {}) {
     if (p.col < state.lines[p.line].length) return { line: p.line, col: nextGraphemeBoundary(state.lines[p.line], p.col) };
     if (p.line < state.lines.length - 1) return { line: p.line + 1, col: 0 };
     return p;
+  }
+  function snapToGrapheme(text, index) {
+    let boundary = 0;
+    for (const segment of graphemeSegmenter.segment(text)) {
+      if (segment.index > index) break;
+      boundary = segment.index;
+    }
+    return index >= text.length ? text.length : boundary;
   }
   function previousGraphemeBoundary(text, index) {
     let previous = 0;

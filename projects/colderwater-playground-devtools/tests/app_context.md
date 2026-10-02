@@ -19,8 +19,9 @@ One workspace at /. It shows title and filename fields, the code editor with its
 - A selection can be confirmed by copying it with the usual shortcut and pasting it into an ordinary field such as Find, or by reading the highlighted text.
 - Use fresh scratch drafts for editor checks. The app may ask for confirmation before discarding an unsaved draft; accepting that dialog is normal.
 - Saved records are identified by the server, not by title, and the library may already hold records from earlier checks. Do not assume an empty library and do not delete records that earlier checks created.
-- Health address: http://localhost:3000/api/health. It is the only address outside the workspace page that criteria refer to.
-- Where a criterion needs two tabs, any two pages of the app are acceptable. Tabs share browser storage, so where a criterion says to clear browser storage first, run a script on the app page that clears localStorage, sessionStorage, IndexedDB databases and cookies for this origin, then reload; this is the one permitted use of script to change browser state.
+- Health address: http://localhost:3000/api/health. One criterion also uses a public https address of your choice.
+- Where a criterion needs two tabs, any two pages of the app are acceptable. Tabs share browser storage, so where a criterion says to clear browser storage first, run a script on the app page that clears localStorage, sessionStorage, IndexedDB databases, Cache Storage, the origin private file system, service worker registrations and cookies for this origin, then reload.
+- Script may be used for exactly two things: that storage clearing, and re-sending, with an in-page fetch from the app page, a request you recorded from the app's own network activity, where a criterion asks for a replay. Every other graded action uses real keys and mouse input.
 - After the restart tool has been used, open fresh pages instead of reusing pages opened before the restart.
 - If the editor draws its text on a canvas, read colours and text from screenshots instead of computed styles.
 - The preview may be restored as a static picture after a failed run.
