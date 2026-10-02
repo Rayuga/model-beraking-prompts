@@ -15,7 +15,16 @@ const { assert } = t;
   const stop = page.getByRole('button', { name: 'Stop', exact: true });
   const runSource = async (filename, text, wait = 700) => { await t.setFile(page, filename); await t.setSource(page, text); await t.run(page, wait); };
 
-  await check('cw_authored_custom_editor_run', async () => {
+  await check('cw_workspace_loads_and_takes_typing', async () => {
+    assert.ok(await editor.isVisible()); assert.ok(await page.locator('iframe[title="Live preview"]').count());
+    assert.ok(await page.getByRole('log', { name: 'Console output' }).isVisible());
+    await t.setSource(page, ''); await page.keyboard.type('gateprobe');
+    assert.equal(await t.source(page), 'gateprobe');
+    await t.fresh(page); assert.ok(await editor.isVisible()); assert.deepEqual(page.errors, []);
+  });
+
+  await check('cw_basic_run_output', async () => {
+    await t.setFile(page, 'sum.js');
     await t.setSource(page, '');
     await page.keyboard.type('const s = 3 + 4; document.body.textContent = "sum " + s; console.log("sum " + s);');
     await t.run(page);

@@ -26,5 +26,6 @@ One workspace at /. It shows title and filename fields, the code editor with its
 - Script may be used for exactly two things: that storage clearing, and re-sending, with an in-page fetch from the app page, a request you recorded from the app's own network activity, where a criterion asks for a replay. Every other graded action uses real keys and mouse input.
 - After the restart tool has been used, open fresh pages instead of reusing pages opened before the restart.
 - If the editor draws its text on a canvas, read colours and text from screenshots instead of computed styles.
+- Run may be broken in a submitted app. Criteria that do not depend on Run are still scored on their own steps; a criterion whose steps need a working Run fails if Run does not work.
 - The preview may be restored as a static picture after a failed run.
 - Network access to public assets by the app itself is allowed and is not a failure.

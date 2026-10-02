@@ -2,6 +2,6 @@ Evaluate the live Colderwater playground at http://localhost:3000 using Playwrig
 
 {app_context}
 
-This dimension is a basic reachability gate. A blank page, a generic error, an unavailable server, or a static shell whose editor cannot be typed into or whose Run does nothing fails. External font, script or CDN asset requests are allowed and are not a failure. Use real key presses and clicks; do not dispatch synthetic events or change the app's DOM or state from script. Judge observable outcomes rather than exact wording or selectors. Do not grade feature completeness, editing depth or styling here; other dimensions grade those.
+This dimension is a basic reachability gate. A blank page, a generic error, an unavailable server, or a static shell whose editor cannot be typed into fails. External font, script or CDN asset requests are allowed and are not a failure. Use real key presses and clicks; do not dispatch synthetic events or change the app's DOM or state from script. Judge observable outcomes rather than exact wording or selectors. Do not grade running code, feature completeness, editing depth or styling here; other dimensions grade those.
 
 {criteria}

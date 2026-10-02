@@ -2,7 +2,7 @@ Evaluate the live Colderwater playground at http://localhost:3000 using Playwrig
 
 {app_context}
 
-Global browser gate: before scoring, confirm in the live browser that the application loads from http://localhost:3000 without a fatal browser error, that text typed into the code editor appears in it, and that with a filename ending in .js Run shows that program's output in the preview. External font, script or CDN asset requests are allowed. If the gate fails, assign 0 to every criterion in this dimension.
+Global browser gate: before scoring, confirm in the live browser that the application loads from http://localhost:3000 without a fatal browser error and that text typed into the code editor appears in it. External font, script or CDN asset requests are allowed. If the gate fails, assign 0 to every criterion in this dimension.
 
 ## Evidence discipline
 

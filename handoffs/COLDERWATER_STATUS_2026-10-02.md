@@ -40,3 +40,12 @@ The 1 October candidate scored Oracle 1.0 and GPT-5.6 Luna 0.8564, above the 0.1
 2. Decide whether a failure is the task's fault, Luna's own bug, or Luna being too strong (see `WebDev_guide.md`).
 3. Pending cleanup the user asked for: deleting the superseded Colderwater runs, repairs and deliverables was blocked by the permission classifier. Everything is preserved in commit `bee4aab8`.
 4. Uncommitted and not part of this task: `WebDev_guide.md`, `deliverables/package_staged_candidates.py` and the HireOps run folders.
+
+## Portal run 1 (2 October 2026) and the gate change that followed
+
+- Uploaded ZIP `eda58464…fd7fa3`. Export: `run-outputs/coldwater-playground-devtools/runs-export/runs-export/run-6e537d14-ec50-476a-b834-ef6107d02859`.
+- **Luna: reward 0.** Constraints gate passed (real custom editor; saved record survived the storage clear). Render gate failed because Run never works in Luna's app: its injected console bridge has an unclosed function (`SyntaxError: Unexpected end of input`), the .js preview has no body (`document.body` is null), and its five-second timer is never cancelled on success. Luna built in about eight minutes and tested only with curl and `node --check`. The scored suites did not run, so this run says nothing about difficulty.
+- **Oracle:** still running when this was written; result not yet seen.
+- The user reported this used one try (three left).
+- Change made afterwards, at the user's request: the render gate now only checks that the workspace loads, the editor accepts typed text and the page reloads (`cw_workspace_loads_and_takes_typing`). "Type a program and Run it" moved into Functional as `cw_basic_run_output` (weight 2.0). The in-dimension gate sentence in the three scored prompts matches. A broken Run now costs Functional points instead of zeroing the reward.
+- Task after the change: 1 render gate, 2 constraints gates, 42 Functional (weight 59.5), 6 Polish, 3 Visual. Scripted golden: 51 of 51 gate, Functional and Polish checks pass. Frozen as `qc/runs/coldwater-strict-2026-10-02-r8`.
