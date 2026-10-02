@@ -1274,6 +1274,7 @@ export function mountCodeEditor(host, callbacks = {}) {
     undo,
     redo,
     focus: () => editor.focus(),
+    endTypingRun: () => { state.typingGroup = null; },
     destroy: () => { editor.removeEventListener('keydown', onKey); host.replaceChildren(); }
   };
 }

@@ -35534,6 +35534,9 @@ function mountCodeEditor(host, callbacks = {}) {
     undo,
     redo,
     focus: () => editor.focus(),
+    endTypingRun: () => {
+      state.typingGroup = null;
+    },
     destroy: () => {
       editor.removeEventListener("keydown", onKey);
       host.replaceChildren();
@@ -40397,6 +40400,7 @@ function App() {
     if (saveBusy) return;
     setSaveBusy(true);
     const draft = current2.current;
+    editor.current?.endTypingRun();
     try {
       const body = { title: chosenTitle, filename: draft.filename, code: draft.code, ...draft.record ? { revision: draft.record.revision } : {} };
       const saved = await api("/api/snippets" + (draft.record ? "/" + draft.record.id : ""), draft.record ? "PUT" : "POST", body);
@@ -40517,7 +40521,7 @@ function App() {
     return () => {
       disposed = true;
     };
-  }, [record?.id, record?.revision]);
+  }, [record?.id, record?.revision, snippets.find((item) => item.id === record?.id)?.revision]);
   useEffect(() => {
     if (consoleHost.current && following.current) consoleHost.current.scrollTop = consoleHost.current.scrollHeight;
   }, [entries]);

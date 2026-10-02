@@ -90,10 +90,11 @@ const { assert } = t;
   });
 
   await check('cw_unsaved_marker', async () => {
-    await t.setFile(page, 'mark.js', 'marker sample ' + Date.now()); await t.setSource(page, 'let m = 1;');
+    await t.setFile(page, 'mark.js', 'marker sample ' + Date.now()); await t.setSource(page, '');
+    await page.keyboard.type('let m = 1;');
     await save.click(); await t.sleep(700);
     assert.match(await heading(), /· Saved$/);
-    await editor.click(); await page.keyboard.type('z');
+    await page.keyboard.type('z');
     assert.match(await heading(), /Unsaved changes/);
     await key('ControlOrMeta+Z'); assert.match(await heading(), /· Saved$/);
     await page.keyboard.type('w'); assert.match(await heading(), /Unsaved changes/);

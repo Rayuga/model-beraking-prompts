@@ -63,6 +63,8 @@ function App() {
     if (saveBusy) return;
     setSaveBusy(true);
     const draft = current.current;
+    // Typing after a Save is its own Undo step, so Undo can return to the saved text.
+    editor.current?.endTypingRun();
     try {
       const body = { title: chosenTitle, filename: draft.filename, code: draft.code, ...(draft.record ? { revision: draft.record.revision } : {}) };
       const saved = await api('/api/snippets' + (draft.record ? '/' + draft.record.id : ''), draft.record ? 'PUT' : 'POST', body);
@@ -117,7 +119,7 @@ function App() {
   useEffect(() => { editor.current?.setMode(language(filename)); }, [filename]);
   useEffect(() => { document.documentElement.dataset.theme = 'dark'; }, []);
   useEffect(() => { cancelAuto(); if (skipAuto.current) { skipAuto.current = false; return; } if (auto) autoTimer.current = setTimeout(run, 700); return cancelAuto; }, [code, filename, auto, loadEpoch]);
-  useEffect(() => { let disposed = false; if (!record) { setHistory([]); return; } api('/api/snippets/' + record.id + '/history').then(items => { if (!disposed) setHistory(items); }).catch(error => { if (!disposed) log('error', [error.message]); }); return () => { disposed = true; }; }, [record?.id, record?.revision]);
+  useEffect(() => { let disposed = false; if (!record) { setHistory([]); return; } api('/api/snippets/' + record.id + '/history').then(items => { if (!disposed) setHistory(items); }).catch(error => { if (!disposed) log('error', [error.message]); }); return () => { disposed = true; }; }, [record?.id, record?.revision, snippets.find(item => item.id === record?.id)?.revision]);
   useEffect(() => { if (consoleHost.current && following.current) consoleHost.current.scrollTop = consoleHost.current.scrollHeight; }, [entries]);
   useEffect(() => {
     const beforeUnload = event => { if (current.current.dirty) { event.preventDefault(); event.returnValue = ''; } };
