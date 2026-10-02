@@ -1,0 +1,34 @@
+{
+  "number": 26,
+  "id": "dimensions_cover_every_graded_requirement",
+  "reviewer": "row-reviewer-26",
+  "input_sha256": "034080d9c8c5ad902f05fa575ab8cd01cf359abc5103d26ebdad2265053a3289",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r3/rules/WebDev Rubrics QC.xlsx (Quality Checks row 27 = check 26; Internal Quality Checks row 27 with the annotation that several verifiers are combined in one flow)",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/rules/harbor-webdev-rubric-qc/references/quality-checks.md (check 26, lines 112-114)",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/rules/projects/webdev-task-template (instruction.md, environment/instructions/*.md, tests/scored/functional/judge.toml)",
+    "qc/REVIEW_POLICY.md",
+    "task/instruction.md",
+    "task/environment/instructions/{overview,ui,behaviour,security,integration,policy}.md",
+    "task/environment/assets/seed_data.json",
+    "task/tests/app_context.md",
+    "task/tests/gates/{render,constraints}/{judge.toml,prompt.md}",
+    "task/tests/scored/{functional,polish,visual}/{judge.toml,prompt.md}",
+    "task/tests/test.sh (grep of health, DB_PATH, setpriv and symlink handling only)",
+    "qc/runs/coldwater-strict-2026-10-02-r3/raw-evidence-index.json (scope and limitations only; scripted golden evidence, not a judge run)"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "Built the requirement -> criterion map from instruction.md and the six notes against all 52 criteria (3 gate, 40 functional, 6 polish, 3 visual). The large majority maps cleanly, and bundled legs were treated as flows, not gaps: typing/newline/Backspace/Delete/arrows/Home/End/Shift+Arrow, column memory, graphemes, caret in view, mouse selection, copy, replace-over-selection, one-Undo paste, block indent/outdent, multi-caret on several lines and on one line, Undo caret restore, Undo/Redo controls and shortcuts, Find/Replace incl. self-containing replacement, JS and HTML colouring, JS and HTML Format, format error, HTML preview, error and rejection message plus line, output kept before failure, console order, last-good recovery, five-second budget and fresh interaction budget, Stop, superseded run, preview isolation, dynamic evaluation refusal, save/reload/restart, stale save refusal and dirty draft, history inspect/restore/idempotent retry/stale restore, live library refresh with editing state kept, newer-revision notice, keyboard reach and focus, focus return, disabled Undo/Redo, unsaved marker, 390 px layout. Start command, working directory, health, DB_PATH launch and symlink policy are exercised by tests/test.sh lines 48, 74-77, 99-110 rather than by criteria.\n\nStated behaviours with no criterion leg (gaps):\n1. Literal search. environment/instructions/ui.md:11 'Replace current and Replace all for literal case-sensitive text'. tests/scored/functional/judge.toml:137,146,155,164 grade case sensitivity, order, wrap and self-containing replacement, but no fixture contains a character that differs between literal and pattern matching, and functional/prompt.md:23 lets the judge pick the fixture.\n2. Running invalid source. environment/instructions/policy.md:5 'Keep the finished app usable when a draft contains invalid source or a save is refused' and behaviour.md:5 'If a later run throws ... show the reason and restore that picture'. Only Format on a syntax error is graded (judge.toml:209). Every Run failure criterion uses a runtime throw, rejection, loop or Stop (judge.toml:227,236,245,272,281); no criterion presses Run on a draft with a syntax error.\n3. Fresh preview document. behaviour.md:3 'Run the current .js source in a fresh isolated preview document'. No criterion asserts that DOM or globals left by an earlier successful run are absent in the next run; gates/render/judge.toml:23 only fails when the second Run 'still shows the first sum', and judge.toml:281 only needs the final Run to 'show its own new output'.\n4. Network forms other than fetch. security.md:3 'fetch and similar requests to outside addresses or to this app's own routes must fail'. judge.toml:308 exercises only fetch (health address and one public https address).\n5. Showing the editor exit key. ui.md:17 'give a keyboard way to leave the editor for the next control and show what it is'. polish/judge.toml:23 accepts 'the key sequence the app shows or the ordinary Tab key' and has no fail condition for an exit that works but is not shown.\n\nNot counted as gaps: SQLite as the storage engine and the DB_PATH choice (integration.md:9) cannot be observed by a browser-only judge; restart persistence is graded at judge.toml:326 and DB_PATH is supplied by test.sh:109. 'New drafts start empty or with a small example' (overview.md:3) permits either outcome. No configured judge run exists for these bytes, so none of this is exercised at runtime.",
+  "counterexample": "A submission whose Find/Replace builds new RegExp(query) without escaping passes all four find/replace criteria because the judge's distinctive word fixtures contain no metacharacters, yet searching for 'a.b' or 'f(' matches wrong text or throws, contrary to ui.md:11. A submission whose pre-run parser (used for the eval/Function refusal) throws uncaught on a syntax error, so Run silently does nothing and shows no reason, passes every functional criterion, contrary to policy.md:5 and behaviour.md:5. A submission that stubs only window.fetch in the preview while XMLHttpRequest still reaches the app's own routes passes cw_preview_isolation, contrary to security.md:3. In each case the reward is unchanged by a stated behaviour being broken.",
+  "suggested_fix": "Add legs to existing flows rather than new criteria where possible: in cw_find_forward_backward_wrap or cw_replace_all_atomic require the search text to contain a dot or parenthesis and include a near-match that only pattern matching would hit; add one leg to cw_error_message_and_line (or cw_time_limit_recovery's final valid Run) that Runs a draft with a syntax error, expects a visible reason, the last-good picture and a working later Run; add an XMLHttpRequest attempt beside the fetch attempts in cw_preview_isolation; in the render gate or cw_html_preview assert that the second Run's preview no longer shows the first Run's content; in cw_controls_keyboard_and_focus fail when the working exit sequence is not shown anywhere in the app. If any of these is not wanted, remove or soften the public sentence instead and re-check workload, since each added leg costs judge time.",
+  "run_verdict": "NOT EXERCISED"
+}

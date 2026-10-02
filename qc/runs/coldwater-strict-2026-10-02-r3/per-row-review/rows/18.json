@@ -1,0 +1,42 @@
+{
+  "number": 18,
+  "id": "solution_covers_every_graded_dimension",
+  "reviewer": "row-reviewer-18",
+  "input_sha256": "034080d9c8c5ad902f05fa575ab8cd01cf359abc5103d26ebdad2265053a3289",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r3/rules/WebDev Rubrics QC.xlsx (Quality Checks row 18 and Internal Quality Checks row 18, block D)",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/rules/harbor-webdev-rubric-qc/references/quality-checks.md (section 18)",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/coldwater-strict-2026-10-02-r3/per-row-review/rows/18.template.json",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/instruction.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/environment/instructions/{behaviour,integration,overview,policy,security,ui}.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/app_context.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/scoring.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/gates/{render,constraints}/{judge.toml,prompt.md}",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/scored/{functional,polish,visual}/{judge.toml,prompt.md}",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/task.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/solution/solve.sh",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/solution/app/server.js",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/solution/app/src/custom-editor.js",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/solution/app/src/runtime.ts",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/solution/app/src/app.tsx",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/solution/app/src/style.css (token, caret, focus and media rules)",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/solution/app/static/runner.html",
+    "qc/runs/coldwater-strict-2026-10-02-r3/raw-evidence-index.json (all 15 artifact hashes recomputed and matching)",
+    "qc/runs/coldwater-strict-2026-10-02-r3/manifest.json (input hashes)",
+    "qc/repairs/coldwater-2026-10-02-strict/run_golden.sh, tests/lib.cjs, tests/runtime.cjs and tests/editor.cjs (excerpts), results/*.json, results/build.log, results/restart.log, results/golden-1440.png"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "Walked all 52 criteria (3 gate, 40 functional, 6 polish, 3 visual) against the golden source. What holds: the shipped bundle public/assets/index.js is byte-identical to the one the scripted run exercised (sha256 0ef59198... in the frozen snapshot, in projects/ and in manifest.json), all 15 raw-evidence artifact hashes verify, and results/{editor,runtime,persist-before,persist-after,polish}.json report true for every gate, functional and polish criterion with no page errors and a real process restart (restart.log pid 25 -> 53). Code reading agrees for the editor (custom-editor.js: grapheme segmenter :9, grouped typing undo :562-614, multi-caret offsets :584-602, indent :835-858, find/replace :1002-1084, reveal caret :1127-1142), colouring (style.css:24-30 gives five distinct JS and four distinct HTML treatments, all different from plain #d8e5f3), runtime lines/isolation/dynamic-code (runtime.ts:7, :46-52, :113, :223-229, :376) and persistence/conflict/restore idempotency (server.js:52-59, :95-119; app.tsx:62-93, :134-141). Defect: cw_stop_cancels_pending_work (tests/scored/functional/judge.toml:290, weight 2.0, the highest functional weight) asks for a control draft that writes its marker 'from a timer, from an interval tick and from a Promise callback' and then requires that after Stop 'the preview must show the control's picture'. Nothing tells the judge to clear the interval. In the golden an interval that is not cleared stays in the pending set (runtime.ts:237-239), so the run never settles (runtime.ts:208) and the parent watchdog ends it at 5.1 s with 'Execution stopped: five-second time limit' and rolls the last-good picture back to the one from before the control (runtime.ts:374, :379). The control's picture therefore never becomes the last-good picture, and Stop on the second draft restores the older picture, which is a listed fail condition. This is the behaviour the brief demands (environment/instructions/behaviour.md:5: the budget covers pending timer callbacks until the run settles), so the golden cannot satisfy the criterion under that natural fixture. The scripted pass depends on a fixture the criterion does not state: qc/repairs/coldwater-2026-10-02-strict/tests/runtime.cjs:121 writes 'const tick = setInterval(() => { clearInterval(tick); mark(); }, 2000)'. Not measured, so still a risk: no configured LLM judge run exists, so the Oracle reward, the three visual Likert scores and judge duration are unknown; the scripted run launched the app as root without DB_PATH, not through the test.sh path (uid 65534, env -i, DB_PATH); fixtures were entered with a synthetic paste event. A second, smaller exposure: the editor has no input element for text plumbing, so an emoji or a combining accent can reach it only through a real clipboard paste (custom-editor.js:344-347 accepts only single-character keydown), which makes cw_grapheme_navigation_and_deletion depend on the judge copying the fixture out of an ordinary field first; editor.cjs:85 shows a real Ctrl+V into the editor works in the verifier image.",
+  "counterexample": "The judge follows cw_stop_cancels_pending_work literally and writes the control as: const mark = () => { document.body.textContent = 'CTL'; console.log('CTL'); }; setTimeout(mark, 2000); setInterval(mark, 2000); Promise.resolve().then(() => setTimeout(mark, 2000)). The golden shows CTL at about 2 s, then at 5.1 s reports the five-second time limit and restores the picture from before the control. The judge runs the second draft and presses Stop; a stop reason appears and the second marker never appears, but the preview shows the pre-control picture, not the control's. The judge marks the criterion failed although the golden behaves exactly as behaviour.md:5 requires. The same happens if the judge starts the second Run before 5.1 s, because the control run is still active and its picture was never committed (runtime.ts:384).",
+  "suggested_fix": "In cw_stop_cancels_pending_work state that the control and the second draft each use an interval that cancels itself on its first tick, so the control run settles within the five-second budget before the second Run; then obtain a full configured judge run on the golden to measure the Oracle reward, including the visual dimension.",
+  "run_verdict": "NOT EXERCISED"
+}

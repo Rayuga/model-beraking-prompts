@@ -1,0 +1,39 @@
+{
+  "number": 35,
+  "id": "core_behavior_is_graded_and_state_is_proven_durable_where_it_must_be",
+  "reviewer": "row-reviewer-35",
+  "input_sha256": "034080d9c8c5ad902f05fa575ab8cd01cf359abc5103d26ebdad2265053a3289",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r3/rules/WebDev Rubrics QC.xlsx (Quality Checks row 35 = sheet row 36; Internal Quality Checks row 35; no cell comments on the row)",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/rules/harbor-webdev-rubric-qc/references/quality-checks.md (section 35, lines 145-147)",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/rules/projects/webdev-task-template (file listing only; tests layout compared)",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/coldwater-strict-2026-10-02-r3/raw-evidence-index.json",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/instruction.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/environment/instructions/{behaviour,integration,overview,policy,security,ui}.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/task.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/app_context.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/scoring.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/gates/render/{prompt.md,judge.toml}",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/gates/constraints/{prompt.md,judge.toml}",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/scored/functional/{prompt.md,judge.toml}",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/tools/restart_mcp.py",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/test.sh (restart helper and DB_PATH launch lines 87-193, by grep)",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/solution/app/server.js (persistence routes and schema, by grep)",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/solution/app/src/app.tsx (client storage and record id display, by grep)",
+    "qc/repairs/coldwater-2026-10-02-strict/results/{persist-before,persist-after,restart}.json (hashes recomputed)"
+  ],
+  "verdict": "Note",
+  "risk": true,
+  "severity": "low",
+  "evidence": "Core behaviour is graded: the render gate cw_authored_custom_editor_run (tests/gates/render/judge.toml) requires real typing into the custom editor, Run, and a changed second Run; the functional prompt repeats it as a global gate (tests/scored/functional/prompt.md:5) and 40 functional criteria cover editing, formatting, preview and revisions. Durability is graded at three levels: (1) gate cw_shared_saved_record (tests/gates/constraints/judge.toml:32) saves, clears origin browser storage, reloads twice and re-reads exact title/filename/source; (2) cw_save_reload_restart (tests/scored/functional/judge.toml, weight 1.5) repeats the storage clear and then calls the verifier restart_app tool, which test.sh wires to a real process kill and relaunch on the same DB_PATH (tests/test.sh:127-193, tests/tools/restart_mcp.py:25-47), and re-reads identity, revision, fields and history on a fresh page; (3) cw_stale_save_refused, cw_history_restore_retry and cw_live_library_update check revision-guarded shared state. Public backing exists: behaviour.md 'A fresh page must read the saved record from the running app, and saved work and history must survive a complete server restart' and integration.md 'The library must be shared between independent browser contexts'. Server-backed versus same-origin is addressed by the explicit storage clear in tests/app_context.md:23, which is needed because the judge runs one playwright-mcp --isolated context whose tabs share storage. Evidence index hashes for persist-before.json (2fb23df0...), persist-after.json (56b98b0a...) and restart.json (64f81a84...) were recomputed and match; persist-after reports cw_save_reload_restart true and restart.json shows id 3 at revision 2 with history [2,1]. Two residual points keep risk true. First, the clear list at app_context.md:23 names only localStorage, sessionStorage, IndexedDB and cookies; Cache Storage, service-worker state and the origin private file system are not cleared, and the restart restarts only the server, not the browser, so the server-backed proof is incomplete against those stores. Second, the only measurement is the scripted golden run as root without DB_PATH; the configured judge performing the storage clear and restart under the test.sh launch path (uid 65534, env -i, DB_PATH) is unmeasured, as the index itself states.",
+  "counterexample": "Weak app that could pass: a client-only build that keeps snippets and revisions in Cache Storage (caches.open) or the origin private file system and syncs tabs with BroadcastChannel, behind a static server answering /api/health. It survives the app_context.md:23 storage clear, both reloads, and the server restart (the browser profile is untouched), and all tabs share it, so cw_shared_saved_record, cw_save_reload_restart, cw_stale_save_refused and cw_live_library_update can all pass with no server-side record. This is an unusual implementation rather than a likely honest one, hence Note and not Fail. Conforming alternative that could fail: none demonstrated for this row; cw_save_reload_restart asks the judge to 'record its identity', and the public notes do not require a visible record id, but the golden shows 'Loaded #id - revision n' (solution/app/src/app.tsx:149) and an app without a visible id can still be matched by title and revision, so this is only a wording risk.",
+  "suggested_fix": "In tests/app_context.md:23 extend the permitted clearing script to also delete all Cache Storage caches, unregister service workers and remove origin private file system entries (or state 'all origin storage including Cache Storage, service workers and the origin private file system'), so the gate and cw_save_reload_restart prove the record is read from the server. Optionally reword 'record its identity' in cw_save_reload_restart to 'record how the app identifies it (a shown id, or its unique title)'. Obtain a full configured judge run under the test.sh launch path before claiming the restart criterion is exercised end to end.",
+  "run_verdict": "NOT EXERCISED"
+}

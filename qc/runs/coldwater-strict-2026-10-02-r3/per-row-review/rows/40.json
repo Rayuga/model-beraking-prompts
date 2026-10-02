@@ -1,0 +1,37 @@
+{
+  "number": 40,
+  "id": "reward_is_graded_not_binary_and_discriminates",
+  "reviewer": "row-reviewer-40",
+  "input_sha256": "034080d9c8c5ad902f05fa575ab8cd01cf359abc5103d26ebdad2265053a3289",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r3/rules/WebDev Rubrics QC.xlsx (Quality Checks row 41 = check 40; Internal Quality Checks row 41 = check 40, no extra annotation cells)",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/rules/harbor-webdev-rubric-qc/references/quality-checks.md (checks 39-43, lines 162-176)",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/rules/projects/webdev-task-template/tests/{scoring.toml,tools/score.py,test.sh,scored/functional/prompt.md,gates/render/prompt.md,gates/constraints/prompt.md} (diffed against the task)",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/coldwater-strict-2026-10-02-r3/raw-evidence-index.json (all 15 artifact SHA256 values recomputed and matched)",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/scoring.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/tools/score.py",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/test.sh",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/app_context.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/gates/render/{judge.toml,prompt.md}",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/gates/constraints/{judge.toml,prompt.md}",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/scored/functional/{judge.toml,prompt.md}",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/scored/polish/{judge.toml,prompt.md}",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/scored/visual/{judge.toml,prompt.md}",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/task.toml (timeouts, verifier env)",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/environment/instructions/ui.md:3 (custom-surface requirement)"
+  ],
+  "verdict": "Not exercised",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "STATIC READING (favourable, but not a measurement). Reward is shaped, not all-or-nothing: tests/scoring.toml:5-8 weights functional 0.6 / polish 0.2 / visual 0.2, floor functional 0.05 (line 11), identical to the template. Functional has 40 binary criteria with total weight 56.5 (13 x 1.0, 21 x 1.5, 6 x 2.0) aggregated by weighted_mean (scored/functional/judge.toml:20-21), so the heaviest single criterion is 2.0/56.5 = 3.5% of functional and 2.1% of reward; polish has 6 binary criteria, visual 3 five-point likert criteria with anchors. Criteria do not hang on one non-trivial precondition: the only shared precondition is the trivial type-and-Run check (scored/functional/prompt.md:5, same as the render gate, gates/render/judge.toml:23). Feature dependencies are tiered rather than universal: Undo appears in 14 criteria (37% of functional weight), Run in 15 (39%), Save in 8 (22%), a second tab in 8 (21%), modifier-click multi-caret in 3; cw_same_line_carets explicitly excludes Undo (judge.toml:221) and cw_output_before_failure_kept defers stop/limit reasons to other criteria (judge.toml:347). The prompt orders independent verdicts and continuing after failure (prompt.md:10-11). Reasoned partial apps: (a) blank/static shell -> render gate fails -> 0; (b) custom editor with typing, Run and Save only -> passes gates, earns roughly cw_html_preview, cw_console_levels_in_order, cw_error_message_and_line, cw_caret_navigation_and_line_numbers, cw_long_line_editing (about 5-8 of 56.5, 9-14% functional) -> low non-zero reward above the 0.05 floor; (c) solid editor and runtime but no live cross-tab sync and no multi-caret -> loses about 5.0 + 5.5 weight plus stale/history items -> mid-range; (d) golden -> high. That is a plausible spread. WHY NOT PASS: no reward-discrimination or reward-ordering runtime record exists for these bytes. raw-evidence-index.json states its scope is 'Scripted golden behaviour evidence only' and lists the limitation 'Visual ratings, judge duration, Oracle reward and reward discrimination are not measured'. qc/REVIEW_POLICY.md ('Runtime and model evidence') requires separate hash-bound records for reward discrimination and reward ordering before local clearance, and SKILL.md says never upgrade an unmeasured claim to Pass. TWO RESIDUAL COLLAPSE RISKS that only a configured judge run on weak apps can settle: (1) The constraints gate (gates/constraints/judge.toml:17-24, all_pass) zeroes every app whose document surface is a textarea, contenteditable or ready-made editor. The public requirement exists (environment/instructions/ui.md:3), so this is a legitimate hard constraint, but it means the whole population of otherwise competent textarea/CodeMirror builds collapses to exactly 0 with no gradation among them; whether the target-model population lands mostly on that cliff is unmeasured. (2) All 40 functional criteria are graded in one batched judge session (judge.toml:105-106, timeout 9000 s; suite budget 11100 s at test.sh:224). The criteria are long multi-step conjunctions with stated waits of eight to ten seconds each. If the judge exhausts its budget, prompt.md:12 fails the unattempted tail, compressing all apps toward the same low score by list position; if the suite itself times out, test.sh:224-226 exits with the zero reward written at test.sh:60, which is all-or-nothing by harness rather than by app quality. Scripted golden duration is not judge duration, so this is unmeasured.",
+  "counterexample": "Not demonstrated. Candidate to measure: app C (custom editor, working typing/Run/Save, no Undo, Find, Format, multi-caret, history or live sync) versus app D (golden with live cross-tab sync and multi-caret removed) versus the golden. Expected by static reading: three clearly separated rewards (roughly low / mid / high). The row would fail if the configured judge returned near-identical rewards for C and D (for example because the batched session ran out of budget and failed the tail for both), or returned 0 for D through a suite timeout.",
+  "suggested_fix": "No task edit is indicated by static reading. Produce the missing hash-bound runtime record: run the full configured verifier (claude-code with the task.toml model) on the golden and on at least two mutated weak apps of clearly different quality that pass both gates, plus one textarea-surface app, and record per-criterion verdicts, rewards and suite durations. If the functional session cannot finish 40 criteria inside 9000 s, reduce redundant browser work and public scope together rather than raising the timeout without a measured, authorised reason.",
+  "run_verdict": "NOT EXERCISED"
+}

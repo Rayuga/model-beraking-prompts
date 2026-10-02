@@ -1,0 +1,35 @@
+{
+  "number": 30,
+  "id": "negative_checks_have_positive_controls",
+  "reviewer": "row-reviewer-30",
+  "input_sha256": "034080d9c8c5ad902f05fa575ab8cd01cf359abc5103d26ebdad2265053a3289",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r3/rules/WebDev Rubrics QC.xlsx (Quality Checks row 31 = check 30; Internal Quality Checks row 31, no cell comment)",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/rules/harbor-webdev-rubric-qc/references/quality-checks.md (section 30)",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/rules/projects/webdev-task-template (file listing only; no task-specific criteria to compare for this row)",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/coldwater-strict-2026-10-02-r3/raw-evidence-index.json (sha256 of tests/runtime.cjs, tests/editor.cjs, results/runtime.json re-computed and matching)",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/scored/functional/judge.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/scored/functional/prompt.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/scored/polish/judge.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/gates/render/judge.toml and prompt.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/gates/constraints/judge.toml and prompt.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/app_context.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/instruction.md and environment/instructions/*.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/solution/app/server.js and src/runtime.ts (CSP / sandbox lines only)",
+    "qc/repairs/coldwater-2026-10-02-strict/tests/runtime.cjs and editor.cjs (fetch and Redo lines only)"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "What is done well: tests/scored/functional/prompt.md:14 states 'A positive control must come before every negative claim. If the control cannot be performed, the criterion fails', and most refusal/suppression criteria in tests/scored/functional/judge.toml carry an in-criterion control with a fail clause: cw_format_error_keeps_draft (209), cw_interaction_starts_fresh_budget (263), cw_time_limit_recovery (281), cw_stop_cancels_pending_work (290), cw_newer_run_supersedes (299), cw_dynamic_code_refused (317), cw_stale_save_refused (335), cw_stale_save_keeps_draft (344), cw_history_restore_retry (353), cw_live_update_keeps_editing_state (371). Polish cw_undo_redo_availability and cw_unsaved_marker pair each absent state with the present state. Two negative legs have no matching control. (1) judge.toml:308 cw_preview_isolation: 'try to fetch the health address, and try to fetch a public https address ... None may obtain ... a network response.' The listed controls are the library entry, the health address in a normal tab, and own-preview DOM/console. Nothing shows the public https address is reachable from the judge browser or readable cross-origin, so that leg passes by absence when the judge picks an address without CORS headers (the golden test itself uses https://example.com, qc/repairs/coldwater-2026-10-02-strict/tests/runtime.cjs:162) or when the address is unreachable. The health control is a tab navigation, not the fetch transport: from an opaque-origin sandbox the health fetch fails on CORS alone. environment/instructions/security.md:3 requires that the preview cannot read anything over the network. (2) judge.toml:155 cw_replace_all_atomic: 'type one new character and then try Redo with the keyboard shortcut: the replacements must not come back.' Inside this criterion Redo is only shown working through the visible Redo control; the keyboard Redo shortcut is never shown to work here, and prompt.md:10 forbids carrying a verdict across criteria. Requirement: environment/instructions/ui.md:11 'a new edit after Undo clears Redo'. Lesser observations (Note level): gates/constraints/judge.toml:23 has no explicit fail when the typed word is not displayed at all (the render gate covers typing); polish/judge.toml:23 grades only controls 'the app offers', so missing Format/Find/Replace make that criterion easier. No configured judge run exists, so these are source findings, not measured misgrades.",
+  "counterexample": "Broken app A: preview is an iframe with sandbox='allow-scripts' and no connect-src restriction. The judge's draft fetches https://example.com (no Access-Control-Allow-Origin) and the health address (server sends no CORS header); both reject with a CORS TypeError, the draft logs 'failed', and cw_preview_isolation is credited, although the same preview can read any CORS-enabled public endpoint, contrary to security.md:3. Broken app B: visible Undo/Redo buttons work, the keyboard Redo shortcut is unbound, and the redo stack is not cleared by a new edit. In cw_replace_all_atomic the final keyboard Redo does nothing, so 'the replacements must not come back' holds and the 1.5-weight criterion passes while a click on the Redo button would reapply the replacements. Conforming alternative: none found that this row would wrongly fail.",
+  "suggested_fix": "cw_preview_isolation: add as a working control that the judge first opens the chosen public https address in a normal tab and sees it load, and require an address that allows cross-origin reads (a public CORS-enabled endpoint); fail the criterion if that control cannot be performed. cw_replace_all_atomic: make the final attempt with the visible Redo control already proven in this criterion (or with both the control and the shortcut), and fail if the replacements return by either.",
+  "run_verdict": "NOT EXERCISED"
+}

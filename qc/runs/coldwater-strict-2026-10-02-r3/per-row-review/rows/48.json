@@ -1,0 +1,36 @@
+{
+  "number": 48,
+  "id": "dimension_prompts_are_accurate_and_consistent",
+  "reviewer": "row-reviewer-48",
+  "input_sha256": "034080d9c8c5ad902f05fa575ab8cd01cf359abc5103d26ebdad2265053a3289",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r3/rules/WebDev Rubrics QC.xlsx (Quality Checks row 49 = check 48; Internal Quality Checks row 49, no extra annotation or cell comment on this row)",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/rules/harbor-webdev-rubric-qc/references/quality-checks.md (section 48)",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (prompt.md and app_context.md section, cross-file table lines)",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/rules/projects/webdev-task-template/tests/{gates/render,gates/constraints,scored/functional,scored/polish,scored/visual}/prompt.md and tests/app_context.md",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/gates/render/prompt.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/gates/constraints/prompt.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/scored/functional/prompt.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/scored/polish/prompt.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/scored/visual/prompt.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/app_context.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/*/*/judge.toml (all five; full text of the criteria cited below, first 600 characters of the others)",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/instruction.md and task/environment/instructions/{overview,behaviour,integration,policy,security,ui}.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/environment/assets/seed_data.json, task/task.toml (lines 1-38), tests/test.sh and tests/tools/restart_mcp.py (grep only)",
+    "qc/runs/coldwater-strict-2026-10-02-r3/raw-evidence-index.json (all 15 artifact SHA256 values recomputed and matching; scripted golden only, not used as evidence for this row)"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "What is right: all five prompts and app_context.md describe this app and carry no sibling-task residue. A grep of task/tests for sign in, login, password, account, credential, admin and other product names finds only app_context.md:8-10 ('## Accounts' / 'None. The app has no sign-in; every browser tab or context uses the same shared library.'), which agrees with instruction.md:5 and policy.md:3. The template's sign-in gate wording, forged-request rules and tenant-isolation rules were removed rather than left behind. Key screens (app_context.md:14) lists only controls the public notes require (ui.md:17, ui.md:9, ui.md:11). The health address (app_context.md:22) matches integration.md:3. The restart text (functional/prompt.md:31) names tool restart_app on server verifier, matching functional/judge.toml:15-18 and tools/restart_mcp.py:14, and exactly one criterion names it (functional/judge.toml:326). The three scored prompts restate one identical in-dimension gate (functional/prompt.md:5, polish/prompt.md:5, visual/prompt.md:5). The only placeholders are {app_context} and {criteria}; no CHANGE_ME remains. Canvas and static-picture notes (app_context.md:25-26) agree with ui.md:3 and behaviour.md:5.\n\nDefect (inconsistency between prompt, context and criterion on script use for a replay): functional/prompt.md:20 says 'Do not dispatch synthetic events, do not change the app's DOM or state from script'. app_context.md:23 says clearing storage 'is the one permitted use of script to change browser state'. functional/prompt.md:22 then says 'Replaying a request you recorded from the app's own network activity is allowed where a criterion says so', and functional/judge.toml:353 (cw_history_restore_retry) requires 'Repeat the same already completed restore request through the control the app offers for retrying it, or by replaying the recorded request: no fifth revision may be created'. Playwright MCP has no replay tool, so the only way to replay is an in-page scripted request, which is a state-affecting script call that line 20 forbids and that app_context.md:23 excludes by naming storage clearing as the one permitted use. The template stated the mechanism ('Replays use an in-page call from the app's own origin carrying the app's session credential', template functional/prompt.md:41-42); the task prompt dropped that sentence and added nothing in its place. qc/REVIEW_POLICY.md requires ambiguous evidence to be defined consistently across prompt, context and criterion.\n\nNotes, not counted as defects: (1) every prompt line 1 and app_context.md:3,6 call the product 'Colderwater', a name that appears nowhere in instruction.md, environment/instructions/*.md or seed_data.json (grep: only task.toml, tests and solution contain it), so a conforming submission will not be branded that way; the URL identifies the app and no criterion asks for the name, so impact is low, but 'Name: Colderwater playground' is not something the builder was told. (2) visual/prompt.md:7 states a 0 to 5 scale but omits the template's sentence (template visual/prompt.md:39-42) that the RewardKit-rendered '1 to 5' hint is boilerplate and the 0-5 anchors are authoritative; whether that hint is rendered was not measured here.\n\nNo configured judge run exists for this candidate, so the effect on a real judge session is not measured.",
+  "counterexample": "Conforming alternative that can fail: an app that implements restore idempotency correctly but shows no visible 'retry restore' control (behaviour.md:13 requires only that a repeated request creates no extra revision, not a retry control). The judge must then replay the recorded request. Following functional/prompt.md:20 and app_context.md:23 literally it may not send a state-affecting request from script, so after two attempts it fails cw_history_restore_retry (weight 1.5) under functional/prompt.md:15, although the app is correct. Broken app that can pass: the same judge, unable to replay, treats the leg as satisfied because clicking the Restore control again produced a new, differently keyed request that the app legitimately handles, so a server that is not idempotent for a repeated identical request keeps the credit.",
+  "suggested_fix": "In tests/scored/functional/prompt.md line 22, state the mechanism: a replay named by a criterion is made with one in-page request from the app's own origin that copies the recorded method, path, headers and body, and this is a permitted use of script. In tests/app_context.md line 23, change 'the one permitted use of script to change browser state' to say that clearing storage and a replay named by a criterion are the only permitted script uses. Optionally change 'Name: Colderwater playground' to say the name is the grader's label and the app need not display it, and restore the template sentence about the rendered 1-to-5 hint in the visual prompt.",
+  "run_verdict": "NOT EXERCISED"
+}

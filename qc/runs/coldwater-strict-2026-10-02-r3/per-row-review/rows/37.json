@@ -1,0 +1,36 @@
+{
+  "number": 37,
+  "id": "later_dimensions_tolerate_earlier_mutations",
+  "reviewer": "row-reviewer-37",
+  "input_sha256": "034080d9c8c5ad902f05fa575ab8cd01cf359abc5103d26ebdad2265053a3289",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r3/rules/WebDev Rubrics QC.xlsx: Quality Checks row 38 (check 37) and Internal Quality Checks row 38 (no extra annotation cells)",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/rules/harbor-webdev-rubric-qc/references/quality-checks.md:153-154",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/rules/projects/webdev-task-template/tests/test.sh (compared launch/suite order with task copy by reading the task copy)",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/coldwater-strict-2026-10-02-r3/raw-evidence-index.json (hashes of run_golden.sh, persist-after.json, polish.json recomputed and matching)",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/app_context.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/test.sh",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/tools/restart_mcp.py",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/scoring.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/gates/{render,constraints}/{prompt.md,judge.toml}",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/scored/{functional,polish,visual}/{prompt.md,judge.toml}",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/instruction.md and environment/instructions/*.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/environment/assets/seed_data.json",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/solution/app/server.js:65 and src/style.css (library containment)",
+    "qc/repairs/coldwater-2026-10-02-strict/run_golden.sh and results/{polish.json,persist-after.json,restart.json}"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "All five dimensions share one app process and one SQLite file (tests/test.sh:104-111, run_suite gates then scored at :213 and :224), so the constraints gate, then Functional (about ten criteria that save records, plus one restart_app), leave records behind for Polish and Visual. No criterion assumes a pristine library. The seed has no snippets (environment/assets/seed_data.json: \"snippets\": []) and no criterion quotes a seeded count, order or figure. tests/app_context.md:21, injected into every prompt, is explicitly state-relative: \"Saved records are identified by the server, not by title, and the library may already hold records from earlier checks. Do not assume an empty library and do not delete records that earlier checks created.\" app_context.md:20 tells the judge to use fresh scratch drafts and accept a discard confirmation; :24 covers pages opened before the restart. Every saving criterion creates its own record with a unique title (constraints/judge.toml:32 'unique title ... Leave the saved record in place'; functional/judge.toml:326, :335, :344, :353, :362, :371, :380) and grades revisions relative to what it created ('advances the revision by one', 'exactly one new revision', 'a fourth revision'), never an absolute library count. Later dimensions are neutral to earlier state: polish/judge.toml:50 'Load a saved snippet or start a new draft', :59 saves its own snippet, :68 only needs the library reachable; visual prompt.md:12 builds its own ten-line draft. Browser-side leftovers do not cross dimensions because each judge runs playwright-mcp with --isolated. restart_app is exposed only to Functional (functional/judge.toml:14-18) and is single use (restart_mcp.py:29-32), so no later dimension depends on or re-triggers it; Polish and Visual simply run against the relaunched process on the same DB_PATH (test.sh:160-167). Broken-app probe: an app that loses or reorders records once the library is non-empty is still caught by the per-criterion unique-title readbacks, so accumulated state does not hide it. Conforming-alternative probe: an app whose library grows to twenty-odd entries is not penalised by any wording; the golden contains its list (style.css .snippetlist overflow:auto; max-height:100px; .library max-height:45%; overflow:auto), so the visual layout and 390 px criteria are not distorted by accumulated records. Measured: the scripted golden run executed suites in the order editor, runtime, persist (with a real process restart), polish on one container and database (run_golden.sh suites default and persist branch), and polish.json shows all six Polish criteria true after the earlier saves and restart; restart.json shows the record at revision 2 with history [2,1]. Limits: this is scripted evidence run as root without DB_PATH, not a configured LLM judge run; the Visual dimension after mutation and judge behaviour on a populated library are not measured. The visual layout criterion (visual/judge.toml:39-46) is the only place where library population can influence a score, and it does so as real product behaviour rather than as a pristine-seed assumption.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL: scripted golden Polish passed after persist saves and a real restart on the same database (polish.json, persist-after.json, restart.json; hashes match the index); full configured judge run across dimensions NOT EXERCISED"
+}

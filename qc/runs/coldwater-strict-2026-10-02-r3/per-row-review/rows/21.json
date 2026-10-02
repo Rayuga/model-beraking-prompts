@@ -1,0 +1,37 @@
+{
+  "number": 21,
+  "id": "verifier_entrypoint_is_safe_and_always_scores",
+  "reviewer": "row-reviewer-21",
+  "input_sha256": "034080d9c8c5ad902f05fa575ab8cd01cf359abc5103d26ebdad2265053a3289",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r3/rules/WebDev Rubrics QC.xlsx :: Quality Checks row 22 (check 21) and Internal Quality Checks row 22 (check 21; no further annotation cells)",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/rules/harbor-webdev-rubric-qc/references/quality-checks.md:92-94",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md:98-111,142-152,160-164",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md:42-48",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/rules/projects/webdev-task-template/tests/test.sh (byte-compared with the task copy)",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/test.sh",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/tools/score.py",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/tools/restart_mcp.py",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/Dockerfile",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/scoring.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/task.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/scored/functional/judge.toml:18",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/solution/solve.sh",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/solution/app/server.js:4-12,142",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/coldwater-strict-2026-10-02-r3/raw-evidence-index.json"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "Static review only; the entrypoint was not executed. task/tests/test.sh is byte-identical to the frozen template test.sh (diff clean; sha256 bd68259276ca4b034654efc8a1723a4e702ed62dbe590af6201565f43eabe5aa), as are tools/score.py, tools/restart_mcp.py, tests/Dockerfile and scoring.toml; bash -n passes; no CR bytes; grep '^\\s*exec\\s' finds nothing. Contract points (staged-task-contract.md:102-111): (1) test.sh:60 write_zero_reward runs before the trap and before any early exit, test.sh:61 'trap cleanup EXIT', cleanup calls ensure_reward (test.sh:33-40, 20-23); the zero record at test.sh:8 carries reward, five dimensions, gates_passed, floors_passed, weighted_score, graded, no_op. Because set -euo pipefail is active, any unexpected failure after line 61 (cp -a, chown, app_context substitution at 195-201) leaves the zero record in place and still passes through ensure_reward. (2) test.sh:68-70 refuses a missing /app/server.js; test.sh:72-83 exits on any symlink outside /app/node_modules or resolving outside it. (3) test.sh:90-95 copies /app aside; test.sh:104-111 launches with setsid, env -i (PATH, NODE_PATH, HOME, PORT, DB_PATH) and setpriv --reuid=65534 --regid=65534 --clear-groups. (4) test.sh:115-125 polls probe_ready (/api/health then /, test.sh:42-58) for 120 x 0.25 s and exits with the zero record before any RewardKit call if the app never answers. (5) test.sh:127-193 builds the restart helper and exports APP_RESTART_HELPER, consumed at scored/functional/judge.toml:18. (7) test.sh:213-222 runs gates then score.py: 0 continues, 1 exits keeping the detailed gate record (reward 0.0 since score.py:44-48 zeroes unscored weights and floors), any other status rewrites the plain zero. (8) test.sh:224-227 runs scored then score.py, '|| write_zero_reward' on failure; a scored-suite timeout exits with the gates-only record whose reward is 0.0. Budgets nest: 1500 + 11100 = 12600 < task.toml:27 timeout_sec 13200. score.py:87-91 converts every exception to exit 2. Golden is compatible on source: solution/app/server.js:8 honours DB_PATH, :12 serves /api/health, :142 honours PORT; solve.sh creates no symlinks. Broken-app probe: an app that never listens, lacks server.js, or ships an escaping symlink gets reward 0.0 with no_op=1 rather than a missing reward; a conforming app that answers only on / (no /api/health) is still judged live. MISSING MEASUREMENT: raw-evidence-index.json (hashes of run_golden.sh and results/restart.json re-verified) states 'The app ran as root without DB_PATH; the test.sh launch path (uid 65534, env -i, DB_PATH) is not measured' and that no configured judge run exists, so the launch, liveness gate, suite ordering and reward writing are confirmed by reading only. risk stays true for that gap. Latent, template-owned and not a task defect: 'timeout' at test.sh:207 has no -k, so a RewardKit process that ignores SIGTERM would be bounded only by the outer verifier timeout; the zero/gates-only reward file already exists in that case.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

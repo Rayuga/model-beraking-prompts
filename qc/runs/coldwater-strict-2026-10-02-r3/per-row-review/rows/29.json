@@ -1,0 +1,37 @@
+{
+  "number": 29,
+  "id": "global_browser_gate_is_present_and_correct_in_every_dimension",
+  "reviewer": "row-reviewer-29",
+  "input_sha256": "034080d9c8c5ad902f05fa575ab8cd01cf359abc5103d26ebdad2265053a3289",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r3/rules/WebDev Rubrics QC.xlsx (Quality Checks row 30 = check 29; Internal Quality Checks row 30; Deterministic Checks row 28 check-rubric-prompt.py)",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/rules/harbor-webdev-rubric-qc/references/quality-checks.md:123-125",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md:156",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/rules/projects/webdev-task-template/tests/{gates,scored}/*/prompt.md and gates/*/judge.toml",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/gates/render/{prompt.md,judge.toml}",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/gates/constraints/{prompt.md,judge.toml}",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/scored/{functional,polish,visual}/prompt.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/scored/functional/judge.toml (filename/storage/context mentions)",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/app_context.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/scoring.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/test.sh:203-227",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/instruction.md and environment/instructions/{overview,behaviour,integration,policy,security,ui}.md (grep for filename/default/shared/sign-in)",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/solution/app/src/app.tsx:23-26,96",
+    "qc/runs/coldwater-strict-2026-10-02-r3/raw-evidence-index.json (all 15 artifact SHA256 values recomputed and matched)",
+    "qc/runs/coldwater-strict-2026-10-02-r3/manifest.json"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "What holds: (a) Real gates exist and are binary all_pass at 0.0 weight (tests/scoring.toml:1-3; gates/render/judge.toml:14-15,20; gates/constraints/judge.toml all_pass, two binary criteria). The render gate needs typing plus two Runs with a changed integer, so a blank page or static shell fails; the constraints gate cw_shared_saved_record saves, clears origin storage and re-reads, which is the server-backing leg. The app has no sign-in (app_context.md:10), so no auth leg is owed. (b) All three scored prompts restate the in-dimension gate with a hard zero and no partial credit: 'If the gate fails, assign 0 to every criterion in this dimension' (scored/functional/prompt.md:5, scored/polish/prompt.md:5, scored/visual/prompt.md:5); it adds typed-text and Run legs so a static shell is zeroed. (c) No prompt or gate requires same-origin; each says 'External font, script or CDN asset requests are allowed' (gates/render/prompt.md:5, gates/constraints/prompt.md:5, scored prompts :5, app_context.md:27). 'this origin's browser storage' is a storage-clearing scope, not a same-origin requirement.\n\nDefect: the render gate criterion carries an unstated .js-mode assumption. gates/render/judge.toml:23 says 'Clear the draft and ... type a one-line JavaScript program ... Press Run: the preview and the app console must both show the correct sum ... Fails ... if Run does not show the computed sum in the preview and the console'. It never tells the judge to make the filename end in .js (grep count of 'filename' in gates/render/judge.toml = 0), although the product defines that 'The filename chooses the execution mode' (environment/instructions/overview.md:3) and the brief leaves the default draft open: 'New drafts start empty or with a small example' (overview.md:3) with no default filename fixed anywhere. Sibling criteria do state the mode: 'Create one new .js snippet' (gates/constraints/judge.toml:32), 'with a .js filename' / 'with an .html filename' (scored/functional/judge.toml:209,227). The golden only passes because it happens to default to 'snippet.js' (solution/app/src/app.tsx:23,96), which is a golden default, not a public requirement (REVIEW_POLICY 'No hidden requirements'). The same gap is weaker but present in the scored in-dimension gate text ('Run shows that program's output in the preview', scored prompts :5), which fixes neither the mode nor that the program must write to the preview document rather than only to the console.\n\nResidual, P3, not the basis of the Fail: the backing leg clears only 'localStorage, sessionStorage, IndexedDB databases and cookies' (app_context.md:23). Cache Storage, a service worker and OPFS are not cleared, the Playwright profile survives restart_app, and the functional two-tab criteria accept tabs that share storage ('two tabs or browser contexts', scored/functional/judge.toml:335,362,371), so a browser-only app persisting through one of those stores could satisfy the backing gate. Contrived, but it is the 'convincing dead app' shape REVIEW_POLICY warns about.\n\nMeasurement status: scripted golden results record cw_authored_custom_editor_run, cw_custom_document_surface and cw_shared_saved_record as true (qc/repairs/coldwater-2026-10-02-strict/results/runtime.json:4, polish.json:4, persist-before.json:4); index hashes verified. That is scripted Playwright evidence on the golden only. No configured LLM judge run, no weak-app discrimination run and no alternative-app run exists, so neither the defect nor the gate's discrimination has been exercised.",
+  "counterexample": "Conforming alternative that can be hard-zeroed: an app that satisfies every public requirement but whose new/cleared draft defaults to an .html filename (for example index.html, a common playground default; nothing in the brief fixes the default). The judge follows gates/render/judge.toml:23 literally: clears the draft, types a one-line JavaScript program, presses Run. In HTML mode the source replaces the preview document as markup, so the line is shown as text, no sum appears in the preview and nothing reaches the console. The criterion's own fail clause then applies, render = 0, all_pass fails, test.sh:213-221 stops before the scored suite and the reward is 0 for a working app. The outcome depends on whether the judge infers the mode switch from app_context.md:6, which is judge variance rather than product quality. Broken app that can pass (P3 residual): a browser-only app storing snippets in Cache Storage or OPFS survives the listed storage clear and reload in cw_shared_saved_record.",
+  "suggested_fix": "In gates/render/judge.toml:23 add an explicit mode step, e.g. 'Make sure the filename ends in .js (set the filename field if it does not)' before typing, and mirror it in the scored in-dimension gate sentence ('with a .js filename, Run a short program that writes to the preview document'). Optionally extend app_context.md:23 to also clear Cache Storage, unregister service workers and clear OPFS. Then re-freeze and re-measure; do not reuse the current scripted results as clearance for the new bytes.",
+  "run_verdict": "NOT EXERCISED"
+}

@@ -1,0 +1,39 @@
+{
+  "number": 42,
+  "id": "reward_ranking_is_monotone",
+  "reviewer": "row-reviewer-42",
+  "input_sha256": "034080d9c8c5ad902f05fa575ab8cd01cf359abc5103d26ebdad2265053a3289",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r3/rules/WebDev Rubrics QC.xlsx (Quality Checks row 42, cell C43; Internal Quality Checks row 42 annotation 'we need to monitor this one')",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/rules/harbor-webdev-rubric-qc/references/quality-checks.md (section 42, lines 172-173; neighbours 41, 43, 44)",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/rules/projects/webdev-task-template/tests/{scoring.toml,test.sh,tools/score.py,scored/visual/judge.toml} (diffed against the task)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/scoring.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/tools/score.py",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/test.sh",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/gates/render/{judge.toml,prompt.md}",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/gates/constraints/{judge.toml,prompt.md}",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/scored/functional/{judge.toml,prompt.md}",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/scored/polish/{judge.toml,prompt.md}",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/scored/visual/{judge.toml,prompt.md}",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/tests/app_context.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/task.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/instruction.md and environment/instructions/{behaviour,integration,overview,policy,security,ui}.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r3/task/solution/app/src/{custom-editor.js,app.tsx} and server.js (grep for input plumbing and restore retry only)",
+    "qc/runs/coldwater-strict-2026-10-02-r3/raw-evidence-index.json (all 15 artifact SHA256 values recomputed and matched)",
+    "qc/runs/coldwater-strict-2026-10-02-r3/manifest.json (input hashes)"
+  ],
+  "verdict": "Not exercised",
+  "risk": true,
+  "severity": "P1",
+  "evidence": "STATIC ARRANGEMENT (no inversion found). tests/scoring.toml:1-11 is byte-identical to the frozen template (gates render/constraints = 0.0, weights functional 0.6 / polish 0.2 / visual 0.2, floor functional 0.05); tests/tools/score.py and tests/test.sh are also identical to the template (diff clean). score.py:46-48 computes a weighted mean that is non-decreasing in every dimension, zeroed below the gates/floor, so function carries more mass than craft (0.6 vs 0.4 max). Functional has 40 binary criteria, weights sum 56.5 (recomputed with tomllib); the floor 0.05 needs >2.825 weight, i.e. at least two criteria, and one 2.0 criterion alone (0.0354) stays at reward 0, so a nearly dead but pretty app cannot farm polish/visual. Criterion wording was checked for dead-feature credit: negatives carry a positive control (functional/judge.toml:290 stop, :299 supersede, :308 isolation, :317 dynamic code, :344 stale draft 'If B's Save was accepted ... this criterion fails', :371 'If A's library never shows B's snippet, this criterion fails'), and functional/prompt.md:14 fails a criterion whose control cannot be performed. Polish criteria that could reward absence are closed (polish/judge.toml:50 'or if the app has no visible Undo and Redo controls'). One local reversal exists: polish/judge.toml:23 grades only controls 'that the app offers', so an app without Format/Find/Replace is exposed to fewer failure points there than a richer app with one unreachable control; it is bounded at 0.2/6 = 0.033 reward and the same omission costs 9.5/56.5*0.6 = 0.10 in Functional plus cw_focus_returns_to_code, so the net order is preserved. MISSING MEASUREMENT (why this is not Pass). raw-evidence-index.json states its scope is 'Scripted golden behaviour evidence only. Not a configured LLM judge run' and lists 'Visual ratings, judge duration, Oracle reward and reward discrimination are not measured'. qc/REVIEW_POLICY.md 'Runtime and model evidence' requires hash-bound runtime records for reward discrimination and reward ordering before clearance; none exists for this input hash, so no golden-vs-weakened-app ordering has been observed under the configured judge. UNMEASURED INVERSION PATHS. (a) Workload cliff: test.sh:224-226 exits when the scored suite exceeds 11100 s (functional judge timeout 9000 s, functional/judge.toml:4) and the reward left on disk is the gates-only score.py result, which is 0.0 because scored_ran is false (score.py:42-48). A complete app makes the judge execute every step of 40 multi-tab criteria with mandated 8-10 s waits (prompt.md:25 'wait the stated time'), while a broken app triggers 'Fail fast' (prompt.md:15) and finishes sooner; if the budget is exceeded only for the fuller app, it scores 0 below the weaker one. Judge duration is unmeasured. (b) Gate wording: gates/constraints/judge.toml:23 allows a plumbing textarea only if it 'does not hold or display the document source', while environment/instructions/ui.md:3 permits it 'as long as the source I see is drawn by your own surface'. A conforming custom editor with an off-screen textarea that retains typed text or mirrors the selection for copy could be read as failing the all_pass gate and score 0. The golden uses clipboard events without a textarea (solution/app/src/custom-editor.js:242-257), so it does not exercise this reading.",
+  "counterexample": "Not demonstrated by any run. Hypothetical A: a full-featured app whose 40 functional checks take the configured judge longer than the 9000 s / 11100 s budget receives reward 0 (test.sh:224-226), while a half-working app that fails fast finishes and scores above 0. Hypothetical B: a conforming custom DOM editor with an off-screen textarea that keeps the typed text fails cw_custom_document_surface on the word 'hold' and scores 0, below a weaker app that uses clipboard events.",
+  "suggested_fix": "Before clearance, record a hash-bound full configured judge run of the golden plus at least two deliberately weakened variants (for example no live library updates; no multi-caret) and confirm golden > weakened and that the scored suite ends inside 11100 s; if it does not, reduce functional scope and browser work together rather than raising the budget without authorization. Align the gate sentence with ui.md by replacing 'does not hold or display the document source' with 'is not what displays the document source'.",
+  "run_verdict": "NOT EXERCISED"
+}
