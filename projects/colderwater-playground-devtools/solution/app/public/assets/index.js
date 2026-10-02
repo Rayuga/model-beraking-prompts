@@ -40405,6 +40405,7 @@ function App() {
     setSaveBusy(true);
     const draft = current2.current;
     editor.current?.endTypingRun();
+    editor.current?.focus();
     try {
       const body = { title: chosenTitle, filename: draft.filename, code: draft.code, ...draft.record ? { revision: draft.record.revision } : {} };
       const saved = await api("/api/snippets" + (draft.record ? "/" + draft.record.id : ""), draft.record ? "PUT" : "POST", body);

@@ -73,6 +73,9 @@ const { assert } = t;
     await page.getByRole('textbox', { name: 'Find in code' }).fill('const'); await page.getByRole('textbox', { name: 'Replacement text' }).fill('let');
     await page.getByRole('button', { name: 'Replace all' }).click(); await typed('after Replace all');
     await save.click(); await t.sleep(600); await typed('after Save');
+    // A key pressed straight after Save, while the request is in flight, must not be lost.
+    await save.click(); await page.keyboard.type('Z'); await t.sleep(600);
+    assert.ok((await t.source(page)).includes('Z'), 'immediately after Save');
   });
 
   await check('cw_undo_redo_availability', async () => {

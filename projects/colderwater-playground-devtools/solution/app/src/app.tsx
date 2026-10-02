@@ -65,6 +65,7 @@ function App() {
     const draft = current.current;
     // Typing after a Save is its own Undo step, so Undo can return to the saved text.
     editor.current?.endTypingRun();
+    editor.current?.focus();
     try {
       const body = { title: chosenTitle, filename: draft.filename, code: draft.code, ...(draft.record ? { revision: draft.record.revision } : {}) };
       const saved = await api('/api/snippets' + (draft.record ? '/' + draft.record.id : ''), draft.record ? 'PUT' : 'POST', body);
