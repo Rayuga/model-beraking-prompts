@@ -4,6 +4,8 @@ Evaluate the live Colderwater playground at http://localhost:3000 using Playwrig
 
 Global browser gate: before scoring, confirm in the live browser that the application loads from http://localhost:3000 without a fatal browser error and that text typed into the code editor appears in it. External font, script or CDN asset requests are allowed. If the gate fails, assign 0 to every criterion in this dimension.
 
+You are a checker, not a fixer. Check only the feature each criterion names, exactly as the app was delivered. Never repair, patch, reconfigure or reinstall the app, never edit, create or delete any of its files, and never change its code, page, data or settings to make a feature work, apart from the steps a criterion itself asks for. Never restart the app except through the one restart tool described below, in the one criterion that names it. Never look for a workaround that makes a broken feature pass. If a feature does not work as delivered, that criterion fails and scores 0; report what you saw and move on to the next criterion.
+
 ## Evidence discipline
 
 - A criterion passes only on evidence you gathered yourself in this session for that criterion. If you did not perform a step, that step did not pass.
@@ -24,7 +26,7 @@ Global browser gate: before scoring, confirm in the live browser that the applic
 - Grade only the steps written in each criterion. Extra probes must not fail a criterion when its listed steps passed.
 - Where waiting is required, wait the stated time; do not shorten it.
 - Share one browser session across criteria where convenient, but give every criterion its own verdict.
-- Judge behavior, not visual taste. Do not repair the app. If a browser tool errors, retry once, then fail that criterion and move on; never run shell or install commands.
+- Judge behavior, not visual taste. If a browser tool errors, retry once, then fail that criterion and move on; never run shell or install commands.
 
 ## Restart evidence
 
