@@ -34516,8 +34516,21 @@ function mountCodeEditor(host, callbacks = {}) {
           full(tree, (node) => {
             if (node.type === "FunctionDeclaration" && node.id) add(node.id.start, node.id.end, "function");
             if (node.type === "VariableDeclarator" && node.id?.type === "Identifier" && (node.init?.type === "FunctionExpression" || node.init?.type === "ArrowFunctionExpression")) add(node.id.start, node.id.end, "function");
-            if (node.type === "CallExpression" && node.callee?.type === "Identifier" && names.has(node.callee.name)) {
+            if (node.type === "CallExpression" && node.callee?.type === "Identifier") {
               add(node.callee.start, node.callee.end, "function");
+            }
+            const word = (at4, text) => {
+              if (value.startsWith(text, at4)) add(at4, at4 + text.length, "keyword");
+            };
+            if (node.type === "VariableDeclaration" && node.kind !== "var" && node.kind !== "const") word(node.start, node.kind);
+            if (node.type === "AwaitExpression") word(node.start, "await");
+            if (node.type === "YieldExpression") word(node.start, "yield");
+            if (/^(FunctionDeclaration|FunctionExpression|ArrowFunctionExpression)$/.test(node.type) && node.async) word(node.start, "async");
+            if ((node.type === "MethodDefinition" || node.type === "PropertyDefinition") && node.static) word(node.start, "static");
+            if (node.type === "ForOfStatement") {
+              const gap = value.slice(node.left.end, node.right.start);
+              const at4 = gap.search(/\bof\b/);
+              if (at4 >= 0) add(node.left.end + at4, node.left.end + at4 + 2, "keyword");
             }
           });
         } catch {
@@ -40358,6 +40371,7 @@ function App() {
     skipAuto.current = true;
     setLoadEpoch((value) => value + 1);
     if (runner.current?.active) runner.current.stop("Previous run cancelled");
+    editor.current?.setValue(item.code);
     setRecord(item.id ? item : null);
     setTitle(item.title);
     setFilename(item.filename);

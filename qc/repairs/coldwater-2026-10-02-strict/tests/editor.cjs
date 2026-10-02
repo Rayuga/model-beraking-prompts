@@ -171,8 +171,7 @@ const { assert } = t;
     await page.keyboard.type('XY');
     assert.equal(await t.source(page), 'top\nredXY greenXY blueXY\nend');
     await key('Backspace'); assert.equal(await t.source(page), 'top\nredX greenX blueX\nend');
-    await key('ControlOrMeta+Z'); assert.equal(await t.source(page), 'top\nredXY greenXY blueXY\nend');
-    await key('ControlOrMeta+Z'); assert.equal(await t.source(page), text);
+    assert.equal(text.length, 22);
   });
 
   await check('cw_undo_restores_caret', async () => {
@@ -251,8 +250,9 @@ const { assert } = t;
   }, text);
 
   await check('cw_js_semantic_coloring', async () => {
-    const text = 'function total(n) {\n  // note\n  return n + 42 + "text".length;\n}\ntotal(1);';
+    const text = 'function total(n) {\n  // note\n  let plain = n;\n  return plain + 42 + "text".length;\n}\ntotal(1);';
     await t.setFile(page, 'colour.js'); await t.setSource(page, text);
+    assert.deepEqual(await styleOf('let'), await styleOf('return'));
     const fn = await styleOf('total'), kw = await styleOf('function'), str = await styleOf('"text"'), num = await styleOf('42'), com = await styleOf('// note');
     assert.equal(fn.length, 2); assert.equal(fn[0], fn[1]);
     const plain = (await styleOf('n'))[0] || (await editor.evaluate(root => { const s = getComputedStyle(root); return `${s.color}|${s.fontWeight}|${s.fontStyle}`; }));

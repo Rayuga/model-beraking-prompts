@@ -54,6 +54,9 @@ function App() {
     cancelAuto(); skipAuto.current = true;
     setLoadEpoch(value => value + 1);
     if (runner.current?.active) runner.current.stop('Previous run cancelled');
+    // A loaded record starts with a clean editing history, even when its text
+    // equals what the editor already holds.
+    editor.current?.setValue(item.code);
     setRecord(item.id ? item : null); setTitle(item.title); setFilename(item.filename); setCode(item.code); setBaseline({ title: item.title, filename: item.filename, code: item.code }); setConflict(null); setSelectedRevision(null); setPendingRestore(null);
   }
   async function save(chosenTitle = current.current.title) {

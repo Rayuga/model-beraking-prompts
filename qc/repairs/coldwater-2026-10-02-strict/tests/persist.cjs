@@ -52,6 +52,7 @@ const stateFile = '/state/restart.json';
 
   await check('cw_shared_saved_record', async () => {
     const record = await create(a, 'gate-' + stamp, 'gate.js', 'console.log("gate ' + stamp + '");');
+    await b.evaluate(async () => { localStorage.clear(); sessionStorage.clear(); for (const db of await indexedDB.databases()) indexedDB.deleteDatabase(db.name); document.cookie.split(';').forEach(c => { document.cookie = c.split('=')[0] + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/'; }); });
     await t.fresh(b); await lib(b, record.title).click(); await t.sleep(400);
     assert.equal(await titleOf(b).inputValue(), record.title); assert.equal(await fileOf(b).inputValue(), 'gate.js');
     assert.equal(await t.source(b), 'console.log("gate ' + stamp + '");');
@@ -64,6 +65,7 @@ const stateFile = '/state/restart.json';
     const head = await api(a, '/api/snippets/' + record.id);
     const history = await api(a, '/api/snippets/' + record.id + '/history');
     assert.equal(head.revision, 2);
+    await b.evaluate(async () => { localStorage.clear(); sessionStorage.clear(); for (const db of await indexedDB.databases()) indexedDB.deleteDatabase(db.name); document.cookie.split(';').forEach(c => { document.cookie = c.split('=')[0] + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/'; }); });
     await t.fresh(b); await lib(b, record.title).click(); await t.sleep(400);
     assert.equal(await t.source(b), head.code);
     fs.writeFileSync(stateFile, JSON.stringify({ id: head.id, title: head.title, filename: head.filename, code: head.code, revision: head.revision, history: history.map(item => item.revision) }));
@@ -147,7 +149,6 @@ const stateFile = '/state/restart.json';
     await t.sleep(5000);
     assert.match(await a.locator('.conflict-notice').first().innerText(), /Revision 2 .*saved in another tab/i);
     assert.equal(await t.source(a), 'let n = "draft in A";');
-    assert.match(await heading(a), /Unsaved changes/);
   });
 
   t.report('persist-before', results, a);

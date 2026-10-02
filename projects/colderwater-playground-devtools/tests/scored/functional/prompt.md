@@ -8,6 +8,7 @@ Global browser gate: before scoring, confirm in the live browser that the applic
 
 - A criterion passes only on evidence you gathered yourself in this session for that criterion. If you did not perform a step, that step did not pass.
 - Never carry a verdict across criteria. Two similar criteria are two checks, and a failure in one must not fail another whose own steps passed.
+- Score each criterion independently and continue after any failure; return a verdict for every criterion. A failed criterion never ends the session.
 - Never fabricate a pass. If you run out of budget with criteria unattempted, mark them failed and say so plainly.
 - A criterion is a conjunction: every step it lists must hold, and each ends with the conditions under which it fails.
 - A positive control must come before every negative claim. If the control cannot be performed, the criterion fails rather than passing on absence of evidence.

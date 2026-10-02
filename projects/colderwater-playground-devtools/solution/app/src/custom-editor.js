@@ -134,8 +134,20 @@ export function mountCodeEditor(host, callbacks = {}) {
             if (node.type === 'FunctionDeclaration' && node.id) add(node.id.start, node.id.end, 'function');
             if (node.type === 'VariableDeclarator' && node.id?.type === 'Identifier' &&
                 (node.init?.type === 'FunctionExpression' || node.init?.type === 'ArrowFunctionExpression')) add(node.id.start, node.id.end, 'function');
-            if (node.type === 'CallExpression' && node.callee?.type === 'Identifier' && names.has(node.callee.name)) {
+            if (node.type === 'CallExpression' && node.callee?.type === 'Identifier') {
               add(node.callee.start, node.callee.end, 'function');
+            }
+            // Words the tokenizer reports as plain names but that act as keywords here.
+            const word = (at, text) => { if (value.startsWith(text, at)) add(at, at + text.length, 'keyword'); };
+            if (node.type === 'VariableDeclaration' && node.kind !== 'var' && node.kind !== 'const') word(node.start, node.kind);
+            if (node.type === 'AwaitExpression') word(node.start, 'await');
+            if (node.type === 'YieldExpression') word(node.start, 'yield');
+            if (/^(FunctionDeclaration|FunctionExpression|ArrowFunctionExpression)$/.test(node.type) && node.async) word(node.start, 'async');
+            if ((node.type === 'MethodDefinition' || node.type === 'PropertyDefinition') && node.static) word(node.start, 'static');
+            if (node.type === 'ForOfStatement') {
+              const gap = value.slice(node.left.end, node.right.start);
+              const at = gap.search(/\bof\b/);
+              if (at >= 0) add(node.left.end + at, node.left.end + at + 2, 'keyword');
             }
           });
         } catch {}

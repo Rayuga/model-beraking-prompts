@@ -3,9 +3,10 @@
 Branch `task/colderwater-editor-strict`. The task was hardened to bring GPT-5.6 Luna
 into the 0.10-0.70 band (the 1 October candidate scored Oracle 1.0, Luna 0.8564).
 See [strict candidate notes](repairs/coldwater-2026-10-02-strict/STRICT_CANDIDATE.md).
-Criteria: 1 render gate, 2 constraints gates, 38 Functional (weight 54), 6 Polish, 3 Visual.
-The scripted golden passes all 3 gate, 38 Functional and 6 Polish checks with a real
-process restart. **Not cleared:** no configured judge, Oracle or Luna measurement
+Criteria: 1 render gate, 2 constraints gates, 40 Functional (weight 56.5), 6 Polish, 3 Visual.
+QC round r2 was BLOCKED (18 quality fails); its findings are fixed in the candidate frozen
+as `runs/coldwater-strict-2026-10-02-r3`, which has not been reviewed yet. The scripted
+golden passes all 3 gate, 40 Functional and 6 Polish checks with a real process restart. **Not cleared:** no configured judge, Oracle or Luna measurement
 exists for these bytes, and the QC round for them is recorded separately under `qc/runs/`.
 
 Everything below is historical and does not clear the current candidate.

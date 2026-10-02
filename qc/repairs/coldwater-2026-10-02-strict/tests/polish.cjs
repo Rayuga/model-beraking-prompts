@@ -79,8 +79,11 @@ const { assert } = t;
     assert.ok(await undoBtn.isEnabled()); assert.ok(await redoBtn.isDisabled());
     await undoBtn.click();
     assert.ok(await undoBtn.isDisabled()); assert.ok(await redoBtn.isEnabled());
-    await page.keyboard.type('y');
-    assert.ok(await undoBtn.isEnabled()); assert.ok(await redoBtn.isDisabled());
+    const name = 'availability ' + Date.now();
+    await t.setFile(page, 'avail.js', name); await editor.click(); await page.keyboard.type('q'); await save.click(); await t.sleep(700);
+    assert.ok(await undoBtn.isEnabled());
+    await page.getByRole('button', { name: new RegExp(name) }).click(); await t.sleep(400);
+    assert.ok(await undoBtn.isDisabled(), 'reopened record has clean history'); assert.ok(await redoBtn.isDisabled());
   });
 
   await check('cw_unsaved_marker', async () => {

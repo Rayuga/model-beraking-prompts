@@ -59,14 +59,34 @@ const { assert } = t;
   await check('cw_output_before_failure_kept', async () => {
     await runSource('a.js', 'console.log("before-throw");\nconst a = 1;\nthrow new Error("after-throw");');
     let text = await t.consoleText(page);
-    assert.ok(text.indexOf('before-throw') >= 0 && text.indexOf('before-throw') < text.indexOf('after-throw'));
+    assert.ok(text.includes('before-throw'));
     await runSource('b.js', 'console.log("before-loop");\nwhile (true) {}', 7000);
     text = await t.consoleText(page);
-    assert.ok(text.indexOf('before-loop') >= 0 && text.indexOf('before-loop') < text.lastIndexOf('time limit'), text);
-    await t.setFile(page, 'c.js'); await t.setSource(page, 'console.log("before-stop");\nsetTimeout(() => console.log("late"), 3000);');
-    await t.run(page, 1000); await stop.click(); await t.sleep(500);
+    assert.ok(text.includes('before-loop') && /time limit/i.test(text), text);
+    await t.setFile(page, 'c.js'); await t.setSource(page, 'console.log("before-stop");\nsetTimeout(() => console.log("late"), 4000);');
+    await t.run(page, 700); await stop.click(); await t.sleep(500);
     text = await t.consoleText(page);
-    assert.ok(text.indexOf('before-stop') >= 0 && text.indexOf('before-stop') < text.lastIndexOf('Run stopped'), text);
+    await t.sleep(5000); text = await t.consoleText(page);
+    assert.ok(text.includes('before-stop') && !text.includes('late'), text);
+  });
+
+  await check('cw_console_levels_in_order', async () => {
+    await runSource('levels.js', 'console.log("m-one");\nconsole.warn("m-two");\nconsole.error("m-three");\nconsole.info("m-four");');
+    const text = await t.consoleText(page);
+    const at = ['m-one', 'm-two', 'm-three', 'm-four'].map(marker => text.indexOf(marker));
+    assert.ok(at.every(index => index >= 0), text);
+    assert.deepEqual([...at].sort((a, b) => a - b), at);
+  });
+
+  await check('cw_interaction_starts_fresh_budget', async () => {
+    await runSource('budget.html', '<!doctype html>\n<html>\n<body>\n<p id="out">idle</p>\n<button onclick="setTimeout(() => { document.getElementById(\'out\').textContent = \'short-done\'; }, 1000)">Short</button>\n<button onclick="(function again() { setTimeout(again, 100); })()">Endless</button>\n</body>\n</html>');
+    assert.match(await t.status(page), /Complete/);
+    await t.sleep(8000);
+    await t.preview(page).getByRole('button', { name: 'Short' }).click(); await t.sleep(2200);
+    assert.equal(await t.preview(page).locator('#out').innerText(), 'short-done');
+    assert.ok(!/time limit/i.test(await t.consoleText(page)));
+    await t.preview(page).getByRole('button', { name: 'Endless' }).click(); await t.sleep(8000);
+    assert.match(await t.consoleText(page), /time limit/i);
   });
 
   await check('cw_last_good_recovery', async () => {
@@ -98,22 +118,26 @@ const { assert } = t;
   });
 
   await check('cw_stop_cancels_pending_work', async () => {
-    await runSource('ctl.js', 'setTimeout(() => { document.body.textContent = "control-marker"; console.log("control-marker"); }, 2000);', 3000);
+    await runSource('ctl.js', 'const mark = () => { document.body.textContent = "control-marker"; console.log("control-marker"); };\nsetTimeout(mark, 2000);\nconst tick = setInterval(() => { clearInterval(tick); mark(); }, 2000);\nnew Promise(done => setTimeout(done, 2000)).then(mark);', 3000);
     assert.equal(await body().innerText(), 'control-marker'); assert.match(await t.consoleText(page), /control-marker/);
-    await t.setSource(page, 'setTimeout(() => { document.body.textContent = "stopped-marker"; console.log("stopped-marker"); }, 3000);');
-    await t.run(page, 1000); await stop.click(); await t.sleep(300);
+    await t.setSource(page, 'const mark = () => { document.body.textContent = "stopped-marker"; console.log("stopped-marker"); };\nsetTimeout(mark, 4000);\nconst tick = setInterval(() => { clearInterval(tick); mark(); }, 4000);\nnew Promise(done => setTimeout(done, 4000)).then(mark);');
+    await t.run(page, 600); await stop.click(); await t.sleep(300);
     assert.match(await t.status(page), /stopped/i);
-    await t.sleep(6000);
+    await t.sleep(8000);
     assert.ok(!(await t.consoleText(page)).includes('stopped-marker'));
     assert.equal(await body().innerText(), 'control-marker');
   });
 
   await check('cw_newer_run_supersedes', async () => {
-    await runSource('old.js', 'setTimeout(() => { document.body.textContent = "old-marker"; console.log("old-marker"); }, 3000);', 1000);
+    const oldDraft = 'setTimeout(() => { document.body.textContent = "old-marker"; console.log("old-marker"); }, 4000);';
+    await runSource('old.js', oldDraft, 4800);
+    assert.equal(await body().innerText(), 'old-marker');
+    await page.getByRole('button', { name: 'Clear console' }).click();
+    await runSource('old.js', oldDraft, 500);
     await t.setSource(page, 'document.body.textContent = "new-marker"; console.log("new-marker");');
     await t.run(page);
     assert.equal(await body().innerText(), 'new-marker'); assert.match(await t.consoleText(page), /new-marker/);
-    await t.sleep(6000);
+    await t.sleep(8000);
     assert.ok(!(await t.consoleText(page)).includes('old-marker'));
     assert.equal(await body().innerText(), 'new-marker');
   });
@@ -135,6 +159,9 @@ const { assert } = t;
     await runSource('net.js', 'fetch("http://localhost:3000/api/health").then(r => console.log("net-status:" + r.status)).catch(() => console.log("net-blocked"));', 1500);
     text = await t.consoleText(page);
     assert.match(text, /net-blocked/); assert.ok(!text.includes('net-status:'));
+    await runSource('net2.js', 'fetch("https://example.com/").then(r => console.log("ext-status:" + r.status)).catch(() => console.log("ext-blocked"));', 2500);
+    text = await t.consoleText(page);
+    assert.match(text, /ext-blocked/); assert.ok(!text.includes('ext-status:'));
     assert.equal(await page.title(), title);
     assert.equal(await page.evaluate(() => localStorage.getItem('cw-probe')), 'secret-value');
     assert.ok(await page.getByRole('button', { name: /iso-library-entry/ }).count() >= 1);

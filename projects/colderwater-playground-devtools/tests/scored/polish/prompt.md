@@ -7,7 +7,8 @@ Global browser gate: before scoring, confirm in the live browser that the applic
 ## Evidence discipline
 
 - A criterion passes only on evidence you gathered yourself in this session for that criterion. If you did not perform a step, that step did not pass.
-- Never carry a verdict across criteria, and never fabricate a pass. Unattempted criteria are failed and reported as such.
+- Score each criterion independently and continue after any failure; return a verdict for every criterion. A failed criterion never ends the session.
+- Never carry a verdict across criteria, and never fabricate a pass. Attempt every criterion; one you could not attempt is failed and reported as such.
 - A criterion is a conjunction: every step it lists must hold, and each ends with the conditions under which it fails.
 - Quote concrete observations in every reasoning: which control had focus, the status text you read, the source after typing, the viewport size.
 
