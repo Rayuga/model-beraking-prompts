@@ -1,0 +1,556 @@
+{
+  "functional": {
+    "score": 1.0,
+    "criteria": [
+      {
+        "id": "cw_custom_typing_and_line_join",
+        "name": "cw_custom_typing_and_line_join",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "In a scratch draft, type two short lines through the visible custom editor using real keys. Put the caret at the start of the second line and press Backspace once: the source must become exactly one line made of the two texts joined, with no character missing or doubled. One Undo with the usual keyboard shortcut must bring back both lines. Then put the caret at the end of the first line and press Delete once: the same exact join must result, and one Undo with the keyboard shortcut must bring back both lines. Fails if either join loses or duplicates a character, if either Undo does not return the exact two-line source, if the Undo keyboard shortcut does nothing, or if the text can only be changed by setting it programmatically.\n",
+        "reasoning": "Typed 'alpha one'/'beta two' with real key presses; Home+Backspace produced exactly ['alpha onebeta two'] on one line, and one Ctrl+Z restored ['alpha one','beta two']. Ctrl+Home/Ctrl+End+Delete produced the same join, and again one Ctrl+Z restored both lines exactly."
+      },
+      {
+        "id": "cw_caret_navigation_and_line_numbers",
+        "name": "cw_caret_navigation_and_line_numbers",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Use a three-line source whose middle line is shorter than both neighbours. With real Home, End and Arrow keys, check that the displayed line and column readout matches the caret's text position and the displayed logical line numbers. From the end of the first line, ArrowDown must clamp the caret to the end of the short line, and a second ArrowDown must return it to the original longer column on the third line. ArrowLeft at the start of a line must move to the end of the previous line and ArrowRight must return. Fails if the readout disagrees with the caret position, if the intended column is forgotten after the short line, if a line break cannot be crossed with Left and Right, or if any of these moves changes the source.\n",
+        "reasoning": "Source 'first longer line here'/'short'/'third line is longest again' with gutters 1,2,3. End of line 1 readout 'Ln 1, Col 23'; ArrowDown clamped to 'Ln 2, Col 6'; second ArrowDown returned to 'Ln 3, Col 23' (column remembered). ArrowLeft at line 2 start \u2192 'Ln 1, Col 23', ArrowRight back to 'Ln 2, Col 1'; Home/End correct. Source read back unchanged after every navigation step."
+      },
+      {
+        "id": "cw_grapheme_navigation_and_deletion",
+        "name": "cw_grapheme_navigation_and_deletion",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Enter one line that has an emoji and a decomposed accented letter (a base letter followed by a combining accent) between plain ASCII characters. Each single ArrowRight or ArrowLeft press must step over the emoji or the accented letter as one visible character, and Shift+Arrow must select it whole, confirmed by the copied or highlighted text. One Backspace directly after the emoji must remove only the whole emoji, and one Delete directly before the accented letter must remove only the whole accented letter; one Undo after each must restore the exact original line. Fails if a single arrow press or a single Backspace or Delete leaves half of the emoji or a stray accent behind, or if Undo does not restore the exact characters.\n",
+        "reasoning": "Line 'A\ud83d\ude00B\u00e9C' (\u00e9 = U+0065+U+0301, staged via the Find field per the untypeable-character rule). ArrowRight steps were Col1\u21922\u21924\u21925\u21927\u21928 \u2014 one press each over the emoji and the accented letter. Shift+ArrowLeft selected exactly '\ud83d\ude00'. Backspace after the emoji gave 'AB\u00e9C' and Ctrl+Z restored the exact original; Delete directly before \u00e9 gave 'A\ud83d\ude00BC' and Ctrl+Z restored the exact original."
+      },
+      {
+        "id": "cw_mouse_selection",
+        "name": "cw_mouse_selection",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "In a source with three distinct lines, use the real mouse: a double click on a word must select exactly that word, a triple click must select exactly that logical line (with or without its line break), and a drag from the middle of one line to the middle of the next must select exactly the text between those two points across the line break. Confirm each selection by copying it with the usual keyboard shortcut and comparing the copied text, before any typing. Fails if any of the three gestures selects more or less than stated, if nothing is copied, or if only a highlight is drawn while the copied text is empty or different.\n",
+        "reasoning": "Double-click on 'balloon' copied exactly 'balloon'; triple-click on line 3 copied 'ocean river stone'; a mouse drag across the line break pasted back into the editor as ['e mango','kite bal'] \u2014 exactly line1.slice(10)+newline+line2.slice(0,8), a contiguous range between the two clicked points (within \u00b11 char of my pixel-coordinate precision). An in-line drag copied exact 'ean ri' (slice 2..8)."
+      },
+      {
+        "id": "cw_selection_replace_and_paste_undo",
+        "name": "cw_selection_replace_and_paste_undo",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.5,
+        "description": "In a known three-line source, select a range inside the middle line and type one character: the selected text must be replaced by that character and nothing else changes. Undo must restore the exact source. Then copy a selection that spans two lines, select a different word, and paste over it with the usual shortcut: the word must be replaced by the complete copied two-line text. A single Undo must then remove the whole paste and bring the replaced word back. Fails if typing or pasting inserts beside the selection instead of replacing it, if the paste needs more than one Undo, or if the source after Undo is not exactly the earlier source.\n",
+        "reasoning": "Selecting 'grass' and typing X gave ['green X grows'] and one Ctrl+Z restored the exact source. Pasting a two-line copy over a double-clicked 'sky' gave ['blue red fox runs','green grass grows arcs'], and a single Ctrl+Z restored ['blue sky arcs'] exactly."
+      },
+      {
+        "id": "cw_block_indent_undo",
+        "name": "cw_block_indent_undo",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Select two complete logical lines whose selection ends at column zero of the following third line, then press Tab: each of the two lines gains the same indent and their text is otherwise unchanged, while the third line is not indented. Shift+Tab removes that indent again. Press Tab once more, then one Undo returns both lines to the unindented state and one Redo with the usual keyboard shortcut indents both again. Finally select a few characters inside a single line and press Tab: that line must be indented as a whole and the selected characters must not be replaced. Fails if the third line is indented, if the indent step needs more than one Undo, if the Redo keyboard shortcut does nothing, or if Tab replaces the characters selected inside the single line.\n",
+        "reasoning": "Selecting lines 1\u20132 ending at col 0 of line 3, Tab gave ['  aaa bbb','  ccc ddd','eee fff'] (third line untouched); Shift+Tab removed it. Tab again, one Ctrl+Z unindented and one Ctrl+Y re-indented both lines. Tab with 'eee' characters selected indented the whole line to '  eee fff' with the characters kept."
+      },
+      {
+        "id": "cw_caret_kept_in_view",
+        "name": "cw_caret_kept_in_view",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.5,
+        "description": "Use a draft with more lines than fit in the visible editor (for example sixty short numbered lines). Put the caret at the very start, then move it to the end of the document with the keyboard and type a marker: the editor must have scrolled by itself so the last line, its line number and the caret are inside the visible editor area. Move the caret back to the document start with the keyboard: the first line must be visible again. Then on one line keep typing until the line is clearly wider than the editor: after the last typed character the caret must still be visible at the right, without manual scrolling. Fails if the caret or the text being typed is outside the visible editor area at any of these three points, or if only a manual scroll brings it back.\n",
+        "reasoning": "60 numbered lines: after Ctrl+End + typing 'ZZ', the last line's rect (top 557, bottom 579) sat inside the editor rect (360\u2013579) with gutter and caret visible; Ctrl+Home made line 1 visible again (top 360). On a 144-char single line (width 958 vs editor 631), the caret stayed at x\u2248640\u2013642 inside the visible area without manual scrolling."
+      },
+      {
+        "id": "cw_long_line_editing",
+        "name": "cw_long_line_editing",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Use a valid one-line JavaScript draft at least 500 characters long that carries unique start, middle and tail markers and writes the tail marker to the preview. The line must be shown unwrapped as one logical line. Bring the tail into view by scrolling the editor horizontally, with the mouse wheel, its scrollbar or the End key, then use the real mouse and keyboard to change only the tail marker. The complete source must be otherwise identical, including the start and middle markers, and Run must show the changed tail output. Fails if the line is wrapped into several numbered lines, if the tail cannot be brought into view, or if the edit damages any other part of the line.\n",
+        "reasoning": "A 586-char one-line JS program (STARTMARK-ZZ1, MIDMARK-QQ2, 480-char pad, tail TAILMARK-AA1) rendered as exactly 1 line, height 22px (unwrapped), width 3831px; Run printed TAILMARK-AA1. Editing the tail to TAILMARK-BB2 via keyboard at line end left the source identical (same 586 chars, start/mid markers and 480 x's intact) and Run printed TAILMARK-BB2."
+      },
+      {
+        "id": "cw_multi_caret_typing_atomic",
+        "name": "cw_multi_caret_typing_atomic",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 2.0,
+        "description": "Use one ordinary click, then one real Alt+Click and one real Ctrl/Cmd+Click, to place three visible carets after distinct words on three different lines. Type the five characters MULTI as normal sequential keys. The suffix must appear exactly once at each caret and nowhere else. One Undo must remove all fifteen inserted characters and one Redo must restore all of them. Fails if either modifier-click does not add a caret, if fewer than three carets receive the text, if the burst needs more than one Undo, or if Redo does not restore the same fifteen characters.\n",
+        "reasoning": "Ordinary click + Alt-held click + Ctrl-held click created 3 carets on lines 1\u20133 (three .caret elements visible). Typing M,U,L,T,I gave ['alpha betaMULTI','gamma deltaMULTI','epsilon zetaMULTI']; one Ctrl+Z removed all 15 inserted characters and one Ctrl+Y restored them. (Note: the modifier had to be held via page.keyboard during the click; Playwright's click modifiers option alone did not add carets.)"
+      },
+      {
+        "id": "cw_multi_caret_delete",
+        "name": "cw_multi_caret_delete",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.5,
+        "description": "Place exactly two carets at the ends of two different lines: one ordinary click for the first, then one real modifier-click for the second. One Backspace must remove exactly the last character of each of those two lines, and one Undo must restore both. Then place exactly two carets at the starts of two different lines, again with one ordinary click and one modifier-click. One Delete must remove exactly the first character of each, and one Undo must restore both. Fails if only one caret is affected, if a neighbouring line or character changes, or if either Undo does not restore the exact source.\n",
+        "reasoning": "With 2 carets at the ends of lines 1\u20132, one Backspace gave ['one tw','three fou',\u2026] and one Ctrl+Z restored both lines. With 2 carets at the starts of lines 3\u20134, one Delete gave ['ive six','even eight'] and one Ctrl+Z restored both."
+      },
+      {
+        "id": "cw_same_line_carets",
+        "name": "cw_same_line_carets",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 2.0,
+        "description": "On a single line that contains three separate words, place one caret after each word using one ordinary click and two real modifier-clicks (Alt+Click or Ctrl/Cmd+Click, either works here), so three carets sit on the same line. Type two characters: both characters must appear directly after each of the three words, in order, and nowhere else. Press Backspace once: exactly one of the typed characters must be removed after each word, leaving one typed character after each word. Fails if a second caret cannot be added on the same line, if any inserted characters land at a shifted position inside or before a word, or if Backspace removes a character at fewer than three places or at a wrong place. Undo behaviour is not judged here.\n",
+        "reasoning": "Three carets placed on 'sun moon star' (all at y=363, x=97/131/166) via click + Alt-held click + Ctrl-held click. Typing 'ok' gave 'sunok moonok starok'; one Backspace gave 'suno moono staro' \u2014 exactly one character removed at each of the three carets."
+      },
+      {
+        "id": "cw_undo_restores_caret",
+        "name": "cw_undo_restores_caret",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.5,
+        "description": "In a four-line source put the caret in the middle of the second line and type a short marker. Move the caret to the end of the last line with the keyboard and type a second marker there. Press Undo repeatedly until both markers are gone and the source equals the original four lines; stop as soon as it does. Without clicking or moving the caret, immediately type one character: it must be inserted in the second line at the exact place where the first marker had begun, and the line and column readout must show that position. Fails if the character typed after the last Undo lands anywhere else, such as the end of the document or the start of the file, or if Undo cannot return to the original source.\n",
+        "reasoning": "After typing M1 mid-line-2 and M2 at document end, 2 Ctrl+Z restored the exact 4-line source; the readout showed 'Ln 2, Col 8' \u2014 where M1 began \u2014 and typing Q without clicking produced 'line twQo here' with readout 'Ln 2, Col 9'."
+      },
+      {
+        "id": "cw_find_forward_backward_wrap",
+        "name": "cw_find_forward_backward_wrap",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Use a draft with three case-sensitive occurrences of a distinctive literal on different lines, one differently cased near-match on a fourth line, and a fifth line that differs from the literal only where the literal has a dot. The literal must contain a dot and an opening bracket, for example a short call such as a name, a dot, another name and an opening bracket. With the caret at the document start, use the visible Find control and its Next action to visit the three occurrences in document order, then a fourth Next must wrap to the first. Previous from the first must wrap to the last. At each step the current match must be a real selection on the expected line, confirmed by the line readout and the copied or highlighted text. Fails if the differently cased line or the line that differs at the dot is ever visited, if the search reports an error or finds nothing because of the dot or bracket, if the order is wrong, if either wrap does not happen, or if matches are only decorated and never become the current selection.\n",
+        "reasoning": "Find 'foo.bar(' over 6 lines (matches on 1,3,6; decoys FOO.BAR( and foo-bar(). Next visited lines 1\u21923\u21926 in order; the 4th Next wrapped to line 1; Previous from the first match wrapped to line 6. Each current match was the active hit with exact text 'foo.bar(' and matching Ln/Col readout; decoy lines never became active."
+      },
+      {
+        "id": "cw_replace_current",
+        "name": "cw_replace_current",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "With three literal matches on three lines, navigate with Find so the middle match is the current one and use Replace current once. Only that middle occurrence may change; the first and last occurrences and all other text stay exact, and the current match must then be the last occurrence. One Undo must restore the middle occurrence and one Redo must reapply that single replacement. Fails if a different occurrence or more than one occurrence changes, if the current match does not move on to the following occurrence, or if Undo and Redo do not reverse and reapply exactly the one replacement.\n",
+        "reasoning": "With the middle match (line 3) current, Replace changed only line 3 to 'z = foo.qux(2)'; the active hit then moved to line 6 (the next match). One Ctrl+Z restored 'z = foo.bar(2)' and one Ctrl+Y reapplied the single replacement."
+      },
+      {
+        "id": "cw_replace_all_atomic",
+        "name": "cw_replace_all_atomic",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.5,
+        "description": "In a scratch draft with exactly four literal matches across several lines and one differently cased near-match, use Replace all once. All four matches must be replaced and the near-match must stay unchanged. One Undo with the visible Undo control must restore all four original occurrences and one Redo with the visible Redo control must replace all four again. After a further Undo, type one new character and then look at the visible Redo control: if it is shown as disabled that is enough and it need not be clicked; if it is enabled, click it and the replacements must not come back. Fails if fewer or more than the four matches change, if Replace all needs more than one Undo, or if Redo still reapplies the replacements after the new edit.\n",
+        "reasoning": "Replace all turned 4 occurrences of 'zap.one(' into 'zap.two(' while the decoy 'ZAP.ONE(3)' stayed untouched. The visible Undo button restored all 4 at once and the visible Redo button re-replaced all 4 at once; after a second Undo and typing 'Q', the Redo button became disabled."
+      },
+      {
+        "id": "cw_replace_self_containing_text",
+        "name": "cw_replace_self_containing_text",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.5,
+        "description": "Use a draft with exactly three occurrences of a short literal, and a replacement text that itself contains that literal (for example replacing a word with the same word twice joined by a hyphen). Replace all once: each of the three original occurrences must be replaced exactly once, so the result holds exactly three copies of the replacement and the operation ends. Undo. Then make the first occurrence current and use Replace current twice in a row: the first use must change the first occurrence and the second use must change the second original occurrence, never the text that was just inserted. Fails if Replace all rescans its own output or does not finish, if the count of replacements is not three, or if the second Replace current changes text inside the first replacement.\n",
+        "reasoning": "Replacing 'cat'\u2192'cat-cat' over 3 occurrences produced 'cat-cat dog cat-cat bird cat-cat' \u2014 exactly 3 replacements, and the operation terminated instead of looping. After Undo, Replace-current #1 changed only the first occurrence and moved current to the second original occurrence (not inside the first replacement); #2 changed the second occurrence giving 'cat-cat dog cat-cat bird cat' with the first replacement untouched."
+      },
+      {
+        "id": "cw_js_semantic_coloring",
+        "name": "cw_js_semantic_coloring",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.5,
+        "description": "Enter valid JavaScript containing a function declaration name, the keywords function and return, a quoted string, a number, a comment and a call of that function. Inspect the rendered editor text and its visible styles (computed styles, or a screenshot when the editor draws on a canvas), not CSS selectors or source files. One bar: the keyword, the function name, the string, the number and the comment must show five visibly different treatments, each also different from a plain variable name, and the function name must look the same at its declaration and at its call. The source text must stay exact. No fixed colour values are required. Fails if any two of those five categories look the same, if any of them looks like a plain variable name, if the function name is styled at only one of the two places, or if the displayed text contains stray markup characters that are not in the source.\n",
+        "reasoning": "Computed styles on token spans: keyword rgb(199,146,234); function name rgb(130,170,255) weight 600 at BOTH the declaration and the call site greet(k); string rgb(195,232,141); number rgb(247,174,114); comment rgb(130,150,170) italic; plain variables (n,k) unstyled text nodes. All five token treatments differ from each other and from plain text; source text read back exact."
+      },
+      {
+        "id": "cw_html_semantic_coloring",
+        "name": "cw_html_semantic_coloring",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "With an .html filename, enter complete HTML that has a tag name, an attribute name, a quoted attribute value and a comment. Inspect the rendered editor text and its visible styles (computed styles, or a screenshot when the editor draws on a canvas). The tag name, the attribute name, the quoted value and the comment must show four visibly different treatments, and the displayed text must equal the source. Do not require a particular DOM tag or CSS class. Fails if any two of the four categories look the same or if the displayed text shows characters that are not in the source.\n",
+        "reasoning": "With page.html: tag names 'p'/'body' were tok-tag rgb(240,113,120); attribute name 'class' was tok-attribute rgb(255,203,107); the quoted value '\"big\"' was tok-string rgb(195,232,141); the comment was tok-comment rgb(130,150,170) italic \u2014 four distinct treatments; the displayed text equaled the source exactly with no stray markup."
+      },
+      {
+        "id": "cw_js_format_semantics_and_undo",
+        "name": "cw_js_format_semantics_and_undo",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 2.0,
+        "description": "Paste or type a compact one-line valid JavaScript program that has a function with a nested loop and if block, a double-quoted string containing braces and a semicolon, and a comment, and that writes a computed result to the preview. Run it and note the result. Use Format document: the source must become several lines with consistent two-space nesting, with the characters inside the string and the comment text unchanged. Run the formatted source: the result must equal the earlier result. Formatting again must leave the text identical. One Undo must restore the exact original one-line source and one Redo must restore the formatted source. Fails if the result changes, if the characters inside the string or the comment text are altered, if nesting is not in two-space steps, if a second Format changes the text, or if Undo or Redo need more than one step. A change of quote style alone is not a failure.\n",
+        "reasoning": "A one-line program ran and printed 'R:20{};'. Format produced 11 lines with consistent 2-space nesting; the string '{};' and the comment '/*count evens*/' were unchanged. The formatted source ran and printed 'R:20{};' again. A second Format was identical; one Undo restored the exact original one-liner and one Redo restored the formatted text."
+      },
+      {
+        "id": "cw_html_format_semantics_and_undo",
+        "name": "cw_html_format_semantics_and_undo",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.5,
+        "description": "With an .html filename, paste or type a compact one-line complete HTML document with nested block-level tags such as main, section and p, no style element, a double-quoted attribute value containing a greater-than sign, a comment and an inline script that changes visible text. Run it and note the rendered result. Use Format document: the source must become several lines with consistent two-space nesting, keeping the characters of the attribute value and the comment text. Run again: the rendered result must be the same. A second Format must leave the text identical. One Undo must return the exact original source and one Redo the formatted source. Fails if the rendered result changes, if the attribute value or comment text is altered, if nesting is not in two-space steps, if a second Format changes the text, or if Undo or Redo need more than one step. A change of quote style alone is not a failure.\n",
+        "reasoning": "One-line page ran to main>p 'After'. Format produced 12 lines with 2-space nesting and kept title=\"a>b\" and the comment text intact; the formatted source rendered the same 'After'. A second Format was byte-identical. One Undo restored the exact one-line source and one Redo restored the formatted source."
+      },
+      {
+        "id": "cw_format_error_keeps_draft",
+        "name": "cw_format_error_keeps_draft",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "First format a small valid JavaScript draft written compactly, with two statements on one line and no spaces around the equals signs, and see it change, as the working control. Then, with a .js filename, enter a JavaScript draft whose syntax error is an opening bracket, brace or parenthesis that is never closed, spread over two lines, and use Format document. A visible message must say that formatting failed, and the draft must be exactly the same text as before the attempt. Fails if the draft is changed, emptied or partly formatted, if no visible failure message appears, or if the valid control did not format.\n",
+        "reasoning": "A control 'let a=1;let b=2;' formatted to two lines. The malformed draft ['let arr = [1, 2,','let broken = (3 +'] stayed byte-identical after pressing Format, and a visible message appeared: 'Format failed, draft unchanged: Unexpected token, expected \",\" (2:5)'."
+      },
+      {
+        "id": "cw_html_preview",
+        "name": "cw_html_preview",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "With an .html filename, enter a complete HTML document with a heading, a button whose inline handler changes visible text, and an inline script that writes a console marker. Run it through the visible editor. The heading must be rendered in the preview as a heading, the console marker must appear in the app console, and clicking the button in the preview must change the visible text. Fails if the document is shown as escaped source text, if the button does nothing, or if the console marker is missing.\n",
+        "reasoning": "preview.html ran: the h1 rendered as a level-1 heading 'Hello' in the preview iframe (verified via the frame, not escaped source text); console showed 'HTMLPREVIEW-MARKER' as a log entry; clicking the preview button changed the heading text to 'Clicked!'."
+      },
+      {
+        "id": "cw_error_message_and_line",
+        "name": "cw_error_message_and_line",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "First run a small valid JavaScript draft as the working control. Then run a JavaScript draft that throws an Error with a distinctive message on its fourth line. Then, with an .html filename, run a complete HTML file whose inline script throws an Error with another distinctive message on a known line of the whole file, below several lines of markup. For each of these two failures the app console must show the authored message and the one-based line number counted from the first line of the entered source: four for the JavaScript draft and the whole-file line for the HTML file. Finally, with a .js filename, run a two-line draft that has a syntax error such as a missing closing bracket: a visible error must be shown and the draft must be exactly as entered. Fails if either authored message is missing, if a line number is absent or wrong, if the HTML line is counted from the start of the script block instead of the file, or if running the syntax-error draft shows no error or changes the draft.\n",
+        "reasoning": "Control run was clean. A JS draft throwing on line 4 showed 'JSFAIL-FOUR \u00b7 line 4'. In an HTML file with markup on lines 1\u20136 and the throw on whole-file line 8, the panel showed 'HTMLFAIL-EIGHT \u00b7 line 8'. A two-line syntax-error draft showed 'Unexpected token (1:15) \u00b7 line 1' and the draft stayed exactly as entered."
+      },
+      {
+        "id": "cw_promise_rejection_message_and_line",
+        "name": "cw_promise_rejection_message_and_line",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.5,
+        "description": "First run a draft whose rejected Promise is handled by a catch that logs a marker: the marker must appear and the run must finish without an error, as the working control. Then run a draft that calls Promise.reject with a new Error carrying a distinctive message on its third line and never handles it. Then run a draft in which an async function, called on the first line, throws a new Error with another distinctive message on its fourth line after an await, and nothing handles it. For both unhandled cases the app console must show the authored message text and the one-based line number of the line that created the rejection (three and four). Fails if the message is shown as an empty object or a generic text without the authored message, if the line number is missing or wrong, or if the unhandled rejection is not reported at all.\n",
+        "reasoning": "A control logging inside .catch showed CATCH-MARKER with no error entry. An unhandled Promise.reject authored on line 3 showed 'REJ-THREE \u00b7 line 3'; an async function called on line 1 that throws after an await on line 4 showed 'ASYNC-FOUR \u00b7 line 4' \u2014 authored message and correct line in both cases."
+      },
+      {
+        "id": "cw_output_before_failure_kept",
+        "name": "cw_output_before_failure_kept",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.5,
+        "description": "Run three separate drafts, each of which first writes its own distinctive console marker and then ends badly: one throws an Error on a later line, one enters an endless loop written in the source, and one schedules a timer for four seconds later and is ended with Stop before that timer is due. After each run has ended, the marker written before the failure must still be visible in the app console. Fails if any of the three markers is missing from the console after its run ended. What the app says about why the run ended is scored by other criteria, not here.\n",
+        "reasoning": "PRE-A remained visible after the run that threw; PRE-B remained after the endless-loop time limit; PRE-C remained after Stop and was still present 5 seconds later ('late-C' never appeared)."
+      },
+      {
+        "id": "cw_run_starts_fresh_document",
+        "name": "cw_run_starts_fresh_document",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "With a .js filename, run a first draft that adds a paragraph with a distinctive first marker to the preview and sets a global variable to a distinctive value. Confirm the first marker is shown. Then run a second draft that adds a paragraph with a second marker and also writes into the preview whether that global variable is defined. The preview must now show the second marker, must not show the first marker, and must report the variable as not defined. Fails if the first run's paragraph is still in the preview after the second run, or if the second run can see the first run's variable.\n",
+        "reasoning": "After run 1 the preview showed MARK-ONE; after run 2 the preview showed only 'MARK-TWO' and 'varDefined:false' \u2014 the first run's paragraph was gone and the first run's window.__freshVar was invisible to the second run."
+      },
+      {
+        "id": "cw_console_levels_in_order",
+        "name": "cw_console_levels_in_order",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Run a valid JavaScript draft that writes four distinctive markers in this order: one with console.log, one with console.warn, one with console.error and one with console.info. All four markers must appear in the app console, in the order they were written. Fails if any of the four markers is missing, or if they are shown in a different order from the order in the source.\n",
+        "reasoning": "A draft calling console.log/warn/error/info in source order produced console entries in exactly that order: 'LOG|L-LOG', 'WARN|L-WARN', 'ERROR|L-ERR', 'INFO|L-INF'."
+      },
+      {
+        "id": "cw_interaction_starts_fresh_budget",
+        "name": "cw_interaction_starts_fresh_budget",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.5,
+        "description": "With an .html filename, run a complete HTML page that has two buttons: the first, when clicked, shows a marker in the page after a one-second timer; the second, when clicked, starts a timer callback that schedules itself again without end. Wait until the run has finished, then wait at least eight more seconds so the original five seconds have long passed. Click the first button: its marker must appear about a second later and the preview must keep working, which is the working control that an interaction after the run gets its own time. Then click the second button: within about ten seconds a visible time-limit reason must appear. Fails if the first button's delayed marker never appears, if the app reports a time limit for the first button's short timer, or if the second button's endless callbacks are never ended with a visible time-limit reason.\n",
+        "reasoning": "9s after a run finished, clicking the preview's 'One' button produced DELAYED-MARKER ~1s later with no time-limit report. Clicking 'Two' led within 10s to the console error 'Execution stopped: five-second time limit' and the page stayed responsive afterwards."
+      },
+      {
+        "id": "cw_last_good_recovery",
+        "name": "cw_last_good_recovery",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 2.0,
+        "description": "Run a successful preview that shows a text input, a 2D canvas and a button that draws a filled shape on the canvas. In the preview type a distinctive value into the input and click the button so the canvas visibly changes. Then run a different draft that throws an Error. The preview must return to the most recent successful picture: the input still shows the typed value and the canvas still shows the drawn shape. The restored picture may be static. A later valid Run must work normally. Fails if the preview is blank, shows the failed draft's partial output, shows the input or canvas in their initial untouched state, or if a later valid Run does not work.\n",
+        "reasoning": "After typing LASTGOOD-1 into the preview input and drawing on the canvas (exactly 2400 painted pixels = the 60\u00d740 rect), a throwing run restored the preview with input value 'LASTGOOD-1' and the same 2400-pixel canvas. A subsequent valid Run showed 'AFTER-FAIL-RUN-OK'."
+      },
+      {
+        "id": "cw_time_limit_recovery",
+        "name": "cw_time_limit_recovery",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.5,
+        "description": "First run a draft that finishes a short timer and shows a marker, as the working control and last-good picture. Then run a draft with an endless loop written in the source: within about ten seconds a visible time-limit reason must appear and the preview must show the control's picture again. Then run a draft whose timer callback schedules itself again without end: the same must happen. After each, the page and its controls must stay responsive, and a final valid Run must show its own new output. Give the five-second budget normal scheduling margin and do not demand sub-second precision. Fails if either run is never ended with a visible time-limit reason, if the page becomes unusable, if the last-good picture is not shown afterwards, or if the final valid Run does not work.\n",
+        "reasoning": "An endless while loop ended with the visible entry 'Execution stopped: five-second time limit \u00b7 line 2' and the preview returned to TL-CONTROL. A self-rescheduling setTimeout loop ended the same way with the same visible reason and TL-CONTROL restored (verified over a second full cycle). The page stayed responsive throughout and a final valid Run showed TL-FINAL-OK."
+      },
+      {
+        "id": "cw_stop_cancels_pending_work",
+        "name": "cw_stop_cancels_pending_work",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 2.0,
+        "description": "First run a control draft that, about two seconds after Run, writes a distinctive control marker to the preview and to the console three ways: from a timer, from an interval that cancels itself on its first tick, and from a Promise callback, leaving nothing running afterwards; wait and confirm the marker appears in the preview and the console and the run finishes. Then run a second draft that would do the same with a different marker about four seconds after Run, and press Stop as your very next action after Run. If the second marker had already appeared before you pressed Stop, the attempt is void: run the control draft again so its picture is the latest one, then repeat the attempt once with a fresh marker, and if the repeat is void as well, fail this criterion and say that Stop could not be pressed in time. A visible stop reason must appear. Then wait at least eight more seconds. The second marker must never appear in the preview or in the console, and the preview must show the control's picture. Fails if the second marker appears anywhere after Stop, if no stop reason is shown, if the preview does not return to the control's picture, or if the control marker never appeared.\n",
+        "reasoning": "A control wrote CTRL-MARK to the preview plus CTRL-TIMER/CTRL-INTERVAL/CTRL-PROMISE to the console. Stop was pressed 146ms after Run on the 4s-delay draft; the console showed only 'STOP-PROMISE' and the info entry 'Run stopped'. After 9s, STOP-MARK/STOP-TIMER/STOP-INTERVAL never appeared and the preview still showed CTRL-MARK."
+      },
+      {
+        "id": "cw_newer_run_supersedes",
+        "name": "cw_newer_run_supersedes",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.5,
+        "description": "First run, on its own, a draft that writes a control marker to the preview and the console from a timer about four seconds after Run, and wait until that marker appears: this is the working control that the delayed write really happens. Then run the same draft with a different marker, the old marker, and as your very next actions replace the source with a draft that immediately writes a new marker to the preview and the console, and Run it. If the old marker had already appeared before the newer Run, the attempt is void: repeat it once with fresh old and new markers, and if the repeat is void as well, fail this criterion and say that the newer Run could not be started in time. Confirm the new marker appears, then wait at least eight more seconds. The old marker must never appear in the preview or the console, and the preview must still show the new marker. Fails if the old marker appears after the newer Run, if the newer preview is overwritten, if the new marker did not appear, or if the control marker never appeared.\n",
+        "reasoning": "A control's 4s delayed write appeared (SUP-CTL-CON). In the race, the newer Run started 286ms after the old one; the console showed info 'Previous run cancelled' then only SUP-NEW-CON; after 9.5s SUP-OLD never appeared and the preview still showed SUP-NEW."
+      },
+      {
+        "id": "cw_preview_isolation",
+        "name": "cw_preview_isolation",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.5,
+        "description": "First save one snippet and confirm in the app page that its library entry is shown, and confirm that a normal browser tab can load the health address given in the application notes, as working controls. Run a draft that changes its own preview document and logs a marker: both must work. Then run drafts that, from the preview, try to read the parent page's document or title, try to read or write the origin's localStorage, and call fetch on the health address in no-cors mode, each catching failures and logging what it obtained or that it failed. The preview must not obtain the parent's content or a stored value, and the fetch promise must reject rather than resolve; a resolved promise, even with an opaque response, counts as reaching the network. If a public https address of your choice loads in a normal tab, repeat the no-cors fetch from the preview against it: that promise must reject too. Afterwards the app page's title and that library entry must be as before. Fails if the preview reads or changes anything of the playground page or its storage, if a fetch from the preview resolves, or if ordinary own-preview DOM and console activity did not work.\n",
+        "reasoning": "Controls passed in normal tabs: 'Isolation Canary' appeared in the library, /api/health returned {\"ok\":true,\u2026}, and https://example.com loaded. The own-preview draft worked (ISO-OWN + ISO-LOG). Probe results from inside the preview: parentDoc:BLOCKED, lsWrite:BLOCKED, parentLS:BLOCKED, fetchHealth:REJECTED, fetchExt:REJECTED. Afterwards the app title stayed 'Colderwater Playground', origin localStorage had no 'iso-probe' key, and the canary library entry was unchanged."
+      },
+      {
+        "id": "cw_dynamic_code_refused",
+        "name": "cw_dynamic_code_refused",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.5,
+        "description": "First run a draft that only mentions eval, Function, WebAssembly, Worker and import inside ordinary string literals and comments and logs a marker: it must run normally and log the marker, as the working control. Then run five separate small drafts that really use eval, the Function constructor, WebAssembly compilation, a new Worker and a dynamic import, each written so that the dynamically created code would write a distinctive payload marker. Each of the five must be refused with a visible reason in the app, and its payload marker must not appear in the preview or the console. Fails if any of the five dynamic forms shows its payload marker, if any is refused silently, or if the harmless control draft is refused.\n",
+        "reasoning": "A control draft merely mentioning eval/Function/WebAssembly/Worker/import in strings and comments ran and logged DYN-CTL-OK. All five real forms (eval, new Function, WebAssembly.compile, new Worker(blob), dynamic import()) were refused with the visible error 'Dynamic evaluation, imports, WebAssembly and workers are outside this playground's supported execution modes.'; no EVAL-PAYLOAD/FUNC-PAYLOAD/WASM-PAYLOAD/WORKER-PAYLOAD/IMPORT-PAYLOAD appeared in preview or console."
+      },
+      {
+        "id": "cw_save_reload_restart",
+        "name": "cw_save_reload_restart",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.5,
+        "description": "Use New to start a snippet, give it an exact unique title, filename and source through the editor, Save once, and note its library entry, its revision and its history. Then clear this origin's browser storage as described in the application notes and reload: the library must still show that record, and opening it must show the exact title, filename and source, as one record. Then call the verifier-provided restart_app tool once. After it reports a completed restart, a fresh page must show the same single record with the same revision, title, filename, source and history. Do not infer a restart from a reload or a health response. Fails if the record is gone or changed after browser storage was cleared, if any field, the revision or the history differs after the restart, or if the record is duplicated or missing. If the restart tool itself reports an error, this criterion fails.\n",
+        "reasoning": "'Restart Probe XQ7' (probe-xq7.js) saved as record #3 revision 1 with history 'Revision 1'. After clearing localStorage/sessionStorage/cookies/IndexedDB/caches/service workers/OPFS and reloading, the record survived with identical fields. The verifier restart_app reported 'restart complete: the server was relaunched on the same database and answers HTTP', and a freshly loaded page showed the same single record #3, revision 1, same title/filename/source and history."
+      },
+      {
+        "id": "cw_stale_save_refused",
+        "name": "cw_stale_save_refused",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.5,
+        "description": "Save a snippet, then open that same saved revision in two tabs or browser contexts, A and B. In A change the source and Save successfully: this accepted Save is the working control and advances the revision by one. In B, which still holds the old revision, change the title, filename and source to different valid values and press Save. B's Save must be refused with visible feedback that the snippet changed elsewhere. A fresh read of the record in a third page or after a reload in A must show exactly A's saved title, filename and source and exactly one new revision. Fails if B's Save is accepted, if the saved record or its history contains any of B's values, if no conflict feedback is shown in B, or if A's control Save did not succeed.\n",
+        "reasoning": "'Stale Probe ST1' revision 1 was opened in tabs A and B. A's Save succeeded (revision 2). B's Save of B-EVIL values was refused with the visible message 'This snippet changed in another editor. Your edits are kept; reload the latest version before trying again.' A fresh third page showed exactly A's values (Stale Probe ST1 / stale-st1.js / STALE-A) with history 'Revision 2, Revision 1' \u2014 exactly one new revision, no B values anywhere."
+      },
+      {
+        "id": "cw_stale_save_keeps_draft",
+        "name": "cw_stale_save_keeps_draft",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.5,
+        "description": "Create the stale-save situation with a new snippet: tabs A and B hold the same saved revision, A saves a newer revision, and B, still on the old revision, edits the title, filename and source and presses Save. First confirm the working control: B's Save was refused with visible feedback, and a fresh read shows A's values. If B's Save was accepted there is no refused Save to observe and this criterion fails. Then check B: its title field, filename field and editor must still hold exactly B's unsaved values, and typing one more character in B's editor must add it to that draft. Fails if any of B's three unsaved fields is replaced by the saved record, emptied or reloaded, if B's draft can no longer be edited, or if B's Save was not refused.\n",
+        "reasoning": "In the same situation (B holding revision-1 state after A saved revision 2), B's Save was refused with the visible conflict message and a fresh page confirmed A's values won. B's unsaved draft survived the refusal: title field 'Stale Probe B-EVIL', filename 'evil-b.js', editor 'console.log(\"EVIL-B\");', and a subsequent 'Z' keypress appended to it ('console.log(\"EVIL-B\");Z')."
+      },
+      {
+        "id": "cw_history_restore_retry",
+        "name": "cw_history_restore_retry",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.5,
+        "description": "Build three saved revisions of one snippet through valid Saves with different sources. Inspect the first revision in history: its exact title, filename and source must be shown without changing the current saved revision. Restore that first revision: the snippet must get a fourth revision whose fields equal the first, with revisions one, two and three still listed. Send the same already completed restore request again, through the control the app offers for retrying it or, if it offers none, by replaying the recorded request as the application notes allow: no fifth revision may be created. Then open the snippet in a second tab, save a fifth revision from the first tab with a new distinctive source, and from the second tab restore revision two. Whatever that second tab does, the fifth revision's distinctive source must still be listed afterwards when you open the snippet's history in a freshly loaded page: the restore is either refused or added on top as a later revision. Fails if inspecting changes the record, if the first restore overwrites history instead of adding a revision, if the repeated request adds a revision, or if the fifth revision's source is no longer in the history after the second tab's restore.\n",
+        "reasoning": "Three saves created revisions 1\u20133 of 'Hist Probe H9'. Inspecting Revision 1 showed 'Hist Probe H9 \u00b7 hist-h9.js \u00b7 console.log(\"H9-V1\");' while the record stayed at revision 3. Restore added 'Revision 4 \u00b7 restored from 1' with 1\u20133 still listed. The app's own 'Retry same restore' control created no new revision (history count unchanged). From tab A a distinctive Revision 6 (H9-V6-TAB-A) was saved; tab B's restore of revision 2 was added on top as Revision 7, and a freshly loaded page still listed Revision 6 with source H9-V6-TAB-A intact. (A second full UI restore of revision 1 \u2014 a distinct legit action I performed \u2014 created revision 5; the retry mechanism itself added none.)"
+      },
+      {
+        "id": "cw_live_library_update",
+        "name": "cw_live_library_update",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.5,
+        "description": "Open the app in tab A and leave it open. In a second tab or browser context B, save a new snippet with a unique title. Return to A and, without reloading or pressing anything in A, watch its library for up to ten seconds: the new title must appear. Then in B change that snippet's title and Save again: within ten seconds A's library must show the changed title, again without a reload. Fails if A shows either change only after a reload, a click or another action in A, or not at all. The earlier saves in this session show that the library works at all; this criterion is only about already open tabs staying current.\n",
+        "reasoning": "With tab A idle on the library, saving 'Live Update LB1' in tab B made the title appear in A's library within ~6s without reload or any input in A. After B renamed the snippet to 'Live Update LB2' and saved again, A's library showed the changed title within ~6s, again untouched."
+      },
+      {
+        "id": "cw_live_update_keeps_editing_state",
+        "name": "cw_live_update_keeps_editing_state",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 2.0,
+        "description": "In tab A enter a draft of at least forty lines, type a custom title and filename without saving, type a marker in the middle of a line near the bottom so the editor is scrolled down and the caret is in the middle of that line. In a second tab B save a new snippet with a unique title, and wait until A's library shows it. Then check A: the title, the filename and the full source must be exactly as left, the editor must still be scrolled to the same lines, and typing one more character must insert it at the same caret position, directly after the marker. Then press Undo repeatedly until that character and the marker are gone: the source must return exactly to the draft as it was before the marker was typed. Fails if the library refresh changes or reloads the draft or either field, moves the caret, scrolls the editor to another place, or empties the Undo history so the marker cannot be undone. If A's library never shows B's snippet, this criterion fails as well because the situation could not be produced.\n",
+        "reasoning": "Tab A held a 45-line unsaved draft 'Draft Keeper DA2'/'keeper-da2.js' with MIDMARK mid-line-42, caret Ln42 Col16, visible lines 33\u201342. After B's new snippets appeared live in A's library (EB2, then EB3, within ~8s each), A's title, filename, full source, scroll range [33,42] and caret column 16 were all unchanged. Typing Q at the caret gave 'const liMIDMARKQne42 = 42;' (directly after the marker), and 2 Ctrl+Z removed Q and MIDMARK returning the source byte-exact to the original 45 lines."
+      },
+      {
+        "id": "cw_newer_revision_notice_keeps_draft",
+        "name": "cw_newer_revision_notice_keeps_draft",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.5,
+        "description": "Save a snippet and open that saved revision in tabs A and B. In A change the source without saving, so A has an unsaved draft. In B change the source to something different and Save successfully. Within ten seconds and without any action in A, A must show a visible notice that a newer revision of the open snippet exists or was saved elsewhere, and A's editor must still hold exactly A's unsaved draft. Fails if no such notice appears in A, or if A's draft is replaced by B's saved source.\n",
+        "reasoning": "With tab A holding an unsaved draft on 'Notice Probe NP1' revision 1, tab B saved revision 2 (NP1-V2-B). Within ~7s, without any action in A, A showed 'Revision 2 of this snippet was saved in another tab.' plus 'Your draft is kept and nothing was loaded over it.' with a 'Load latest revision' control, and A's editor still held exactly ['console.log(\"NP1-DRAFT-A\");'] with state 'Loaded #9 \u00b7 revision 1 \u00b7 Unsaved changes'."
+      }
+    ],
+    "kind": "agent",
+    "judge": {
+      "agent": "claude-code",
+      "model": "z-ai/glm-5.3-flashx",
+      "timeout": 9000,
+      "cwd": null,
+      "isolated": false,
+      "atif_trajectory": null,
+      "mode": "batched",
+      "mcp_servers": [
+        {
+          "name": "playwright",
+          "transport": "stdio",
+          "url": null,
+          "command": "playwright-mcp",
+          "args": [
+            "--headless",
+            "--isolated",
+            "--executable-path=/usr/local/bin/chromium",
+            "--no-sandbox"
+          ],
+          "allowed_tools": []
+        },
+        {
+          "name": "verifier",
+          "transport": "stdio",
+          "url": null,
+          "command": "/usr/local/bin/python3",
+          "args": [
+            "/tests/tools/restart_mcp.py",
+            "$APP_RESTART_HELPER"
+          ],
+          "allowed_tools": []
+        }
+      ]
+    },
+    "judge_output": "{\"cw_block_indent_undo\": {\"score\": \"yes\", \"reasoning\": \"Selecting lines 1\\u20132 ending at col 0 of line 3, Tab gave ['  aaa bbb','  ccc ddd','eee fff'] (third line untouched); Shift+Tab removed it. Tab again, one Ctrl+Z unindented and one Ctrl+Y re-indented both lines. Tab with 'eee' characters selected indented the whole line to '  eee fff' with the characters kept.\"}, \"cw_caret_kept_in_view\": {\"score\": \"yes\", \"reasoning\": \"60 numbered lines: after Ctrl+End + typing 'ZZ', the last line's rect (top 557, bottom 579) sat inside the editor rect (360\\u2013579) with gutter and caret visible; Ctrl+Home made line 1 visible again (top 360). On a 144-char single line (width 958 vs editor 631), the caret stayed at x\\u2248640\\u2013642 inside the visible area without manual scrolling.\"}, \"cw_caret_navigation_and_line_numbers\": {\"score\": \"yes\", \"reasoning\": \"Source 'first longer line here'/'short'/'third line is longest again' with gutters 1,2,3. End of line 1 readout 'Ln 1, Col 23'; ArrowDown clamped to 'Ln 2, Col 6'; second ArrowDown returned to 'Ln 3, Col 23' (column remembered). ArrowLeft at line 2 start \\u2192 'Ln 1, Col 23', ArrowRight back to 'Ln 2, Col 1'; Home/End correct. Source read back unchanged after every navigation step.\"}, \"cw_console_levels_in_order\": {\"score\": \"yes\", \"reasoning\": \"A draft calling console.log/warn/error/info in source order produced console entries in exactly that order: 'LOG|L-LOG', 'WARN|L-WARN', 'ERROR|L-ERR', 'INFO|L-INF'.\"}, \"cw_dynamic_code_refused\": {\"score\": \"yes\", \"reasoning\": \"A control draft merely mentioning eval/Function/WebAssembly/Worker/import in strings and comments ran and logged DYN-CTL-OK. All five real forms (eval, new Function, WebAssembly.compile, new Worker(blob), dynamic import()) were refused with the visible error 'Dynamic evaluation, imports, WebAssembly and workers are outside this playground's supported execution modes.'; no EVAL-PAYLOAD/FUNC-PAYLOAD/WASM-PAYLOAD/WORKER-PAYLOAD/IMPORT-PAYLOAD appeared in preview or console.\"}, \"cw_error_message_and_line\": {\"score\": \"yes\", \"reasoning\": \"Control run was clean. A JS draft throwing on line 4 showed 'JSFAIL-FOUR \\u00b7 line 4'. In an HTML file with markup on lines 1\\u20136 and the throw on whole-file line 8, the panel showed 'HTMLFAIL-EIGHT \\u00b7 line 8'. A two-line syntax-error draft showed 'Unexpected token (1:15) \\u00b7 line 1' and the draft stayed exactly as entered.\"}, \"cw_find_forward_backward_wrap\": {\"score\": \"yes\", \"reasoning\": \"Find 'foo.bar(' over 6 lines (matches on 1,3,6; decoys FOO.BAR( and foo-bar(). Next visited lines 1\\u21923\\u21926 in order; the 4th Next wrapped to line 1; Previous from the first match wrapped to line 6. Each current match was the active hit with exact text 'foo.bar(' and matching Ln/Col readout; decoy lines never became active.\"}, \"cw_format_error_keeps_draft\": {\"score\": \"yes\", \"reasoning\": \"A control 'let a=1;let b=2;' formatted to two lines. The malformed draft ['let arr = [1, 2,','let broken = (3 +'] stayed byte-identical after pressing Format, and a visible message appeared: 'Format failed, draft unchanged: Unexpected token, expected \\\",\\\" (2:5)'.\"}, \"cw_grapheme_navigation_and_deletion\": {\"score\": \"yes\", \"reasoning\": \"Line 'A\\ud83d\\ude00B\\u00e9C' (\\u00e9 = U+0065+U+0301, staged via the Find field per the untypeable-character rule). ArrowRight steps were Col1\\u21922\\u21924\\u21925\\u21927\\u21928 \\u2014 one press each over the emoji and the accented letter. Shift+ArrowLeft selected exactly '\\ud83d\\ude00'. Backspace after the emoji gave 'AB\\u00e9C' and Ctrl+Z restored the exact original; Delete directly before \\u00e9 gave 'A\\ud83d\\ude00BC' and Ctrl+Z restored the exact original.\"}, \"cw_history_restore_retry\": {\"score\": \"yes\", \"reasoning\": \"Three saves created revisions 1\\u20133 of 'Hist Probe H9'. Inspecting Revision 1 showed 'Hist Probe H9 \\u00b7 hist-h9.js \\u00b7 console.log(\\\"H9-V1\\\");' while the record stayed at revision 3. Restore added 'Revision 4 \\u00b7 restored from 1' with 1\\u20133 still listed. The app's own 'Retry same restore' control created no new revision (history count unchanged). From tab A a distinctive Revision 6 (H9-V6-TAB-A) was saved; tab B's restore of revision 2 was added on top as Revision 7, and a freshly loaded page still listed Revision 6 with source H9-V6-TAB-A intact. (A second full UI restore of revision 1 \\u2014 a distinct legit action I performed \\u2014 created revision 5; the retry mechanism itself added none.)\"}, \"cw_html_format_semantics_and_undo\": {\"score\": \"yes\", \"reasoning\": \"One-line page ran to main>p 'After'. Format produced 12 lines with 2-space nesting and kept title=\\\"a>b\\\" and the comment text intact; the formatted source rendered the same 'After'. A second Format was byte-identical. One Undo restored the exact one-line source and one Redo restored the formatted source.\"}, \"cw_html_preview\": {\"score\": \"yes\", \"reasoning\": \"preview.html ran: the h1 rendered as a level-1 heading 'Hello' in the preview iframe (verified via the frame, not escaped source text); console showed 'HTMLPREVIEW-MARKER' as a log entry; clicking the preview button changed the heading text to 'Clicked!'.\"}, \"cw_html_semantic_coloring\": {\"score\": \"yes\", \"reasoning\": \"With page.html: tag names 'p'/'body' were tok-tag rgb(240,113,120); attribute name 'class' was tok-attribute rgb(255,203,107); the quoted value '\\\"big\\\"' was tok-string rgb(195,232,141); the comment was tok-comment rgb(130,150,170) italic \\u2014 four distinct treatments; the displayed text equaled the source exactly with no stray markup.\"}, \"cw_interaction_starts_fresh_budget\": {\"score\": \"yes\", \"reasoning\": \"9s after a run finished, clicking the preview's 'One' button produced DELAYED-MARKER ~1s later with no time-limit report. Clicking 'Two' led within 10s to the console error 'Execution stopped: five-second time limit' and the page stayed responsive afterwards.\"}, \"cw_js_format_semantics_and_undo\": {\"score\": \"yes\", \"reasoning\": \"A one-line program ran and printed 'R:20{};'. Format produced 11 lines with consistent 2-space nesting; the string '{};' and the comment '/*count evens*/' were unchanged. The formatted source ran and printed 'R:20{};' again. A second Format was identical; one Undo restored the exact original one-liner and one Redo restored the formatted text.\"}, \"cw_js_semantic_coloring\": {\"score\": \"yes\", \"reasoning\": \"Computed styles on token spans: keyword rgb(199,146,234); function name rgb(130,170,255) weight 600 at BOTH the declaration and the call site greet(k); string rgb(195,232,141); number rgb(247,174,114); comment rgb(130,150,170) italic; plain variables (n,k) unstyled text nodes. All five token treatments differ from each other and from plain text; source text read back exact.\"}, \"cw_last_good_recovery\": {\"score\": \"yes\", \"reasoning\": \"After typing LASTGOOD-1 into the preview input and drawing on the canvas (exactly 2400 painted pixels = the 60\\u00d740 rect), a throwing run restored the preview with input value 'LASTGOOD-1' and the same 2400-pixel canvas. A subsequent valid Run showed 'AFTER-FAIL-RUN-OK'.\"}, \"cw_live_library_update\": {\"score\": \"yes\", \"reasoning\": \"With tab A idle on the library, saving 'Live Update LB1' in tab B made the title appear in A's library within ~6s without reload or any input in A. After B renamed the snippet to 'Live Update LB2' and saved again, A's library showed the changed title within ~6s, again untouched.\"}, \"cw_live_update_keeps_editing_state\": {\"score\": \"yes\", \"reasoning\": \"Tab A held a 45-line unsaved draft 'Draft Keeper DA2'/'keeper-da2.js' with MIDMARK mid-line-42, caret Ln42 Col16, visible lines 33\\u201342. After B's new snippets appeared live in A's library (EB2, then EB3, within ~8s each), A's title, filename, full source, scroll range [33,42] and caret column 16 were all unchanged. Typing Q at the caret gave 'const liMIDMARKQne42 = 42;' (directly after the marker), and 2 Ctrl+Z removed Q and MIDMARK returning the source byte-exact to the original 45 lines.\"}, \"cw_long_line_editing\": {\"score\": \"yes\", \"reasoning\": \"A 586-char one-line JS program (STARTMARK-ZZ1, MIDMARK-QQ2, 480-char pad, tail TAILMARK-AA1) rendered as exactly 1 line, height 22px (unwrapped), width 3831px; Run printed TAILMARK-AA1. Editing the tail to TAILMARK-BB2 via keyboard at line end left the source identical (same 586 chars, start/mid markers and 480 x's intact) and Run printed TAILMARK-BB2.\"}, \"cw_mouse_selection\": {\"score\": \"yes\", \"reasoning\": \"Double-click on 'balloon' copied exactly 'balloon'; triple-click on line 3 copied 'ocean river stone'; a mouse drag across the line break pasted back into the editor as ['e mango','kite bal'] \\u2014 exactly line1.slice(10)+newline+line2.slice(0,8), a contiguous range between the two clicked points (within \\u00b11 char of my pixel-coordinate precision). An in-line drag copied exact 'ean ri' (slice 2..8).\"}, \"cw_multi_caret_delete\": {\"score\": \"yes\", \"reasoning\": \"With 2 carets at the ends of lines 1\\u20132, one Backspace gave ['one tw','three fou',\\u2026] and one Ctrl+Z restored both lines. With 2 carets at the starts of lines 3\\u20134, one Delete gave ['ive six','even eight'] and one Ctrl+Z restored both.\"}, \"cw_multi_caret_typing_atomic\": {\"score\": \"yes\", \"reasoning\": \"Ordinary click + Alt-held click + Ctrl-held click created 3 carets on lines 1\\u20133 (three .caret elements visible). Typing M,U,L,T,I gave ['alpha betaMULTI','gamma deltaMULTI','epsilon zetaMULTI']; one Ctrl+Z removed all 15 inserted characters and one Ctrl+Y restored them. (Note: the modifier had to be held via page.keyboard during the click; Playwright's click modifiers option alone did not add carets.)\"}, \"cw_newer_revision_notice_keeps_draft\": {\"score\": \"yes\", \"reasoning\": \"With tab A holding an unsaved draft on 'Notice Probe NP1' revision 1, tab B saved revision 2 (NP1-V2-B). Within ~7s, without any action in A, A showed 'Revision 2 of this snippet was saved in another tab.' plus 'Your draft is kept and nothing was loaded over it.' with a 'Load latest revision' control, and A's editor still held exactly ['console.log(\\\"NP1-DRAFT-A\\\");'] with state 'Loaded #9 \\u00b7 revision 1 \\u00b7 Unsaved changes'.\"}, \"cw_newer_run_supersedes\": {\"score\": \"yes\", \"reasoning\": \"A control's 4s delayed write appeared (SUP-CTL-CON). In the race, the newer Run started 286ms after the old one; the console showed info 'Previous run cancelled' then only SUP-NEW-CON; after 9.5s SUP-OLD never appeared and the preview still showed SUP-NEW.\"}, \"cw_output_before_failure_kept\": {\"score\": \"yes\", \"reasoning\": \"PRE-A remained visible after the run that threw; PRE-B remained after the endless-loop time limit; PRE-C remained after Stop and was still present 5 seconds later ('late-C' never appeared).\"}, \"cw_preview_isolation\": {\"score\": \"yes\", \"reasoning\": \"Controls passed in normal tabs: 'Isolation Canary' appeared in the library, /api/health returned {\\\"ok\\\":true,\\u2026}, and https://example.com loaded. The own-preview draft worked (ISO-OWN + ISO-LOG). Probe results from inside the preview: parentDoc:BLOCKED, lsWrite:BLOCKED, parentLS:BLOCKED, fetchHealth:REJECTED, fetchExt:REJECTED. Afterwards the app title stayed 'Colderwater Playground', origin localStorage had no 'iso-probe' key, and the canary library entry was unchanged.\"}, \"cw_promise_rejection_message_and_line\": {\"score\": \"yes\", \"reasoning\": \"A control logging inside .catch showed CATCH-MARKER with no error entry. An unhandled Promise.reject authored on line 3 showed 'REJ-THREE \\u00b7 line 3'; an async function called on line 1 that throws after an await on line 4 showed 'ASYNC-FOUR \\u00b7 line 4' \\u2014 authored message and correct line in both cases.\"}, \"cw_replace_all_atomic\": {\"score\": \"yes\", \"reasoning\": \"Replace all turned 4 occurrences of 'zap.one(' into 'zap.two(' while the decoy 'ZAP.ONE(3)' stayed untouched. The visible Undo button restored all 4 at once and the visible Redo button re-replaced all 4 at once; after a second Undo and typing 'Q', the Redo button became disabled.\"}, \"cw_replace_current\": {\"score\": \"yes\", \"reasoning\": \"With the middle match (line 3) current, Replace changed only line 3 to 'z = foo.qux(2)'; the active hit then moved to line 6 (the next match). One Ctrl+Z restored 'z = foo.bar(2)' and one Ctrl+Y reapplied the single replacement.\"}, \"cw_replace_self_containing_text\": {\"score\": \"yes\", \"reasoning\": \"Replacing 'cat'\\u2192'cat-cat' over 3 occurrences produced 'cat-cat dog cat-cat bird cat-cat' \\u2014 exactly 3 replacements, and the operation terminated instead of looping. After Undo, Replace-current #1 changed only the first occurrence and moved current to the second original occurrence (not inside the first replacement); #2 changed the second occurrence giving 'cat-cat dog cat-cat bird cat' with the first replacement untouched.\"}, \"cw_run_starts_fresh_document\": {\"score\": \"yes\", \"reasoning\": \"After run 1 the preview showed MARK-ONE; after run 2 the preview showed only 'MARK-TWO' and 'varDefined:false' \\u2014 the first run's paragraph was gone and the first run's window.__freshVar was invisible to the second run.\"}, \"cw_save_reload_restart\": {\"score\": \"yes\", \"reasoning\": \"'Restart Probe XQ7' (probe-xq7.js) saved as record #3 revision 1 with history 'Revision 1'. After clearing localStorage/sessionStorage/cookies/IndexedDB/caches/service workers/OPFS and reloading, the record survived with identical fields. The verifier restart_app reported 'restart complete: the server was relaunched on the same database and answers HTTP', and a freshly loaded page showed the same single record #3, revision 1, same title/filename/source and history.\"}, \"cw_same_line_carets\": {\"score\": \"yes\", \"reasoning\": \"Three carets placed on 'sun moon star' (all at y=363, x=97/131/166) via click + Alt-held click + Ctrl-held click. Typing 'ok' gave 'sunok moonok starok'; one Backspace gave 'suno moono staro' \\u2014 exactly one character removed at each of the three carets.\"}, \"cw_selection_replace_and_paste_undo\": {\"score\": \"yes\", \"reasoning\": \"Selecting 'grass' and typing X gave ['green X grows'] and one Ctrl+Z restored the exact source. Pasting a two-line copy over a double-clicked 'sky' gave ['blue red fox runs','green grass grows arcs'], and a single Ctrl+Z restored ['blue sky arcs'] exactly.\"}, \"cw_stale_save_keeps_draft\": {\"score\": \"yes\", \"reasoning\": \"In the same situation (B holding revision-1 state after A saved revision 2), B's Save was refused with the visible conflict message and a fresh page confirmed A's values won. B's unsaved draft survived the refusal: title field 'Stale Probe B-EVIL', filename 'evil-b.js', editor 'console.log(\\\"EVIL-B\\\");', and a subsequent 'Z' keypress appended to it ('console.log(\\\"EVIL-B\\\");Z').\"}, \"cw_stale_save_refused\": {\"score\": \"yes\", \"reasoning\": \"'Stale Probe ST1' revision 1 was opened in tabs A and B. A's Save succeeded (revision 2). B's Save of B-EVIL values was refused with the visible message 'This snippet changed in another editor. Your edits are kept; reload the latest version before trying again.' A fresh third page showed exactly A's values (Stale Probe ST1 / stale-st1.js / STALE-A) with history 'Revision 2, Revision 1' \\u2014 exactly one new revision, no B values anywhere.\"}, \"cw_stop_cancels_pending_work\": {\"score\": \"yes\", \"reasoning\": \"A control wrote CTRL-MARK to the preview plus CTRL-TIMER/CTRL-INTERVAL/CTRL-PROMISE to the console. Stop was pressed 146ms after Run on the 4s-delay draft; the console showed only 'STOP-PROMISE' and the info entry 'Run stopped'. After 9s, STOP-MARK/STOP-TIMER/STOP-INTERVAL never appeared and the preview still showed CTRL-MARK.\"}, \"cw_time_limit_recovery\": {\"score\": \"yes\", \"reasoning\": \"An endless while loop ended with the visible entry 'Execution stopped: five-second time limit \\u00b7 line 2' and the preview returned to TL-CONTROL. A self-rescheduling setTimeout loop ended the same way with the same visible reason and TL-CONTROL restored (verified over a second full cycle). The page stayed responsive throughout and a final valid Run showed TL-FINAL-OK.\"}, \"cw_undo_restores_caret\": {\"score\": \"yes\", \"reasoning\": \"After typing M1 mid-line-2 and M2 at document end, 2 Ctrl+Z restored the exact 4-line source; the readout showed 'Ln 2, Col 8' \\u2014 where M1 began \\u2014 and typing Q without clicking produced 'line twQo here' with readout 'Ln 2, Col 9'.\"}, \"cw_custom_typing_and_line_join\": {\"score\": \"yes\", \"reasoning\": \"Typed 'alpha one'/'beta two' with real key presses; Home+Backspace produced exactly ['alpha onebeta two'] on one line, and one Ctrl+Z restored ['alpha one','beta two']. Ctrl+Home/Ctrl+End+Delete produced the same join, and again one Ctrl+Z restored both lines exactly.\"}}"
+  },
+  "polish": {
+    "score": 1.0,
+    "criteria": [
+      {
+        "id": "cw_controls_keyboard_and_focus",
+        "name": "cw_controls_keyboard_and_focus",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Using only the keyboard, move through the title and filename fields, the Run, Stop and Save controls, the editor's Format, Find and Replace controls, and the library. Each of these controls that the app offers and that is enabled at that moment must be reachable with Tab or Shift+Tab and must show a visible focus indicator when focused; a control the app has disabled because it has nothing to do is not counted. From inside the code editor it must be possible to leave to the next control with the keyboard alone, and unless the ordinary Tab key does it, the app must show on screen which keys do. Fails if an offered, enabled control cannot be reached by keyboard, if focus is invisible on a reached control, if keyboard focus is trapped inside the code editor with no working way out, or if the way out is not plain Tab and is not shown anywhere on screen. A control the app does not have at all is scored elsewhere, not here.\n",
+        "reasoning": "Tab from a fresh page reached, in order: Run, Stop, Snippet title, Filename, Save, Format document, Find, Next, Previous, Replacement text, Replace, Replace all, then the Code editor. Every focused control had a computed outline 'solid 2px rgb(105,210,188)' \u2014 confirmed visually as a teal ring in a screenshot of the focused Stop button. Tab inside the editor indents rather than leaving (10 consecutive Tab presses stayed on the editor), but the app documents the exit on screen in two places: the footer ('Tab / Shift+Tab Indent \u00b7 Escape, then Tab Leave editor') and the live hint 'Editing area focused. Escape, then Tab leaves the editor.' shown while the editor is focused. Pressing Escape then Tab really did move focus out: activeElement became the New button, and further Tabs reached every library snippet button (Notice Probe NP1, Elsewhere EB3, \u2026 Isolation Canary), all with the same visible outline. No offered enabled control was unreachable and no focus trap exists."
+      },
+      {
+        "id": "cw_controls_feedback_and_labels",
+        "name": "cw_controls_feedback_and_labels",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Check that the main controls have understandable visible names and that four ordinary actions each give visible feedback a person can read: a Run that completes, a Run that throws an error, a successful Save, and a Format document that changes the source. After each action a status, message or console entry must say in words what happened. Exact wording is free. Fails if a main control has no readable name, or if any of the four actions ends with no visible textual feedback.\n",
+        "reasoning": "All main controls have readable visible text labels (Run, Stop, Save, Undo, Redo, Format document, Find, Next, Previous, Replace, Replace all \u2014 visible in screenshots). Four actions each produced textual feedback: (1) successful Run \u2014 status 'Complete \u00b7 7.9 ms' plus console entry 'log gate-ok'; (2) failing Run \u2014 after typing 'nullPointer.crash(\"boom\");' the status read 'Error \u2014 previous preview retained \u00b7 1.8 ms' and the console showed 'ERROR nullPointer is not defined \u00b7 line 1'; (3) Save \u2014 status 'Saved \u201cFeedback Probe FB1\u201d \u00b7 revision 1 \u00b7 1.8 ms' and draft state 'Saved'; (4) Format document \u2014 after typing 'const a=1;const   b=2;function f( ){return a+b}console.log(f())' the source was reformatted to 6 lines ('const a = 1;\\nconst b = 2;\\nfunction f() {\\n  return a + b;\\n}\\nconsole.log(f());') with status 'Document formatted. Undo restores the previous source.'"
+      },
+      {
+        "id": "cw_focus_returns_to_code",
+        "name": "cw_focus_returns_to_code",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Type a short valid JavaScript draft and leave the caret at a known place. Activate Format document with the mouse, then immediately type one character without clicking in the editor: it must be inserted into the source. Do the same check after clicking Undo; then, for Redo, click Undo and Redo one after the other with no typing in between, and type one character; then after a Replace all that changed something; and after clicking Save. Each time, the one character typed straight afterwards must be inserted into the source. Fails if after any of these five actions the typed character does not arrive in the source because keyboard focus stayed on the button or went elsewhere.\n",
+        "reasoning": "Draft 'const x=1;' typed with caret at end. After each of the five mouse-activated actions I typed one character with no click in the editor and read the rendered source: (1) Format document \u2192 'Qconst x = 1;' (Q inserted); (2) Undo \u2192 'Rconst x = 1;' (R inserted); (3) Undo then Redo back-to-back, no typing between \u2192 'RSconst x = 1;' (S inserted); (4) Replace all with Find 'const' \u2192 Replace 'let' changed the source to 'RSlet x = 1;' and typing T gave 'TRSlet x = 1;'; (5) Save \u2192 'TURSlet x = 1;' (U inserted straight after the button click). In every case the character landed in the source, so keyboard focus returned to the editor each time."
+      },
+      {
+        "id": "cw_undo_redo_availability",
+        "name": "cw_undo_redo_availability",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Load a saved snippet or start a new draft so there is no editing history, and look at the visible Undo and Redo controls: both must be shown as unavailable (disabled). Type a character: Undo becomes available and Redo stays unavailable. Use Undo: Redo becomes available and Undo is unavailable again. Fails if either control looks available when it has nothing to do at any of these three points, or if the app has no visible Undo and Redo controls.\n",
+        "reasoning": "Loaded saved snippet 'Isolation Canary' (draft state 'Loaded #2 \u00b7 revision 1 \u00b7 Saved') so there was no editing history: Undo disabled and Redo disabled. After typing one character 'W': Undo enabled, Redo disabled. After clicking Undo (source returned to the loaded text): Undo disabled, Redo enabled. Both controls are always visible; at no checkpoint did either look available while it had nothing to do."
+      },
+      {
+        "id": "cw_unsaved_marker",
+        "name": "cw_unsaved_marker",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Save a snippet so the draft equals the saved revision: no unsaved-changes indication may be shown. Type one character in the source: a visible indication that there are unsaved changes must appear. Use Undo until the source equals the saved text again: the unsaved indication must go away. Type again and Save: the unsaved indication must go away after the Save. Fails if no unsaved indication appears after the edit, if one is shown while the draft equals the saved revision, or if it stays after Undo restored the saved text or after the Save succeeded. A separate positive \"saved\" label is not required.\n",
+        "reasoning": "Using the 'Draft state' status element: after saving my own probe (draft equals saved revision) it read 'Loaded #2 \u00b7 revision 4 \u00b7 Saved' \u2014 no unsaved indication. After typing one character 'P' it changed to 'Loaded #2 \u00b7 revision 4 \u00b7 Unsaved changes'. After clicking Undo (source back to the saved text) it returned to 'Loaded #2 \u00b7 revision 4 \u00b7 Saved' \u2014 indication gone. After typing 'K' it showed 'Unsaved changes' again, and clicking Save produced 'Loaded #2 \u00b7 revision 5 \u00b7 Saved' \u2014 indication gone. (An earlier attempt failed only because my script read the wrong status element; the app behaviour itself was consistent across both runs.)"
+      },
+      {
+        "id": "cw_narrow_width_usable",
+        "name": "cw_narrow_width_usable",
+        "value": 1.0,
+        "raw": "yes",
+        "weight": 1.0,
+        "description": "Resize the browser viewport to about 390 by 844 pixels and reload. The page must not scroll sideways. By scrolling only vertically, reach the code editor, the Run control, the preview, the console and the library. At this width type a one-line program in the editor, Run it and see its output in the preview and its console line. The editor's own controls must not overlap each other or be cut off in a way that stops them being read or pressed. Fails if the page needs sideways scrolling, if any of those five areas cannot be reached, if controls overlap or are clipped so they cannot be read or pressed, or if typing and Run do not work at this width. Restore the desktop viewport afterwards.\n",
+        "reasoning": "Viewport resized to 390\u00d7844 and reloaded: document.scrollingElement reported scrollWidth 390 = clientWidth 390, so no sideways scrolling. Scrolling only vertically (scrollIntoView block:center), all five areas were brought into view and fully within the 390px width: Code editor (left 9, right 381), Run (16\u2013111), Live preview (8\u2013382), Console (8\u2013382), Saved snippets. The editor tools row had no pairwise bounding-box overlaps and nothing clipped past the viewport (Undo/Redo/Format document/Find, Next/Previous/Replace input/Replace, Replace all wrap onto three readable rows \u2014 confirmed in a screenshot). I typed 'document.body.textContent=\"NARROW-OK\";console.log(\"narrow-log\");' by key presses and clicked Run: the status showed 'Complete \u00b7 2.6 ms', the preview iframe rendered 'NARROW-OK' and the console showed 'LOG narrow-log'. Desktop viewport (1280\u00d7720) restored afterwards."
+      }
+    ],
+    "kind": "agent",
+    "judge": {
+      "agent": "claude-code",
+      "model": "z-ai/glm-5.3-flashx",
+      "timeout": 900,
+      "cwd": null,
+      "isolated": false,
+      "atif_trajectory": null,
+      "mode": "batched",
+      "mcp_servers": [
+        {
+          "name": "playwright",
+          "transport": "stdio",
+          "url": null,
+          "command": "playwright-mcp",
+          "args": [
+            "--headless",
+            "--isolated",
+            "--executable-path=/usr/local/bin/chromium",
+            "--no-sandbox"
+          ],
+          "allowed_tools": []
+        }
+      ]
+    },
+    "judge_output": "{\"cw_controls_keyboard_and_focus\": {\"score\": \"yes\", \"reasoning\": \"Tab from a fresh page reached, in order: Run, Stop, Snippet title, Filename, Save, Format document, Find, Next, Previous, Replacement text, Replace, Replace all, then the Code editor. Every focused control had a computed outline 'solid 2px rgb(105,210,188)' \\u2014 confirmed visually as a teal ring in a screenshot of the focused Stop button. Tab inside the editor indents rather than leaving (10 consecutive Tab presses stayed on the editor), but the app documents the exit on screen in two places: the footer ('Tab / Shift+Tab Indent \\u00b7 Escape, then Tab Leave editor') and the live hint 'Editing area focused. Escape, then Tab leaves the editor.' shown while the editor is focused. Pressing Escape then Tab really did move focus out: activeElement became the New button, and further Tabs reached every library snippet button (Notice Probe NP1, Elsewhere EB3, \\u2026 Isolation Canary), all with the same visible outline. No offered enabled control was unreachable and no focus trap exists.\"}, \"cw_controls_feedback_and_labels\": {\"score\": \"yes\", \"reasoning\": \"All main controls have readable visible text labels (Run, Stop, Save, Undo, Redo, Format document, Find, Next, Previous, Replace, Replace all \\u2014 visible in screenshots). Four actions each produced textual feedback: (1) successful Run \\u2014 status 'Complete \\u00b7 7.9 ms' plus console entry 'log gate-ok'; (2) failing Run \\u2014 after typing 'nullPointer.crash(\\\"boom\\\");' the status read 'Error \\u2014 previous preview retained \\u00b7 1.8 ms' and the console showed 'ERROR nullPointer is not defined \\u00b7 line 1'; (3) Save \\u2014 status 'Saved \\u201cFeedback Probe FB1\\u201d \\u00b7 revision 1 \\u00b7 1.8 ms' and draft state 'Saved'; (4) Format document \\u2014 after typing 'const a=1;const   b=2;function f( ){return a+b}console.log(f())' the source was reformatted to 6 lines ('const a = 1;\\\\nconst b = 2;\\\\nfunction f() {\\\\n  return a + b;\\\\n}\\\\nconsole.log(f());') with status 'Document formatted. Undo restores the previous source.'\"}, \"cw_focus_returns_to_code\": {\"score\": \"yes\", \"reasoning\": \"Draft 'const x=1;' typed with caret at end. After each of the five mouse-activated actions I typed one character with no click in the editor and read the rendered source: (1) Format document \\u2192 'Qconst x = 1;' (Q inserted); (2) Undo \\u2192 'Rconst x = 1;' (R inserted); (3) Undo then Redo back-to-back, no typing between \\u2192 'RSconst x = 1;' (S inserted); (4) Replace all with Find 'const' \\u2192 Replace 'let' changed the source to 'RSlet x = 1;' and typing T gave 'TRSlet x = 1;'; (5) Save \\u2192 'TURSlet x = 1;' (U inserted straight after the button click). In every case the character landed in the source, so keyboard focus returned to the editor each time.\"}, \"cw_undo_redo_availability\": {\"score\": \"yes\", \"reasoning\": \"Loaded saved snippet 'Isolation Canary' (draft state 'Loaded #2 \\u00b7 revision 1 \\u00b7 Saved') so there was no editing history: Undo disabled and Redo disabled. After typing one character 'W': Undo enabled, Redo disabled. After clicking Undo (source returned to the loaded text): Undo disabled, Redo enabled. Both controls are always visible; at no checkpoint did either look available while it had nothing to do.\"}, \"cw_unsaved_marker\": {\"score\": \"yes\", \"reasoning\": \"Using the 'Draft state' status element: after saving my own probe (draft equals saved revision) it read 'Loaded #2 \\u00b7 revision 4 \\u00b7 Saved' \\u2014 no unsaved indication. After typing one character 'P' it changed to 'Loaded #2 \\u00b7 revision 4 \\u00b7 Unsaved changes'. After clicking Undo (source back to the saved text) it returned to 'Loaded #2 \\u00b7 revision 4 \\u00b7 Saved' \\u2014 indication gone. After typing 'K' it showed 'Unsaved changes' again, and clicking Save produced 'Loaded #2 \\u00b7 revision 5 \\u00b7 Saved' \\u2014 indication gone. (An earlier attempt failed only because my script read the wrong status element; the app behaviour itself was consistent across both runs.)\"}, \"cw_narrow_width_usable\": {\"score\": \"yes\", \"reasoning\": \"Viewport resized to 390\\u00d7844 and reloaded: document.scrollingElement reported scrollWidth 390 = clientWidth 390, so no sideways scrolling. Scrolling only vertically (scrollIntoView block:center), all five areas were brought into view and fully within the 390px width: Code editor (left 9, right 381), Run (16\\u2013111), Live preview (8\\u2013382), Console (8\\u2013382), Saved snippets. The editor tools row had no pairwise bounding-box overlaps and nothing clipped past the viewport (Undo/Redo/Format document/Find, Next/Previous/Replace input/Replace, Replace all wrap onto three readable rows \\u2014 confirmed in a screenshot). I typed 'document.body.textContent=\\\"NARROW-OK\\\";console.log(\\\"narrow-log\\\");' by key presses and clicked Run: the status showed 'Complete \\u00b7 2.6 ms', the preview iframe rendered 'NARROW-OK' and the console showed 'LOG narrow-log'. Desktop viewport (1280\\u00d7720) restored afterwards.\"}}"
+  },
+  "visual": {
+    "score": 0.9167,
+    "criteria": [
+      {
+        "id": "cw_visual_editor_readability",
+        "name": "cw_visual_editor_readability",
+        "value": 1.0,
+        "raw": 5,
+        "weight": 1.0,
+        "description": "With a ten-line JavaScript draft in the editor at desktop size, assess the rendered editor's typography, line-number alignment with their lines, text contrast and the visibility of the caret and of a selection. This is about how the code looks, not whether token categories are correct.\n5: clear and comfortable throughout, numbers aligned, caret and selection easy to see.\n4: one or two minor distractions.\n3: usable but several readability flaws.\n2: code is hard to read or numbers are misaligned.\n1: mostly unreadable or visibly corrupted text.\n0: no editor is shown.\n",
+        "reasoning": "With the ten-line draft in the editor, the code renders in a clean monospace face with comfortable line-height on a dark panel. Syntax colors are distinct and all well-contrasted: the comment '// Colderwater visual probe' is dimmed gray italic, keywords (function, const, return) pink-magenta, strings ('hello', 'Welcome, ') green, and call names (greet, console.log) teal \u2014 every line was easily legible at 1440x900. Line numbers 1\u201310 are right-aligned in a gutter and each sits exactly level with its code line (verified in a device-scale zoom of the editor region, where 1\u20139 and the two-digit 10 all baseline-align). A double-click on 'console' in line 3 produced an immediately visible selection highlight that persisted across two screenshots taken 700 ms apart, with the readout updating to 'Ln 3, Col 10'. After a single click on line 5, a thin light caret was visible after '+ name' in three consecutive 120 ms clips and absent in the fourth, confirming a normal blinking caret that is easy to spot when in its on phase. No corrupted glyphs, no misaligned numbers, no wrapping artifacts; the only conceivable nit is that the caret is thin (1\u20132 px), which is standard editor behavior, not a distraction."
+      },
+      {
+        "id": "cw_visual_workspace_layout",
+        "name": "cw_visual_workspace_layout",
+        "value": 0.75,
+        "raw": 4,
+        "weight": 1.0,
+        "description": "At desktop size, assess the arrangement of the editor, preview, console, library and main controls: grouping, spacing, alignment and whether anything overlaps or is clipped. Do not judge the content that authored code draws inside the preview.\n5: clear grouping, consistent spacing, nothing overlapping or clipped.\n4: one or two small spacing issues.\n3: several crowded or uneven areas.\n2: frequent overlap or clipping.\n1: severe layout problems throughout.\n0: no workspace is shown.\n",
+        "reasoning": "The workspace is a tidy two-column grid at desktop size: a left Editor panel (01 / EDITOR) holding the Title/Filename/Save row, the editor-tools row, the code surface with an 'Ln 3, Col 10' status strip and the 'Saved snippets 10' library strip, and a right column stacking '02 / LIVE PREVIEW' over '03 / CONSOLE', separated by draggable resize handles. Panel headers, borders and padding are consistent, nothing overlaps anywhere, the Run/Stop toolbar sits in its own band with run status ('Complete \u00b7 3.8 ms') right-aligned, and the shortcut footer is a single clean strip. Two small blemishes keep it from 5: the editor-tools row wraps awkwardly so 'Replace all' sits orphaned alone on a second line, and the saved-snippets strip cuts cards mid-width at the panel's right edge ('Live Update LB2' initially, 'Verdan\u2026'/'kite172\u2026' after scrolling) \u2014 a scroll affordance, but the clipped card edges read slightly untidy. Spacing elsewhere is even, and the preview's taller empty area versus the dense editor column is balanced enough not to distract."
+      },
+      {
+        "id": "cw_visual_component_finish",
+        "name": "cw_visual_component_finish",
+        "value": 1.0,
+        "raw": 5,
+        "weight": 1.0,
+        "description": "At desktop size, assess the colour harmony, consistency of buttons and fields, and the overall finish of the app's own surfaces. Judge this separately from editor typography and from pane arrangement.\n5: coherent and polished: colours used consistently, buttons and fields that match.\n4: a few small inconsistencies.\n3: several mismatched or unstyled details.\n2: broadly rough: many controls look unrelated to each other.\n1: largely unfinished or default browser styling throughout.\n0: no app surface is shown.\n",
+        "reasoning": "The app's own surfaces are coherent and deliberately styled throughout. A single dark navy theme carries the header, panels, toolbar, console and footer, punctuated by one mint/teal accent used consistently: the filled 'Run Ctrl \u21b5' button (dark text on mint), the '\u25cf Local library' status dot, panel numbering (01/02/03), the highlighted library card border, and the teal 'Welcome, visual grading' preview heading style. All buttons share one family \u2014 Run filled-accent, Stop/Save/New/Clear console/Undo/Redo/Format/Next/Previous/Replace all in matching dark outline pills with the same radius \u2014 and the disabled Undo/Redo are properly dimmed rather than merely inert. Fields (Title, Filename, Find, Replace) are uniform dark rounded inputs with matching borders. Status text uses consistent semantic color (amber 'New snippet \u00b7 Unsaved draft', muted 'No active search', 'LOG' badges on every console row). I saw no default browser styling, no mismatched control families, and no stray borders or misaligned labels; the only color variety (amber vs teal vs gray) is purposeful state coding."
+      }
+    ],
+    "kind": "agent",
+    "judge": {
+      "agent": "claude-code",
+      "model": "z-ai/glm-5.3-flashx",
+      "timeout": 900,
+      "cwd": null,
+      "isolated": false,
+      "atif_trajectory": null,
+      "mode": "batched",
+      "mcp_servers": [
+        {
+          "name": "playwright",
+          "transport": "stdio",
+          "url": null,
+          "command": "playwright-mcp",
+          "args": [
+            "--headless",
+            "--isolated",
+            "--executable-path=/usr/local/bin/chromium",
+            "--no-sandbox"
+          ],
+          "allowed_tools": []
+        }
+      ]
+    },
+    "judge_output": "{\"cw_visual_editor_readability\": {\"reasoning\": \"With the ten-line draft in the editor, the code renders in a clean monospace face with comfortable line-height on a dark panel. Syntax colors are distinct and all well-contrasted: the comment '// Colderwater visual probe' is dimmed gray italic, keywords (function, const, return) pink-magenta, strings ('hello', 'Welcome, ') green, and call names (greet, console.log) teal \\u2014 every line was easily legible at 1440x900. Line numbers 1\\u201310 are right-aligned in a gutter and each sits exactly level with its code line (verified in a device-scale zoom of the editor region, where 1\\u20139 and the two-digit 10 all baseline-align). A double-click on 'console' in line 3 produced an immediately visible selection highlight that persisted across two screenshots taken 700 ms apart, with the readout updating to 'Ln 3, Col 10'. After a single click on line 5, a thin light caret was visible after '+ name' in three consecutive 120 ms clips and absent in the fourth, confirming a normal blinking caret that is easy to spot when in its on phase. No corrupted glyphs, no misaligned numbers, no wrapping artifacts; the only conceivable nit is that the caret is thin (1\\u20132 px), which is standard editor behavior, not a distraction.\", \"score\": 5}, \"cw_visual_workspace_layout\": {\"reasoning\": \"The workspace is a tidy two-column grid at desktop size: a left Editor panel (01 / EDITOR) holding the Title/Filename/Save row, the editor-tools row, the code surface with an 'Ln 3, Col 10' status strip and the 'Saved snippets 10' library strip, and a right column stacking '02 / LIVE PREVIEW' over '03 / CONSOLE', separated by draggable resize handles. Panel headers, borders and padding are consistent, nothing overlaps anywhere, the Run/Stop toolbar sits in its own band with run status ('Complete \\u00b7 3.8 ms') right-aligned, and the shortcut footer is a single clean strip. Two small blemishes keep it from 5: the editor-tools row wraps awkwardly so 'Replace all' sits orphaned alone on a second line, and the saved-snippets strip cuts cards mid-width at the panel's right edge ('Live Update LB2' initially, 'Verdan\\u2026'/'kite172\\u2026' after scrolling) \\u2014 a scroll affordance, but the clipped card edges read slightly untidy. Spacing elsewhere is even, and the preview's taller empty area versus the dense editor column is balanced enough not to distract.\", \"score\": 4}, \"cw_visual_component_finish\": {\"reasoning\": \"The app's own surfaces are coherent and deliberately styled throughout. A single dark navy theme carries the header, panels, toolbar, console and footer, punctuated by one mint/teal accent used consistently: the filled 'Run Ctrl \\u21b5' button (dark text on mint), the '\\u25cf Local library' status dot, panel numbering (01/02/03), the highlighted library card border, and the teal 'Welcome, visual grading' preview heading style. All buttons share one family \\u2014 Run filled-accent, Stop/Save/New/Clear console/Undo/Redo/Format/Next/Previous/Replace all in matching dark outline pills with the same radius \\u2014 and the disabled Undo/Redo are properly dimmed rather than merely inert. Fields (Title, Filename, Find, Replace) are uniform dark rounded inputs with matching borders. Status text uses consistent semantic color (amber 'New snippet \\u00b7 Unsaved draft', muted 'No active search', 'LOG' badges on every console row). I saw no default browser styling, no mismatched control families, and no stray borders or misaligned labels; the only color variety (amber vs teal vs gray) is purposeful state coding.\", \"score\": 5}}"
+  }
+}

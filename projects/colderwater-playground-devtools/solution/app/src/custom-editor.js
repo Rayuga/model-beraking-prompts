@@ -8,13 +8,17 @@ import htmlPlugin from 'prettier/plugins/html';
 export function mountCodeEditor(host, callbacks = {}) {
   const graphemeSegmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
   host.innerHTML = `<div class="custom-tools" aria-label="Editor tools">
-    <button id="undo-btn" type="button">Undo</button><button id="redo-btn" type="button">Redo</button>
-    <button id="format-btn" type="button">Format document</button>
-    <label>Find <input id="find-box" aria-label="Find in code"></label>
-    <button id="find-next-btn" type="button">Next</button><button id="find-prev-btn" type="button">Previous</button>
-    <label>Replace <input id="replace-box" aria-label="Replacement text"></label>
-    <button id="replace-current-btn" type="button">Replace</button><button id="replace-all-btn" type="button">Replace all</button>
-    <span id="save-state" aria-live="polite"></span>
+    <div class="tool-row">
+      <button id="undo-btn" type="button">Undo</button><button id="redo-btn" type="button">Redo</button>
+      <button id="format-btn" type="button">Format document</button>
+      <span id="save-state" aria-live="polite"></span>
+    </div>
+    <div class="tool-row">
+      <label>Find <input id="find-box" aria-label="Find in code"></label>
+      <button id="find-next-btn" type="button">Next</button><button id="find-prev-btn" type="button">Previous</button>
+      <label>Replace <input id="replace-box" aria-label="Replacement text"></label>
+      <button id="replace-current-btn" type="button">Replace</button><button id="replace-all-btn" type="button">Replace all</button>
+    </div>
   </div>
   <div id="editor" class="custom-code-editor" role="textbox" aria-label="Code editor" aria-multiline="true" tabindex="0"></div>
   <div class="editor-footer"><span id="cursor-label">Ln 1, Col 1</span><span id="focus-state">Click the code to edit</span><span id="editor-message" role="status"></span></div>`;
