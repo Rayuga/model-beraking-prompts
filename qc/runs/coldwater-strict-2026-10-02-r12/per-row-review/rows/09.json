@@ -1,0 +1,32 @@
+{
+  "number": 9,
+  "id": "agent_environment_and_network_posture_are_correct",
+  "reviewer": "row-reviewer-09",
+  "input_sha256": "3f132f2758fd93cca0bfe425d942f454a7cedd0670b1208e8175c54c3ec78242",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r12/rules/WebDev Rubrics QC.xlsx :: Quality Checks row 10 (check 9), Internal Quality Checks row 10 (check 9), Deterministic Checks rows 19/37/41/42 (no-literal-secrets, allow-internet, no-allow-internet-true, nproc)",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/rules/harbor-webdev-rubric-qc/SKILL.md (delivery profile, known false positives)",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/rules/harbor-webdev-rubric-qc/references/quality-checks.md:43-45",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md:56-78",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/rules/projects/webdev-task-template/task.toml and environment/Dockerfile",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/task.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/environment/Dockerfile",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/environment/assets/seed_data.json",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/environment/instructions/*.md (secret-pattern scan)",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/solution/solve.sh (build workload scan)",
+    "qc/runs/coldwater-strict-2026-10-02-r12/raw-evidence-index.json (two artifact hashes re-computed)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "task.toml:20-24 reads '[environment] / build_timeout_sec = 600.0 / network_mode = \"public\" / cpus = 2 / memory_mb = 4096'. This is byte-identical to the frozen template (diff of everything from [agent] onward: no difference) and to staged-task-contract.md:56-60. cpus and memory_mb are both present; 2 CPU / 4096 MB is sane for the declared world: the agent image (environment/Dockerfile, byte-identical to the template Dockerfile) is node:22-bookworm-slim plus apt ca-certificates/git/procps/sqlite3 and global express@5.1.0 + better-sqlite3@12.4.1, and the workload is a Node/Express/SQLite app with a browser bundle (reference bundle public/assets/index.js is 1.9 MB prebuilt; solve.sh runs only a node DB-init step, no npm/vite/tsc build, no bare nproc). No '[environment].docker_image', no 'allow_internet', no 'allowed_hosts' key exists in task.toml (grep for these returns only the '[environment]' header at line 20). No secret literal under [environment] or in the agent image: the Dockerfile has a single ENV ('ENV NODE_PATH=/usr/local/lib/node_modules'), no ARG, no credential; a pattern scan (api key/secret/token/password/bearer/sk-/PEM/AKIA/ghp_/email) over environment/ and task.toml hits only ui.md:13 (the word 'tokens' in syntax-colouring prose) and the frozen [verifier.env] lines 'ANTHROPIC_AUTH_TOKEN = \"${OPENROUTER_API_KEY}\"' (a ${VAR} template, expected by profile) and 'ANTHROPIC_API_KEY = \"\"'. seed_data.json is 149 bytes with an empty snippets array and a note, no credentials. git identity in the image is 'turing@local.invalid' (synthetic, template-controlled). network_mode = \"public\" in both [environment] and [verifier.environment] is correct per the row text and delivery profile and is not flagged. The Internal sheet's older 'no-network' wording for this row is superseded by the Quality Checks row and the skill's delivery profile; under public network, fetching at build or solve time is not a defect. Evidence-index hashes spot-checked: run_golden.sh a94328b9... and results/runtime.json e47b63b0... match. Adversarial probes: (a) a task that hid a key via Dockerfile ENV/ARG or assets would pass a task.toml-only check - checked the Dockerfile, assets and instructions too, none present; (b) a conforming task flagged for public network or the ${OPENROUTER_API_KEY} template would be a false positive - not flagged. Limitation: the resource limits were not measured under the configured harness on these exact bytes (scripted golden ran in the agent image with no recorded cgroup limits; the hosted run with identical [environment] values was on an earlier candidate and completed). This row's bar is static sanity of the declared values, which is met; no memory-pressure measurement is required by the row.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

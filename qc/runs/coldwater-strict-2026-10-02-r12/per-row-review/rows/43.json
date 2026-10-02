@@ -1,0 +1,38 @@
+{
+  "number": 43,
+  "id": "gates_apply_before_shaping_and_carry_no_reward_mass",
+  "reviewer": "row-reviewer-43",
+  "input_sha256": "3f132f2758fd93cca0bfe425d942f454a7cedd0670b1208e8175c54c3ec78242",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r12/rules/WebDev Rubrics QC.xlsx :: Quality Checks row 43 and Internal Quality Checks row 43; Deterministic Checks check-scoring-policy.py",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/rules/harbor-webdev-rubric-qc/references/quality-checks.md (section 43)",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (scoring.toml, test.sh, tools)",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (check-scoring-policy, check-canonical-shared-files)",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/rules/projects/webdev-task-template/tests/{scoring.toml,test.sh,tools/score.py,tools/restart_mcp.py,Dockerfile} (byte-compared with the task)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/tests/scoring.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/tests/test.sh",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/tests/tools/score.py",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/tests/gates/{render,constraints}/{judge.toml,prompt.md}",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/tests/scored/{functional,polish,visual}/{judge.toml,prompt.md}",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/tests/app_context.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/task.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/instruction.md and environment/instructions/{ui,policy,behaviour,integration,overview}.md (requirements behind the gates)",
+    "qc/runs/coldwater-strict-2026-10-02-r12/raw-evidence-index.json (all 22 artifact hashes recomputed, 0 mismatches)",
+    "run-outputs/.../run-4e686738-.../colderwater-playground-devtools__Rc3y2sT/verifier/reward.json (earlier candidate, Oracle)",
+    "run-outputs/.../run-6e537d14-.../colderwater-playground-devtools__2KqFPi3/verifier/{reward.json,gates/reward-details.json} and directory listing (earlier candidate, model run)"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "POLICY. tests/scoring.toml:1-11 is '[gates] render = 0.0 / constraints = 0.0', '[weights] functional = 0.6 / polish = 0.2 / visual = 0.2', '[floors] functional = 0.05' and is byte-identical to the frozen template (cmp), as are tests/test.sh and tests/tools/score.py. No judge.toml [judge] block carries a weight (keys are only isolated, judge, mcp_servers, mode, prompt_template, timeout). Both gate suites use aggregation = \"all_pass\" with binary criteria only (render 1 criterion, constraints 2).\n\nGATES BEFORE SHAPING. test.sh:212-222 removes any stale scored log ('rm -rf \"$LOG_DIR/scored\"'), runs 'run_suite gates 1500', then score.py; 'case \"$gates_status\" in 0) ;; 1) exit 0 ;; *) write_zero_reward; exit 0' so the scored suite at test.sh:224 is never launched after a gate failure. score.py:41 'gates_passed = all(scores[k] > floor for k, floor in gates.items())', :44 'scores[k] = _score(scored_data, k) if scored_ran else 0.0', :48 'reward = round(weighted, 4) if gates_passed and floors_passed else 0.0', :83 'return 0 if gates_passed else 1'.\n\nNO REWARD MASS. score.py:46 'weighted = sum(w * scores[k] for k, w in weights.items()) / sum(weights.values())' iterates weights only; gate scores never enter the sum.\n\nFLOOR. score.py:47 'floors_passed = scored_ran and all(scores[k] > f for k, f in floors.items())' is a strict inequality. Functional has 42 binary criteria with total weight 58.5, so more than 2.925 weight must pass; no single criterion (max 2.0) clears it and the persistence criterion closest to the constraints gate (cw_save_reload_restart, 1.5 = 0.0256) does not clear it either, so passing the gates alone earns 0.\n\nMEASURED ON THESE BYTES (score.py + scoring.toml copied to a scratch directory outside the workspace and executed with synthetic suite records; this is execution of the scorer, not a judge run): render=0 with a full-marks scored/reward.json present -> exit 1, reward 0.0, functional/polish/visual 0.0; constraints=0 -> exit 1, reward 0.0; gates pass with functional 0.0, polish 1.0, visual 1.0 -> reward 0.0, floors_passed 0, weighted_score 0.4; functional exactly 0.05 -> reward 0.0; functional 3.0/60.5=0.0496 -> reward 0.0; functional 1.0, polish 1.0, visual 0.9167 -> reward 0.9833; gate record missing a key -> exit 2 (test.sh then writes the plain zero).\n\nHOSTED RUNS (EARLIER candidate only, not these bytes). Model run 2KqFPi3 reward.json: 'render': 0.0, 'constraints': 1.0, 'reward': 0.0, 'gates_passed': 0; its verifier directory holds gates/ and no scored/ directory, i.e. the scored suite was skipped. Oracle run Rc3y2sT reward.json: render 1.0, constraints 1.0, functional 1.0, polish 1.0, visual 0.9167, reward 0.9833 = 0.6 + 0.2 + 0.2*0.9167, so two passed gates added nothing.\n\nGATE CONTENT is tied to public hard requirements and to a real operation rather than reachability only: environment/instructions/ui.md:3 'Don't use a textarea, input or contenteditable element as the document surface, and don't use CodeMirror, Monaco, Ace...' backs cw_custom_document_surface; integration.md:7 'The library must be shared between independent browser contexts' and behaviour.md:9 back cw_shared_saved_record (save, clear browser storage, reload, read back). The scored prompts' in-dimension browser gate ('text typed into the code editor appears in it') matches the render gate.\n\nBROKEN-APP TRIALS. (a) Polished static shell whose editor takes no typing: render gate fails, reward 0, scored suite not run. (b) Pretty app with a real custom editor and localStorage-only saves: constraints gate fails after storage is cleared, reward 0. (c) App that passes both gates but fails every functional criterion while scoring full polish and visual: reward 0 by the floor (simulated above). CONFORMING-ALTERNATIVE TRIAL. A canvas- or SVG-drawn editor with a hidden input used only for keyboard plumbing is explicitly allowed by the constraints criterion and by ui.md, so it is not zeroed.\n\nNOTE (not a defect of this row, template-controlled policy): once functional exceeds 0.05 the reward is not scaled, so a weak app with 3.5/58.5 functional and perfect polish and visual would get 0.4347 (simulated). Reaching that needs working Run, Save, Format, Undo/Redo and narrow-width behaviour for the polish criteria, so it is not a non-working app; ordering and weight honesty belong to rows 42 and 44.\n\nWHY RISK IS TRUE. No configured judge run exists for these bytes, and the render gate was rewritten after the hosted run (reduced to load-and-type). The gate-fail path was observed only on the earlier candidate and the floor path (gates pass, functional at or below 0.05) has never been produced by a real verifier run on any candidate; here it rests on executing score.py with synthetic inputs. The scripted golden results do not exercise test.sh or score.py.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL"
+}

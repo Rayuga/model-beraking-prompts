@@ -363,7 +363,7 @@ export function buildRun(code: string, filename: string, token: string) {
   const csp = policy.replace("script-src 'unsafe-inline'", `script-src 'nonce-${nonce}'`) + "; script-src-attr 'unsafe-inline'";
   const bootstrap = `(${sandboxBootstrap.toString()})(${JSON.stringify(token)},${JSON.stringify(guard)});document.currentScript.remove();`;
   doc.head.insertAdjacentHTML('afterbegin', `<meta http-equiv="Content-Security-Policy" content="${csp}"><script nonce="${nonce}">${bootstrap.replace(/<\/script/gi, '<\\/script')}</script>`);
-  return '<!doctype html>' + doc.documentElement.outerHTML.replace('</body>', prepared + `<script nonce="${nonce}">document.currentScript.remove();globalThis[${JSON.stringify(guard + 'done')}]();</script></body>`);
+  return '<!doctype html>' + doc.documentElement.outerHTML.replace('</body>', () => prepared + `<script nonce="${nonce}">document.currentScript.remove();globalThis[${JSON.stringify(guard + 'done')}]();</script></body>`);
 }
 
 export class PreviewRunner {

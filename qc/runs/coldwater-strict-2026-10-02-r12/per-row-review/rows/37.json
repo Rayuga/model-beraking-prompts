@@ -1,0 +1,41 @@
+{
+  "number": 37,
+  "id": "later_dimensions_tolerate_earlier_mutations",
+  "reviewer": "row-reviewer-37",
+  "input_sha256": "3f132f2758fd93cca0bfe425d942f454a7cedd0670b1208e8175c54c3ec78242",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r12/rules/WebDev Rubrics QC.xlsx (Quality Checks row 38 = check 37; Internal Quality Checks row 38, no annotation on this row)",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/rules/harbor-webdev-rubric-qc/references/quality-checks.md (section 37)",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/rules/projects/webdev-task-template (file list; tests/test.sh compared by reading the task copy)",
+    "qc/REVIEW_POLICY.md",
+    "task/tests/test.sh",
+    "task/tests/scoring.toml",
+    "task/tests/app_context.md",
+    "task/tests/gates/render/{prompt.md,judge.toml}",
+    "task/tests/gates/constraints/{prompt.md,judge.toml}",
+    "task/tests/scored/functional/{prompt.md,judge.toml}",
+    "task/tests/scored/polish/{prompt.md,judge.toml}",
+    "task/tests/scored/visual/{prompt.md,judge.toml}",
+    "task/tests/tools/restart_mcp.py",
+    "task/environment/assets/seed_data.json",
+    "task/instruction.md and task/environment/instructions/*.md",
+    "task/solution/app/src/app.tsx and src/style.css (library, New and filename handling only)",
+    "qc/runs/coldwater-strict-2026-10-02-r12/raw-evidence-index.json (all 16 scripted-golden artifact hashes and 3 of the hosted-run hashes recomputed and matching)",
+    "qc/repairs/coldwater-2026-10-02-strict/results/golden-1440-history.png",
+    "run-outputs/.../run-4e686738.../colderwater-playground-devtools__Rc3y2sT/verifier/reward.json and scored/reward-details.json (earlier candidate)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Shared state across dimensions is only the SQLite library behind the one app process started by tests/test.sh (gates suite, then scored suite, 'rewardkit --max-concurrent-agent 1'); each judge gets its own 'playwright-mcp --isolated' browser, so drafts, filename, undo history and localStorage do not cross dimensions. The seed is empty (environment/assets/seed_data.json: '\"snippets\": []') and nothing graded quotes a seeded value or count. The earliest mutation is the constraints gate (cw_shared_saved_record: 'Leave the saved record in place'). The injected context states the tolerance explicitly, tests/app_context.md Notes for grading: 'Saved records are identified by the server, not by title, and the library may already hold records from earlier checks. Do not assume an empty library and do not delete records that earlier checks created.' and 'After the restart tool has been used, open fresh pages instead of reusing pages opened before the restart.' Every later criterion that touches the library creates its own record with a judge-chosen unique title and grades relative to it: functional cw_save_reload_restart ('give it an exact unique title ... the library must still show that record ... as one record'), cw_live_library_update ('save a new snippet with a unique title'), cw_stale_save_refused / cw_stale_save_keeps_draft ('with a new snippet'), cw_history_restore_retry (own three revisions), cw_preview_isolation ('the hostile marker must not appear in the page title or in the library' - a judge-chosen marker, not an empty-library claim). Polish, which runs after functional and after the functional restart, is state-neutral: cw_undo_redo_availability 'Load a saved snippet or start a new draft', cw_unsaved_marker 'Save a snippet so the draft equals the saved revision', cw_controls_keyboard_and_focus counts only 'controls that the app offers and that is enabled at that moment'. Visual builds its own fixture ('put a ten-line JavaScript draft in the editor and Run it once') and has no empty-state anchor. I searched all five prompts and judge.toml files for empty-library, first-record, record-count, 'revision 1' of a pre-existing record, or seeded-value expectations and found none; revision counts are always relative to a record the criterion itself creates. restart_app is single use (restart_mcp.py marker '.used') and is named by exactly one criterion, so no later dimension needs it. Supporting measurements: the scripted golden screenshot golden-1440-history.png shows the reference at 1440 wide with 'Saved snippets 13' accumulated from earlier checks and the editor, preview, console and library all intact (library scrolls: style.css '.library{max-height:36%}' with overflow:auto); the hosted run on the EARLIER candidate graded gates then functional (with a real restart: app-restart.sh.used present) then polish 1.0 and visual 0.9167 on the same mutated app. That hosted run is not a measurement of these bytes; this row is decided from the wording of the current bytes, which is what the skill's procedure for check 37 asks for.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED",
+  "notes": "No configured judge run exists for these exact bytes, so run_verdict stays NOT EXERCISED; the earlier-candidate run is only supporting. Two observations outside this row, for the owner to route to the relevant rows, not counted as defects here: (1) within the functional dimension the filename field carries over inside the shared browser session, and several JavaScript criteria that follow an .html criterion do not restate the filename (cw_js_format_semantics_and_undo after cw_html_semantic_coloring; cw_last_good_recovery after cw_interaction_starts_fresh_budget; the first step of cw_error_message_and_line after cw_html_preview). A judge that types JavaScript without resetting the filename would run it as HTML on a conforming app. The context does say the filename ending chooses how Run executes and tells the judge to use fresh scratch drafts, and the earlier-candidate judge scored the Oracle 41/41, so this is latent only. (2) Polish keyboard traversal and the visual layout rating are taken with roughly a dozen judge-created library entries present; this is state-dependent workload and appearance, not a pristine-seed assumption, and the golden handles it with a scrolling library."
+}

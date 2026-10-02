@@ -34836,7 +34836,7 @@ function mountCodeEditor(host, callbacks = {}) {
     const p = normalizePos(pos);
     const line = state.lines[p.line];
     if (!line) return { start: p, end: p };
-    const isWord = (ch) => /[A-Za-z0-9_-]/.test(ch || "");
+    const isWord = (ch) => /[A-Za-z0-9_$]/.test(ch || "");
     let col = Math.min(p.col, Math.max(0, line.length - 1));
     if (!isWord(line[col]) && col > 0 && isWord(line[col - 1])) col -= 1;
     if (!isWord(line[col])) return { start: p, end: p };
@@ -40165,7 +40165,7 @@ function buildRun(code, filename, token) {
   const csp = policy.replace("script-src 'unsafe-inline'", `script-src 'nonce-${nonce}'`) + "; script-src-attr 'unsafe-inline'";
   const bootstrap = `(${sandboxBootstrap.toString()})(${JSON.stringify(token)},${JSON.stringify(guard)});document.currentScript.remove();`;
   doc.head.insertAdjacentHTML("afterbegin", `<meta http-equiv="Content-Security-Policy" content="${csp}"><script nonce="${nonce}">${bootstrap.replace(/<\/script/gi, "<\\/script")}<\/script>`);
-  return "<!doctype html>" + doc.documentElement.outerHTML.replace("</body>", prepared + `<script nonce="${nonce}">document.currentScript.remove();globalThis[${JSON.stringify(guard + "done")}]();<\/script></body>`);
+  return "<!doctype html>" + doc.documentElement.outerHTML.replace("</body>", () => prepared + `<script nonce="${nonce}">document.currentScript.remove();globalThis[${JSON.stringify(guard + "done")}]();<\/script></body>`);
 }
 class PreviewRunner {
   host;
@@ -40332,7 +40332,7 @@ async function api(url, method = "GET", body = void 0) {
   return data2;
 }
 function Value({ value }) {
-  if (value && typeof value === "object") return h2("details", null, h2("summary", null, Array.isArray(value) ? `Array(${value.length})` : "Object"), h2("div", { className: "tree" }, ...Object.entries(value).map(([key, item]) => h2("div", { key }, h2("strong", null, `${key}: `), h2(Value, { value: item })))));
+  if (value && typeof value === "object") return h2("details", { open: true }, h2("summary", null, Array.isArray(value) ? `Array(${value.length})` : "Object"), h2("div", { className: "tree" }, ...Object.entries(value).map(([key, item]) => h2("div", { key }, h2("strong", null, `${key}: `), h2(Value, { value: item })))));
   return h2("span", null, String(value));
 }
 function App() {

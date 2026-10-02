@@ -24,6 +24,10 @@ const { assert } = t;
   });
 
   await check('cw_basic_run_output', async () => {
+    await t.setFile(page, 'dollar.js');
+    await t.setSource(page, 'const price = 5;\ndocument.body.textContent = \'Cost: $\' + price + ` $${price} $&`;');
+    await t.run(page);
+    assert.equal(await body().innerText(), 'Cost: $5 $5 $&');
     await t.setFile(page, 'sum.js');
     await t.setSource(page, '');
     await page.keyboard.type('const s = 3 + 4; document.body.textContent = "sum " + s; console.log("sum " + s);');

@@ -1,0 +1,43 @@
+{
+  "number": 19,
+  "id": "solution_honors_the_runtime_contract_and_is_self_contained",
+  "reviewer": "row-reviewer-19",
+  "input_sha256": "3f132f2758fd93cca0bfe425d942f454a7cedd0670b1208e8175c54c3ec78242",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r12/rules/WebDev Rubrics QC.xlsx: Quality Checks row 19 (sheet row 20), Internal Quality Checks row 19, Deterministic Checks check-solve-contract.py / check-runtime-contract-strings.py / check-dockerfiles.py",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/rules/harbor-webdev-rubric-qc/references/quality-checks.md section 19",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (check-solve-contract.py)",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/rules/projects/webdev-task-template/solution/solve.sh",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/solution/solve.sh",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/solution/app/server.js",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/solution/app/package.json",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/solution/app/vite.config.mjs",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/solution/app/index.html",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/solution/app/public/index.html, public/runner.html, public/assets/index.js (import/URL scan), public/assets/index.css",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/solution/app/src/runtime.ts (runner frame lines 378-392)",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/tests/test.sh",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/tests/Dockerfile",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/environment/Dockerfile",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/environment/instructions/integration.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/instruction.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/task.toml",
+    "qc/runs/coldwater-strict-2026-10-02-r12/raw-evidence-index.json (all 22 artifact hashes recomputed and matching)",
+    "qc/repairs/coldwater-2026-10-02-strict/run_golden.sh and results/{build.log,runtime.json,editor.json,persist-before.json,restart.log,persist-after.json,restart.json}",
+    "scripts/build_colderwater_golden.sh",
+    "run-outputs/.../run-4e686738-561e-4222-9cdd-bd2b5604e0c1/colderwater-playground-devtools__Rc3y2sT/{artifacts/app/server.js,verifier/app.log,verifier/app-restart.log,verifier/app-restart.sh}"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "solve.sh: solution/solve.sh:1 '#!/bin/bash', :2 'set -euo pipefail'; byte scan of every file in the frozen task found zero CR bytes; 'bash -n' passes. It writes only under /app (:4 'target=/app', :38 'rm -f -- \"$target/app.db\" ...', :39 'cp -a \"$source_app/.\" \"$target/\"'); no reference to /tests, /logs/verifier or /solution as a write target, no pkill, no NODE_ENV, no npm/pip install, no nproc. The node heredoc (:9-36) only reads /proc to refuse deleting a database that a live process holds open; on a fresh container no database exists so the scan is skipped. test.sh:68 requires /app/server.js, which the copy creates. No symlinks in solution/ (test.sh:72-83 would zero a submission with any outside /app/node_modules). Runtime contract: integration.md:3 'We start it with node /app/server.js from a working directory that may be outside /app ... Listen on 0.0.0.0:3000 ... answer GET /api/health'; server.js:7 'const root = __dirname' and :130-131 resolve public/ from the file location, :142 'app.listen(Number(process.env.PORT || 3000), '0.0.0.0', ...', :12 serves /api/health before any database work. DB: integration.md:9 'default database path is /app/app.db. If DB_PATH is set, open that absolute path'; server.js:8 'process.env.DB_PATH || process.env.SQLITE_PATH || path.join(root, 'app.db')'. Schema creation is 'CREATE TABLE IF NOT EXISTS' / 'INSERT OR IGNORE' (:147-168), so restart is idempotent; there is no seeded user data. Self-contained: server.js requires only node:path, node:fs, express, better-sqlite3 (:2-5); express@5.1.0 and better-sqlite3@12.4.1 are installed globally with NODE_PATH in both environment/Dockerfile:3,9-12 and tests/Dockerfile:9,16-22, and test.sh:106 passes NODE_PATH. public/index.html references only /assets/index.js and /assets/index.css; the 1.9 MB bundle has no bare module imports and no CDN URLs (only namespace/doc strings), so no install or build is needed at start. public/runner.html is byte-identical to static/runner.html; bundle timestamps (18:31) postdate the newest source file (src/app.tsx 18:30) and results/build.log shows the vite build that produced the same sizes (index.js 1,915.39 kB, index.css 10.66 kB). Run evidence on these bytes: the frozen task is byte-identical to projects/colderwater-playground-devtools (diff -rq clean), which run_golden.sh:22-27 mounts, installs with 'bash /solution/solve.sh' in the agent image and launches with cwd /tmp, env -i, uid 65534, NODE_PATH, PORT=3000, DB_PATH=/app/app.db; runtime.json, editor.json, persist-before.json and persist-after.json are all true with empty pageErrors, and restart.log shows a real process replacement (pid 37 -> 66) with the saved record surviving. Verifier-image evidence: the hosted Oracle run (earlier candidate) has verifier/app.log 'Colderwater ready on port 3000' and app-restart.log 'ready=1', and its artifacts/app/server.js has sha256 72f3020b...bdde, identical to the frozen server.js; git log shows solve.sh, server.js, both Dockerfiles and test.sh last changed at 13:55 IST, before that run started (10:10Z = 15:40 IST), so the server/launch half of the contract was exercised in the real verifier image with the same bytes. Notes, not defects: (a) the frontend bundle of these exact bytes has not been served inside the verifier image or graded by the configured judge; that gap belongs to the full-verifier runtime record, not to this row. (b) solve.sh copies build sources (src/, package.json, package-lock.json, vite.config.mjs, tsconfig.json, static/, root index.html) into /app; they are unused at runtime and not served (static root is public/), harmless. (c) P3 latent: on a re-install where app.db already exists and solve.sh runs as a non-root user, readdir of another user's /proc/<pid>/fd raises EACCES, which solve.sh:22 rethrows and aborts the install; not reachable in a fresh Oracle container. (d) server.js:8 also accepts SQLITE_PATH, an undocumented but harmless fallback behind DB_PATH.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL"
+}

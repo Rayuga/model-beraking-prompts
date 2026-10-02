@@ -465,7 +465,7 @@ export function mountCodeEditor(host, callbacks = {}) {
     const p = normalizePos(pos);
     const line = state.lines[p.line];
     if (!line) return { start: p, end: p };
-    const isWord = (ch) => /[A-Za-z0-9_-]/.test(ch || '');
+    const isWord = (ch) => /[A-Za-z0-9_$]/.test(ch || '');
     let col = Math.min(p.col, Math.max(0, line.length - 1));
     if (!isWord(line[col]) && col > 0 && isWord(line[col - 1])) col -= 1;
     if (!isWord(line[col])) return { start: p, end: p };

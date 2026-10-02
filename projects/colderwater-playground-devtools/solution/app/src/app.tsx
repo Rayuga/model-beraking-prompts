@@ -15,7 +15,7 @@ async function api(url, method = 'GET', body = undefined) {
   return data;
 }
 function Value({ value }) {
-  if (value && typeof value === 'object') return h('details', null, h('summary', null, Array.isArray(value) ? `Array(${value.length})` : 'Object'), h('div', { className: 'tree' }, ...Object.entries(value).map(([key, item]) => h('div', { key }, h('strong', null, `${key}: `), h(Value, { value: item })))));
+  if (value && typeof value === 'object') return h('details', { open: true }, h('summary', null, Array.isArray(value) ? `Array(${value.length})` : 'Object'), h('div', { className: 'tree' }, ...Object.entries(value).map(([key, item]) => h('div', { key }, h('strong', null, `${key}: `), h(Value, { value: item })))));
   return h('span', null, String(value));
 }
 function App() {

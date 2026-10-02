@@ -1,0 +1,35 @@
+{
+  "number": 17,
+  "id": "solution_covers_every_deliverable",
+  "reviewer": "row-reviewer-17",
+  "input_sha256": "3f132f2758fd93cca0bfe425d942f454a7cedd0670b1208e8175c54c3ec78242",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r12/rules/WebDev Rubrics QC.xlsx (Quality Checks row 17; Internal Quality Checks row 17, which carries no extra annotation)",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/rules/harbor-webdev-rubric-qc/references/quality-checks.md (section 17)",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/rules/projects/webdev-task-template (file list; solution/solve.sh and solution/app/server.js layout)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/instruction.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/environment/instructions/{overview,ui,behaviour,security,integration,policy}.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/environment/assets/seed_data.json",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/solution/solve.sh",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/solution/app/server.js",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/solution/app/src/{app.tsx,custom-editor.js,runtime.ts,style.css}",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/solution/app/public/{index.html,runner.html,assets/index.js (string checks only),assets/index.css}",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/tests/app_context.md, tests/scored/functional/{prompt.md,judge.toml criterion ids}",
+    "qc/runs/coldwater-strict-2026-10-02-r12/raw-evidence-index.json (all 22 artifact hashes recomputed and matching)",
+    "qc/repairs/coldwater-2026-10-02-strict/results/{editor,runtime,polish,persist-before,persist-after}.json and tests/*.cjs (fixture search only)"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "Walked the brief and six notes line by line against solution/app. Every asked-for screen and control has an implementation: own DOM editing surface with numbered lines, Ln/Col readout, typing/paste/Enter/Backspace/Delete/arrows/Home/End/Ctrl|Cmd+Home/End, Shift selection, remembered column, grapheme-aware movement, caret reveal, click/double/triple click/drag, copy/cut, block indent/outdent, Alt and Ctrl/Cmd multi-caret, grouped undo/redo with disabled states, literal Find/Next/Previous/Replace/Replace all, JS and HTML token colouring, Prettier Format with error path (src/custom-editor.js); isolated sandboxed preview, console in order, error and rejection lines, five-second budget, last-good restore with form values and canvas, Stop, newer-run supersede, eval/Function/WebAssembly/worker/dynamic-import refusal, no network (src/runtime.ts, CSP connect-src 'none'); title/filename/Run/Stop/New/Save, shared library with 2 s polling, newer-revision notice, stale-save conflict, read-only history, idempotent restore by operationId, SQLite with DB_PATH, /api/health (src/app.tsx, server.js); 390 px rules in style.css. The served bundle public/assets/index.js contains the same distinctive strings as src. Scripted golden results on these bytes report every listed criterion true with no page errors; no configured judge run exists for these bytes. One capability is implemented incorrectly for ordinary sources: Run does not execute the exact source when it contains a dollar sequence. src/runtime.ts:366 builds the preview with `doc.documentElement.outerHTML.replace('</body>', prepared + ...)`, and `prepared` (line 357-359) embeds the user's code via JSON.stringify. A string passed as the replacement argument of String.prototype.replace has its `$$`, `$&`, `` $` `` and `$'` sequences expanded, so user code is rewritten before it runs. The same expression is in the served bundle (`.replace(\"</body>\",` occurs once in public/assets/index.js). behaviour.md:3 requires 'the editor must continue to hold the exact source used for Run'. None of the scripted golden fixtures contains such a sequence, so the passing results do not exercise it; functional/prompt.md:23 lets the judge 'choose the exact fixture text for each criterion', so an Oracle run can hit it.",
+  "counterexample": "File snippet.js with the single line console.log('$') and Run. The replacement pattern `$'` expands to the text after the match, giving the preview script console.log('</html>) which is a syntax error, so the console shows an error instead of $. Likewise console.log(`Total: $${5}`) is rewritten to console.log(`Total: ${5}`) and prints 'Total: 5' instead of 'Total: $5', and 'ab'.replace(/b/, '$&!') is rewritten to use '</body>!'. Reproduced with node on the same expression shape: \"console.log('$')\" => s.textContent = \"console.log('</html>)\\n\". Not reproduced in a live browser against the installed app in this review.",
+  "suggested_fix": "In src/runtime.ts buildRun, pass a function as the replacement (`.replace('</body>', () => prepared + tail)`) or append the prepared scripts through the DOM before serialising, rebuild the bundle, and add a golden fixture that runs console.log('$') and a `$${x}` template literal.",
+  "run_verdict": "NOT EXERCISED"
+}

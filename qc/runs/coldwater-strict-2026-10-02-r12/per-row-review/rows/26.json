@@ -1,0 +1,36 @@
+{
+  "number": 26,
+  "id": "dimensions_cover_every_graded_requirement",
+  "reviewer": "row-reviewer-26",
+  "input_sha256": "3f132f2758fd93cca0bfe425d942f454a7cedd0670b1208e8175c54c3ec78242",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r12/rules/WebDev Rubrics QC.xlsx (Quality Checks row 26 and the Internal Quality Checks annotation for row 26: flows may combine several verifiers)",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/rules/harbor-webdev-rubric-qc/references/quality-checks.md (section 26)",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/rules/projects/webdev-task-template (instruction.md, environment/instructions/notes.md, tests/scored/functional/judge.toml)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/instruction.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/environment/instructions/{behaviour,integration,overview,policy,security,ui}.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/environment/assets/seed_data.json",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/tests/app_context.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/tests/gates/{render,constraints}/{judge.toml,prompt.md}",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/tests/scored/{functional,polish,visual}/{judge.toml,prompt.md}",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/tests/scoring.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/tests/test.sh (grep for launch contract: health probe, DB_PATH, symlink scan, uid, env -i)",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/solution/app/src/custom-editor.js (grep for Home/End handling)",
+    "qc/runs/coldwater-strict-2026-10-02-r12/raw-evidence-index.json (all 22 artifact SHA256 values recomputed and matched)",
+    "qc/repairs/coldwater-2026-10-02-strict/results/{editor,runtime,polish,restart}.json"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "I built a requirement -> criterion map from instruction.md and the six notes against all 54 criteria (render 1, constraints 2, functional 42, polish 6, visual 3). Coverage is very dense and almost every stated behaviour has a criterion that can fail on it: own editing surface (cw_custom_document_surface); typing, Backspace/Delete, Home/End, arrows, intended column, line/column readout (cw_custom_typing_and_line_join, cw_caret_navigation_and_line_numbers); graphemes; mouse word/line/drag selection and copy; replace/paste over selection with one Undo; block indent; caret kept in view; long line; multi-caret on several lines and on one line; undo restoring the caret; Find/Replace including wrap, literal dot/bracket, self-containing replacement and Redo cleared; JS and HTML colouring; JS and HTML Format, idempotence, no extra Undo step, format error; Run, HTML mode, console order, thrown/HTML/Promise error message and line, syntax-error run, output kept before failure, fresh document, last-good recovery, time limit, interaction budget, Stop, newer Run; preview isolation and dynamic-code refusal; save/reload/restart, stale save refused and draft kept, history inspect/restore/idempotent retry/old-revision restore, live library refresh keeping editing state, newer-revision notice; polish for keyboard exit, labels and worded feedback, focus return, Undo/Redo availability, unsaved marker, 390 px; launch contract (cwd outside /app, DB_PATH, health, symlinks) is exercised by tests/test.sh lines 48-110. SQLite itself is not browser-decidable and is acceptably left to restart evidence.\n\nGAP 1 (the Fail). environment/instructions/ui.md line 5 states as a requirement: \"Ctrl+Home and Ctrl+End (Cmd on a Mac) jump to the start and end of the document.\" The only criterion text in any judge.toml or app_context.md that mentions these keys is tests/scored/functional/judge.toml line 83 (cw_caret_kept_in_view): \"move it to the end of the document with Ctrl+End, or with the arrow keys and End ... Move the caret back to the document start with Ctrl+Home, or with the arrow keys and Home\", and its fail clause is only \"Fails if the caret or the text being typed is outside the visible editor area at any of these three points, or if only a manual scroll brings it back.\" The shortcut is an optional route, never an asserted outcome, so the stated requirement cannot fail any criterion.\n\nGAP 2 (minor, Note level, recorded because the row asks for every gap). ui.md line 9 says the Undo and Redo controls are disabled \"straight after New or after opening a saved snippet\", meaning both situations; tests/scored/polish/judge.toml line 50 (cw_undo_redo_availability) lets the judge choose one: \"Load a saved snippet or start a new draft so there is no editing history\". An app that clears history on New but carries the previous document's Undo stack into an opened snippet passes when the judge picks New.\n\nGAP 3 (minor, Note level). behaviour.md line 5 puts pending Promise callbacks under the five-second budget; cw_time_limit_recovery exercises only a synchronous endless loop and a self-rescheduling timer, not an endless Promise chain. I treat this as a flow sample rather than a blocking gap.\n\nRun evidence: the scripted golden results on these bytes (hashes verified) mark cw_caret_kept_in_view true, and the golden handles Ctrl+Home/End (solution/app/src/custom-editor.js line 281), so tightening the criterion would not hurt the reference. No configured judge run exists for these bytes; the hosted run was on an earlier candidate and does not exercise this finding.",
+  "counterexample": "A submission whose editor ignores Ctrl+Home and Ctrl+End (or treats them as plain Home/End on the current line) but follows the caret when it is moved with arrow keys and End. The judge follows the written alternative in cw_caret_kept_in_view (\"or with the arrow keys and End\" / \"or with the arrow keys and Home\"), the caret stays in view, and the criterion passes; no other criterion presses those keys. The app earns full credit while missing a behaviour ui.md line 5 explicitly asks for. Secondary: an app that leaves Undo enabled after opening a saved snippet passes cw_undo_redo_availability when the judge starts from New.",
+  "suggested_fix": "In cw_caret_kept_in_view (or cw_caret_navigation_and_line_numbers) make the shortcut an asserted leg: press Ctrl+End from the document start and require the readout to show the last line and its end, press Ctrl+Home and require line 1 column 1, and add 'Fails if Ctrl+End or Ctrl+Home does not move the caret to the document end or start'. Alternatively, if the keys are not meant to be graded, remove that sentence from ui.md so scope and rubric agree. Optionally change cw_undo_redo_availability to check both after New and after opening a saved snippet that follows an edited draft.",
+  "run_verdict": "NOT EXERCISED"
+}

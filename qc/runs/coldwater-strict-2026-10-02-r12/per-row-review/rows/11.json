@@ -1,0 +1,36 @@
+{
+  "number": 11,
+  "id": "timeouts_fit_the_work",
+  "reviewer": "row-reviewer-11",
+  "input_sha256": "3f132f2758fd93cca0bfe425d942f454a7cedd0670b1208e8175c54c3ec78242",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r12/rules/WebDev Rubrics QC.xlsx (Quality Checks row 12 = check 11; Internal Quality Checks row 12, no annotation on this row; Deterministic Checks check-scoring-policy.py and check-verifier-contract.py rows)",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/rules/harbor-webdev-rubric-qc/references/quality-checks.md (section 11)",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (task.toml block, budget nesting line 111, restart helper line 163)",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (check-scoring-policy, check-verifier-contract)",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/rules/projects/webdev-task-template/task.toml, tests/test.sh, tests/*/*/judge.toml, tests/tools/restart_mcp.py",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/task.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/tests/test.sh",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/tests/gates/{constraints,render}/judge.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/tests/scored/{functional,polish,visual}/judge.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/tests/tools/restart_mcp.py",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/environment/Dockerfile, task/tests/Dockerfile, task/solution/solve.sh",
+    "qc/runs/coldwater-strict-2026-10-02-r12/raw-evidence-index.json (all 22 artifact SHA256 values recomputed and matching)",
+    "run-outputs/coldwater-playground-devtools/.../run-4e686738.../colderwater-playground-devtools__Rc3y2sT/result.json, verifier/gates/reward-details.json, verifier/scored/reward-details.json, verifier/app-restart.log, verifier/*/rewardkit.log (earlier candidate)",
+    "run-outputs/coldwater-playground-devtools/.../run-6e537d14.../colderwater-playground-devtools__2KqFPi3/result.json (earlier candidate)"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "ARITHMETIC (frozen bytes). Judge timeouts, line 4 of each judge.toml: gates/constraints 600, gates/render 600, scored/functional 9000, scored/polish 900, scored/visual 900. Suite budgets, tests/test.sh:213 `run_suite gates 1500` and :224 `run_suite scored 11100`, enforced by `timeout \"$budget_sec\" rewardkit --max-concurrent-agent 1` (:207), so judges in a suite run one at a time and the sum is the relevant bound. Gates: each 600 < 1500 and 600+600 = 1200 < 1500 (300 s slack). Scored: each <= 9000 < 11100 and 9000+900+900 = 10800 < 11100 (300 s slack). Verifier: task.toml `[verifier] timeout_sec = 13200.0`; 1500+11100 = 12600 < 13200, leaving 600 s for the pre-suite work, whose worst case is the readiness loop test.sh:116-122 (120 probes, each up to two 2 s urlopen timeouts plus 0.25 s sleep; about 30 s when the port refuses quickly). Liveness: initial loop 120 x 0.25 s; restart helper loop the same (test.sh:171-177) plus up to 5 s kill wait (:155-158), about 35 s nominal, inside restart_mcp.py HELPER_TIMEOUT_SEC = 55 (line 11), itself far inside the functional judge's 9000. Agent: `[agent] timeout_sec = 7200.0`; `[environment] build_timeout_sec = 600.0`. Verifier 13200 s = 3 h 40 min, below the five-hour ceiling. CANONICAL: task/tests/test.sh, tools/restart_mcp.py and tools/score.py are byte-identical to the frozen template (diff empty); task.toml differs from the template only in name/description/keywords/metadata lines; all five judge timeouts equal the template's; values equal staged-task-contract.md (`gates 1500, scored 11100, verifier 13200`, agent 7200, build 600). No timeout was changed, so no authorization record is needed, consistent with REVIEW_POLICY 'Keep canonical budgets unless a specific justified change is authorized'. SUFFICIENCY (measured only on an EARLIER candidate, hashes verified): hosted Oracle trial Rc3y2sT result.json verifier started 10:10:47.88Z, finished 10:52:12.66Z = 2485 s for both gates plus 41 Functional, 6 Polish and 3 Visual criteria, all graded (graded=1, exception_info None), i.e. about 20% of the 12600 s of suite budget; restart observed at 10:30:56Z (app-restart.log). Luna trial 2KqFPi3: verifier 10:18:28.97Z to 10:24:17.35Z = 348 s for the two gates (render failed) against a 1500 s budget; agent execution 448 s against 7200 s; environment setup about 15 s in both trials (cached image; not a cold-build measurement against 600 s). The agent Dockerfile is one apt layer plus a two-package global npm install, a plausible cold build well under 600 s but unmeasured. RISK (why risk=true): (1) no configured judge run exists for these bytes; they have 42 Functional criteria (one added, cw_basic_run_output) and reworded criteria/prompts, so the 2485 s figure is indicative only. (2) The hosted export has no per-judge durations (rewardkit.log files are 29 and 43 bytes; reward-details.json records only the configured timeout), so the individual margins of the 900 s polish and 900 s visual judges and the 600 s gate judges are not measured, only bounded by the suite total. (3) Scripted golden duration on these bytes is not judge duration. (4) The functional workload is heavy for one batched judge (42 multi-step browser criteria including several 4 to 10 s waits, multi-tab flows and a restart; 9000/42 is about 214 s per criterion); the earlier run suggests roughly 5x headroom for a healthy app, but a slow or half-broken target-model app that makes the judge retry is unmeasured. None of these is a demonstrated defect; nesting and canonical values are verified by reading, not by executing the private check-scoring-policy.py.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PASS"
+}

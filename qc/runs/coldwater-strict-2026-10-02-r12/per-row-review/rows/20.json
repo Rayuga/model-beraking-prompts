@@ -1,0 +1,35 @@
+{
+  "number": 20,
+  "id": "solution_is_frozen_and_deterministic",
+  "reviewer": "row-reviewer-20",
+  "input_sha256": "3f132f2758fd93cca0bfe425d942f454a7cedd0670b1208e8175c54c3ec78242",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    "rules/WebDev Rubrics QC.xlsx: Quality Checks row 21 (check 20) and Internal Quality Checks row 21 (no extra annotation beyond the description); Deterministic Checks rows mentioning solution/solve/pinning",
+    "rules/harbor-webdev-rubric-qc/SKILL.md",
+    "rules/harbor-webdev-rubric-qc/references/quality-checks.md (### 19, ### 20)",
+    "rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (check-solve-contract.py, check-runtime-contract-strings.py)",
+    "rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (solution and seed entries)",
+    "rules/projects/webdev-task-template/solution/solve.sh",
+    "qc/REVIEW_POLICY.md",
+    "task/solution/solve.sh",
+    "task/solution/app/server.js",
+    "task/solution/app/package.json, package-lock.json, vite.config.mjs, tsconfig.json, index.html",
+    "task/solution/app/src/app.tsx, runtime.ts, custom-editor.js, style.css (scanned for random, clock, network and remote-URL use)",
+    "task/solution/app/public/index.html, public/runner.html, public/assets/index.js, public/assets/index.css, static/runner.html",
+    "task/environment/Dockerfile, task/environment/assets/seed_data.json, task/environment/instructions/integration.md and behaviour.md",
+    "task/tests/Dockerfile, task/task.toml, task/instruction.md, task/tests/scored/*/judge.toml and tests/gates/*/judge.toml (searched for pinned ids, timestamps and ordering demands)",
+    "qc/runs/coldwater-strict-2026-10-02-r12/raw-evidence-index.json and qc/repairs/coldwater-2026-10-02-strict/results/persist-before.json, persist-after.json, restart.json"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Committed and static: `git status --short projects/colderwater-playground-devtools` is empty, `diff -rq` between that committed project and the frozen .qc-cache task reports no difference, and all 16 solution files are tracked (the 1.9 MB bundle is not git-ignored). Not regenerated or fetched at install: task/solution/solve.sh only resets the database files and runs `cp -a \"$source_app/.\" \"$target/\"`; it has no npm install, build, curl or git step. server.js requires only node built-ins plus express and better-sqlite3, which both Dockerfiles pin (`express@5.1.0`, `better-sqlite3@12.4.1`) on NODE_PATH; the client libraries (React, prettier, acorn, lezer) are compiled into the committed public/assets/index.js. package.json pins exact versions with no ^, ~ or latest, and package-lock.json is present. Prebuilt bundle is not stale: I copied solution/app to a scratch directory, ran `npm ci --ignore-scripts` and `npx vite build` (Node 24.19.0 on Windows) and obtained byte-identical output: index.js sha256 20e6b600f7a97df6f8ef95a7a80515e4b5cb0ecd3576a1d5eabda9891a032e64, index.css e665bd18..., index.html c1e493e0..., runner.html ed4a5811..., each equal to the committed file. public/runner.html equals static/runner.html. No boot-time fetch: server.js makes no outbound request; the only fetch in src is the same-origin API helper (app.tsx:12); the URLs inside the bundle are library comments and XML namespaces, and the CSP is `default-src 'self'`. Seeding: environment/assets/seed_data.json has `\"snippets\": []`, the server inserts no rows at boot (only CREATE TABLE IF NOT EXISTS and an INSERT OR IGNORE backfill from existing rows), and solve.sh removes app.db, app.db-wal and app.db-shm, so every install starts from the same empty library. Random and clock use touches no graded value: crypto.randomUUID is used for console-entry keys, the restore operationId and preview nonces (app.tsx:45, :85; runtime.ts:27, :317, :318, :335, :386); `new Date().toISOString()` fills updated_at/created_at, which the client never displays (no updated_at or created_at reference in app.tsx) and is used only for `ORDER BY updated_at DESC, id DESC`; performance.now measures run duration. A search of every judge.toml, app_context.md and the notes found no criterion pinning a record id, revision number, timestamp, duration figure or library position; criteria use judge-chosen markers and relative waits. Runtime support on these bytes (scripted golden, hashes of all 22 indexed artifacts verified): persist-before.json and persist-after.json report all persistence checks true and restart.json shows id 3 at revision 2 with history [2,1] after a real process restart. Limits: no configured judge run exists for these bytes, and my rebuild ran on Windows with Node 24 rather than in the task image; neither is required for this row because the oracle installs the committed bundle and never rebuilds.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL"
+}

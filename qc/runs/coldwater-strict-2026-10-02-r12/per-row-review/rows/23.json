@@ -1,0 +1,40 @@
+{
+  "number": 23,
+  "id": "verifier_and_instruction_agree_on_the_runtime_contract",
+  "reviewer": "row-reviewer-23",
+  "input_sha256": "3f132f2758fd93cca0bfe425d942f454a7cedd0670b1208e8175c54c3ec78242",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r12/rules/WebDev Rubrics QC.xlsx (Quality Checks row 24 = check 23; Internal Quality Checks row 24 annotation on sign-in false positive)",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/rules/harbor-webdev-rubric-qc/references/quality-checks.md (check 23, 4, 19, 21, 49)",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (test.sh ordered contract, cross-file agreements)",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/rules/projects/webdev-task-template (tests/test.sh, tests/Dockerfile, tests/tools/restart_mcp.py, environment/Dockerfile, environment/instructions/integration.md)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/tests/test.sh",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/tests/Dockerfile",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/tests/tools/restart_mcp.py",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/tests/app_context.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/tests/gates/render/judge.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/tests/scored/functional/judge.toml (cw_preview_isolation, cw_save_reload_restart) and prompt.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/instruction.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/environment/instructions/integration.md, overview.md, policy.md, security.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/environment/Dockerfile",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/environment/assets/seed_data.json",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/task.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/solution/solve.sh, solution/app/server.js, solution/app/package.json",
+    "qc/runs/coldwater-strict-2026-10-02-r12/raw-evidence-index.json",
+    "qc/repairs/coldwater-2026-10-02-strict/run_golden.sh, results/persist-after.json, results/restart.json, results/restart.log"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Every launch assumption in tests/test.sh maps to a public statement. (1) Entry: test.sh:68 `if [[ ! -f /app/server.js ]]` and :111 `node \"$APP_ENTRY\"` <-> integration.md:3 'We start it with node /app/server.js'. (2) Port/bind: test.sh:108 `PORT=\"3000\"`, probes on 127.0.0.1:3000 <-> integration.md:3 'Listen on 0.0.0.0:3000'; PORT only repeats the stated number. (3) Liveness: test.sh:48 probes `/api/health` then `/`, any HTTP status counts, 120 x 0.25 s <-> integration.md:3 'serve the workspace at / and answer GET /api/health promptly' and :5 'opening the finished app must not require an install or build step'. (4) Database: test.sh:98,109 `DB_PATH=\"$APP_DB\"` (either /app/app.db or /tmp/submission/app.db) <-> integration.md:9 'The default database path is /app/app.db. If DB_PATH is set, open that absolute path instead, including when the app runs from a writable copy outside /app'. (5) Dependencies: test.sh:106 `NODE_PATH=\"/usr/local/lib/node_modules\"`; tests/Dockerfile:20-21 and environment/Dockerfile:10-11 both pin express@5.1.0 and better-sqlite3@12.4.1 on node:22 <-> integration.md:5 'The launch image supplies Node 22, Express and better-sqlite3 through NODE_PATH ... Include everything needed at runtime'. (6) Working directory and the fallback entry /tmp/submission/server.js (test.sh:99-102) <-> integration.md:3 'from a working directory that may be outside /app. Resolve files from their actual location.' (7) Symlink refusal test.sh:72-83 <-> integration.md:11 'Symbolic links are unsupported except links under /app/node_modules whose resolved targets also stay under /app/node_modules'. (8) Restart helper (test.sh:127-184, same env and same DB_PATH) <-> integration.md:7,9 'must survive page reloads and complete process restarts ... Keep the same records and revision history after a process restart'. (9) Seed: task.toml:2 artifacts include /assets, test.sh:88 only makes it readable; instruction.md:3 and integration.md:7 name /assets/seed_data.json, which holds `\"snippets\": []`, and app_context.md:23 tells the judge not to assume an empty library, so no seed-derived value is graded. (10) No sign-in: instruction.md:5 'without signing in' <-> app_context.md:10 'None. The app has no sign-in'. (11) Judge-side probe of the health address in cw_preview_isolation (functional/judge.toml:326 'a normal browser tab can load the health address' and a preview fetch to it must reject) <-> integration.md:3 and security.md:3 'fetch requests ... to this app's own routes must fail'. tests/test.sh, tests/Dockerfile and tests/tools/restart_mcp.py are byte-identical to the frozen template (diff returned no differences), so no task-specific launch assumption was added. Measured: the scripted golden on these bytes launched the app with the same contract (run_golden.sh: `env -i PATH=... NODE_PATH=/usr/local/lib/node_modules HOME=/app PORT=3000 DB_PATH=/app/app.db setpriv --reuid=65534 --regid=65534 --clear-groups node /app/server.js` from cwd /tmp) and results/persist-after.json records `cw_save_reload_restart: True` across a real process replacement (restart.log pid 37 -> 66). I recomputed sha256 for run_golden.sh (a94328b9...), results/restart.json (265afb96...) and results/runtime.json (e47b63b0...) and they match the index. Limits: that run used the agent image and not tests/test.sh in the verifier image; the only run through test.sh is the hosted one on an earlier candidate (same template test.sh, Oracle launched and was graded). Counterexample attempts that did not produce a defect: (a) an ES-module server.js cannot resolve `express` through NODE_PATH (Node ignores NODE_PATH for import), but the agent image sets the identical ENV NODE_PATH (environment/Dockerfile:3) so the failure is visible to the builder before submission, and a local /app/node_modules is copied with the artifact; (b) an app using relative paths fails under the verifier cwd, but that is explicitly warned; (c) an app answering /api/health with 204 or a non-JSON body still passes the probe because any HTTP response or a 200 on / counts; (d) an app that ignores PORT and hardcodes 3000 passes. Unstated but harmless verifier details (Note level, P3, no fix required for this row): the app runs as uid 65534 under `env -i` with HOME=/tmp/submission, which the brief does not mention, but test.sh:87 chowns /app to that uid first so the documented database location stays writable; the restart helper sends SIGTERM to the process group and waits 5 s with no SIGKILL (test.sh:154-158), so an app that traps SIGTERM and keeps its listener would be reported as restarted while the old process still serves - this is template-controlled, favours the submission rather than penalising it, and belongs to the restart-evidence rows rather than to this contract-agreement row; a database file left in /app by the builder is carried into grading, which app_context.md:23 already tolerates.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL"
+}

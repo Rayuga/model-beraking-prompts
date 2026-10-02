@@ -1,0 +1,37 @@
+{
+  "number": 21,
+  "id": "verifier_entrypoint_is_safe_and_always_scores",
+  "reviewer": "row-reviewer-21",
+  "input_sha256": "3f132f2758fd93cca0bfe425d942f454a7cedd0670b1208e8175c54c3ec78242",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r12/rules/WebDev Rubrics QC.xlsx :: Quality Checks row 22 (check 21) and Internal Quality Checks row 22 (no annotation cells); Deterministic Checks rows for check-verifier-contract.py and check-scoring-policy.py",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/rules/harbor-webdev-rubric-qc/references/quality-checks.md :: section 21",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md :: tests/test.sh ordered contract",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/rules/projects/webdev-task-template/tests/test.sh, tests/tools/score.py, tests/tools/restart_mcp.py, tests/Dockerfile, tests/scoring.toml, task.toml (diffed against the task)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/tests/test.sh (all 227 lines)",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/tests/tools/score.py",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/tests/tools/restart_mcp.py",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/tests/Dockerfile, tests/.dockerignore, tests/scoring.toml, the five judge.toml timeout/MCP lines",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/task.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/environment/Dockerfile, environment/instructions/integration.md, instruction.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/solution/solve.sh, solution/app/server.js (launch lines)",
+    "qc/runs/coldwater-strict-2026-10-02-r12/raw-evidence-index.json (all 22 artifact hashes recomputed and matching)",
+    "run-outputs/.../run-4e686738-.../colderwater-playground-devtools__Rc3y2sT/verifier/{reward.json,reward.txt,app.log,app-restart.log,app-restart.sh} (earlier candidate, Oracle)",
+    "run-outputs/.../run-6e537d14-.../colderwater-playground-devtools__2KqFPi3/verifier/reward.json (earlier candidate, model run, gate failure)",
+    "qc/repairs/coldwater-2026-10-02-strict/run_golden.sh (launch line only)"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "Source walk of the frozen entrypoint against the staged-task-contract ordered contract. tests/test.sh (sha256 bd682592...) is byte-identical to the frozen template test.sh; score.py, restart_mcp.py, tests/Dockerfile, .dockerignore and scoring.toml are also identical to the template (diff reported no differences). bash -n passes, LF only, no exec. (1) Zero first / reward on every path: test.sh:60-61 'write_zero_reward' then 'trap cleanup EXIT'; cleanup (33-40) ends with ensure_reward, so set -e aborts (for example a failing cp/chown at 92-95 or the prompt-substitution python at 195-201) still leave the zero record. The zero JSON at line 8 carries reward, all five dimensions, gates_passed, floors_passed, weighted_score, graded, no_op. Every early return is 'exit 0' after the zero was written: missing judge env (63-66), missing /app/server.js (68-70), symlink escape (72-83), liveness failure (123-125), gates suite failure/timeout (213-215), scored suite failure/timeout (224-226). (2) Safe launch: symlinks outside /app/node_modules or resolving outside it are refused (72-83); app copied to /tmp/submission (90-95); launched with 'setsid env -i PATH NODE_PATH HOME PORT DB_PATH setpriv --reuid=65534 --regid=65534 --clear-groups node \"$APP_ENTRY\"' (104-111); 'umask 077', 'chmod 700 \"$LOG_DIR\"' and 'chmod -R go-rwx /tests' (3, 11-12) keep rubric, reward files and the restart helper/pid file out of reach of the uid-65534 app. (3) Liveness before RewardKit: probe_ready (42-58) tries /api/health then /, 120 tries x 0.25 s, 'if [[ \"$READY\" != \"1\" ]]; then exit 0' (123-125) precedes any rewardkit call. (4) Order: 'run_suite gates 1500' (213) then 'python3 /tests/tools/score.py \"$LOG_DIR\" || gates_status=$?' with case 0 continue / 1 exit 0 keeping the detailed record / * write_zero_reward (216-222); then 'run_suite scored 11100' (224) and 'python3 /tests/tools/score.py \"$LOG_DIR\" || write_zero_reward' (227). 'rm -rf \"$LOG_DIR/scored\"' (212) prevents a stale scored result from being counted in the gates-only pass; score.py exits 2 on any exception and writes reward.json/reward.txt only after all dimensions validate. (5) Budgets nest: gate judges 600+600 < 1500; scored judges 9000+900+900=10800 < 11100 at --max-concurrent-agent 1; 1500+11100=12600 < verifier 13200. If the harness kills test.sh at the verifier timeout, a reward file already exists from line 60 or from the gates score. (6) Task-specific fit: integration.md tells the agent the entry (node /app/server.js, cwd may be outside /app), port 3000, GET /api/health, DB_PATH and the symlink rule; golden server.js uses __dirname, DB_PATH, /api/health and 0.0.0.0:PORT; solve.sh creates no symlinks. Weak-app probes: an app with no server.js, a symlinked /app/server.js -> /etc/..., a server that never listens, and a server that crashes mid-judging all end with reward 0.0 present, none unscored; a conforming app that answers 404 on /api/health but serves / is still accepted because HTTPError counts as alive. Run evidence (EARLIER candidate only, hashes verified): Oracle verifier dir holds reward.json reward 0.9833 graded 1, reward.txt 0.9833, gates/ and scored/ outputs, app.log 'Colderwater ready on port 3000', app-restart.log 'app-restart pid=1961 ready=1'; the app-restart.sh that run generated is byte-identical to what the frozen test.sh heredoc produces after sed substitution (diff clean), so the same entrypoint logic executed there. The model run that failed the render gate stopped after gates with reward 0.0, gates_passed 0, graded 1 and no scored directory, confirming the gate-failure path writes a detailed zero. Why risk=true: no execution of tests/test.sh in the verifier image exists for these exact bytes (index limitation: 'Ran in the agent image, not through tests/test.sh in the verifier image'); the scripted golden only imitates the launch line. The failure paths other than gate failure (liveness timeout, suite timeout, score.py exit 2) are verified by reading only. Latent template-controlled observations, not defects of this task and not to be patched here: 'mkdir -p \"$LOG_DIR\"' and 'chmod 700' at lines 10-11 run under set -e before write_zero_reward, so an unwritable log dir would exit unscored (no reward could be written there anyway); and a judge/provider failure in the gates suite leaves the plain zero with graded 0 / no_op 1, indistinguishable from a missing app.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL"
+}

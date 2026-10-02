@@ -1,0 +1,38 @@
+{
+  "number": 40,
+  "id": "reward_is_graded_not_binary_and_discriminates",
+  "reviewer": "row-reviewer-40",
+  "input_sha256": "3f132f2758fd93cca0bfe425d942f454a7cedd0670b1208e8175c54c3ec78242",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r12/rules/WebDev Rubrics QC.xlsx (Quality Checks row 41 = check 40; Internal Quality Checks row 41, no extra annotation on this check; neighbouring checks 42 and 43)",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/rules/harbor-webdev-rubric-qc/references/quality-checks.md (section 40, 41-43)",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/rules/projects/webdev-task-template/tests/ (file list; scoring.toml/score.py/test.sh compared by reading the task copies)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/tests/scoring.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/tests/tools/score.py",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/tests/test.sh",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/tests/gates/render/{judge.toml,prompt.md}",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/tests/gates/constraints/{judge.toml,prompt.md}",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/tests/scored/functional/{judge.toml,prompt.md}",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/tests/scored/polish/{judge.toml,prompt.md}",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/tests/scored/visual/{judge.toml,prompt.md}",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/tests/app_context.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r12/task/instruction.md and environment/instructions/*.md",
+    "qc/runs/coldwater-strict-2026-10-02-r12/raw-evidence-index.json (all 22 artifact SHA256 values recomputed and matched)",
+    "run-outputs/.../run-6e537d14-.../colderwater-playground-devtools__2KqFPi3/verifier/gates/reward-details.json (earlier candidate, GPT-5.6 Luna)",
+    "run-outputs/.../run-4e686738-.../colderwater-playground-devtools__Rc3y2sT/verifier/reward.json (earlier candidate, Oracle)"
+  ],
+  "verdict": "Not exercised",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "STRUCTURE (read on the frozen bytes, no defect found). tests/scoring.toml: gates render=0.0, constraints=0.0; weights functional 0.6 / polish 0.2 / visual 0.2; floor functional 0.05. Parsed judge.toml files: render 1 binary criterion (all_pass), constraints 2 binary (all_pass), functional 42 binary criteria with weights 1.0-2.0 summing to 58.5 (weighted_mean), polish 6 binary (weighted_mean), visual 3 likert points=5 (weighted_mean). The scored reward is therefore fine-grained: one functional criterion moves the reward by 0.010-0.021, and the floor needs more than 2.925 weight units (two or three criteria). The render gate is now only load-and-type (gates/render/judge.toml: 'This checks only that the app is running and its editor accepts typing ... Do not press Run'), so it no longer zeroes an app whose Run is broken. tests/app_context.md states 'Run may be broken in a submitted app. Criteria that do not depend on Run are still scored on their own steps', and functional/prompt.md says 'Score each criterion independently and continue after any failure'. No single precondition carries all criteria: by my count the criteria whose steps need a working Run are 16 of 42 with 23.0 of 58.5 weight (39%), including the two Format criteria that Run the draft before and after formatting; criteria whose steps need Undo/Redo are 12 of 42 with 17.5 of 58.5 weight (30%) plus 3 of 6 polish criteria. Analytic examples: an app with Run completely broken but everything else right could reach at most 35.5/58.5 = 0.607 functional; an app with a basic single-caret editor, basic Run and plain Save (no multi-caret, grouping, formatting, isolation, conflict handling) lands near 0.2 functional; the reference is near 1.0. These are computed expectations, not measurements.\n\nMEASUREMENT (missing for these bytes). raw-evidence-index.json scope: 'No configured judge run exists for these bytes.' The scripted golden checks exercise only the reference app, so they say nothing about spread. The only configured-judge data are from an EARLIER candidate and are all-or-nothing: Oracle reward 0.9833 (verifier/reward.json), nop 0, GPT-5.6 Luna 0. In that Luna run constraints scored 1.0 (both criteria 'yes') and the render gate failed solely because 'Typing into the editor works ... but Run is deterministically broken', i.e. the observed distribution so far is {0.98, 0, 0}. The render gate was reduced afterwards, which should let such an app reach the scored suites, but the index itself records 'No target-model score exists with the scored suites run.' No mutated-weak-app or reward-discrimination runtime record exists in the run directory (manifest.json, preflight.json and qc/repairs/coldwater-2026-10-02-strict contain none), although qc/REVIEW_POLICY.md requires 'separate, hash-bound runtime records for workload, full verifier launch/grading, reward discrimination and reward ordering' before local clearance. Per the skill ('Never upgrade an unmeasured claim to Pass') this row cannot be Pass: the design is graded, but no partial-quality app has ever received an intermediate score from the configured judge on this or the earlier candidate.\n\nBOUNDED CONCERNS (not failing on their own). (1) Undo is a shared precondition of 12 functional and 3 polish criteria; an app whose only editor defect is a broken Undo shortcut loses credit for otherwise correct line joins, grapheme deletion, selection replace, block indent, multi-caret typing/deletion and both replaces. This compresses the middle of the range but does not collapse it. (2) cw_js_format_semantics_and_undo and cw_html_format_semantics_and_undo (3.5 weight) require Run, so a correct formatter earns nothing there when Run is broken; cw_format_error_keeps_draft still gives separate formatter credit. (3) The constraints gate zeroes any app whose Save does not persist server-side or that uses a form field as the editor; both are stated hard requirements (ui.md, integration.md) and the template has this gate, so I do not count it as an all-or-nothing defect, but a false negative by the gate judge would zero a good app and has only been observed passing twice.",
+  "counterexample": "No confirmed failing counterexample on these bytes. The risk case: a Luna-like submission (custom editor works, Save works, Run broken) scored 0 on the earlier candidate; on these bytes it should pass both gates and receive up to about 0.6 functional, but this has never been run, so the only measured outcomes remain 0 and 0.98.",
+  "suggested_fix": "Before clearance, record a hash-bound discrimination run on these exact bytes: the configured judge (or at minimum the scripted checks mapped to criteria) against at least two deliberately weakened variants of the reference, for example Run disabled and multi-caret/undo-grouping removed, and show that their rewards fall strictly between 0 and the Oracle score. Optionally let the two Format criteria compare results only when Run works, or move the Run-equivalence step to its own criterion, to reduce Run concentration.",
+  "run_verdict": "NOT EXERCISED"
+}
