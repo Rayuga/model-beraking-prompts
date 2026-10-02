@@ -1,12 +1,11 @@
 # QC round result: single-per-row
 
-**STALE_OR_INVALID** — 54/54 valid independent reports.
+**BLOCKED** — 54/54 valid independent reports.
 
 Local review only; no verification of portal model, full judge duration, Oracle or target-model score is inferred.
 
 Unresolved findings/evidence gaps: 21. Verdict disagreements: 0.
 
-- frozen task changed or missing
 - reward_is_graded_not_binary_and_discriminates: missing hash-bound measured runtime record
 - reward_ranking_is_monotone: missing hash-bound measured runtime record
 - timeouts_fit_the_work: missing hash-bound measured runtime record

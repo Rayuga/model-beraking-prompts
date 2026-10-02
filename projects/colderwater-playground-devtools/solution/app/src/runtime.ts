@@ -358,7 +358,9 @@ export function buildRun(code: string, filename: string, token: string) {
     const payload = JSON.stringify(source).replace(/</g, '\\u003c');
     return `<script nonce="${nonce}">(() => { const script = document.createElement('script'); script.nonce = ${JSON.stringify(nonce)}; script.textContent = ${payload}; document.currentScript.replaceWith(script); })();</script>`;
   }).join('');
-  const csp = policy.replace("script-src 'unsafe-inline'", `script-src 'nonce-${nonce}'`);
+  // Scripts need the nonce; event-handler attributes that running code writes into
+  // the page are allowed, while eval-style execution stays blocked.
+  const csp = policy.replace("script-src 'unsafe-inline'", `script-src 'nonce-${nonce}'`) + "; script-src-attr 'unsafe-inline'";
   const bootstrap = `(${sandboxBootstrap.toString()})(${JSON.stringify(token)},${JSON.stringify(guard)});document.currentScript.remove();`;
   doc.head.insertAdjacentHTML('afterbegin', `<meta http-equiv="Content-Security-Policy" content="${csp}"><script nonce="${nonce}">${bootstrap.replace(/<\/script/gi, '<\\/script')}</script>`);
   return '<!doctype html>' + doc.documentElement.outerHTML.replace('</body>', prepared + `<script nonce="${nonce}">document.currentScript.remove();globalThis[${JSON.stringify(guard + 'done')}]();</script></body>`);
