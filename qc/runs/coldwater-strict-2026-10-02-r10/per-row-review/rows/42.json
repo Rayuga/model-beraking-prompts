@@ -1,0 +1,35 @@
+{
+  "number": 42,
+  "id": "reward_ranking_is_monotone",
+  "reviewer": "row-reviewer-42",
+  "input_sha256": "6f9c2cc5e7bc3b3b8f5b2adeccbfa83fff17cf4d61860c39a9ff441f7f80ee44",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r10/rules/WebDev Rubrics QC.xlsx :: Quality Checks row 43 (check 42) and Internal Quality Checks row 43 (annotation: 'we need to monitor this one')",
+    ".qc-cache/coldwater-strict-2026-10-02-r10/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r10/rules/harbor-webdev-rubric-qc/references/quality-checks.md:172-173",
+    ".qc-cache/coldwater-strict-2026-10-02-r10/rules/projects/webdev-task-template/tests/{scoring.toml,test.sh,tools/score.py,scored/visual/judge.toml}",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r10/task/instruction.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r10/task/environment/instructions/{overview,ui,behaviour,integration,policy,security}.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r10/task/task.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r10/task/tests/scoring.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r10/task/tests/test.sh",
+    ".qc-cache/coldwater-strict-2026-10-02-r10/task/tests/tools/score.py",
+    ".qc-cache/coldwater-strict-2026-10-02-r10/task/tests/app_context.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r10/task/tests/gates/{render,constraints}/{judge.toml,prompt.md}",
+    ".qc-cache/coldwater-strict-2026-10-02-r10/task/tests/scored/{functional,polish,visual}/{judge.toml,prompt.md}",
+    "qc/runs/coldwater-strict-2026-10-02-r10/raw-evidence-index.json (5 artifact hashes recomputed and matching: hosted verifier/reward.json, scored/reward-details.json, GPT run gates/reward-details.json, results/editor.json, results/runtime.json)"
+  ],
+  "verdict": "Not exercised",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "STATIC DESIGN (no inversion found). tests/scoring.toml:1-11 is byte-identical to the frozen template (diff clean, as are score.py and test.sh): gates render/constraints 0.0, weights functional 0.6 / polish 0.2 / visual 0.2, floor functional 0.05. score.py:46-48 computes one non-negative weighted mean and zeroes it only on a failed gate or floor, so within gate-passing apps reward is non-decreasing in every dimension; function (0.6) outweighs craft (0.4). Functional has 42 binary criteria, weights summing to 58.5 (recomputed), so a weight-1.0 criterion is worth 0.0103 reward, one polish criterion 0.0333, one visual criterion 0.0667. Floor needs functional > 0.05, i.e. more than 2.925 weight, so a shell cannot farm the 0.4 craft mass. Gates only demand publicly mandated basics: render gate is load-and-type only and says 'Do not press Run' (gates/render/judge.toml:23), which removes the inversion seen in the earlier hosted run where an app scored 0 solely because Run was dead; constraints gate maps to ui.md:3 (own editing surface, plumbing input allowed in both ui.md:3 and gates/constraints/judge.toml:47) and behaviour.md:9 / integration.md:7 (shared saved record). Dead-feature credit was checked criterion by criterion: negatives carry positive controls (functional/prompt.md:14 'A positive control must come before every negative claim'; e.g. functional/judge.toml:209, 236, 245, 308, 317, 326, 335, 362), app_context.md:29 fails Run-dependent criteria when Run is dead, polish cw_undo_redo_availability fails when the controls are absent (polish/judge.toml:50). The one 'absent control is not counted' clause (polish/judge.toml:23) is worth 0.0333 and an app missing Format or Find/Replace loses at least 4.5 or 5.0 functional weight (0.046-0.051) plus polish/judge.toml:32 and :41, so it cannot net a gain. RESIDUAL OBSERVATIONS (not defects on their own): (1) cw_shared_saved_record is a hard gate, so an app with an excellent editor and runtime but a broken Save scores 0 below a thin app with working Save; this is a public hard requirement and qc/REVIEW_POLICY.md 'Gates must exclude convincing dead apps' endorses a save-and-readback gate. (2) Template mass means one visual likert point (0.0133) outweighs a weight-1.0 functional criterion (0.0103) and one polish criterion equals 3.25 of them; small local reorderings between near-equal apps are possible, bounded by the 0.6/0.4 split. (3) If the scored suite times out, test.sh:224-226 exits with the post-gate score.py result, which is reward 0 (scored_data None, score.py:42-48); a slower-to-judge richer app would then rank below a weaker one. UNMEASURED: raw-evidence-index.json scope says 'No configured judge run exists for these bytes'; the only hosted run (Oracle 0.9833, nop 0, GPT-5.6 Luna 0 at the old render gate) is on an earlier candidate with a different render gate and 41 functional criteria, and no weak-app/mutant ordering run exists for any candidate. qc/REVIEW_POLICY.md 'Runtime and model evidence' requires a hash-bound reward-ordering record before local clearance; it is absent, so the row cannot be upgraded to Pass.",
+  "counterexample": null,
+  "suggested_fix": "Record a reward-ordering measurement on these exact bytes through tests/test.sh with the configured judge: the golden plus at least two mutated weaker apps (for example Run disabled, and multi-caret/Format removed), and confirm golden > mutants with the scored suite finishing inside its 11100 s budget; a Save-disabled mutant should score 0 at the constraints gate by design. No source change is indicated by this row.",
+  "run_verdict": "NOT EXERCISED"
+}

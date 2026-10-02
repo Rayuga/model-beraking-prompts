@@ -1,0 +1,40 @@
+{
+  "number": 23,
+  "id": "verifier_and_instruction_agree_on_the_runtime_contract",
+  "reviewer": "row-reviewer-23",
+  "input_sha256": "6f9c2cc5e7bc3b3b8f5b2adeccbfa83fff17cf4d61860c39a9ff441f7f80ee44",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r10/rules/WebDev Rubrics QC.xlsx (Quality Checks row 23; Internal Quality Checks row 23 annotation; neighbouring rows 4, 19, 49)",
+    ".qc-cache/coldwater-strict-2026-10-02-r10/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r10/rules/harbor-webdev-rubric-qc/references/quality-checks.md (check 23, lines 100-102)",
+    ".qc-cache/coldwater-strict-2026-10-02-r10/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (lines 103-106, 172-180)",
+    ".qc-cache/coldwater-strict-2026-10-02-r10/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (check-runtime-contract-strings, line 50)",
+    ".qc-cache/coldwater-strict-2026-10-02-r10/rules/projects/webdev-task-template/tests/test.sh, tests/Dockerfile, environment/Dockerfile, instruction.md",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r10/task/instruction.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r10/task/environment/instructions/{overview,integration,policy,security,behaviour,ui}.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r10/task/environment/Dockerfile",
+    ".qc-cache/coldwater-strict-2026-10-02-r10/task/environment/assets/seed_data.json",
+    ".qc-cache/coldwater-strict-2026-10-02-r10/task/tests/test.sh",
+    ".qc-cache/coldwater-strict-2026-10-02-r10/task/tests/Dockerfile",
+    ".qc-cache/coldwater-strict-2026-10-02-r10/task/tests/app_context.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r10/task/tests/gates/*/prompt.md and tests/scored/*/prompt.md (runtime-contract lines), tests/scored/functional/judge.toml lines 18, 320-345",
+    ".qc-cache/coldwater-strict-2026-10-02-r10/task/tests/tools/restart_mcp.py (helper invocation lines)",
+    ".qc-cache/coldwater-strict-2026-10-02-r10/task/task.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r10/task/solution/solve.sh and solution/app/server.js (contract lines 2-12, 142)",
+    "qc/runs/coldwater-strict-2026-10-02-r10/raw-evidence-index.json",
+    "qc/repairs/coldwater-2026-10-02-strict/run_golden.sh, results/runtime.json, results/restart.json (indexed; sha256 re-verified)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Each launch assumption in tests/test.sh maps to a public statement. Entry file: test.sh:68 and :97 require /app/server.js; environment/instructions/integration.md:3 says 'We start it with node /app/server.js'. Working directory: verifier WORKDIR is /tests (tests/Dockerfile:45); integration.md:3 says 'from a working directory that may be outside /app. Resolve files from their actual location'. Port and bind: test.sh:108 PORT=3000 and probes 127.0.0.1:3000 (test.sh:48); integration.md:3 'Listen on 0.0.0.0:3000'; every judge prompt and app_context.md:4 use http://localhost:3000. Liveness: test.sh:48-55 accepts any HTTP response from /api/health or /; integration.md:3 'serve the workspace at / and answer GET /api/health promptly' (instruction.md:5 repeats / and /app); no status code or body is demanded by test.sh, and the only criterion touching health (functional judge.toml:326) just needs a tab to load it. Database: test.sh:98-102 and :109 inject DB_PATH=/app/app.db or /tmp/submission/app.db when /app is not writable; integration.md:9 'default database path is /app/app.db. If DB_PATH is set, open that absolute path instead, including when the app runs from a writable copy outside /app'. Dependencies: test.sh:106 NODE_PATH=/usr/local/lib/node_modules with no install or build step; integration.md:5 'supplies Node 22, Express and better-sqlite3 through NODE_PATH ... must not require an install or build step'; both images pin express@5.1.0 and better-sqlite3@12.4.1 on Node 22 (environment/Dockerfile:1,9-11; tests/Dockerfile:1,20-21). Symlink rejection test.sh:72-83 is stated in integration.md:11. Restart helper (test.sh:127-193, same env and database) is covered by integration.md:7,9 'survive ... complete process restarts'. Seed: test.sh only chmods /assets (line 88); task.toml:2 ships /assets; instruction.md:3 and integration.md:7 name /assets/seed_data.json, which holds no snippets, so nothing in the launch depends on seed content. No same-origin requirement appears; the brief (integration.md:5) and prompts allow CDN assets and task.toml:22,38 are public. No sign-in is assumed (app_context.md:10 'None'). tests/test.sh and tests/Dockerfile are byte-identical to the frozen template (diff clean). Residual observations, not defects: test.sh also injects PORT and HOME and runs as uid 65534 under env -i; the brief names neither PORT, HOME nor the unprivileged uid. PORT equals the stated fixed port 3000, so an app that hardcodes 3000 and one that reads PORT behave identically; HOME points at a writable copy and no stated requirement needs it; test.sh:85-87 chowns /app to that uid and the brief already tells the agent the app may run from a writable copy with DB_PATH. Probes tried: (a) broken app that could pass launch: a static server answering / passes the liveness probe, but that is by design and exclusion is the gates' job, not a contract mismatch; (b) conforming alternatives: an app ignoring PORT and listening on 3000, an app returning non-2xx or non-JSON on /api/health (probe accepts HTTPError), an app bundling its own /app/node_modules, and an app launched from /tmp/submission all launch correctly; I found no conforming app that test.sh would refuse to launch. Run evidence: indexed hashes for run_golden.sh, runtime.json, restart.json and runtime.cjs re-verified equal. run_golden.sh:27 launches the golden with the same recipe (cd /tmp, env -i, uid 65534, PORT, DB_PATH, NODE_PATH) and runtime.json/restart.json show it serving and surviving a real restart, but in the agent image with HOME=/app rather than through tests/test.sh in the verifier image; the hosted Oracle run launched through the identical template test.sh but on an earlier candidate. So the launch through test.sh on these exact bytes is not measured; the document-level agreement this row checks does not depend on it.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL"
+}

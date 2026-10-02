@@ -1,0 +1,40 @@
+{
+  "number": 11,
+  "id": "timeouts_fit_the_work",
+  "reviewer": "row-reviewer-11",
+  "input_sha256": "6f9c2cc5e7bc3b3b8f5b2adeccbfa83fff17cf4d61860c39a9ff441f7f80ee44",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r10/rules/WebDev Rubrics QC.xlsx :: Quality Checks row 12 (check 11) and Internal Quality Checks row 12; Deterministic Checks rows 29, 33, 36",
+    ".qc-cache/coldwater-strict-2026-10-02-r10/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r10/rules/harbor-webdev-rubric-qc/references/quality-checks.md:50-51",
+    ".qc-cache/coldwater-strict-2026-10-02-r10/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md:53-63,111,119,163",
+    ".qc-cache/coldwater-strict-2026-10-02-r10/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md:40-46",
+    ".qc-cache/coldwater-strict-2026-10-02-r10/rules/projects/webdev-task-template (task.toml, tests/test.sh, tests/*/*/judge.toml, tests/tools/restart_mcp.py, tests/Dockerfile)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r10/task/task.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r10/task/tests/test.sh",
+    ".qc-cache/coldwater-strict-2026-10-02-r10/task/tests/gates/render/judge.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r10/task/tests/gates/constraints/judge.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r10/task/tests/scored/functional/judge.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r10/task/tests/scored/polish/judge.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r10/task/tests/scored/visual/judge.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r10/task/tests/tools/restart_mcp.py",
+    ".qc-cache/coldwater-strict-2026-10-02-r10/task/environment/Dockerfile",
+    ".qc-cache/coldwater-strict-2026-10-02-r10/task/solution/solve.sh",
+    "qc/runs/coldwater-strict-2026-10-02-r10/raw-evidence-index.json",
+    "run-outputs/coldwater-playground-devtools/runs-export/runs-export/runs-export/run-4e686738-561e-4222-9cdd-bd2b5604e0c1/colderwater-playground-devtools__Rc3y2sT/result.json (+ verifier/reward.json, verifier/app-restart.log, gates and scored reward-details.json hashes)",
+    "run-outputs/coldwater-playground-devtools/runs-export/runs-export/run-6e537d14-ec50-476a-b834-ef6107d02859/colderwater-playground-devtools__2KqFPi3/result.json"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": "P3",
+  "evidence": "NESTING (static, verified on the frozen bytes). task.toml:18 [agent].timeout_sec = 7200.0; task.toml:21 build_timeout_sec = 600.0; task.toml:27 [verifier].timeout_sec = 13200.0. tests/test.sh:213 `run_suite gates 1500`, test.sh:224 `run_suite scored 11100`, test.sh:207 `timeout \"$budget_sec\" rewardkit --max-concurrent-agent 1` (judges run one at a time, so sums matter). Gate judges: render/judge.toml:4 timeout = 600, constraints/judge.toml:4 timeout = 600 -> each 600 < 1500 and the sequential sum 1200 < 1500 (300 s slack). Scored judges: functional/judge.toml:4 timeout = 9000, polish/judge.toml:4 timeout = 900, visual/judge.toml:4 timeout = 900 -> each < 11100 and the sequential sum 10800 < 11100 (300 s slack). Budgets: 1500 + 11100 = 12600 < 13200 (600 s left for copy, launch and liveness). Liveness: test.sh:116-122 polls 120 x 0.25 s (nominal 30 s; absolute worst case with both 2 s probe timeouts expiring every iteration about 510 s, still inside the 600 s remainder: 12600 + 510 = 13110 < 13200). Restart helper: restart_mcp.py:11 HELPER_TIMEOUT_SEC = 55 covers the helper's 5 s kill wait plus nominal 30 s readiness loop (test.sh:155-176). All of these values and test.sh, restart_mcp.py and tests/Dockerfile are byte-identical to the frozen template (diff clean) and equal the reference values in staged-task-contract.md:54-63,111 (gates 1500, scored 11100, verifier 13200); no timeout was raised, so no authorization record is needed, and all are below the five-hour limit. LONG ENOUGH. Agent image (environment/Dockerfile:1-23) is node:22-slim plus one apt layer and two global npm packages, realistic inside build_timeout 600; the hosted runs show environment_setup about 15 s. Measured judge workload: hosted Oracle run on the EARLIER candidate (result.json sha 4a9b1934..., matches the index) ran the verifier 10:10:47 -> 10:52:12 = 2485 s for both gates plus 41 Functional, 6 Polish and 3 Visual criteria with reward 0.9833 and exception_info None, i.e. about 19% of the 13200 s verifier limit and well under the 9000 s functional judge timeout; the single restart fired at 10:30:56 with ready=1 (app-restart.log). The current bytes carry 42 Functional criteria (one more: cw_basic_run_output) and a lighter render gate, so the workload change is small relative to a roughly 5x margin. All six artifact hashes cited in raw-evidence-index.json for the two hosted runs were recomputed and match. WHAT IS NOT MEASURED (reason for risk=true): no configured-judge run exists for input 6f9c2cc5...; the scripted golden duration is not judge duration; the 2485 s figure is from input 4f93c627, and it is a single sample of an LLM judge whose duration varies. Agent 7200 s sufficiency for a real target-model build is also unmeasured: the only model trial (GPT-5.6 Luna, result.json sha abbf4ace...) ended its agent phase after about 7.5 min with a non-working app, which shows neither sufficiency nor insufficiency. Adversarial checks: a broken app that hangs cannot exploit the budgets (suite timeout -> exit 0 with the pre-written zero reward, test.sh:213-215, 224-226); a conforming slow-starting app that needs more than 30 s to answer HTTP would be zeroed by the liveness loop, but that is shared template policy, the golden answers in well under a second, and it is recorded here as a shared-policy limitation rather than a task defect.",
+  "counterexample": null,
+  "suggested_fix": "No timeout change is justified or recommended. To close the risk, record one full configured-judge Oracle run on these exact bytes (input 6f9c2cc5...) with per-suite wall time, and bind it by hash in the evidence index before clearance.",
+  "run_verdict": "PARTIAL"
+}
