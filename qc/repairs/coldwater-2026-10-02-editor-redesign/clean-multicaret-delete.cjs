@@ -1,0 +1,33 @@
+const assert = require('node:assert/strict');
+const { chromium } = require('/usr/local/lib/node_modules/@playwright/mcp/node_modules/playwright');
+(async () => {
+  const browser = await chromium.launch({ executablePath: '/usr/local/bin/chromium', args: ['--no-sandbox', '--unsafely-treat-insecure-origin-as-secure=http://172.17.0.10:3000'] });
+  const context = await browser.newContext({ permissions: ['clipboard-read', 'clipboard-write'] });
+  const page = await context.newPage();
+  await page.goto('http://172.17.0.10:3000/', { waitUntil: 'networkidle' });
+  const editor = page.getByRole('textbox', { name: 'Code editor' });
+  const source = async () => (await editor.locator('.line .text').allTextContents()).join('\n');
+  await editor.click(); await page.keyboard.press('ControlOrMeta+A');
+  await page.evaluate(() => navigator.clipboard.writeText('alpha\nbravo\ncharlie'));
+  await page.keyboard.press('ControlOrMeta+V');
+  await page.waitForFunction(() => document.querySelectorAll('#editor .line').length === 3);
+  const boxes = await editor.locator('.line .text').evaluateAll(nodes => nodes.map(n => { const r=n.getBoundingClientRect(); return {x:r.x,y:r.y,w:r.width,h:r.height}; }));
+  const click = async (i, end, add) => {
+    if (add) await page.keyboard.down('Alt');
+    await page.mouse.click(boxes[i].x + (end ? boxes[i].w + 1 : 1), boxes[i].y + boxes[i].h / 2);
+    if (add) await page.keyboard.up('Alt');
+  };
+  await click(0, true, false); await click(1, true, true);
+  assert.equal(await editor.locator('.caret').count(), 2);
+  await page.keyboard.press('Backspace');
+  assert.equal(await source(), 'alph\nbrav\ncharlie');
+  await page.keyboard.press('ControlOrMeta+Z');
+  assert.equal(await source(), 'alpha\nbravo\ncharlie');
+  await click(0, false, false); await click(1, false, true);
+  await page.keyboard.press('Delete');
+  assert.equal(await source(), 'lpha\nravo\ncharlie');
+  await page.keyboard.press('ControlOrMeta+Z');
+  assert.equal(await source(), 'alpha\nbravo\ncharlie');
+  console.log(JSON.stringify({ backward: true, forward: true, atomicUndo: true }));
+  await browser.close();
+})().catch(error => { console.error(error); process.exit(1); });

@@ -1,0 +1,31 @@
+{
+  "number": 50,
+  "id": "task_folder_holds_only_task_files",
+  "reviewer": "row-reviewer-50",
+  "input_sha256": "ae1d6f45959dbff89eb8963973dd7cfd29f634674f246410819317a7a3fc57a0",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/rules/WebDev Rubrics QC.xlsx: Quality Checks!A51:D51 (quality row 50); Internal Quality Checks!A51:F51; complete Quality Checks, Internal Quality Checks and Deterministic Checks sheets",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/rules/harbor-webdev-rubric-qc/references/quality-checks.md:200-202",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md:7-32",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md: check-required-files.py and check-no-stray-files.py interpretation",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/rules/projects/webdev-task-template/: complete file inventory, solution/solve.sh, environment/Dockerfile, tests/.dockerignore",
+    "qc/README.md; qc/REVIEW_POLICY.md",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/task/: full filesystem inventory using pathlib.Path.rglob and PowerShell Get-ChildItem -Force -Recurse, including hidden and ignored node_modules",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/task/solution/solve.sh; solution/app/package.json; solution/app/server.js:1-11,130-131; solution/app/vite.config.mjs; environment/Dockerfile; tests/.dockerignore",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/task/solution/app/node_modules/@esbuild/win32-x64/package.json; @rollup/rollup-win32-x64-msvc/package.json; native file signatures and SHA256 values",
+    "qc/runs/coldwater-2026-10-01-history-hardening-r1/raw-evidence-index.json:40 and all 21 referenced artifact hash verifications; observations not treated as configured-judge results"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P1",
+  "evidence": "Workbook Quality Checks!D51 excludes scratch/build residue/caches, and frozen staged-task-contract.md:32 explicitly says node_modules must be absent. An actual full filesystem enumeration of the frozen task found 1,384 files: 43 outside node_modules and 1,341 files totaling 58,215,036 bytes inside solution/app/node_modules, plus an empty .vite-temp directory. These include node_modules/.package-lock.json (SHA256 98b54d7b67ce87528211592c8c925c77dbdcf35dd957994db0aaf0faae3a3a98), @esbuild/win32-x64/esbuild.exe (SHA256 cae1bbc86f4df800b01d99e28aea0a154b02243de6797e98f48a9b88a64a7be0), and @rollup/rollup-win32-x64-msvc/rollup.win32-x64-msvc.node (SHA256 3501fda4eb7a65644e019637ea3bfac493c861891fcd12aabca013d671e61c93; MZ/PE signature). The esbuild package.json:14-18 and Rollup package.json:4-8 explicitly select win32/x64. solution/solve.sh:38 copies the entire source_app tree into /app, so the residue is not filtered during installation. All required closed-list files were present, six operating notes existed, and no unexpected task-root or tests-root entries were found. The 43 legitimate files include the actual public assets served by server.js:130-131; those are deliverable app files, not stray scratch output. The workbook/skill exception for seed_data.json and coverage.json does not excuse node_modules. raw-evidence-index.json:40 separately states scripted proofs omitted the frozen Windows dependencies; its SHA256 is c5fb62b99ab425667d2346c5475436eaffa42d2f77d389d387edec1f3d3209b8, and all 21 artifact hashes matched. This row is confirmed by direct filesystem inspection; no private checker, Linux startup of the exact copied tree, configured judge, Oracle or portal result is claimed.",
+  "counterexample": "The actual frozen golden tree is a concrete disallowed package: its Windows dependency cache can be missed by default ignored-file search, while selective scripted deployment of server.js/public can pass without ever installing that tree. Shipping via solve.sh copies the cache into the Linux app and can shadow image-provided dependencies; the exact runtime consequence was not measured here. Conversely, a conforming golden with pinned package manifests and its served public/assets bundle but no node_modules must remain acceptable: classifying every compiled browser asset as prohibited build residue would incorrectly reject the runtime deliverable.",
+  "suggested_fix": "Remove local node_modules and its caches from the source candidate using the authorized bounded cleanup process, preserve the served app bundle and manifests, then create a new frozen candidate and verify the exact packaged inventory and Linux installation before clearance.",
+  "run_verdict": "CONFIRMED"
+}

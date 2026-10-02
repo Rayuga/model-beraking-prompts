@@ -1,0 +1,32 @@
+{
+  "number": 35,
+  "id": "core_behavior_is_graded_and_state_is_proven_durable_where_it_must_be",
+  "reviewer": "row-reviewer-35",
+  "input_sha256": "80865100dd4b973cb1cfb54e92a812e3f989440975a22dd2519f5f5d5256e841",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r3/rules/WebDev Rubrics QC.xlsx:Quality Checks!A36:D36 and Internal Quality Checks!A36:D36 (both full check inventories enumerated)",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r3/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r3/rules/harbor-webdev-rubric-qc/references/quality-checks.md:145-147",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r3/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r3/rules/projects/webdev-task-template/instruction.md and tests/{gates/constraints,scored/functional}/judge.toml",
+    "qc/README.md; qc/REVIEW_POLICY.md; NEW_TASK_AUTHORING_CONTEXT.md; TASK_AUTHORING_WORKFLOW.md",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r3/task/instruction.md; environment/instructions/{overview,behaviour,integration,policy,security,ui}.md",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r3/task/tests/app_context.md; gates/{render,constraints}/{judge.toml,prompt.md}; scored/functional/{judge.toml,prompt.md}; scoring.toml; test.sh",
+    "qc/runs/coldwater-2026-10-01-history-hardening-r3/raw-evidence-index.json",
+    "qc/repairs/coldwater-2026-10-01-stricter-r3/{runtime-results,history-results,history-state,post-results,local-proof-summary,canvas-regression,source-guards,preflight,full-install-binding}.json",
+    "qc/repairs/coldwater-2026-10-01-stricter-r3/drivers/history_proof.cjs:11-16",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r3/task/tests/tools/restart_mcp.py:30-52"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P1",
+  "evidence": "Workbook Quality Checks row 35 (A36:D36) requires a defining behavior criterion and proof that server-backed state survives restart. The Render gate grades an authored computed Run (tests/gates/render/judge.toml:17-36), and Constraints grades UI save plus independent clean-context server read and reload (tests/gates/constraints/judge.toml:17-33; prompt.md:14-30). Functional grades the defining last-good preview with a user-edited field and canvas drawing (prompt.md:273-286; judge.toml:165-168), plus library/history reload and restart (judge.toml:325-343,549-553,583-595; prompt.md:426-434). The restart proof has a false-success path: tests/test.sh:130-143,152-178 ignores a failed or ineffective kill of the old process group, launches a replacement, then probe_ready accepts any HTTP response from /api/health or /, without tying the listener to new_pid; tests/tools/restart_mcp.py:30-52 reports success solely from the helper exit code. A detached child listener can survive the group kill and serve all post-restart reads while its data exists only in memory. The indexed scripted golden reports matching S21/S37/S22 readbacks, and all 77 artifact hashes match; it does not exercise this counterexample. The index lacks a raw restart command/log and exact-current configured judge/Oracle/target-model measurements (evidence/35/assessment.json). Thus grading exercises core behavior, but S22 does not reliably prove required process-restart durability. A conforming app with another route or server-rendered read remains eligible under the clean-context gate; public network is not a same-origin demand.",
+  "counterexample": "Implement /app/server.js as a short launcher that spawns a detached Node child server and exits. Let the child keep snippets, histories and restore-attempt acknowledgements only in Maps. Render and Constraints pass because the child serves real UI writes and reads across clean browser contexts and reloads. At S22, test.sh records/kills the already-exited launcher process group, the detached child keeps port 3000, the replacement cannot bind, and probe_ready still sees the old child. restart_app reports success, and every post-restart read sees the unchanged in-memory state despite no storage surviving a real server restart.",
+  "suggested_fix": "In a coordinated canonical harness update, fail restart unless the old port-3000 listener has exited and the new launched server owns the ready listener; then freeze and remeasure the candidate.",
+  "run_verdict": "PARTIAL"
+}

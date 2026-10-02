@@ -1,0 +1,29 @@
+{
+  "number": 17,
+  "id": "solution_covers_every_deliverable",
+  "reviewer": "row-reviewer-17",
+  "input_sha256": "988cc513c1ccda1eec9563f88f73b3d673b5a7679727d55c68a85c2e7ca7985e",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/WebDev Rubrics QC.xlsx:Quality Checks row 18 (#17); Internal Quality Checks row 18; Deterministic Checks sheet",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/harbor-webdev-rubric-qc/references/quality-checks.md:row 17",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/projects/webdev-task-template/instruction.md",
+    "qc/README.md; qc/REVIEW_POLICY.md; NEW_TASK_AUTHORING_CONTEXT.md; TASK_AUTHORING_WORKFLOW.md",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/instruction.md; environment/instructions/{overview,behaviour,ui,integration,security,policy}.md; environment/assets/seed_data.json",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/solution/app/{src/app.tsx,src/custom-editor.js,src/runtime.ts,src/style.css,server.js,public/runner.html,package.json}; solution/solve.sh",
+    "qc/runs/coldwater-editor-2026-10-02-r1/manifest.json; preflight.json"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P1",
+  "evidence": "The reference broadly contains the requested editor/preview/console/library: app.tsx:129-155 renders these surfaces; custom-editor.js:8-20,214-402,557-704,755-891,948-1037 implements editor controls; runtime.ts:312-403 handles JS/HTML preview, rollback and console; server.js:65-119,147-169 implements saved revisions. But the explicit ui.md formatting promise (\"Formatting twice should not change the result again. One Undo restores the whole pre-format source\") fails in the reference. custom-editor.js:75 calls Prettier, :80 compares its result including the final newline with `before`, :81 calls pushUndo, and :83 strips that newline before storing the formatted source. Isolated invocation of the frozen Prettier dependency with `const x=1;` produced format 1 stored `const x = 1;`; format 2 returned `const x = 1;\\n`, so `result!==source` was true while stored source remained `const x = 1;`. Thus format 2 adds an unchanged undo snapshot, and one Undo after two Formats returns the already formatted source instead of the pre-format draft. This is a source/formatter confirmation, not a browser or configured-judge run. Relevant frozen hashes match manifest: ui.md 28d9d0b60ea03070672b4d71f21aa944cd43cde7847fe08625564c1902387363, custom-editor.js 686375a3fd9b6c8953220616c491cb348aeaaa3498820667cab7d14cb0fcee10, workbook 6d44970b2ff67fefad1e2327e743fc226fcd4c50ff55baf899f41069a9b3fd7f. No raw-evidence-index.json exists for this run, so no hosted or full-judge claim is inferred.",
+  "counterexample": "Paste `const x=1;`, choose Format document twice, then Undo once. The reference still shows `const x = 1;`; a conforming editor treats the second Format as a no-op and restores `const x=1;` with that Undo. A simple one-format check could miss this broken app.",
+  "suggested_fix": "Normalize Prettier output before the equality check and only push an undo snapshot when the source actually changes, then verify two Formats followed by one Undo and Redo in the browser.",
+  "run_verdict": "CONFIRMED"
+}

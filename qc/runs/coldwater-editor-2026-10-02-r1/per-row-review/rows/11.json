@@ -1,0 +1,41 @@
+{
+  "number": 11,
+  "id": "timeouts_fit_the_work",
+  "reviewer": "row-reviewer-11",
+  "input_sha256": "988cc513c1ccda1eec9563f88f73b3d673b5a7679727d55c68a85c2e7ca7985e",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/WebDev Rubrics QC.xlsx:Quality Checks!A12:D12",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/WebDev Rubrics QC.xlsx:Internal Quality Checks!A12:D12",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/WebDev Rubrics QC.xlsx:Deterministic Checks",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/harbor-webdev-rubric-qc/references/quality-checks.md:50-51",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md:53-63,98-119",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md:42-46",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/projects/webdev-task-template/task.toml",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/projects/webdev-task-template/tests/test.sh",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/projects/webdev-task-template/tests/gates/constraints/judge.toml",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/task.toml",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/tests/test.sh",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/tests/gates/render/judge.toml",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/tests/gates/constraints/judge.toml",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/tests/scored/functional/judge.toml",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/tests/scored/polish/judge.toml",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/tests/scored/visual/judge.toml",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/environment/Dockerfile",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/solution/solve.sh",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/coldwater-editor-2026-10-02-r1/preflight.json"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P1",
+  "evidence": "Workbook Quality Checks!A12:D12 and quality-checks.md:50-51 require timeout fit and nesting. Frozen task tests/gates/render/judge.toml:4 allows 600 s and tests/gates/constraints/judge.toml:4 allows 900 s. tests/test.sh:207 serializes agents with --max-concurrent-agent 1; :213 wraps the entire gate suite in timeout 1500. Thus gate judge allowances total 600+900=1500 s, leaving zero seconds for RewardKit startup, handoff, output, or scoring. The frozen template constraints judge timeout is 600 s, so this candidate raised that inner limit while retaining the template's 1500 s outer budget. The scored allowances total 9000+900+900=10800 s within 11100 s at test.sh:224; the suite budgets total 1500+11100=12600 s within task.toml:27 verifier 13200 s, leaving 600 s for launch/liveness/scoring. task.toml:18 agent 7200 s and :21 build 600 s are configured, but no measured agent, cold-build, or full configured judge durations were present. The run has no raw-evidence-index.json or runtime-evidence.json. preflight.json also records timeout nesting as false, but is arithmetic-only and not a full judge run. A fast broken static shell would fail its gate normally; it does not supply a false pass counterexample. No app or full judge was run for this independent read-only review.",
+  "counterexample": "A conforming app could require 599 s for the render judge and 899 s for constraints, both below their individual limits. More than 2 s of RewardKit startup and handoff then reaches the 1500 s outer gate limit; tests/test.sh:213-214 exits after that timeout, leaving the zero reward written at startup rather than a grade for the conforming app.",
+  "suggested_fix": "Keep a measured margin between the serial gate judges and the 1500 s suite budget by reducing gate work or timeouts; if measurement justifies a budget change, record the existing below-five-hour authorization and update only the necessary setting before a new frozen review.",
+  "run_verdict": "NOT EXERCISED"
+}

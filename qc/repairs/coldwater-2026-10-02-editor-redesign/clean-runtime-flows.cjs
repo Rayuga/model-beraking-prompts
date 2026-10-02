@@ -1,0 +1,35 @@
+const assert = require('node:assert/strict');
+const { chromium } = require('/usr/local/lib/node_modules/@playwright/mcp/node_modules/playwright');
+(async () => {
+  const browser = await chromium.launch({ executablePath: '/usr/local/bin/chromium', args: ['--no-sandbox', '--unsafely-treat-insecure-origin-as-secure=http://172.17.0.10:3000'] });
+  const context = await browser.newContext({ permissions: ['clipboard-read', 'clipboard-write'] });
+  const page = await context.newPage();
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto('http://172.17.0.10:3000/', { waitUntil: 'networkidle' });
+  const editor = page.getByRole('textbox', { name: 'Code editor' });
+  const frame = page.frameLocator('.preview-host iframe');
+  const write = async (source, filename) => {
+    await page.getByRole('textbox', { name: 'Filename' }).fill(filename);
+    await editor.click(); await page.keyboard.press('ControlOrMeta+A');
+    await page.evaluate(text => navigator.clipboard.writeText(text), source);
+    await page.keyboard.press('ControlOrMeta+V');
+    await page.waitForFunction(text => [...document.querySelectorAll('#editor .line .text')].map(el => el.textContent).join('\n') === text, source);
+  };
+  const run = async () => { await page.getByRole('button', { name: /^Run/ }).click(); await page.waitForTimeout(250); };
+  await write('document.body.innerHTML="<h1>good</h1><input id=entry value=old>";', 'test.js');
+  await run();
+  assert.equal(await frame.locator('h1').innerText(), 'good');
+  await frame.locator('#entry').fill('changed');
+  await write('const a=1;\nconst b=2;\nthrow new Error("boom-js");', 'test.js');
+  await run();
+  assert.match(await page.getByRole('log', { name: 'Console output' }).innerText(), /boom-js.*line 3/s);
+  assert.equal(await frame.locator('#entry').inputValue(), 'changed');
+  await write('<!doctype html>\n<html><body>\n<script>throw new Error("boom-html")</script>\n</body></html>', 'test.html');
+  await run();
+  assert.match(await page.getByRole('log', { name: 'Console output' }).innerText(), /boom-html.*line 3/s);
+  assert.equal(await frame.locator('#entry').inputValue(), 'changed');
+  assert.deepEqual(errors, []);
+  console.log(JSON.stringify({ jsErrorLine: true, htmlErrorLine: true, changedInputRecovery: true, pageErrors: 0 }));
+  await browser.close();
+})().catch(error => { console.error(error); process.exit(1); });

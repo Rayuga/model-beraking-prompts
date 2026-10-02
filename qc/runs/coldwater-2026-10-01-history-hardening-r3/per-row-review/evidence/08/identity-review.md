@@ -1,0 +1,15 @@
+# Row 08: task identity
+
+Frozen input: `80865100dd4b973cb1cfb54e92a812e3f989440975a22dd2519f5f5d5256e841`.
+
+The frozen workbook `rules/WebDev Rubrics QC.xlsx`, `Quality Checks!9` defines row 8 as coherence among name, directory slug, description, keywords and metadata. Its `Internal Quality Checks!9` adds no exception or annotation. The frozen skill's `references/quality-checks.md` section 8 directs comparison of `[task].name` with `turing/<dirname>` and the description, keywords, difficulty, explanation, category, provenance and arena slice with the product. `references/staged-task-contract.md:40-51` supplies the staged identity shape; `[task].version` is optional. I also read both populated workbook check inventories, the frozen skill, its deterministic reference, the frozen template `task.toml`, and `qc/REVIEW_POLICY.md`.
+
+The assignment binds the logical task slug `colderwater-playground-devtools`; the generic `.qc-cache/.../task` directory is a review snapshot. Frozen `task/task.toml:5` says `turing/colderwater-playground-devtools`. Lines 6-7 identify a JavaScript/HTML playground with isolated execution, preview recovery and a shared revision-history library. `task/instruction.md:1-3` asks for exactly that product, while `task/environment/instructions/overview.md:3-7`, `behaviour.md:5-13,25-40`, and `security.md:3-10` support those axes. `task/tests/app_context.md:3-14` names the same playground, shared library and screens without accounts.
+
+Frozen `task/task.toml:10-15` marks the difficulty hard and explains the isolation, stop/recovery and concurrent-revision problems. That matches the public notes. The programming category, browser/full-stack tags and Colderwater provenance are consistent. The `typescript-vite-react-codemirror-express-sqlite` arena slice is a description of the reference implementation: `task/solution/app/src/app.tsx:1-6` imports React and CodeMirror editor components from its bundled vendor file; `task/solution/app/package.json` uses Vite/TypeScript and Express/better-sqlite3. `task/environment/instructions/integration.md:3,13` makes frontend tools optional and requires Express/better-sqlite3. The metadata is not a hidden scoring requirement to use React or CodeMirror.
+
+Counterexample challenge: a task could carry this exact metadata but ship a dead app. Row 8 would still pass because it checks identity; runtime and product checks own the dead-app failure. Conforming alternative challenge: a working frontend built without React or CodeMirror remains allowed by `integration.md:3`; the metadata's reference-stack labels do not change the public requirement or rubric. Neither challenge exposes an identity contradiction.
+
+The current `raw-evidence-index.json` lists 77 artifacts; `python -B` SHA256 verification found zero missing or mismatched files. Those scripted golden artifacts are not needed to decide this static identity row and do not prove a configured judge, Oracle, Luna or portal result. No runtime run was performed for this row.
+
+Verdict: **Pass**; risk **false**. No identity defect found.

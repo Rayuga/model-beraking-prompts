@@ -1,4 +1,7 @@
-import { parse, fullWalk, html, IterMode } from './vendor.js';
+import { parse } from 'acorn';
+import { full as fullWalk } from 'acorn-walk';
+import { parser as htmlParser } from '@lezer/html';
+import { IterMode } from '@lezer/common';
 
 export const emptyDocument = '<!doctype html><html><head><style>body{font:16px system-ui;padding:24px;color:#1d3044;background:#f6f8fa}pre{white-space:pre-wrap}button{padding:8px 12px;margin:4px;border:1px solid #a6b9c8;border-radius:5px;background:#fff;color:#193848}</style></head><body><h1>Your preview</h1><pre id="out">Run a snippet to begin.</pre></body></html>';
 const policy = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; connect-src 'none'; frame-src 'none'; worker-src 'none'; form-action 'none'; base-uri 'none'";
@@ -283,7 +286,7 @@ function sandboxBootstrap(token, key) {
 function locatedHtml(code: string, marker: string) {
   const locations = new Map();
   const edits = [];
-  const tree = html().language.parser.parse(code.replace(/[A-Z]/g, char => char.toLowerCase()));
+  const tree = htmlParser.parse(code.replace(/[A-Z]/g, char => char.toLowerCase()));
   const cursor = tree.cursor(IterMode.IgnoreMounts);
   do {
     if (!['OpenTag', 'SelfClosingTag'].includes(cursor.name)) continue;

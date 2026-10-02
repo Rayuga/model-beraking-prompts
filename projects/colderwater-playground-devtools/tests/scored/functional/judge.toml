@@ -21,575 +21,208 @@ args = ["/tests/tools/restart_mcp.py", "$APP_RESTART_HELPER"]
 aggregation = "weighted_mean"
 
 [[criterion]]
-id = "cw_js_html_filename_dispatch"
-name = "cw_js_html_filename_dispatch"
+id = "cw_custom_typing_and_line_join"
+name = "cw_custom_typing_and_line_join"
 type = "binary"
-weight = 0.40
-description = "S02.js_html_filename_dispatch: JS and complete HTML execute in the mode selected by their .js and .html filenames alone."
+weight = 1.0
+description = """
+In a fresh draft, type two lines through the visible custom editor using real keys. At the start of the second line press Backspace once: require exactly one joined line with no missing or duplicate character. Undo once restores both lines. At the end of the first line press Delete once for the same exact join; Undo restores both. Real keyboard interaction and exact source readback are required.
+"""
 
 [[criterion]]
-id = "cw_js_fresh_document"
-name = "cw_js_fresh_document"
+id = "cw_caret_navigation_and_line_numbers"
+name = "cw_caret_navigation_and_line_numbers"
 type = "binary"
-weight = 0.25
-description = "S02.js_fresh_document: After the observed prior document, the later JS Run produces its own fresh-undefined preview and fresh-js-log without the old heading. Global freshness also requires S04's executed A setter/start and B DOM/log showing typeof window.__cancelLeak is undefined; cancellation timing need not pass."
+weight = 1.0
+description = """
+Use a three-line source whose middle line is shorter than both neighbors. With real Home, End and Arrow keys, verify the visible caret and line/column readout agree with text positions and displayed logical line numbers. ArrowDown onto the shorter line clamps the caret; ArrowDown again restores the intended longer-line column. Cross a newline with Left and Right. No source change is allowed.
+"""
 
 [[criterion]]
-id = "cw_later_interactions"
-name = "cw_later_interactions"
+id = "cw_grapheme_navigation_and_deletion"
+name = "cw_grapheme_navigation_and_deletion"
 type = "binary"
-weight = 0.60
-description = "S03.later_interactions: After each six-second idle interval, the completed preview handles the click and later focused key/input without rerunning source."
+weight = 1.0
+description = """
+Type or paste a line containing an emoji and a decomposed accented letter between ASCII characters. Real Arrow and Shift+Arrow actions must traverse and select each complete visible character, confirmed by copied text. One Backspace after the emoji and one Delete before the accented letter each remove only that whole grapheme; one Undo per action restores exact code points. Do not inspect editor internals or dispatch synthetic key events.
+"""
 
 [[criterion]]
-id = "cw_completed_stop"
-name = "cw_completed_stop"
+id = "cw_mouse_selection"
+name = "cw_mouse_selection"
 type = "binary"
-weight = 0.20
-description = "S03.completed_stop: After a completed preview and at least one of its authored handlers actually works, Stop reports stopped and prevents further old-handler output. Use the immediate-handler fallback when needed; delayed-interaction, preview-retention and later-recovery credit are not prerequisites. Removed/static/disabled controls after Stop can establish handler suppression, but not preview retention."
+weight = 1.0
+description = """
+In visible source with three distinct lines, use real mouse double-click to select exactly one word, triple-click to select exactly one logical line, and drag to select a range crossing a line break. Copy each live selection and compare exact text before replacing any part. A clicked decoration without a real editor selection fails.
+"""
 
 [[criterion]]
-id = "cw_completed_stop_preview"
-name = "cw_completed_stop_preview"
+id = "cw_block_indent_undo"
+name = "cw_block_indent_undo"
 type = "binary"
-weight = 0.10
-description = "S03.completed_stop_preview: The same Stop attempt retains the actual successful visible content recorded immediately before Stop, including the displayed input value. A static picture is valid; deleting, emptying or hiding that content is not preservation. Require a positively observed completed render, independently of handler suppression, Stop feedback, delayed interactions or subsequent recovery."
+weight = 1.0
+description = """
+Select at least two complete logical lines through the visible editor. Tab adds one consistent indent unit to each selected line without changing their text; Shift+Tab removes it. After another Tab, one Undo returns both lines to the prior state and one Redo reindents both. A selection ending at the next line's column zero must not indent that next line. Judge exact source, not the appearance alone.
+"""
 
 [[criterion]]
-id = "cw_supersede_pending"
-name = "cw_supersede_pending"
-type = "binary"
-weight = 1.00
-description = "S04.supersede_pending: After the matching four-second callback actually fires in the uncancelled control, B supersedes genuinely pending A: no additional A delayed log or thrown error appears, B stays completed, and no late A DOM or success becomes current. Fresh globals are owned by S02."
-
-[[criterion]]
-id = "cw_stop_pending_execution"
-name = "cw_stop_pending_execution"
-type = "binary"
-weight = 1.00
-description = "S04.stop_pending_execution: After the matching four-second callback actually fires in the uncancelled control, Stop reports cancellation and prevents the active timer's late log, thrown error and DOM replacement. Rollback and later recovery are separate outcomes."
-
-[[criterion]]
-id = "cw_stop_pending_rollback"
-name = "cw_stop_pending_rollback"
-type = "binary"
-weight = 0.70
-description = "S04.stop_pending_rollback: Stopping the positively observed active timer retains/restores the actual recorded stopLastGood render. Use the independently completed control when the preceding supersession trial did not produce a completed B. Provisional display is optional; do not inherit supersession, cancellation or later-recovery verdicts."
-
-[[criterion]]
-id = "cw_preview_origin_boundary"
-name = "cw_preview_origin_boundary"
-type = "binary"
-weight = 1.10
-description = "S05.preview_origin_boundary: With the successful own-document control, all four parent-document/storage operations are blocked, the forbidden snippet title is never applied, and the otherwise-unused storage key is unchanged. Legitimate app-owned title/status changes are allowed. Later ordinary execution is scored separately."
-
-[[criterion]]
-id = "cw_snippet_network_boundary"
-name = "cw_snippet_network_boundary"
-type = "binary"
-weight = 0.30
-description = "S07.snippet_network_boundary: With successful matching transport and ordinary-execution controls, separate fetch/Image runs visibly refuse or report blocked access with no extra deliveries/content. Score enforcement independently of preview preservation and the subsequent recovery Run."
-
-[[criterion]]
-id = "cw_network_refusal_preview"
-name = "cw_network_refusal_preview"
-type = "binary"
-weight = 0.10
-description = "S07.network_refusal_preview: For each observed explicit execution refusal, retain the most recently completed good preview recorded before that attempt. A caught blocked operation may instead complete its legitimate authored code with the expected observable effects; that branch requires no rollback. Both prescribed attempts need actual refusal/blocked evidence; absence alone is insufficient. Score this preview outcome independently of transport enforcement and later recovery."
-
-[[criterion]]
-id = "cw_network_recovery"
-name = "cw_network_recovery"
-type = "binary"
-weight = 0.10
-description = "S07.network_recovery: After the two attempted network runs, the subsequent ordinary own-document DOM update and console marker execute successfully. Retain this observed recovery credit independently of earlier enforcement or preview failures."
-
-[[criterion]]
-id = "cw_harmless_scope_words"
-name = "cw_harmless_scope_words"
-type = "binary"
-weight = 0.25
-description = "S08.harmless_scope_words: The HTML control's ordinary quoted object keys and data lookups, strings, comments and text render and log all five words successfully; its locally named Worker data and Function function also log ordinary-binding ordinary-function."
-
-[[criterion]]
-id = "cw_unsupported_execution_refused"
-name = "cw_unsupported_execution_refused"
-type = "binary"
-weight = 1.00
-description = "S08.unsupported_execution_refused: With an actually successful supported-code control, each of the five separate unsupported-family probes is clearly refused without claiming successful execution or producing its new authored marker log. Source text quoted in a refusal is not an execution log. Native CSP or equivalent clear refusal messages are valid. Score the refusal evidence independently of preserving the good render and subsequent recovery."
-
-[[criterion]]
-id = "cw_unsupported_refusal_preview"
-name = "cw_unsupported_refusal_preview"
-type = "binary"
-weight = 0.30
-description = "S08.unsupported_refusal_preview: Each of the five observed refused attempts retains/restores the actual most recent completed good preview recorded before that attempt. Actual refusal and a positively established good render are necessary evidence; a silent no-op or an allowed successful attempt does not prove refusal rollback. A later recovery failure does not erase valid preservation observations."
-
-[[criterion]]
-id = "cw_unsupported_execution_recovery"
-name = "cw_unsupported_execution_recovery"
-type = "binary"
-weight = 0.20
-description = "S08.unsupported_execution_recovery: After the five unsupported-family attempts, the new ordinary JavaScript DOM update and console marker execute successfully. Grade the actual recovery independently of earlier refusal or preview-preservation failures."
-
-[[criterion]]
-id = "cw_literal_loop_deadline"
-name = "cw_literal_loop_deadline"
-type = "binary"
-weight = 2.50
-description = "S09.literal_loop_deadline: The bounded braced, unbraced and Promise-callback loop controls first complete with their computed values. Both top-level infinite literal loops and the looping Promise callback then reach a visible timed-out state within the allowed budget margin, with a time-limit reason and early logs preserved; no later effects from those runs become current during the remaining observations. Grade these visible results, not hidden execution state. Rollback and later recovery have separate owners."
-
-[[criterion]]
-id = "cw_literal_loop_rollback"
-name = "cw_literal_loop_rollback"
-type = "binary"
-weight = 0.75
-description = "S09.literal_loop_rollback: Each loop timeout retains/restores recorded currentLastGood rather than a failed or empty candidate."
-
-[[criterion]]
-id = "cw_js_error_message"
-name = "cw_js_error_message"
-type = "binary"
-weight = 0.25
-description = "S10.js_error_message: The console identifies the not-a-function error involving forEeach."
-
-[[criterion]]
-id = "cw_js_error_line"
-name = "cw_js_error_line"
-type = "binary"
-weight = 0.25
-description = "S10.js_error_line: The error identifies line 4 of the exact entered JS source, without wrapper offsets."
-
-[[criterion]]
-id = "cw_js_error_rollback"
-name = "cw_js_error_rollback"
-type = "binary"
-weight = 0.80
-description = "S10.js_error_rollback: After successful A then distinct successful B, the JS failure restores B's text and visibly changed Preview note field, not A, the initial field value or failed-partial-dom. Later execution is scored separately."
-
-[[criterion]]
-id = "cw_html_error_message"
-name = "cw_html_error_message"
-type = "binary"
-weight = 0.25
-description = "S11.html_error_message: The console identifies undefinedFunctionCall from the complete HTML source."
-
-[[criterion]]
-id = "cw_html_error_line"
-name = "cw_html_error_line"
-type = "binary"
-weight = 0.25
-description = "S11.html_error_line: The error identifies script line 6 of the exact complete HTML document, including its markup and earlier matching ordinary paragraph text."
-
-[[criterion]]
-id = "cw_html_error_rollback"
-name = "cw_html_error_rollback"
-type = "binary"
-weight = 0.40
-description = "S11.html_error_rollback: The HTML failure restores recorded currentLastGood, not Failed HTML candidate. Later execution is scored separately."
-
-[[criterion]]
-id = "cw_timer_error_message"
-name = "cw_timer_error_message"
-type = "binary"
-weight = 0.25
-description = "S12.timer_error_message: Both JS and complete-HTML timer fixtures report their own thrown error marker as a failure."
-
-[[criterion]]
-id = "cw_timer_error_line"
-name = "cw_timer_error_line"
-type = "binary"
-weight = 0.25
-description = "S12.timer_error_line: The JS timer error identifies entered line 2 and the complete-HTML timer error identifies document line 6, including markup."
-
-[[criterion]]
-id = "cw_timer_error_rollback"
-name = "cw_timer_error_rollback"
-type = "binary"
-weight = 0.40
-description = "S12.timer_error_rollback: Both timer failures restore recorded currentLastGood instead of the failed candidate. Later execution is scored separately."
-
-[[criterion]]
-id = "cw_promise_error_message"
-name = "cw_promise_error_message"
-type = "binary"
-weight = 0.25
-description = "S13.promise_error_message: Error-object and plain-string unhandled rejections report their own error markers as failures in the specified JS and complete-HTML fixtures."
-
-[[criterion]]
-id = "cw_promise_error_line"
-name = "cw_promise_error_line"
-type = "binary"
-weight = 0.25
-description = "S13.promise_error_line: Both JS rejection fixtures identify entered line 2, and the complete-HTML rejection identifies document line 6, including markup. Plain-string reasons must not lose their location."
-
-[[criterion]]
-id = "cw_promise_error_rollback"
-name = "cw_promise_error_rollback"
-type = "binary"
-weight = 0.40
-description = "S13.promise_error_rollback: Each rejection restores recorded currentLastGood instead of its failed candidate. Later execution is scored separately."
-
-[[criterion]]
-id = "cw_console_level_stream"
-name = "cw_console_level_stream"
-type = "binary"
-weight = 0.60
-description = "S14.console_level_stream: The four authored console levels have their exact values, order and unambiguous level indicators; console.error alone is a log."
-
-[[criterion]]
-id = "cw_console_value_inspection"
-name = "cw_console_value_inspection"
-type = "binary"
-weight = 0.80
-description = "S15.console_value_inspection: App controls expose object properties, nested deep value and array elements rather than opaque summaries."
-
-[[criterion]]
-id = "cw_console_history"
-name = "cw_console_history"
-type = "binary"
-weight = 0.30
-description = "S16.console_history: Previously observed log entries remain while subsequent Runs actually append their distinct new markers, until Clear is used."
-
-[[criterion]]
-id = "cw_console_duration"
-name = "cw_console_duration"
-type = "binary"
-weight = 0.10
-description = "S16.console_duration: Observed successful short and delayed runs display elapsed durations consistent with their visibly measured lifetimes, allowing units, rounding and scheduling overhead. The delayed Run schedules its own timer; no duration update after a later preview interaction is required. A constant numeric placeholder does not pass."
-
-[[criterion]]
-id = "cw_console_clear_control"
-name = "cw_console_clear_control"
-type = "binary"
-weight = 0.20
-description = "S16.console_clear_control: Ordinary Clear removes prior rows; unrelated duration/status labels may remain."
-
-[[criterion]]
-id = "cw_autorun_debounce"
-name = "cw_autorun_debounce"
-type = "binary"
-weight = 0.90
-description = "S17.autorun_debounce: Enabled Auto-run waits for a typing pause, resets its wait on closer-spaced edits, then executes only the final version within about two seconds."
-
-[[criterion]]
-id = "cw_autorun_off_stays_idle"
-name = "cw_autorun_off_stays_idle"
-type = "binary"
-weight = 0.30
-description = "S17.autorun_off_stays_idle: First observe an authored edit execute automatically with Auto-run on and no manual Run. Then edits made with Auto-run already off remain unexecuted throughout the measured-delay-plus-margin window, and deliberate Run executes that exact pending source. A dead Auto-run feature cannot pass; correct debounce-reset behaviour is not a prerequisite."
-
-[[criterion]]
-id = "cw_autorun_off_cancels_queue"
-name = "cw_autorun_off_cancels_queue"
-type = "binary"
-weight = 0.40
-description = "S17.autorun_off_cancels_queue: After observing an authored edit execute automatically with Auto-run on, disable it before a further edit's measured debounce expires. That queued edit stays unexecuted for the full observation window and then executes through deliberate Run. A dead Auto-run feature cannot pass; correct debounce-reset behaviour is not a prerequisite."
-
-[[criterion]]
-id = "cw_manual_run_independent_of_autorun"
-name = "cw_manual_run_independent_of_autorun"
-type = "binary"
-weight = 0.40
-description = "S17.manual_run_independent_of_autorun: Ordinary Run executes authored code with Auto-run both on and off; the on-state proof has no pending edit debounce."
-
-[[criterion]]
-id = "cw_editor_monospace"
-name = "cw_editor_monospace"
-type = "binary"
-weight = 0.10
-description = "S19.editor_monospace: The populated editor uses a monospaced face."
-
-[[criterion]]
-id = "cw_editor_line_numbers"
-name = "cw_editor_line_numbers"
-type = "binary"
-weight = 0.15
-description = "S19.editor_line_numbers: The editor displays actual line numbers for entered source."
-
-[[criterion]]
-id = "cw_editor_syntax_colouring"
-name = "cw_editor_syntax_colouring"
-type = "binary"
-weight = 0.25
-description = "S19.editor_syntax_colouring: JS and complete HTML each have visible syntax colouring under their corresponding filenames."
-
-[[criterion]]
-id = "cw_saved_record_fidelity"
-name = "cw_saved_record_fidelity"
-type = "binary"
-weight = 0.40
-description = "S21.saved_record_fidelity: New drafts save as distinct exact records; loading restores each one's fields. S23's current Save updates its existing identity rather than adding another."
-
-[[criterion]]
-id = "cw_saved_records_browser_reload"
-name = "cw_saved_records_browser_reload"
-type = "binary"
-weight = 0.50
-description = "S21.saved_records_browser_reload: Both saved identities and exact fields remain retrievable after browser reload."
-
-[[criterion]]
-id = "cw_process_restart_durability"
-name = "cw_process_restart_durability"
-type = "binary"
-weight = 1.80
-description = "S22.process_restart_durability: The one process restart preserves every actual saved record's recorded identity, title, filename, exact source and revision, each present exactly once, including S21's HTML Beta and the JavaScript restart fixture. Compare the whole recorded collection, ignoring order and unrelated display metadata. A later Save failure does not erase these observed readbacks."
-
-[[criterion]]
-id = "cw_process_restart_write"
-name = "cw_process_restart_write"
-type = "binary"
-weight = 0.50
-description = "S22.process_restart_write: After the same completed restart, a valid current-revision Save changes only its target, advances its revision and persists on a fresh read. Use the independent fresh-record fallback if the pre-restart target is unavailable; do not inherit the durability verdict."
-
-[[criterion]]
-id = "cw_stale_save_server_refusal"
-name = "cw_stale_save_server_refusal"
-type = "binary"
-weight = 1.80
-description = "S23.stale_save_server_refusal: In both successive trials with editor roles reversed, an otherwise-valid stale Save is refused with newer fields/revision unchanged. The successful newer Save is its control; S21 owns update fidelity."
-
-[[criterion]]
-id = "cw_stale_save_draft_preservation"
-name = "cw_stale_save_draft_preservation"
-type = "binary"
-weight = 1.40
-description = "S23.stale_save_draft_preservation: In both successive trials with editor roles reversed, the actual dirty editor gets useful conflict feedback and retains all exact unsaved fields after the stale Save attempt. Proactive prevention is valid. Observe these fields before deliberately reloading; later current-revision saving has a separate owner."
-
-[[criterion]]
-id = "cw_callback_shared_run_deadline"
-name = "cw_callback_shared_run_deadline"
-type = "binary"
-weight = 1.00
-description = "S36.callback_shared_run_deadline: A working short nested-timer control produces its completion marker. With both delays increased to three seconds, the outer callback's entry marker appears, the run reports a time-limit reason within the allowed margin, and the inner callback's completion marker never appears in the current preview or console throughout S36's ten-second observation. The original run must not later claim success. These visible effects establish the shared-budget outcome without claiming hidden callback termination. Preview restoration and later recovery are separate."
-
-[[criterion]]
-id = "cw_callback_timeout_rollback"
-name = "cw_callback_timeout_rollback"
-type = "binary"
-weight = 0.35
-description = "S36.callback_timeout_rollback: The timed-out callback retains/restores recorded currentLastGood rather than failed-loop-candidate; provisional display is optional."
-
-[[criterion]]
-id = "cw_js_error_recovery"
-name = "cw_js_error_recovery"
-type = "binary"
-weight = 0.10
-description = "S10.js_error_recovery: After the observed js failure, a new valid Run produces its own rendered and logged recovery markers. Do not inherit rollback, error-message or line-number verdicts."
-
-[[criterion]]
-id = "cw_html_error_recovery"
-name = "cw_html_error_recovery"
-type = "binary"
-weight = 0.10
-description = "S11.html_error_recovery: After the observed html failure, a new valid Run produces its own rendered and logged recovery markers. Do not inherit rollback, error-message or line-number verdicts."
-
-[[criterion]]
-id = "cw_timer_error_recovery"
-name = "cw_timer_error_recovery"
-type = "binary"
-weight = 0.10
-description = "S12.timer_error_recovery: After the observed timer failure, a new valid Run produces its own rendered and logged recovery markers. Do not inherit rollback, error-message or line-number verdicts."
-
-[[criterion]]
-id = "cw_promise_error_recovery"
-name = "cw_promise_error_recovery"
-type = "binary"
-weight = 0.10
-description = "S13.promise_error_recovery: After the observed promise failure, a new valid Run produces its own rendered and logged recovery markers. Do not inherit rollback, error-message or line-number verdicts."
-
-[[criterion]]
-id = "cw_terminal_durations"
-name = "cw_terminal_durations"
-type = "binary"
-weight = 0.10
-description = "S16.terminal_durations: Already-observed failed, stopped and timed-out runs also show elapsed durations consistent with their recorded lifetimes. Judge the duration evidence independently of rollback or later recovery."
-
-[[criterion]]
-id = "cw_save_load_execution_canary"
-name = "cw_save_load_execution_canary"
-type = "binary"
-weight = 0.20
-description = "S21.save_load_execution_canary: Saving, updating and loading the carrier as text cause no observable execution side effect on its dedicated monitor record, with matching successful write controls. Attribute browser-originated requests separately; this bounded canary is not proof that all server evaluation is absent."
-
-[[criterion]]
-id = "cw_completed_stop_recovery"
-name = "cw_completed_stop_recovery"
-type = "binary"
-weight = 0.10
-description = "S03.completed_stop_recovery: After the Stop attempt on a completed preview, the subsequent ordinary Run produces both completed-stop-recovered DOM and completed-stop-recovered-log. Score later execution independently of the Stop and delayed-handler results."
-
-[[criterion]]
-id = "cw_pending_stop_recovery"
-name = "cw_pending_stop_recovery"
-type = "binary"
-weight = 0.20
-description = "S04.pending_stop_recovery: After attempting Stop during the observed pending timer, a subsequent short ordinary Run produces its own DOM and console markers. Keep this observed later execution independent of cancellation and rollback."
-
-[[criterion]]
-id = "cw_origin_boundary_recovery"
-name = "cw_origin_boundary_recovery"
-type = "binary"
-weight = 0.15
-description = "S05.origin_boundary_recovery: After the parent-access attempts, the final ordinary own-document DOM update and console marker succeed. Grade this observation independently of whether the parent-access boundary held."
-
-[[criterion]]
-id = "cw_literal_loop_recovery"
-name = "cw_literal_loop_recovery"
-type = "binary"
-weight = 0.25
-description = "S09.literal_loop_recovery: After the three supported loop attempts, the subsequent ordinary recovery snippet renders and logs timeout-recovered. Score that actual new execution independently of the deadline and preview-restoration observations."
-
-[[criterion]]
-id = "cw_callback_deadline_recovery"
-name = "cw_callback_deadline_recovery"
-type = "binary"
-weight = 0.15
-description = "S36.callback_deadline_recovery: After the nested-callback attempt, the final ordinary source renders shared-deadline-recovered and logs shared-deadline-recovered-log, without old work replacing them. Grade this later execution independently of timeout enforcement or rollback."
-
-[[criterion]]
-id = "cw_stale_save_reapply"
-name = "cw_stale_save_reapply"
-type = "binary"
-weight = 0.60
-description = "S23.stale_save_reapply: In both trials with editor roles reversed, deliberately loading the latest copy, reapplying the recorded dirty fields and saving through the UI succeeds under the same identity with advanced revision and exact fresh readback. Use the recorded pre-attempt draft even if its preservation failed. Earlier refusal, feedback or preservation verdicts are not prerequisites."
-
-[[criterion]]
-id = "cw_pending_html_supersession"
-name = "cw_pending_html_supersession"
-type = "binary"
-weight = 0.2
-description = "S04.pending_html_supersession: After the matching uncancelled A callback actually works, a complete HTML Run replaces genuinely pending A. Its actual replacement render remains current and completed, with no additional A delayed log, thrown error or late DOM/status takeover through the bounded observation window. Grade independently of the JS replacement trial; no sibling verdict is a prerequisite."
-
-[[criterion]]
-id = "cw_completed_error_message"
-name = "cw_completed_error_message"
-type = "binary"
-weight = 0.2
-description = "S03.completed_error_message: A real later button action on a positively observed completed preview produces the authored late-interaction-failure message as an error. Use the bounded fixture after an idle interval, independently of its line number, restored render or earlier Stop outcomes."
-
-[[criterion]]
-id = "cw_completed_error_line"
-name = "cw_completed_error_line"
-type = "binary"
-weight = 0.2
-description = "S03.completed_error_line: The later button failure identifies line 5 of the exact entered JS fixture, with equivalent clear one-based source-line presentation accepted. Observe the failure itself; message fidelity and rollback have separate owners."
-
-[[criterion]]
-id = "cw_completed_error_rollback"
-name = "cw_completed_error_rollback"
-type = "binary"
-weight = 0.2
-description = "S03.completed_error_rollback: The later button failure restores the actual most recent successful render, without its failed-partial-picture mutation. Use the successful Commit picture render when observed; if that action fails, the positively completed initial recovery render is the fallback baseline. Static restoration is valid. Message fidelity, source-line accuracy and earlier Stop outcomes are not prerequisites."
-
-[[criterion]]
-id = "cw_manual_consumes_queue"
-name = "cw_manual_consumes_queue"
-type = "binary"
-weight = 0.7
-description = "S17.manual_consumes_queue: After a positively working Auto-run, manual Run during a genuinely pending debounce executes the edited source exactly once through the measured observation window."
-
-[[criterion]]
-id = "cw_document_switch_cancels_queue"
-name = "cw_document_switch_cancels_queue"
-type = "binary"
-weight = 0.4
-description = "S17.document_switch_cancels_queue: With positively observed Auto-run, pending edited source markers do not run after New or loading a saved source. Preserve this result independently of whether opening the new source itself executes."
-
-[[criterion]]
-id = "cw_document_switch_open_does_not_run"
-name = "cw_document_switch_open_does_not_run"
-type = "binary"
-weight = 0.3
-description = "S17.document_switch_open_does_not_run: Opening New or a known saved source does not itself execute that source with Auto-run enabled, both during the queued trials and when no edit is pending. A later real edit can still auto-execute. Preserve this result independently of cancellation of older queued work."
-
-[[criterion]]
-id = "cw_history_snapshots"
-name = "cw_history_snapshots"
-type = "binary"
-weight = 1.2
-description = "S37.history_snapshots: Each accepted saved revision remains browsable with its original exact title, filename and source; later saves do not mutate older snapshots. Use actual accepted versions rather than assuming numbering."
-
-[[criterion]]
-id = "cw_history_inspection_draft"
-name = "cw_history_inspection_draft"
-type = "binary"
-weight = 0.3
-description = "S37.history_inspection_draft: Inspecting an older revision leaves the actual three-field dirty draft unchanged. Judge the editor independently of whether the saved head also remains unchanged."
-
-[[criterion]]
-id = "cw_history_inspection_saved_head"
-name = "cw_history_inspection_saved_head"
-type = "binary"
-weight = 0.3
-description = "S37.history_inspection_saved_head: A fresh saved-record read after inspecting an older revision still matches the last accepted Save. Read-only inspection must not restore or otherwise change the saved head; dirty-editor retention has separate credit."
-
-[[criterion]]
-id = "cw_history_inspection_no_execution"
-name = "cw_history_inspection_no_execution"
-type = "binary"
-weight = 0.4
-description = "S37.history_inspection_no_execution: With an observed working Run/console control, inspecting saved sources does not execute their authored console markers."
-
-[[criterion]]
-id = "cw_history_restore"
-name = "cw_history_restore"
+id = "cw_multi_caret_typing_atomic"
+name = "cw_multi_caret_typing_atomic"
 type = "binary"
 weight = 2.0
-description = "S37.history_restore: Each observed deliberate restore, including another fresh attempt to the same historical target, copies all historical fields into a new advanced current revision of the same identity, retaining intervening snapshots unchanged. A prior attempt's cached result is not a fresh restore."
+description = """
+Use one ordinary click and two real Alt+Click or Ctrl/Cmd+Click actions to place three visible carets after distinct words on three lines. Type the five characters MULTI as normal sequential keys. Require the suffix once at each caret and nowhere else. One Undo removes all fifteen inserted characters; one Redo restores them. Multiple key events that require multiple Undo actions fail. Do not set the caret model programmatically.
+"""
 
 [[criterion]]
-id = "cw_restore_retry"
-name = "cw_restore_retry"
-type = "binary"
-weight = 2.0
-description = "S37.restore_retry: The actual UI retry after a controlled lost reply and the logical-request retries acknowledge the same committed restore without another write or revision. Repeating that attempt after a later successful Save still returns its original result and leaves the newer head intact."
-
-[[criterion]]
-id = "cw_history_reload"
-name = "cw_history_reload"
-type = "binary"
-weight = 0.5
-description = "S37.history_reload: All actually recorded history snapshots and revision identities survive browser reload unchanged and without duplicate entries."
-
-[[criterion]]
-id = "cw_history_stale_restore"
-name = "cw_history_stale_restore"
+id = "cw_multi_caret_delete"
+name = "cw_multi_caret_delete"
 type = "binary"
 weight = 1.5
-description = "S37.history_stale_restore: After an actual newer Save, an otherwise-valid restore based on the old revision is refused, leaving current fields and history unchanged. Use a new attempt identity; a retry of an already committed restore is a different operation."
+description = """
+Establish two visible carets after different line-ending characters with real modifier-clicks. One Backspace removes one complete character at each; one Undo restores both. Establish two carets before different first characters. One Delete removes both first characters; one Undo restores both. Adjacent lines and other source must remain exact.
+"""
 
 [[criterion]]
-id = "cw_history_stale_restore_draft"
-name = "cw_history_stale_restore_draft"
+id = "cw_find_forward_backward_wrap"
+name = "cw_find_forward_backward_wrap"
 type = "binary"
-weight = 0.8
-description = "S37.history_stale_restore_draft: The real stale restoring editor receives useful conflict feedback while keeping its exact unsaved title, filename and source. Clear proactive prevention is valid; request replay alone cannot establish draft preservation."
+weight = 1.0
+description = """
+Use a draft with three case-sensitive occurrences of a distinctive literal on different lines and a differently cased near-match. Use the visible Find control and real keyboard Next/Previous actions to visit all three in document order, wrap forward and backward, and copy the active match each time. The near-match must not count. Do not treat decorative highlights as an active selection.
+"""
 
 [[criterion]]
-id = "cw_racing_saves"
-name = "cw_racing_saves"
+id = "cw_replace_current"
+name = "cw_replace_current"
 type = "binary"
-weight = 1.2
-description = "S38.racing_saves: Two otherwise-valid Saves dispatched together from the same revision produce exactly one accepted whole-record winner, one conflict, and one new history revision. Rejecting both or accepting both fails."
+weight = 1.0
+description = """
+With three literal matches, choose the middle one through the visible Find flow and Replace current once. Require only that occurrence to change, the others and surrounding source unchanged, and one Undo/Redo to reverse/reapply the one replacement. Do not let a different active match count as the requested middle replacement.
+"""
 
 [[criterion]]
-id = "cw_racing_save_restore"
-name = "cw_racing_save_restore"
+id = "cw_replace_all_atomic"
+name = "cw_replace_all_atomic"
+type = "binary"
+weight = 1.5
+description = """
+In a fresh draft with at least four literal matches across lines and one differently cased near-match, use Replace all once. Require exactly the four intended replacements and unchanged near-match. One Undo restores every original occurrence and one Redo reapplies all. A new edit after Undo must clear that Redo; neither operation saves the draft automatically.
+"""
+
+[[criterion]]
+id = "cw_js_semantic_coloring"
+name = "cw_js_semantic_coloring"
+type = "binary"
+weight = 1.5
+description = """
+Enter valid JavaScript containing a function declaration name, a keyword, a quoted string, a number, a comment, and a call of that function. Inspect the rendered editor text and computed visible styles, not source code or CSS selectors. Require distinct treatments for keyword, function name at declaration and call, string, number and comment; the function name must not inherit the keyword or string treatment. The source text must remain exact. No fixed RGB values are required.
+"""
+
+[[criterion]]
+id = "cw_html_semantic_coloring"
+name = "cw_html_semantic_coloring"
+type = "binary"
+weight = 1.0
+description = """
+Enter complete HTML with a tag name, attribute name, quoted attribute value and comment. Inspect the rendered editor text and computed visible styles. Each category must be distinguishable by the offered colour/treatment, with source text unchanged. Do not require a particular DOM tag or CSS class in the editor.
+"""
+
+[[criterion]]
+id = "cw_js_format_semantics_and_undo"
+name = "cw_js_format_semantics_and_undo"
 type = "binary"
 weight = 2.0
-description = "S38.racing_save_restore: A valid Save racing a distinct valid restore from the same revision produces one accepted whole-record winner, one conflict and exactly one additional snapshot, without mixed fields or phantom history."
+description = """
+Paste a compact one-line valid JavaScript function with nested if/loop blocks, a string containing braces and semicolons, and a comment. Activate Format document. Require readable multiple lines with consistent two-space nesting and exact literal/comment preservation. Run the formatted source and compare its computed preview result with the original. Formatting again must produce identical text. One Undo restores the exact original one-line source and one Redo restores the formatted source.
+"""
 
 [[criterion]]
-id = "cw_history_restart"
-name = "cw_history_restart"
+id = "cw_html_format_semantics_and_undo"
+name = "cw_html_format_semantics_and_undo"
 type = "binary"
-weight = 0.8
-description = "S22.history_restart: The one completed process restart preserves the actually recorded history snapshots and revision identities of the controlled fixtures, unchanged and without duplication. Current-record survival is independently scored."
+weight = 1.5
+description = """
+Paste a compact complete HTML document with nested tags, an attribute value containing a greater-than sign, a comment, and inline JavaScript. Format it through the UI. Require readable lines with consistent two-space nesting, preserved attribute/comment/script meaning and the same rendered preview. A second Format is idempotent. One Undo returns the exact original source; Redo returns the formatted source. Separately submit an invalid HTML draft: a useful formatting error must leave its exact source intact.
+"""
 
 [[criterion]]
-id = "cw_restore_retry_restart"
-name = "cw_restore_retry_restart"
+id = "cw_long_line_editing"
+name = "cw_long_line_editing"
 type = "binary"
-weight = 0.8
-description = "S22.restore_retry_restart: After the same completed process restart, the same logical previously committed restore attempt, with fresh incidental transport metadata if needed, still returns its original result without modifying the current record or adding history. A successful pre-restart restore is the required positive control."
+weight = 1.0
+description = """
+Use a valid one-line JavaScript draft at least 500 characters long with unique start, middle and tail markers. Horizontally scroll the visible editor to reach the tail, then use real mouse/keyboard editing to change only that marker. Confirm the complete source before and after, including intact start/middle markers, and Run to show the changed tail output. Finding the tail through a search control alone does not prove horizontal reachability.
+"""
+
+[[criterion]]
+id = "cw_html_preview"
+name = "cw_html_preview"
+type = "binary"
+weight = 1.0
+description = """
+Enter a complete .html document with a heading, inline button handler and console marker. Run it through the visible editor. Require the heading in the preview, an interactive button update and the expected console marker. The document must be executed as HTML rather than shown as escaped source. A .js extension is not a valid substitute.
+"""
+
+[[criterion]]
+id = "cw_error_message_and_line"
+name = "cw_error_message_and_line"
+type = "binary"
+weight = 1.0
+description = """
+First run a valid JavaScript control and a successful complete HTML file with an inline script. Then run JavaScript with a deliberate thrown error on a known nonfirst line and a complete HTML file with a deliberate inline-script error below preceding markup. For each failure, require the authored error message and a one-based line number relative to the actual entered source in the visible console. An arbitrary constant line number or copied source text fails.
+"""
+
+[[criterion]]
+id = "cw_last_good_recovery"
+name = "cw_last_good_recovery"
+type = "binary"
+weight = 2.0
+description = """
+Run a successful preview with an input and a 2D canvas, then change the input value and canvas drawing through its ordinary controls. Run a failing candidate. Require the most recent actual successful visible state, including changed input value and canvas pixels, to return without rerunning source. A static restored picture is valid. A later ordinary Run must still work.
+"""
+
+[[criterion]]
+id = "cw_timeout_stop_and_supersession"
+name = "cw_timeout_stop_and_supersession"
+type = "binary"
+weight = 1.5
+description = """
+Establish a working short timer control. Start a source-written endless loop or callback chain and require a visible time-limit reason within a bounded wait, restoration of the last-good picture and later ordinary recovery. In separate attempts start a delayed marker, then immediately Run a distinct newer marker; repeat with Stop. Wait past the old marker's delay in both cases. The old marker must never appear later in the current preview/console/status. Give the five-second budget normal scheduling margin; do not demand hidden thread termination or subsecond reaction.
+"""
+
+[[criterion]]
+id = "cw_preview_boundary"
+name = "cw_preview_boundary"
+type = "binary"
+weight = 1.5
+description = """
+Prove ordinary own-preview DOM and console activity works. Then attempt parent-document/origin-storage access and a separate user-authored network request from the preview. Require the parent/library data to remain untouched and no network delivery, with clear refusal or blocked-effect evidence. App-owned external resources are allowed. Test harmless quoted or commented mentions as a positive control. Then try real eval, Function, WebAssembly, Worker and dynamic import in separate small drafts; each must be refused with clear feedback without losing the last good preview.
+"""
+
+[[criterion]]
+id = "cw_save_reload_restart"
+name = "cw_save_reload_restart"
+type = "binary"
+weight = 1.5
+description = """
+Use New to create one snippet with exact title, filename and source through the editor, Save once and record identity, revision and history. Reload and read from an independent clean browser context: require exact fields and one record. Then use the verifier-provided restart_app tool once; after a completed restart, a fresh page must show the same identity, revision, fields and history. Do not infer restart from reload or health alone. If the restart tool fails, report unavailable restart evidence rather than declaring a product failure.
+"""
+
+[[criterion]]
+id = "cw_stale_save_draft_safety"
+name = "cw_stale_save_draft_safety"
+type = "binary"
+weight = 1.5
+description = """
+Open the same saved revision in two ordinary editor contexts. Save a changed exact title/filename/source from A. Change all three fields in B and attempt its stale Save. Require refusal or clear proactive prevention, useful conflict feedback, B's exact unsaved fields retained, and a fresh server read showing only A's whole accepted record and one advanced revision. Reverse editor roles in a second valid trial. A rejected request with unrelated invalid fields is not evidence.
+"""
+
+[[criterion]]
+id = "cw_history_restore_retry"
+name = "cw_history_restore_retry"
+type = "binary"
+weight = 1.5
+description = """
+Build three saved revisions of one identity through valid UI Saves. Inspect an older snapshot and require its exact fields without mutating the current saved head or dirty draft. Restore that snapshot deliberately: require a new advanced revision, older and intervening snapshots intact. Retry the same already committed restore operation through the offered UI/observed request contract and require no additional revision; a genuinely new restore action is allowed to create one. A stale restore after a newer Save must be refused without changing the saved head.
+"""

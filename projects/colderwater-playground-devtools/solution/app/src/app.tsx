@@ -1,4 +1,6 @@
-import { React, ReactDOM, EditorView, EditorState, basicSetup, Prec, keymap, indentWithTab, Compartment, javascript, html, darkEditor } from './vendor.js';
+import React from 'react';
+import * as ReactDOM from 'react-dom/client';
+import { mountCodeEditor } from './custom-editor.js';
 import { PreviewRunner, language } from './runtime';
 import './style.css';
 
@@ -36,7 +38,6 @@ function App() {
   const [conflict, setConflict] = useState(null);
   const [recoveryDraft, setRecoveryDraft] = useState(null);
   const editorHost = useRef(null), editor = useRef(null), previewHost = useRef(null), runner = useRef(null), consoleHost = useRef(null), following = useRef(true);
-  const languageCompartment = useRef(new Compartment()), themeCompartment = useRef(new Compartment());
   const current = useRef(null), commands = useRef(null), initialised = useRef(false);
   const autoTimer = useRef(null), skipAuto = useRef(false);
   const dirty = code !== baseline.code || title !== baseline.title || filename !== baseline.filename;
@@ -81,7 +82,7 @@ function App() {
     setPendingRestore(request); setSaveBusy(true);
     try {
       const restored = await api(request.url, 'POST', request.body);
-      openRecord(restored, true); setStatus(`Restored as revision ${restored.revision}`); await refresh();
+      openRecord(restored, true); setPendingRestore(request); setStatus(`Restored as revision ${restored.revision}`); await refresh();
     } catch (error) {
       log('error', [error.message]); setStatus('Restore was not confirmed. Your draft is kept; retry the same attempt or reload latest.');
       if (error.data?.code === 'REVISION_CONFLICT') setConflict({ current: error.data.current, message: error.message });
@@ -105,12 +106,12 @@ function App() {
   }
   commands.current = { run, save: () => save(), clear };
   useEffect(() => {
-    editor.current = new EditorView({ parent: editorHost.current, state: EditorState.create({ doc: '', extensions: [basicSetup, Prec.highest(keymap.of([indentWithTab, { key: 'Mod-Enter', run: () => (commands.current.run(), true) }, { key: 'Mod-s', run: () => (commands.current.save(), true) }, { key: 'Mod-Shift-k', run: () => (commands.current.clear(), true) }])), languageCompartment.current.of(javascript()), themeCompartment.current.of(darkEditor), EditorView.contentAttributes.of({ 'aria-label': 'Code editor', 'aria-describedby': 'keyboard-help' }), EditorView.updateListener.of(update => { if (update.docChanged) setCode(update.state.doc.toString()); })] }) });
+    editor.current = mountCodeEditor(editorHost.current, { onChange: setCode, run: () => commands.current.run(), save: () => commands.current.save() });
     runner.current = new PreviewRunner(previewHost.current, log, setRunStatus);
     return () => { editor.current.destroy(); runner.current.destroy(); };
   }, []);
-  useEffect(() => { if (editor.current && editor.current.state.doc.toString() !== code) editor.current.dispatch({ changes: { from: 0, to: editor.current.state.doc.length, insert: code } }); }, [code]);
-  useEffect(() => { const mode = language(filename); editor.current?.dispatch({ effects: languageCompartment.current.reconfigure(mode === 'html' ? html() : javascript()) }); }, [filename]);
+  useEffect(() => { if (editor.current && editor.current.getValue() !== code) editor.current.setValue(code); }, [code]);
+  useEffect(() => { editor.current?.setMode(language(filename)); }, [filename]);
   useEffect(() => { document.documentElement.dataset.theme = 'dark'; }, []);
   useEffect(() => { cancelAuto(); if (skipAuto.current) { skipAuto.current = false; return; } if (auto) autoTimer.current = setTimeout(run, 700); return cancelAuto; }, [code, filename, auto, loadEpoch]);
   useEffect(() => { let disposed = false; if (!record) { setHistory([]); return; } api('/api/snippets/' + record.id + '/history').then(items => { if (!disposed) setHistory(items); }).catch(error => { if (!disposed) log('error', [error.message]); }); return () => { disposed = true; }; }, [record?.id, record?.revision]);

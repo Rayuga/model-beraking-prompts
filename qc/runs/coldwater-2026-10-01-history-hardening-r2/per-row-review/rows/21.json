@@ -1,0 +1,36 @@
+{
+  "number": 21,
+  "id": "verifier_entrypoint_is_safe_and_always_scores",
+  "reviewer": "row-reviewer-21",
+  "input_sha256": "b10dbfae5ccc478c0bc422ac98a58494148a3c9c1df7b5b226d2b3a9a73f8863",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r2/rules/WebDev Rubrics QC.xlsx: Quality Checks A22:D22 (quality row 21), complete Quality Checks/Deterministic Checks inventories, Internal Quality Checks A22:D22 (no additional row annotations/comments)",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r2/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r2/rules/harbor-webdev-rubric-qc/references/quality-checks.md: row 21",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r2/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md: tests/test.sh and tests/tools contracts",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r2/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md: verifier/scoring/shared-file procedures",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r2/rules/projects/webdev-task-template/tests/test.sh",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r2/task/tests/test.sh",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r2/task/tests/tools/score.py",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r2/task/tests/tools/restart_mcp.py",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r2/task/tests/Dockerfile",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r2/task/instruction.md",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r2/task/environment/instructions/integration.md",
+    "qc/README.md; qc/REVIEW_POLICY.md",
+    "NEW_TASK_AUTHORING_CONTEXT.md and TASK_AUTHORING_WORKFLOW.md: current review entry point and process-cleanup/restart guidance",
+    "qc/runs/coldwater-2026-10-01-history-hardening-r2/raw-evidence-index.json: scope/limits and all 60 listed artifact hashes",
+    "qc/runs/coldwater-2026-10-01-history-hardening-r2/per-row-review/evidence/21/results.json; hash-verification.json; probe.py; run-metadata.json"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P1",
+  "evidence": "The frozen task tests/test.sh is byte-identical to the frozen template (SHA256 bd68259276ca4b034654efc8a1723a4e702ed62dbe590af6201565f43eabe5aa). Its initial zero/trap (lines 14-22, 60-61), unprivileged sanitized launch (101-110), symlink refusal (72-83), liveness-before-grading (113-124), and gates/scored order with score.py (211-227) follow the intended contract by inspection. However, cleanup sends TERM then waits without a bound before ensure_reward (33-39). The generated restart helper sends TERM, stops waiting after 50 checks, and accepts any HTTP listener without asserting old-group termination or replacement-PID liveness (153-183); restart_mcp.py:44-47 translates that zero exit to unconditional restart success. Provider-free isolated execution of the exact frozen scripts confirmed the defect: ordinary cleanup exited in 0.556s and ordinary restart changed live PID 64 to 89; resistant old PID 118 remained alive, new PID 194 died with EADDRINUSE, HTTP still identified PID 118, but the actual MCP returned isError=false and 'server was relaunched' after 5.204s. Cleanup was still blocked after the bounded 2s observation and exited only after the probe killed the old process group. Initial reward.txt/reward.json remained valid zero throughout, so this is not a demonstrated missing-reward event. Raw results and logs: per-row-review/evidence/21/results.json and resistant_cleanup_restart/app-restart.log; exact command/image/source and artifact hashes: evidence/21/run-metadata.json. All 60 preexisting index artifact hashes matched (evidence/21/hash-verification.json), but their stated scope is scripted product evidence, not full configured grading. The observed unsafe restart/cleanup behavior belongs to the shared template and is user-deferred; it remains an unresolved risk, not a task-edit request or a Pass. No full configured judge run or scored-app counterexample was performed.",
+  "counterexample": "Broken-app possibility: an otherwise interactive server keeps snippets only in memory and ignores SIGTERM. The provided restart can report success while the same old server and its memory survive; a persistence readback can then credit durability without any process replacement. The exact process/restart failure is reproduced by the fixture; a complete app score was not measured. Conforming alternative risk: a fully functional durable implementation may install a SIGTERM handler that delays or omits exit, behavior not constrained by integration.md; the same unbounded cleanup can hold the verifier indefinitely despite preserved reward files. An ordinary terminating server is the measured positive control, and full product conformance is not claimed for either fixture.",
+  "suggested_fix": "Retain the user-deferred shared-template finding; when shared-harness repair is authorized, bound TERM cleanup with KILL escalation while preserving reward/exit status, require the old group to stop and replacement PID to remain alive before restart success, and validate both ordinary and resistant-process cases before freezing a new candidate.",
+  "run_verdict": "CONFIRMED"
+}

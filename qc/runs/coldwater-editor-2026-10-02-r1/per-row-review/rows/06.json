@@ -1,0 +1,43 @@
+{
+  "number": 6,
+  "id": "instruction_is_achievable_and_unambiguous_in_the_environment",
+  "reviewer": "row-reviewer-06",
+  "input_sha256": "988cc513c1ccda1eec9563f88f73b3d673b5a7679727d55c68a85c2e7ca7985e",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/WebDev Rubrics QC.xlsx:Quality Checks!A7:D7 (quality row 6)",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/WebDev Rubrics QC.xlsx:Internal Quality Checks!A7:D7 (historical no-network annotation; current public-network row controls)",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/WebDev Rubrics QC.xlsx:Deterministic Checks (read all populated rows for context)",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/harbor-webdev-rubric-qc/SKILL.md:Evidence standard and scope",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/harbor-webdev-rubric-qc/references/quality-checks.md:quality check 6",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md:task.toml and cross-file agreements",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/projects/webdev-task-template/instruction.md",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/projects/webdev-task-template/environment/instructions/integration.md:3-9",
+    "qc/REVIEW_POLICY.md:Tool feasibility and workload sections",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/instruction.md:1-7",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/environment/instructions/overview.md:1-5",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/environment/instructions/behaviour.md:1-11",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/environment/instructions/integration.md:1-9",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/environment/instructions/policy.md:1-5",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/environment/instructions/ui.md:1-17",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/environment/instructions/security.md:1-5",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/environment/Dockerfile:1-26",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/environment/assets/seed_data.json:1-4",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/task.toml:17-38",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/tests/test.sh:85-111,147-167",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/tests/scored/functional/judge.toml:cw_timeout_stop_and_supersession and cw_save_reload_restart",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/solution/app/src/runtime.ts:139-141,204-210,265-280,372-385",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/solution/app/server.js:8"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P1",
+  "evidence": "The public integration note says saved snippets and revisions must survive restarts and that authors may choose routes and frontend tools (integration.md:5-7; policy.md:3), but never states that the storage path must honor DB_PATH. The frozen template states this explicitly (rules/projects/webdev-task-template/environment/instructions/integration.md:7-9), and the verifier sets DB_PATH to /app/app.db or /tmp/submission/app.db depending on writability, then reuses it on restart (tests/test.sh:90-111,163-167). This leaves a reasonable durable-storage implementation without the hidden path contract vulnerable to an environment-dependent failure. A second ambiguity is the phrase 'five-second run budget' (behaviour.md:5): it does not define when a completed preview's later user interaction starts a new budget. The reference implementation resets its deadline only after settled work and a trusted interaction (solution/app/src/runtime.ts:265-280), but another reasonable implementation could keep the original Run deadline. The seed has no snippets (seed_data.json:1-4), Node 22/Express/better-sqlite3 are supplied (environment/Dockerfile:1-12), and public network is allowed (task.toml:20-24), so the requested capabilities appear technically reachable; this is an instruction clarity failure, not an observed impossibility. No raw-evidence-index.json existed at review time and no full runtime run was performed for this row.",
+  "counterexample": "A builder persists every save and revision in /app/library.sqlite, restarts over that file, and lets users edit and run correctly. This follows the public persistence wording, but when /app is unwritable the verifier executes a copy under /tmp/submission and supplies DB_PATH=/tmp/submission/app.db; the app's hard-coded /app path can fail even though the author was never told about DB_PATH. Independently, an app that keeps a five-second deadline from the Run click can time out an otherwise normal button click made after a completed preview sits open for more than five seconds, whereas an app that begins a new budget for that interaction would allow it.",
+  "suggested_fix": "State the DB_PATH contract and writable default path in integration.md, and define when the five-second deadline starts, ends, and restarts for completed previews and later user interactions; keep the verifier and criterion wording aligned with those public rules.",
+  "run_verdict": "NOT EXERCISED"
+}

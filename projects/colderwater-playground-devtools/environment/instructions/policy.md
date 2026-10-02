@@ -1,7 +1,5 @@
-# A few product choices
+# Choices left to you
 
-This is a local development tool with one shared library. There's no account data or authentication to build. Several tabs can still edit the same saved record, so the conflict handling in /instructions/behaviour.md matters.
+This is one local shared workspace, without sign-in or private accounts. You may choose the layout, labels, routes, database schema and error wording. A parser or formatter library is fine; the document editing surface itself must be your own implementation as described in ui.md.
 
-You can choose the layout, control labels, indentation width, API routes and request fields. Keep the behavior consistent between the workspace and saved records. When something isn't supported, explain it and leave the rest of the app usable.
-
-Please build your own interface. There isn't a supplied starter implementation. Network access is available during development and when using the app. External browser assets are allowed; the saved library still belongs to the local server and SQLite database.
+Use the public behavior in these notes as the contract. The examples are ways to explain it, not exact selectors, CSS classes or implementation requirements. Keep the finished app usable when a draft contains invalid source or a save is refused.

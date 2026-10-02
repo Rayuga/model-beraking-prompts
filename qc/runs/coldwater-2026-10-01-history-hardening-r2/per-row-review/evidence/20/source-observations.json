@@ -1,0 +1,688 @@
+{
+  "task/solution/solve.sh": [
+    {
+      "line": 1,
+      "text": "#!/bin/bash"
+    },
+    {
+      "line": 2,
+      "text": "set -euo pipefail"
+    },
+    {
+      "line": 3,
+      "text": ""
+    },
+    {
+      "line": 4,
+      "text": "mkdir -p /app"
+    },
+    {
+      "line": 5,
+      "text": "source_app=\"$(cd -- \"$(dirname -- \"$0\")/app\" && pwd -P)\""
+    },
+    {
+      "line": 6,
+      "text": "test -f \"$source_app/server.js\""
+    },
+    {
+      "line": 37,
+      "text": "rm -f -- /app/app.db /app/app.db-wal /app/app.db-shm"
+    },
+    {
+      "line": 38,
+      "text": "cp -a \"$source_app/.\" /app/"
+    }
+  ],
+  "task/environment/assets/seed_data.json": [
+    {
+      "line": 1,
+      "text": "{"
+    },
+    {
+      "line": 2,
+      "text": "  \"snippets\": [],"
+    },
+    {
+      "line": 3,
+      "text": "  \"note\": \"No saved snippets are supplied in this seed. Build a JavaScript and HTML playground with durable revision history.\""
+    },
+    {
+      "line": 4,
+      "text": "}"
+    }
+  ],
+  "task/solution/app/server.js": [
+    {
+      "line": 56,
+      "text": "  if (body.revision !== current.revision) {"
+    },
+    {
+      "line": 57,
+      "text": "    throw problem('This snippet changed in another editor. Your edits are kept; reload the latest version before trying again.', 409, 'REVISION_CONFLICT', current);"
+    },
+    {
+      "line": 58,
+      "text": "  }"
+    },
+    {
+      "line": 59,
+      "text": "}"
+    },
+    {
+      "line": 60,
+      "text": "function snapshot(record, restoredFrom = null) {"
+    },
+    {
+      "line": 61,
+      "text": "  db.prepare('INSERT INTO snippet_revisions (snippet_id, revision, title, filename, code, created_at, restored_from) VALUES (?, ?, ?, ?, ?, ?, ?)')"
+    },
+    {
+      "line": 62,
+      "text": "    .run(record.id, record.revision, record.title, record.filename, record.code, record.updated_at, restoredFrom);"
+    },
+    {
+      "line": 63,
+      "text": "}"
+    },
+    {
+      "line": 64,
+      "text": ""
+    },
+    {
+      "line": 65,
+      "text": "app.get('/api/snippets', (_req, res) => res.json(db.prepare('SELECT * FROM snippets ORDER BY updated_at DESC, id DESC').all()));"
+    },
+    {
+      "line": 67,
+      "text": "app.post('/api/snippets', (req, res) => {"
+    },
+    {
+      "line": 68,
+      "text": "  const result = db.transaction(() => {"
+    },
+    {
+      "line": 69,
+      "text": "    const value = fields(req.body);"
+    },
+    {
+      "line": 70,
+      "text": "    const inserted = db.prepare('INSERT INTO snippets (title, filename, code, revision, updated_at) VALUES (?, ?, ?, 1, ?)')"
+    },
+    {
+      "line": 71,
+      "text": "      .run(value.title, value.filename, value.code, new Date().toISOString());"
+    },
+    {
+      "line": 72,
+      "text": "    const created = findRecord(Number(inserted.lastInsertRowid));"
+    },
+    {
+      "line": 73,
+      "text": "    snapshot(created);"
+    },
+    {
+      "line": 74,
+      "text": "    return created;"
+    },
+    {
+      "line": 75,
+      "text": "  }).immediate();"
+    },
+    {
+      "line": 76,
+      "text": "  res.status(201).json(result);"
+    },
+    {
+      "line": 77,
+      "text": "});"
+    },
+    {
+      "line": 78,
+      "text": "app.put('/api/snippets/:id', (req, res) => {"
+    },
+    {
+      "line": 79,
+      "text": "  const result = db.transaction(() => {"
+    },
+    {
+      "line": 80,
+      "text": "    const current = findRecord(recordId(req.params.id));"
+    },
+    {
+      "line": 81,
+      "text": "    matchingRevision(req.body, current);"
+    },
+    {
+      "line": 82,
+      "text": "    const value = fields(req.body);"
+    },
+    {
+      "line": 83,
+      "text": "    db.prepare('UPDATE snippets SET title = ?, filename = ?, code = ?, revision = revision + 1, updated_at = ? WHERE id = ?')"
+    },
+    {
+      "line": 84,
+      "text": "      .run(value.title, value.filename, value.code, new Date().toISOString(), current.id);"
+    },
+    {
+      "line": 85,
+      "text": "    const saved = findRecord(current.id);"
+    },
+    {
+      "line": 86,
+      "text": "    snapshot(saved);"
+    },
+    {
+      "line": 87,
+      "text": "    return saved;"
+    },
+    {
+      "line": 88,
+      "text": "  }).immediate();"
+    },
+    {
+      "line": 89,
+      "text": "  res.json(result);"
+    },
+    {
+      "line": 90,
+      "text": "});"
+    },
+    {
+      "line": 95,
+      "text": "app.post('/api/snippets/:id/restore', (req, res) => {"
+    },
+    {
+      "line": 96,
+      "text": "  const result = db.transaction(() => {"
+    },
+    {
+      "line": 97,
+      "text": "    const current = findRecord(recordId(req.params.id));"
+    },
+    {
+      "line": 98,
+      "text": "    const { sourceRevision, operationId } = req.body || {};"
+    },
+    {
+      "line": 99,
+      "text": "    if (!Number.isSafeInteger(sourceRevision) || sourceRevision < 1 || typeof operationId !== 'string' || !operationId || operationId.length > 160) {"
+    },
+    {
+      "line": 100,
+      "text": "      throw problem('Choose a saved revision and retry this restore from its original editor.');"
+    },
+    {
+      "line": 101,
+      "text": "    }"
+    },
+    {
+      "line": 102,
+      "text": "    const prior = db.prepare('SELECT * FROM restore_operations WHERE snippet_id = ? AND operation_id = ?').get(current.id, operationId);"
+    },
+    {
+      "line": 103,
+      "text": "    if (prior) {"
+    },
+    {
+      "line": 104,
+      "text": "      if (prior.base_revision !== req.body.revision || prior.source_revision !== sourceRevision) throw problem('This restore attempt already refers to different work.', 409, 'OPERATION_CONFLICT');"
+    },
+    {
+      "line": 105,
+      "text": "      return JSON.parse(prior.result_json);"
+    },
+    {
+      "line": 106,
+      "text": "    }"
+    },
+    {
+      "line": 107,
+      "text": "    matchingRevision(req.body, current);"
+    },
+    {
+      "line": 108,
+      "text": "    const old = db.prepare('SELECT * FROM snippet_revisions WHERE snippet_id = ? AND revision = ?').get(current.id, sourceRevision);"
+    },
+    {
+      "line": 109,
+      "text": "    if (!old) throw problem('That saved revision was not found.', 404, 'NOT_FOUND');"
+    },
+    {
+      "line": 110,
+      "text": "    db.prepare('UPDATE snippets SET title = ?, filename = ?, code = ?, revision = revision + 1, updated_at = ? WHERE id = ?')"
+    },
+    {
+      "line": 111,
+      "text": "      .run(old.title, old.filename, old.code, new Date().toISOString(), current.id);"
+    },
+    {
+      "line": 112,
+      "text": "    const restored = findRecord(current.id);"
+    },
+    {
+      "line": 113,
+      "text": "    snapshot(restored, sourceRevision);"
+    },
+    {
+      "line": 114,
+      "text": "    db.prepare('INSERT INTO restore_operations (snippet_id, operation_id, base_revision, source_revision, result_json) VALUES (?, ?, ?, ?, ?)')"
+    },
+    {
+      "line": 115,
+      "text": "      .run(current.id, operationId, current.revision, sourceRevision, JSON.stringify(restored));"
+    },
+    {
+      "line": 116,
+      "text": "    return restored;"
+    },
+    {
+      "line": 117,
+      "text": "  }).immediate();"
+    },
+    {
+      "line": 118,
+      "text": "  res.json(result);"
+    },
+    {
+      "line": 141,
+      "text": ""
+    },
+    {
+      "line": 142,
+      "text": "app.listen(Number(process.env.PORT || 3000), '0.0.0.0', () => {"
+    },
+    {
+      "line": 143,
+      "text": "  fs.mkdirSync(path.dirname(databasePath), { recursive: true });"
+    },
+    {
+      "line": 144,
+      "text": "  const connection = new Database(databasePath, { timeout: 5000 });"
+    },
+    {
+      "line": 145,
+      "text": "  connection.pragma('journal_mode = WAL');"
+    },
+    {
+      "line": 146,
+      "text": "  connection.pragma('foreign_keys = ON');"
+    },
+    {
+      "line": 147,
+      "text": "  connection.exec(`CREATE TABLE IF NOT EXISTS snippets ("
+    },
+    {
+      "line": 148,
+      "text": "    id INTEGER PRIMARY KEY AUTOINCREMENT,"
+    },
+    {
+      "line": 149,
+      "text": "    title TEXT NOT NULL,"
+    },
+    {
+      "line": 150,
+      "text": "    filename TEXT NOT NULL,"
+    },
+    {
+      "line": 151,
+      "text": "    code TEXT NOT NULL,"
+    },
+    {
+      "line": 152,
+      "text": "    revision INTEGER NOT NULL DEFAULT 1 CHECK(revision > 0),"
+    },
+    {
+      "line": 153,
+      "text": "    updated_at TEXT NOT NULL"
+    },
+    {
+      "line": 154,
+      "text": "  )`);"
+    },
+    {
+      "line": 155,
+      "text": "  const columns = connection.prepare('PRAGMA table_info(snippets)').all();"
+    },
+    {
+      "line": 156,
+      "text": "  if (!columns.some(c => c.name === 'revision')) connection.exec('ALTER TABLE snippets ADD COLUMN revision INTEGER NOT NULL DEFAULT 1');"
+    },
+    {
+      "line": 157,
+      "text": "  connection.exec(`CREATE TABLE IF NOT EXISTS snippet_revisions ("
+    },
+    {
+      "line": 158,
+      "text": "    snippet_id INTEGER NOT NULL REFERENCES snippets(id) ON DELETE CASCADE,"
+    },
+    {
+      "line": 159,
+      "text": "    revision INTEGER NOT NULL,"
+    },
+    {
+      "line": 160,
+      "text": "    title TEXT NOT NULL, filename TEXT NOT NULL, code TEXT NOT NULL,"
+    },
+    {
+      "line": 161,
+      "text": "    created_at TEXT NOT NULL, restored_from INTEGER,"
+    },
+    {
+      "line": 162,
+      "text": "    PRIMARY KEY (snippet_id, revision)"
+    },
+    {
+      "line": 163,
+      "text": "  ); CREATE TABLE IF NOT EXISTS restore_operations ("
+    },
+    {
+      "line": 164,
+      "text": "    snippet_id INTEGER NOT NULL REFERENCES snippets(id) ON DELETE CASCADE,"
+    },
+    {
+      "line": 165,
+      "text": "    operation_id TEXT NOT NULL, base_revision INTEGER NOT NULL, source_revision INTEGER NOT NULL,"
+    },
+    {
+      "line": 166,
+      "text": "    result_json TEXT NOT NULL, PRIMARY KEY (snippet_id, operation_id)"
+    },
+    {
+      "line": 167,
+      "text": "  ); INSERT OR IGNORE INTO snippet_revisions (snippet_id, revision, title, filename, code, created_at)"
+    },
+    {
+      "line": 168,
+      "text": "    SELECT id, revision, title, filename, code, updated_at FROM snippets;`);"
+    },
+    {
+      "line": 169,
+      "text": "  db = connection;"
+    },
+    {
+      "line": 170,
+      "text": "  console.log('Colderwater ready on port ' + (process.env.PORT || 3000));"
+    },
+    {
+      "line": 171,
+      "text": "});"
+    }
+  ],
+  "task/solution/app/src/app.tsx": [
+    {
+      "line": 44,
+      "text": "  function log(level, values) { setEntries(previous => [...previous.slice(-999), { level, values, id: crypto.randomUUID() }]); }"
+    },
+    {
+      "line": 77,
+      "text": "    if (saveBusy || !current.current.record || (!retry && !selectedRevision)) return;"
+    },
+    {
+      "line": 78,
+      "text": "    const request = retry ? pendingRestore : { url: '/api/snippets/' + current.current.record.id + '/restore', body: { revision: current.current.record.revision, sourceRevision: selectedRevision.revision, operationId: crypto.randomUUID() } };"
+    },
+    {
+      "line": 79,
+      "text": "    if (!request) return;"
+    },
+    {
+      "line": 80,
+      "text": "    if (!retry && !confirm('Restore this saved revision as a new current revision?')) return;"
+    },
+    {
+      "line": 81,
+      "text": "    setPendingRestore(request); setSaveBusy(true);"
+    },
+    {
+      "line": 82,
+      "text": "    try {"
+    },
+    {
+      "line": 83,
+      "text": "      const restored = await api(request.url, 'POST', request.body);"
+    },
+    {
+      "line": 84,
+      "text": "      openRecord(restored, true); setStatus(`Restored as revision ${restored.revision}`); await refresh();"
+    },
+    {
+      "line": 85,
+      "text": "    } catch (error) {"
+    },
+    {
+      "line": 86,
+      "text": "      log('error', [error.message]); setStatus('Restore was not confirmed. Your draft is kept; retry the same attempt or reload latest.');"
+    },
+    {
+      "line": 87,
+      "text": "      if (error.data?.code === 'REVISION_CONFLICT') setConflict({ current: error.data.current, message: error.message });"
+    },
+    {
+      "line": 88,
+      "text": "    } finally { setSaveBusy(false); }"
+    },
+    {
+      "line": 130,
+      "text": "    h('div', { className: 'commandbar' }, h('div', null,"
+    },
+    {
+      "line": 131,
+      "text": "      h('button', { className: 'primary', onClick: run }, 'Run ', h('kbd', null, 'Ctrl ↵')), h('button', { onClick: () => runner.current.stop('Run cancelled') }, 'Stop'), h('label', { className: 'check' }, h('input', { type: 'checkbox', checked: auto, onChange: event => { cancelAuto(); setAuto(event.target.checked); } }), 'Auto-run')),"
+    },
+    {
+      "line": 132,
+      "text": "      h('span', { className: 'runstatus', role: 'status' }, status, duration !== null ? ` · ${duration.toFixed(1)} ms` : '')),"
+    },
+    {
+      "line": 133,
+      "text": "    h('main', { className: 'workspace', style: { gridTemplateColumns: `minmax(0,${width}fr) 8px minmax(0,${100 - width}fr)` } },"
+    },
+    {
+      "line": 134,
+      "text": "      h('section', { className: 'editor pane', 'aria-label': 'Editor' }, h('div', { className: 'paneheading' }, h('h2', null, '01 / Editor'), h('span', { className: dirty ? 'dirty' : '' }, `${record ? `Loaded #${record.id} · revision ${record.revision}` : 'New snippet'} · ${dirty ? 'Unsaved changes' : 'Unchanged'}`)),"
+    },
+    {
+      "line": 135,
+      "text": "        h('div', { className: 'filebar' }, h('label', null, 'Title', h('input', { 'aria-label': 'Snippet title', value: title, onChange: event => setTitle(event.target.value) })), h('label', null, 'Filename', h('input', { 'aria-label': 'Filename', value: filename, onChange: event => setFilename(event.target.value) })), h('button', { onClick: () => save(), disabled: saveBusy }, saveBusy ? 'Saving…' : 'Save')),"
+    },
+    {
+      "line": 136,
+      "text": "        conflict && h('div', { className: 'conflict-notice', role: 'alert' }, h('strong', null, 'This snippet changed in another editor.'), h('p', null, 'Your draft is still here. Load the latest saved revision before saving or restoring.'), h('button', { onClick: loadLatest }, 'Reload latest')),"
+    },
+    {
+      "line": 137,
+      "text": "        recoveryDraft && !conflict && h('div', { className: 'draft-notice' }, 'Your previous draft is available.', h('button', { onClick: () => { setCode(recoveryDraft.code); setFilename(recoveryDraft.filename); setTitle(recoveryDraft.title); setRecoveryDraft(null); setStatus('Previous draft restored over the loaded revision — review, then Save'); } }, 'Restore previous draft')),"
+    },
+    {
+      "line": 138,
+      "text": "        h('div', { ref: editorHost, className: 'codehost' }),"
+    },
+    {
+      "line": 139,
+      "text": "        h('div', { className: 'library' }, h('div', { className: 'paneheading' }, h('h3', null, 'Saved snippets ', h('span', null, snippets.length)), h('div', { className: 'tools' }, h('button', { onClick: newSnippet }, 'New'))),"
+    },
+    {
+      "line": 140,
+      "text": "          h('div', { className: 'snippetlist', 'aria-label': 'Saved snippets' }, snippets.length ? snippets.map(item => h('button', { key: item.id, 'aria-pressed': item.id === record?.id, onClick: () => openRecord(item) }, item.title, h('small', null, item.filename))) : h('p', null, 'No saved snippets yet. Save your first experiment above.')),"
+    },
+    {
+      "line": 141,
+      "text": "          record && h('section', { className: 'history', 'aria-label': 'Revision history' }, h('h3', null, 'Revision history'),"
+    },
+    {
+      "line": 142,
+      "text": "            h('div', { className: 'history-list' }, history.map(item => h('button', { key: item.revision, 'aria-pressed': selectedRevision?.revision === item.revision, onClick: () => setSelectedRevision(item) }, `Revision ${item.revision}`, item.restored_from ? ` · restored from ${item.restored_from}` : ''))),"
+    },
+    {
+      "line": 143,
+      "text": "            selectedRevision && h('div', { className: 'revision-preview' }, h('strong', null, `${selectedRevision.title} · ${selectedRevision.filename}`), h('pre', { 'aria-label': 'Historical source' }, selectedRevision.code), h('button', { disabled: saveBusy, onClick: () => restoreRevision() }, 'Restore selected revision')),"
+    },
+    {
+      "line": 144,
+      "text": "            pendingRestore && h('button', { disabled: saveBusy, onClick: () => restoreRevision(true) }, 'Retry same restore'))"
+    }
+  ],
+  "task/solution/app/src/runtime.ts": [
+    {
+      "line": 24,
+      "text": "  const nonce = crypto.randomUUID().replaceAll('-', '');"
+    },
+    {
+      "line": 85,
+      "text": "  const now = performance.now.bind(performance);"
+    },
+    {
+      "line": 135,
+      "text": "  const timers = new Set();"
+    },
+    {
+      "line": 136,
+      "text": "  let started = now(), deadline = started + 4900, failed = false, initialDone = false, settled = false, callbacks = 0, settleTimer = null;"
+    },
+    {
+      "line": 137,
+      "text": "  const send = (kind, data = {}) => sendNative({ token, kind, ...data }, '*');"
+    },
+    {
+      "line": 138,
+      "text": "  function check() { if (failed || now() > deadline) { failed = true; throw new Error('Execution stopped: five-second time limit'); } }"
+    },
+    {
+      "line": 139,
+      "text": "  Object.defineProperty(globalThis, key, { value: check });"
+    },
+    {
+      "line": 310,
+      "text": "  const kind = language(filename);"
+    },
+    {
+      "line": 311,
+      "text": "  if (!kind) throw new Error('Filename must end in .js or .html.');"
+    },
+    {
+      "line": 312,
+      "text": "  const guard = '__cw_' + crypto.randomUUID().replaceAll('-', '');"
+    },
+    {
+      "line": 313,
+      "text": "  const nonce = crypto.randomUUID().replaceAll('-', '');"
+    },
+    {
+      "line": 314,
+      "text": "  const locationAttribute = 'data-cw-source-' + nonce;"
+    },
+    {
+      "line": 315,
+      "text": "  const located = kind === 'html' ? locatedHtml(code, locationAttribute) : null;"
+    },
+    {
+      "line": 330,
+      "text": "    if (attribute.name.toLowerCase().startsWith('on')) {"
+    },
+    {
+      "line": 331,
+      "text": "      const id = 'handler-' + crypto.randomUUID(); element.setAttribute('data-cw-handler', id);"
+    },
+    {
+      "line": 332,
+      "text": "      const at = location(element)?.handlers.get(attribute.name.toLowerCase()) || 0;"
+    },
+    {
+      "line": 374,
+      "text": "  run(code, filename) {"
+    },
+    {
+      "line": 375,
+      "text": "    if (this.active) this.onEntry('info', ['Previous run cancelled']);"
+    },
+    {
+      "line": 376,
+      "text": "    this.clearTimer(); this.token = crypto.randomUUID(); this.started = performance.now(); this.active = true; this.rollback = this.lastGood; this.candidate = this.lastGood; this.rollbackForms = this.lastGoodForms; this.candidateForms = this.lastGoodForms;"
+    },
+    {
+      "line": 377,
+      "text": "    try { this.html = buildRun(code, filename, this.token); }"
+    }
+  ],
+  "task/tests/scored/functional/prompt.md": [
+    {
+      "line": 428,
+      "text": "About 15 actions plus the single restart and readbacks. Run after S37 and S38."
+    },
+    {
+      "line": 429,
+      "text": ""
+    },
+    {
+      "line": 430,
+      "text": "1. Using only New and Save, create QC Restart Primary (restart.js, console.log('restart-original');). Save an update console.log('restart-before-restart');. Record the whole current library's actual identities, title, filename, exact source and revision from normal UI or observed product-data responses. Include S21 and the gate's records without modifying them. For the Primary and S37/S38 history fixtures, record the actual available revision snapshots. Capture S37's successful restore request and original result for its post-restart retry. If history or restore is missing, retain those product failures and still collect ordinary record evidence and perform the one restart."
+    },
+    {
+      "line": 431,
+      "text": "2. Call the verifier MCP tool restart_app exactly once, wait for its completed restart, and open a fresh page at http://localhost:3000. Reload alone is not restart. Compare every recorded current record and its exact fields/revision, each present once. Ignore order and display-only metadata. This observation owns process_restart_durability, independently of history or later writing."
+    },
+    {
+      "line": 432,
+      "text": "3. Compare all recorded history snapshots and revision identities for the controlled fixtures. No prior snapshot may disappear, change or duplicate. If no history exists, this outcome has no successful control and fails; do not convert missing product history into a tooling error. This owns history_restart."
+    },
+    {
+      "line": 433,
+      "text": "4. Replay S37's exact successful restore request once with the same attempt identity after restart. The response identifies its original committed result; a fresh read of the current record and history is unchanged. This owns restore_retry_restart, independently of ordinary history survival. If no restore could succeed beforehand, this product feature lacks its required control."
+    },
+    {
+      "line": 434,
+      "text": "5. Update Primary with its actual current revision to console.log('restart-after-save'); and confirm fresh readback and an advanced revision with unrelated records unchanged. If Primary was lost, create a fresh New/Save control and update it instead. This independently owns process_restart_write; do not inherit the durability verdict."
+    },
+    {
+      "line": 462,
+      "text": "### S37 — saved_history_and_restore"
+    },
+    {
+      "line": 463,
+      "text": ""
+    },
+    {
+      "line": 464,
+      "text": "About 55 UI actions and bounded observed-request replays. Keep Auto-run off. Use actual controls and discover data shapes from their successful requests; no guessed endpoints, IDs, revision field names or operation-token names. A browser request replay may inspect server outcomes but cannot establish dirty-editor preservation. Missing history or restore is an observed product failure, not missing tooling. Continue unrelated checks. Do not require timestamps, a particular revision numbering base, numeric increments of exactly one, a specific API verb, or exact labels. Revisions must be distinct, advance and identify their snapshots."
+    },
+    {
+      "line": 477,
+      "text": "About 18 UI actions and two paired request dispatches. Use dedicated New/Save fixtures. Discover Save and restore request formats from successful UI actions in S23/S37; if needed establish a separate valid Save or restore control on a disposable fixture. Never guess application API paths or invent a successful control. Start requests together in a single browser call with Promise.all, against the same observed current revision; do not deliberately sequence completion. Exact interleaving and which operation wins are not prescribed."
+    },
+    {
+      "line": 478,
+      "text": ""
+    },
+    {
+      "line": 479,
+      "text": "1. Create a snippet and save a second version so it has real current history. Prepare two otherwise-valid Save requests with distinct complete fields, each referring to that same current revision. Dispatch both together. Exactly one is accepted and exactly one is refused as a conflict. Fresh current record and history identify one coherent winner, with exactly one new revision and no loser's partial fields or phantom revision. This owns racing_saves. A service that rejects both cannot pass, and sequential stale evidence is not a substitute for this paired dispatch."
+    },
+    {
+      "line": 480,
+      "text": "2. On a separate fixture with a successful historical restore control, establish a new current revision. Prepare a valid Save of distinct complete fields and a valid restore of an actual older snapshot, using a fresh restore-attempt identity and the same current base revision. Dispatch together. Exactly one is accepted, one conflicts, and fresh head/history contain precisely the winner's whole fields and one additional revision. This owns racing_save_restore independently of the Save/Save race. It does not regrade ordinary stale rejection or retry behavior. If either product operation is missing, record that missing feature and preserve other observations. Keep these records for the S22 readbacks."
+    }
+  ],
+  "rules/harbor-webdev-rubric-qc/references/quality-checks.md": [
+    {
+      "line": 100,
+      "text": "### 23 · verifier_and_instruction_agree_on_the_runtime_contract"
+    },
+    {
+      "line": 101,
+      "text": "**Verify:** every launch assumption in `test.sh` — port, entry file, `DB_PATH`, seed path, injected environment variables, liveness path — is something the brief told the agent to satisfy. This is the signature check of the format."
+    },
+    {
+      "line": 102,
+      "text": "**Known false positive:** an identity or sign-in surface is house convention and need not be spelled out in the brief; a criterion that signs in is not a contract mismatch."
+    },
+    {
+      "line": 103,
+      "text": ""
+    },
+    {
+      "line": 104,
+      "text": "### 24 · grading_wiring_is_structurally_correct"
+    }
+  ]
+}

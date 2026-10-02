@@ -1,0 +1,41 @@
+{
+  "number": 42,
+  "id": "reward_ranking_is_monotone",
+  "reviewer": "row-reviewer-42",
+  "input_sha256": "988cc513c1ccda1eec9563f88f73b3d673b5a7679727d55c68a85c2e7ca7985e",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/WebDev Rubrics QC.xlsx:Quality Checks!A43:E43 and Internal Quality Checks!A43:E43",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/harbor-webdev-rubric-qc/references/quality-checks.md:172-173",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/projects/webdev-task-template/tests/scoring.toml",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/projects/webdev-task-template/tests/gates/constraints/judge.toml",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/projects/webdev-task-template/tests/tools/score.py",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/instruction.md",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/environment/instructions/overview.md",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/environment/instructions/ui.md",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/environment/instructions/behaviour.md:9",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/environment/instructions/integration.md:5-7",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/tests/gates/render/judge.toml",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/tests/gates/constraints/judge.toml:15-32",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/tests/scored/functional/judge.toml",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/tests/scored/polish/judge.toml",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/tests/scored/visual/judge.toml",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/tests/scoring.toml",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/tests/tools/score.py:40-48,83",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/tests/test.sh"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P0",
+  "evidence": "Workbook Quality Checks row 43/check 42 requires a worse app never to outscore a better one; the internal row says to monitor this check. The frozen skill's quality-checks.md:172-173 specifically calls out gates that a stronger app fails. Public integration.md:5 says builders may choose routes, and behaviour.md:9 plus integration.md:7 require durable, shared exact saved fields, without requiring any particular save-response body. Yet constraints/judge.toml:27-32 makes its all_pass hard gate require a successful application WRITE response containing title, filename and source, even when a fresh independent server read confirms those exact fields. score.py:41-48 sets reward to zero whenever that gate fails; test.sh exits before the scored suite on gate failure. The 0.6 functional/0.2 polish/0.2 visual weights and 0.05 functional floor otherwise increase with dimension scores, but the extraneous response-shape prerequisite reverses the product ordering. This is a source-level counterexample; no full RewardKit ranking run or hash-bound runtime-evidence.json/raw-evidence-index.json was present for this frozen run, so empirical behavior remains unmeasured.",
+  "counterexample": "App A fully implements the public editor, preview, durable shared library, conflict protection and history, but its successful Save returns 201 with only {id, revision}; a fresh independent GET returns the exact title, filename and source. It must fail cw_shared_saved_record solely because its write response does not echo fields and receives reward 0. App B uses the same compliant custom surface and a real shared backend, echoes those fields from Save, passes the authored JS Run gate, but omits most editing features. If it passes only typing/line join and HTML preview, its functional share is 2/30.5 = 0.0656, above the 0.05 floor, and it receives a positive reward (at least 0.0393 before polish/visual). Thus the materially worse B outscores A.",
+  "suggested_fix": "Change the shared-record gate to require a successful save followed by exact identity/title/filename/source readback from an independent clean context and reload; accept a write response that returns only an identity or revision, while retaining the hard requirement for server-backed persistence.",
+  "run_verdict": "NOT EXERCISED"
+}

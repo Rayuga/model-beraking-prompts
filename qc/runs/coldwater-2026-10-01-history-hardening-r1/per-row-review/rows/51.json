@@ -1,0 +1,32 @@
+{
+  "number": 51,
+  "id": "everything_parses_and_would_run",
+  "reviewer": "row-reviewer-51",
+  "input_sha256": "ae1d6f45959dbff89eb8963973dd7cfd29f634674f246410819317a7a3fc57a0",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/rules/WebDev Rubrics QC.xlsx: Quality Checks row 52 (check 51), Internal Quality Checks row 52; both quality sheets and Deterministic Checks read",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/rules/harbor-webdev-rubric-qc/references/quality-checks.md:204-206",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md:44-62",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/rules/projects/webdev-task-template/{task.toml,solution/solve.sh,tests/test.sh,tests/scoring.toml}",
+    "qc/README.md; qc/REVIEW_POLICY.md; NEW_TASK_AUTHORING_CONTEXT.md; TASK_AUTHORING_WORKFLOW.md (current review and validation guidance)",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/task/task.toml; tests/scoring.toml; all five tests/{gates,scored}/*/judge.toml parsed from frozen bytes",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/task/solution/solve.sh; solution/app/{server.js,package.json,package-lock.json,tsconfig.json,vite.config.mjs,public/assets/index-Dc_iMCdb.js}",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/task/environment/{Dockerfile,assets/seed_data.json,instructions/integration.md}; tests/test.sh; tests/tools/{score.py,restart_mcp.py}",
+    "qc/runs/coldwater-2026-10-01-history-hardening-r1/raw-evidence-index.json (all 21 artifact hashes independently verified; product evidence does not establish configured judging)",
+    "qc/runs/coldwater-2026-10-01-history-hardening-r1/per-row-review/evidence/row51-parser-smoke-lf.json"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P0",
+  "evidence": "Frozen task syntax is valid: Python tomllib parsed task.toml, scoring.toml and all five judge.toml files; JSON parsed seed/package/package-lock/tsconfig; both gating shell files contain zero CR bytes and pass bash -n; Node 22.23.2 --check passed server.js, vite.config.mjs and the built browser module; Python AST parsing passed both test tools. However exact solution/solve.sh:38 copies the bundled node_modules into /app. A fresh disposable, network-disabled container from image sha256:d6bd1b069a0cf51e6ae1d5ba95b3cdc98367bf5692d45f1bb26288e30203a082 ran exact solve.sh successfully, then node /app/server.js exited 1: \"Error: Could not locate the bindings file\" at /app/node_modules/better-sqlite3/lib/database.js:48 and server.js:144. The local better-sqlite3 package shadows the valid image dependency and has no native binding. Thus the actual reference entry would not run despite passing its parser. Control using identical server.js/public bytes outside the bundled node_modules started and returned HTTP 200 for /api/health, / and /api/snippets (empty array). Raw command, hashes, stdout/stderr and 14.016-second smoke duration: qc/runs/coldwater-2026-10-01-history-hardening-r1/per-row-review/evidence/row51-parser-smoke-lf.json (SHA256 e23adf82556a9e6349e2f9cdabe0c6b14c66cf7f848b2bf33ea484c577db33e6). Original driver-only CRLF stdin error is retained separately in row51-parser-smoke.json and is not attributed to frozen scripts. No configured judge, private checker suite, Oracle score or portal result was measured.",
+  "counterexample": "The frozen reference is itself a concrete broken-app counterexample to syntax-only clearance: every listed parser passes, solve.sh exits 0, but startup exits 1 because the copied incomplete better-sqlite3 package shadows the Linux global installation. The supported alternative packaging (same server and public files resolving NODE_PATH dependencies) passed the startup/HTTP control; no implementation-style failure was imposed on it. These checks establish launch behavior only, not complete product conformance.",
+  "suggested_fix": "In a new candidate, remove the accidentally bundled node_modules and retain the prebuilt browser assets so runtime imports resolve to the image dependencies; run the unchanged installer and exact app launch in a fresh Linux container before freezing and reviewing again.",
+  "run_verdict": "CONFIRMED"
+}

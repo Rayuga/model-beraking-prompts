@@ -1,0 +1,8 @@
+const fs=require('node:fs');const crypto=require('node:crypto');const cp=require('node:child_process');
+const express=require('express');const Database=require('better-sqlite3');const db=new Database(':memory:');
+db.exec('CREATE TABLE proof(value TEXT);'); db.prepare('INSERT INTO proof(value) VALUES (?)').run('row15-runtime-control');
+const value=db.prepare('SELECT value FROM proof').get().value; if(value!=='row15-runtime-control')throw new Error('sqlite round-trip failed'); db.close();
+function walk(root){return fs.readdirSync(root,{withFileTypes:true}).flatMap(entry=>{const path=root+'/'+entry.name;return entry.isDirectory()?walk(path):[{path,sha256:crypto.createHash('sha256').update(fs.readFileSync(path)).digest('hex'),mode:(fs.statSync(path).mode&511).toString(8),readable:(fs.accessSync(path,fs.constants.R_OK),true)}]});}
+const result={uid:process.getuid(),node:process.version,node_path:process.env.NODE_PATH,express_version:require('express/package.json').version,sqlite_version:require('better-sqlite3/package.json').version,express_callable:typeof express==='function',native_sqlite_readback:value,app_entries:fs.readdirSync('/app').sort(),git_head:cp.execFileSync('git',['-c','safe.directory=/app','-C','/app','log','-1','--format=%s'],{encoding:'utf8'}).trim(),git_status:cp.execFileSync('git',['-c','safe.directory=/app','-C','/app','status','--porcelain'],{encoding:'utf8'}),staged_files:[...walk('/instructions'),...walk('/assets')]};
+if(JSON.stringify(result.app_entries)!==JSON.stringify(['.git','.gitkeep']))throw new Error('unexpected /app contents');
+console.log(JSON.stringify(result,null,2));

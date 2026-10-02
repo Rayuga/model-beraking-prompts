@@ -1,0 +1,30 @@
+{
+  "number": 49,
+  "id": "cross_file_runtime_contract_is_consistent",
+  "reviewer": "row-reviewer-49",
+  "input_sha256": "988cc513c1ccda1eec9563f88f73b3d673b5a7679727d55c68a85c2e7ca7985e",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/WebDev Rubrics QC.xlsx:Quality Checks!A50:D50 and Internal Quality Checks!A50:D50; Quality Checks and Deterministic Checks enumerated",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/harbor-webdev-rubric-qc/references/quality-checks.md:49",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md:Cross-file agreements",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/projects/webdev-task-template/instruction.md, task.toml, tests/app_context.md, tests/scoring.toml, tests/test.sh, tests/scored/functional/judge.toml",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/instruction.md and task.toml",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/environment/instructions/behaviour.md, integration.md, overview.md, policy.md, security.md, ui.md; environment/assets/seed_data.json",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/tests/app_context.md, scoring.toml, test.sh, tools/score.py, tools/restart_mcp.py; all five judge.toml and prompt.md files",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/solution/solve.sh and solution/app/server.js"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P1",
+  "evidence": "The restart-helper contract drifts. tests/test.sh:193 exports APP_RESTART_HELPER after generating app-restart.sh, and tests/tools/restart_mcp.py:14 exposes restart_app. tests/scored/functional/judge.toml:203 requires the verifier-provided restart_app tool to prove persistence across process restart, and tests/app_context.md:5,7 refers to that tool. But the parsed functional judge.toml has exactly one judge.mcp_servers entry, playwright at lines 8-12; [scoring] starts at line 14. It never declares the verifier MCP server or passes $APP_RESTART_HELPER. The frozen template's tests/scored/functional/judge.toml:14-18 does declare that server and argument. Therefore the requested tool is unavailable to the functional judge, so a conforming app cannot supply the required restart observation and a reload-only app cannot be distinguished on that leg. Other sampled agreements hold: port 3000 appears in integration.md:3, test.sh:48,108,136,164, app_context.md:3, all prompt.md:1, and server.js:142; test.sh:97-109 and integration.md:3 agree on entry and launch; test.sh:109,165 and server.js:8 agree on DB_PATH; task.toml:31-32 and each judge.toml:2 agree on claude-code fallback with model only in verifier.env; scoring.toml:6-8 has 0.6/0.2/0.2, read by tools/score.py:30,46. Parsed criterion counts are render 1, constraints 2, functional 23, polish 2, visual 3; task.toml quotes no count. The raw-evidence-index.json named in the assignment is absent, so this is source inspection, not a measured judge run.",
+  "counterexample": "A correct app saves to durable server storage and survives a complete server restart, but the functional judge cannot invoke restart_app because it only receives the Playwright MCP server; its restart criterion remains unverified. Conversely, an app that only survives reload can look the same without the missing process-restart witness.",
+  "suggested_fix": "Restore the template's verifier MCP server block in tests/scored/functional/judge.toml, with command /usr/local/bin/python3 and args [\"/tests/tools/restart_mcp.py\", \"$APP_RESTART_HELPER\"], then measure the configured restart criterion on the repaired candidate.",
+  "run_verdict": "NOT EXERCISED"
+}

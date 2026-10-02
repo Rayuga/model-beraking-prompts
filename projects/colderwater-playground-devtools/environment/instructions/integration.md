@@ -1,15 +1,11 @@
 # How we start the app
 
-TypeScript, React and Vite would be convenient for the browser app, but the frontend tools are up to you. The supplied server runtime is Node 22 with Express and better-sqlite3 available through NODE_PATH.
+Put the finished app in /app. We start it with node /app/server.js from a working directory that may be outside /app. Resolve files from their actual location. Listen on 0.0.0.0:3000, serve the workspace at / and answer GET /api/health promptly.
 
-Put the finished app in /app. We start it with node /app/server.js, and the current working directory may be outside /app. Resolve local files from their actual location rather than assuming where the command was started. It needs to listen on 0.0.0.0:3000, serve the workspace at / and answer GET /api/health successfully and promptly. The routes and file layout under /app are up to you.
+The launch image supplies Node 22, Express and better-sqlite3 through NODE_PATH. You may choose your routes and frontend tools. Include everything needed at runtime; opening the finished app must not require an install or build step. Network is public for the app, but user-entered preview code has the boundary in security.md.
 
-The launch environment supplies PORT=3000, NODE_PATH=/usr/local/lib/node_modules and PATH=/usr/local/bin:/usr/bin:/bin. HOME is a writable staging directory and may differ from the directory containing server.js. Resolve application files from their actual location. Use DB_PATH for the database location when it is supplied.
+Saved snippets, identities and revisions must survive page reloads and complete process restarts. The library must be shared between independent browser contexts. /assets/seed_data.json describes the starting scope and contains no user snippets or starter implementation.
 
-The database is /app/app.db unless DB_PATH supplies a different location. Saved snippets, identities and revisions need to survive a browser reload and a complete process restart over the same database. Saved history and recognised restore attempts must survive too, without duplicate records or revisions.
+Use SQLite for persistent records. The default database path is /app/app.db. If DB_PATH is set, open that absolute path instead, including when the app runs from a writable copy outside /app. Keep the same records and revision history after a process restart.
 
-/assets/seed_data.json describes the starting scope. It contains no supplied user snippets or implementation; users can create their own snippets.
-
-Use Express, better-sqlite3 and Node built-ins for the one server process, without an external backend or database service. The browser app may load external fonts, scripts, editor components or CDN assets. The restrictions on code entered into the editor are described separately in /instructions/security.md.
-
-Deliver ordinary files and directories in /app. Symbolic links are unsupported except links beneath /app/node_modules whose fully resolved targets also stay beneath /app/node_modules. Broken links are unsupported.
+Deliver ordinary files under /app. Symbolic links are unsupported except links under /app/node_modules whose resolved targets also stay under /app/node_modules.

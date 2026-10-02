@@ -1,0 +1,67 @@
+{
+  "reviewer": "row-reviewer-35",
+  "input_sha256": "80865100dd4b973cb1cfb54e92a812e3f989440975a22dd2519f5f5d5256e841",
+  "index_input_matches": true,
+  "artifact_hash_count": 77,
+  "artifact_hash_mismatches": [],
+  "source_findings": [
+    "Frozen workbook Quality Checks A36:D36 and Internal Quality Checks A36:D36 require grading defining behavior plus durable server state; public network does not imply same-origin.",
+    "instruction.md:1-4 asks for running JS/HTML, actual last-good preview after failure/Stop, saved revisions and two-editor safety; environment/instructions/behaviour.md and integration.md require current/history/restore-attempt durability over reload and process restart.",
+    "tests/gates/render/judge.toml:17-36 tests a fresh computed authored Run in preview and console, so a dead editor cannot clear Render.",
+    "tests/gates/constraints/judge.toml:17-33 and prompt.md:14-30 require actual UI save/write response plus independent clean-context server read and fresh-context reload; health/static/client storage alone cannot clear Constraints. A server-rendered document is accepted, and no same-origin restriction is imposed.",
+    "tests/scored/functional/judge.toml:165-168 and prompt.md:273-286 test failed-run rollback of a genuinely changed preview input and painted canvas; mere rerun of source would lose those mutations.",
+    "tests/scored/functional/judge.toml:325-343, 549-553, 583-595 and prompt.md:426-434 test browser reload, completed process restart, current records, history snapshots, restore retry and post-restart write/readback."
+  ],
+  "verified_local_evidence": [
+    {
+      "path": "qc/repairs/coldwater-2026-10-01-stricter-r3/runtime-results.json",
+      "facts": [
+        "S21.saved_record_fidelity",
+        "S21.saved_records_browser_reload",
+        "S10.js_error_rollback"
+      ],
+      "scope": "scripted reference browser proof"
+    },
+    {
+      "path": "qc/repairs/coldwater-2026-10-01-stricter-r3/history-results.json",
+      "facts": [
+        "S37.history_snapshots",
+        "S37.history_restore",
+        "S37.restore_retry",
+        "S37.history_reload"
+      ],
+      "scope": "scripted reference browser proof"
+    },
+    {
+      "path": "qc/repairs/coldwater-2026-10-01-stricter-r3/post-results.json",
+      "facts": [
+        "S22.process_restart_durability",
+        "S22.history_restart",
+        "S22.restore_retry_restart",
+        "S22.process_restart_write"
+      ],
+      "scope": "scripted reference browser proof"
+    },
+    {
+      "path": "qc/repairs/coldwater-2026-10-01-stricter-r3/canvas-regression.json",
+      "scope": "focused scripted reference canvas/form recovery regression"
+    },
+    {
+      "path": "qc/repairs/coldwater-2026-10-01-stricter-r3/drivers/history_proof.cjs",
+      "scope": "post-phase source assertions compare fresh server library, each history, original retry and later write against recorded pre-phase state; this is scripted test logic, not configured judge execution"
+    }
+  ],
+  "weak_app_probe": "A server that saves only in process memory could satisfy the clean-context gate and reload but should fail S22 after a real process restart; a browser-local-only saved library should fail the clean-context server read in Constraints. A dead Run should fail Render despite static preview text.",
+  "conforming_alternative_probe": "A compliant implementation may use any UI layout, API route and response representation, including a server-rendered document or public-network assets. The gate discovers actual requests and accepts independent clean-context server retrieval without requiring same-origin or a particular database response schema.",
+  "measurement_limit": "No exact-current configured functional judge/Oracle/target-model result is indexed. Local scripted golden passes do not exercise the detached-listener bypass. The post-results artifact reports exact pre/post data comparisons and history_proof.cjs:11-16 shows those assertions, but the index does not contain a raw container-restart command/log.",
+  "verdict": "Fail",
+  "severity": "P1",
+  "false_success_path": {
+    "sources": [
+      ".qc-cache/coldwater-2026-10-01-history-hardening-r3/task/tests/test.sh:130-143,152-178",
+      ".qc-cache/coldwater-2026-10-01-history-hardening-r3/task/tests/tools/restart_mcp.py:30-52"
+    ],
+    "mechanism": "Old detached child listener remains on port 3000 after wrapper group kill; helper sees its HTTP response and returns success despite replacement bind failure. A memory-only library can then pass S22 readbacks.",
+    "status": "source-demonstrated path; no adversarial runtime was run"
+  }
+}

@@ -1,0 +1,34 @@
+const { chromium } = require('/usr/local/lib/node_modules/@playwright/mcp/node_modules/playwright');
+
+(async () => {
+  const browser = await chromium.launch({ executablePath: '/usr/local/bin/chromium', args: ['--no-sandbox', '--unsafely-treat-insecure-origin-as-secure=http://172.17.0.10:3000'] });
+  const page = await browser.newPage();
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto(process.env.CW_URL || 'http://172.17.0.10:3000/', { waitUntil: 'networkidle' });
+  console.log('initial', await page.title(), (await page.locator('body').innerText()).slice(0, 500), errors);
+  const editor = page.getByRole('textbox', { name: 'Code editor' });
+  await editor.waitFor();
+  const surface = await editor.evaluate(element => ({ tag: element.tagName, editable: element.isContentEditable, codemirror: !!element.closest('.cm-editor') }));
+  await editor.click();
+  await page.keyboard.type('function total(values){let sum=0;for(const value of values){sum+=value;}return sum;}document.body.textContent=total([3,5]);');
+  await page.getByRole('button', { name: 'Run' }).first().click();
+  await page.waitForTimeout(1200);
+  const preview = page.frameLocator('iframe').locator('body');
+  const jsPreview = await preview.innerText();
+  const functionTokens = await editor.locator('.tok-function').allTextContents();
+  await page.getByRole('button', { name: 'Format document' }).click();
+  await page.waitForTimeout(700);
+  const formatted = await editor.locator('.line .text').allTextContents();
+  const formatMessage = await page.locator('#editor-message').innerText();
+  const beforeUndo = formatted.join('\n');
+  console.log('before-undo', { jsPreview, functionTokens, formattedLines: formatted.length, formatMessage, errors });
+  await page.getByRole('button', { name: 'Undo' }).click();
+  const afterUndo = (await editor.locator('.line .text').allTextContents()).join('\n');
+  await page.getByRole('button', { name: 'Redo' }).click();
+  const afterRedo = (await editor.locator('.line .text').allTextContents()).join('\n');
+  const result = { surface, jsPreview, functionTokens, formattedLines: formatted.length, formatMessage, undoRestored: afterUndo.includes('function total(values){let sum=0;'), redoRestored: afterRedo === beforeUndo, errors };
+  console.log(JSON.stringify(result, null, 2));
+  if (errors.length || surface.editable || surface.codemirror || !jsPreview.includes('8') || formatted.length < 2 || !result.undoRestored || !result.redoRestored) process.exitCode = 1;
+  await browser.close();
+})().catch(error => { console.error(error); process.exitCode = 1; });

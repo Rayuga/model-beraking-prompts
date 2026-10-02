@@ -1,0 +1,34 @@
+{
+  "number": 21,
+  "id": "verifier_entrypoint_is_safe_and_always_scores",
+  "reviewer": "row-reviewer-21",
+  "input_sha256": "ae1d6f45959dbff89eb8963973dd7cfd29f634674f246410819317a7a3fc57a0",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/rules/WebDev Rubrics QC.xlsx: Quality Checks A22:D22 (quality row 21), Internal Quality Checks A22:D22; complete Quality Checks and Deterministic Checks sheets read and list_checks.py enumerated",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/rules/harbor-webdev-rubric-qc/references/quality-checks.md:92-94",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md: tests/test.sh ordered contract and tests/tools contract",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md:40-50",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/rules/projects/webdev-task-template/tests/test.sh:1-227",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/task/tests/test.sh:1-227",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/task/tests/tools/score.py:1-91",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/task/tests/tools/restart_mcp.py:11-47",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/task/tests/Dockerfile:1-45",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/task/environment/instructions/integration.md:5-9",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/task/tests/scored/functional/judge.toml:15-18,332-343,570-581",
+    "qc/README.md; qc/REVIEW_POLICY.md; NEW_TASK_AUTHORING_CONTEXT.md; TASK_AUTHORING_WORKFLOW.md",
+    "qc/runs/coldwater-2026-10-01-history-hardening-r1/raw-evidence-index.json: scope, commands, limits, all 21 artifact SHA256 values verified"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P1",
+  "evidence": "Shared/deferred harness finding, not task-specific drift. Frozen task tests/test.sh and frozen template tests/test.sh have identical SHA256 bd68259276ca4b034654efc8a1723a4e702ed62dbe590af6201565f43eabe5aa. Initial reward and EXIT trap are established at task/tests/test.sh:60-61; missing configuration/entry and rejected symlinks stop with zero (63-83); env -i plus UID/GID 65534 launch and HTTP liveness precede grading (104-125); gates precede scored and score.py runs after each successful suite (212-227). These source invariants are sound. However cleanup sends TERM then executes unbounded wait before ensure_reward (33-39). The generated restart helper sends TERM, waits at most five seconds without requiring termination, starts a replacement, and accepts HTTP readiness without checking that replacement is alive (152-183). restart_mcp.py:44-47 equates helper exit zero with successful relaunch. This can accept the old listener and falsely establish a required process restart, affecting functional judge.toml:332-343,570-581 and integration.md:9. The user explicitly defers these inherited shared-template/restart concerns; this records the risk without changing shared files or converting it to Pass. Raw evidence index SHA256 c5fb62b99ab425667d2346c5475436eaffa42d2f77d389d387edec1f3d3209b8 and all 21 listed artifact hashes match, but its commands use direct Docker restart/scripted app probes, not this helper or full configured entrypoint grading. No runtime reproduction or configured-judge result is claimed in this row.",
+  "counterexample": "Broken-app source witness: an HTTP app stores snippets/history only in memory and installs process.on(\"SIGTERM\", () => {}). The restart helper leaves the original process serving, starts a replacement which cannot bind port 3000, and its readiness probe can still receive the old process response and return success. Re-reading the unchanged in-memory records can then satisfy the restart durability observations without a real restart. Conforming-alternative witness: an otherwise conforming durable app may retain a SIGTERM handler or take an unbounded graceful-shutdown path; the public integration contract imposes no TERM-exit behavior. On an exit before the restart helper changes app.pid, cleanup waits indefinitely for that original child, so verifier completion can hit the outer timeout despite an already written reward. These witnesses are derived from current source, not executed in this review.",
+  "suggested_fix": "Keep this documented shared/deferred concern under the current user exception; when the shared template is authorized for repair, bound TERM/KILL cleanup, require the old process group to exit, verify the replacement process stays alive while becoming ready, and test resistant-parent/child and failed-replacement cases without changing task scoring policy.",
+  "run_verdict": "NOT EXERCISED"
+}

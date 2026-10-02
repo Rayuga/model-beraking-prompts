@@ -1,0 +1,136 @@
+task/task.toml
+1: schema_version = "1.4"
+2: artifacts = ["/app", "/assets"]
+3: 
+4: [task]
+5: name = "turing/colderwater-playground-devtools"
+6: description = "A JavaScript and HTML playground with isolated execution, preview recovery and a shared revision-history library."
+7: keywords = ["webdev", "turing", "full-stack", "typescript", "react", "vite", "express", "sqlite", "code-playground", "devtools"]
+8: 
+9: [metadata]
+10: difficulty = "hard"
+11: difficulty_explanation = "The main challenges are isolating code execution, stopping unfinished runs, restoring previews after errors, and keeping saved snippets consistent when multiple editors change them."
+12: category = "programming"
+13: tags = ["full-stack", "browser", "arena", "rl-training"]
+14: provenance = "Adapted from the supplied Colderwater playground task."
+15: arena_slice = "full-stack-typescript-vite-react-codemirror-express-sqlite-code-playground"
+16: 
+17: [agent]
+18: timeout_sec = 7200.0
+19: 
+20: [environment]
+21: build_timeout_sec = 600.0
+22: network_mode = "public"
+23: cpus = 2
+24: memory_mb = 4096
+25: 
+26: [verifier]
+27: timeout_sec = 13200.0
+28: environment_mode = "separate"
+29: 
+30: [verifier.env]
+31: REWARDKIT_JUDGE = "claude-code"
+32: REWARDKIT_MODEL = "z-ai/glm-5.3-flashx"
+33: ANTHROPIC_BASE_URL = "https://openrouter.ai/api"
+34: ANTHROPIC_AUTH_TOKEN = "${OPENROUTER_API_KEY}"
+35: ANTHROPIC_API_KEY = ""
+36: 
+37: [verifier.environment]
+38: network_mode = "public"
+task/instruction.md
+1: I'd like a small playground for trying out browser ideas in JavaScript and complete HTML files. Keep the editor, preview and console together, with a shared library for the snippets worth keeping. No accounts or sign-in; it's a local tool.
+2: 
+3: The annoying part is losing something that was working. If my next attempt breaks or I stop it, bring back the actual last good preview, including changes I'd made using its controls. Re-running the original source isn't enough if that loses what I typed. I also want to go back through saved versions without losing newer work, especially when I've got two editors open.
+4: 
+5: Please read the six notes in /instructions before starting. They cover running code, saved history and the limits of the playground. /assets/seed_data.json describes the starting scope; there's no starter app to finish.
+6: 
+7: I need to start a fresh draft, save it and come back later. Make the interface comfortable with a keyboard and on a narrow screen. A single clear colour scheme is enough.
+8: 
+9: The finished app goes in /app. Our setup and start command are in /instructions/integration.md. External fonts, scripts and CDN assets are fine for the app itself.
+task/environment/instructions/overview.md
+1: # The playground
+2: 
+3: The main workspace is an editor, a live preview and a console. Let me start a new draft or load a saved snippet. An empty starting workspace is fine.
+4: 
+5: The filename tells the app what I'm running: .js for JavaScript and .html for a complete HTML document. I shouldn't have to keep a separate language selector in sync. Styles can go inside my HTML; there's no separate stylesheet mode to build.
+6: 
+7: The local app has one shared saved library, without accounts or private collections. Each saved snippet keeps its history. I want to inspect an older version before deciding whether to restore it. The details are in /instructions/behaviour.md.
+task/environment/instructions/integration.md
+1: # How we start the app
+2: 
+3: TypeScript, React and Vite would be convenient for the browser app, but the frontend tools are up to you. The supplied server runtime is Node 22 with Express and better-sqlite3 available through NODE_PATH.
+4: 
+5: Put the finished app in /app. We start it with node /app/server.js, and the current working directory may be outside /app. Resolve local files from their actual location rather than assuming where the command was started. It needs to listen on 0.0.0.0:3000, serve the workspace at / and answer GET /api/health successfully and promptly. The routes and file layout under /app are up to you.
+6: 
+7: The launch environment supplies PORT=3000, NODE_PATH=/usr/local/lib/node_modules and PATH=/usr/local/bin:/usr/bin:/bin. HOME is a writable staging directory and may differ from the directory containing server.js. Resolve application files from their actual location. Use DB_PATH for the database location when it is supplied.
+8: 
+9: The database is /app/app.db unless DB_PATH supplies a different location. Saved snippets, identities and revisions need to survive a browser reload and a complete process restart over the same database. Saved history and recognised restore attempts must survive too, without duplicate records or revisions.
+10: 
+11: /assets/seed_data.json describes the starting scope. It contains no supplied user snippets or implementation; users can create their own snippets.
+12: 
+13: Use Express, better-sqlite3 and Node built-ins for the one server process, without an external backend or database service. The browser app may load external fonts, scripts, editor components or CDN assets. The restrictions on code entered into the editor are described separately in /instructions/security.md.
+14: 
+15: Deliver ordinary files and directories in /app. Symbolic links are unsupported except links beneath /app/node_modules whose fully resolved targets also stay beneath /app/node_modules. Broken links are unsupported.
+task/environment/instructions/behaviour.md
+1: # Running code and keeping work
+2: 
+3: ## The preview
+4: 
+5: A JavaScript run starts with a fresh preview document. A complete HTML file replaces it.
+6: 
+7: Starting another run cancels whatever the previous one still had pending. Stop does the same for the current run; when I use it, show that I stopped the run. Old work mustn't come back later with a log entry, replace the current preview or claim to be the current success. An error from that cancelled work shouldn't spoil the newer run either.
+8: 
+9: Give each run five seconds altogether, including its scheduled callbacks. A timer doesn't get a new five seconds when it fires. This covers source-written loops, functions and timer or Promise callbacks. If it takes too long, end its visible run with a time-limit reason and leave the editor usable. Its old work can't change the current preview, add console entries or change the run status afterward. The limits of that promise are in /instructions/security.md.
+10: 
+11: Keep the current successfully completed preview interactive until I stop it, it fails or another run replaces it. I might leave it there for a while before clicking a button or typing into a field. Once stopped, timed out or replaced, that preview's old handlers must no longer change the current preview, console or run status.
+12: 
+13: It's fine to show a run's candidate preview while it works. It becomes the last good preview only when it finishes without an uncaught error. If it fails, is stopped or runs out of time, bring back the previous successful render. I don't want half of the failed attempt left behind. If I've had several successful runs, bring back the most recent one, not an earlier snapshot. Using Stop after a preview has completed should keep its current successful picture on screen too. Keep the actual latest successful picture, including text I typed into its inputs, changes made by its buttons and ordinary 2D canvas drawings. Do not rebuild an earlier picture by rerunning its original source. That restored picture can be static; I can run the source again when I want its handlers back.
+14: 
+15: Errors need the message and a one-based line number from the source I actually entered. For HTML, count from the beginning of the complete document, including the lines before a script tag. The same applies to errors thrown later by a timer and to unhandled Promise rejections; both belong in the console and should restore the good preview.
+16: 
+17: ## Console and automatic runs
+18: 
+19: Capture log, warn, error and info calls in order and make their levels clear. I need to open up objects and arrays to inspect their values. Keep recent entries between runs so I can compare them, and let me empty the history with Clear console. A sensible limit on the oldest entries is fine. Show how long each run took.
+20: 
+21: Auto-run should wait for a short pause in typing, with each later edit starting that wait again. About two seconds after I stop typing is plenty. Switching it off should cancel a queued automatic run too. The ordinary Run action works whether auto-run is on or off. If an automatic run is queued, pressing Run consumes that pending attempt: execute the current code once, without a second run when the old wait expires. Opening a saved snippet or starting a new draft cancels queued work too. Merely opening that source must not execute it, even with Auto-run enabled; a later edit or an explicit Run can execute it.
+22: 
+23: ## Saved snippets
+24: 
+25: A saved snippet has an identity, a title, a filename and its exact source. Save updates the record I'm editing. A new draft makes a separate record. Loading should bring back the title, filename and source unchanged.
+26: 
+27: Use the .js or .html filename to choose the execution mode without a separate selector. Titles are just display names; records have their own identities.
+28: 
+29: Two editors may have the same saved snippet open. Each successful saved change gets a revision, and Save refers to the revision that editor loaded. If another editor has moved it on, refuse the old operation without changing any field or revision. Keep my unsaved work so I can compare it with the latest copy, reload that copy and deliberately reapply my edit. We may keep editing from both windows, so this needs to keep working whichever editor saves first next time.
+30: 
+31: 
+32: ## Going back to saved work
+33: 
+34: Every successful Save keeps an immutable snapshot of the title, filename and exact source at that revision. Keep older snapshots when I save again. I should be able to read an older revision without changing either the current saved version or my unsaved draft, and without running that old source.
+35: 
+36: Restoring an older snapshot makes a new current revision of the same snippet. It copies that snapshot's three fields; it doesn't erase the intervening history or put the revision counter backwards. Saving and restoring from two editors follow the same rule: the operation refers to the current revision the editor last loaded. If somebody has changed it, refuse my stale restore, leave the saved state alone and keep my unsaved fields with a useful explanation.
+37: 
+38: A restore reply can get lost after the server has already accepted the change. Let me retry that same attempt. It must return the original restore result without creating another revision. That still holds if somebody saves newer work before my retry arrives: acknowledge the earlier result without replacing their newer work. A retry is the same attempt, distinct from deliberately requesting another restore.
+39: 
+40: When two different changes arrive together for the same loaded revision, exactly one can become current. The loser gets a conflict, and no half-written or extra history entry should appear. This applies to two Saves as well as a Save racing a restore. Saved history and the results needed to recognise a retried restore must survive a reload and a process restart along with the current record.
+task/solution/app/package.json
+1: {
+2:   "name": "colderwater-playground-devtools",
+3:   "version": "1.0.0",
+4:   "private": true,
+5:   "type": "commonjs",
+6:   "scripts": {
+7:     "start": "node server.js",
+8:     "build": "vite build"
+9:   },
+10:   "engines": {
+11:     "node": ">=22"
+12:   },
+13:   "dependencies": {
+14:     "better-sqlite3": "12.4.1",
+15:     "express": "5.1.0"
+16:   },
+17:   "devDependencies": {
+18:     "typescript": "5.9.2",
+19:     "vite": "7.1.7"
+20:   }
+21: }

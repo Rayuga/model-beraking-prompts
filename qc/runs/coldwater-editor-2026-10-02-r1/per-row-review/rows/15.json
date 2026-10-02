@@ -1,0 +1,33 @@
+{
+  "number": 15,
+  "id": "dockerfile_builds_the_declared_world",
+  "reviewer": "row-reviewer-15",
+  "input_sha256": "988cc513c1ccda1eec9563f88f73b3d673b5a7679727d55c68a85c2e7ca7985e",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/WebDev Rubrics QC.xlsx:Quality Checks!A16:D16",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/WebDev Rubrics QC.xlsx:Internal Quality Checks!A16:Z16",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/harbor-webdev-rubric-qc/references/quality-checks.md:check 15",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/projects/webdev-task-template/environment/Dockerfile",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/environment/Dockerfile",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/environment/instructions/integration.md",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/solution/app/server.js",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/solution/app/package.json",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/tests/test.sh",
+    "qc/REVIEW_POLICY.md"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "Workbook Quality Checks row 15 says the agent image is pinned, pre-installs every runtime dependency and stages assets. Frozen quality-checks.md check 15 explicitly says 'pinned base'. The task environment/Dockerfile:1 uses `FROM node:22-bookworm-slim`, a mutable major-version tag with no digest, so identical task bytes can resolve to different base-image bytes on later builds. This line is byte-for-byte identical to the frozen template environment/Dockerfile (both SHA256 0a75419e9598ded9317b26bbf0d2b12de0b9b11185fb4c9fed1ca7f3e52467d1), making this a template-level conflict with the workbook rather than a task-specific edit. Other source checks are favorable: Dockerfile:3,9-11 set NODE_PATH and install express@5.1.0 and better-sqlite3@12.4.1 globally; server.js:4-5 imports those two non-builtin runtime packages; Dockerfile:14-23 copies instructions and assets, grants read/execute access, and initializes /app with only .gitkeep. The six instruction files and seed_data.json exist in those copied source directories. Dockerfile has no COPY of solution/ or tests/ and no runtime install command. The raw-evidence-index.json named in the assignment is absent, and no image build was run in this independent read-only review; actual image-build success is unmeasured.",
+  "counterexample": "Build the same frozen Dockerfile at two dates after the upstream node:22-bookworm-slim tag has moved. A conforming submission using only the declared Node 22/Express/better-sqlite3 runtime can be graded on a different base image without any task-source change; a changed base or native-addon compatibility can make the later build or launch fail. A source-only check would still see the same Dockerfile and report no drift.",
+  "suggested_fix": "Resolve the frozen-template conflict by pinning the Node base to an immutable digest in both the canonical template and candidate, then run and record an image build against the pinned bytes.",
+  "run_verdict": "NOT EXERCISED"
+}

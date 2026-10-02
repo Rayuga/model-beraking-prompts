@@ -1,0 +1,31 @@
+{
+  "number": 52,
+  "id": "task_security_and_secrets",
+  "reviewer": "row-reviewer-52",
+  "input_sha256": "ae1d6f45959dbff89eb8963973dd7cfd29f634674f246410819317a7a3fc57a0",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/rules/WebDev Rubrics QC.xlsx: Quality Checks A53:D53; Internal Quality Checks A53:G53 including delivery-strip annotations; full Quality Checks and Deterministic Checks sheets read and enumerated with list_checks.py",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/rules/harbor-webdev-rubric-qc/SKILL.md: delivery profile, evidence standard, credential false-positive guidance",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/rules/harbor-webdev-rubric-qc/references/quality-checks.md:208-210; references/deterministic-checks.md; references/staged-task-contract.md",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/rules/projects/webdev-task-template/task.toml; environment/Dockerfile; tests/Dockerfile",
+    "qc/README.md; qc/REVIEW_POLICY.md; NEW_TASK_AUTHORING_CONTEXT.md and TASK_AUTHORING_WORKFLOW.md entry-point material",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/task/task.toml:30-35; instruction.md; environment/instructions/integration.md; environment/instructions/security.md; environment/assets/seed_data.json",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/task/environment/Dockerfile; tests/Dockerfile; solution/solve.sh; solution/app/server.js; solution/app/package.json; solution/app/package-lock.json",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/task/solution/app/node_modules/bindings/README.md:45-64; node_modules/rc/README.md:145-157; node_modules/file-uri-to-path/test/tests.json:11",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/task/solution/app/node_modules/@rollup/rollup-win32-x64-gnu/rollup.win32-x64-gnu.node: byte offset 1788096; @rollup/rollup-win32-x64-msvc/rollup.win32-x64-msvc.node: byte offset 1966032",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/task: read-only recursive security-pattern scan of all 1384 files, including ignored node_modules and binaries; relevant matches manually inspected",
+    "qc/runs/coldwater-2026-10-01-history-hardening-r1/raw-evidence-index.json: all 21 artifact hashes verified; no configured-judge inference"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "The frozen deliverable contains host paths through shipped node_modules. In task/solution/app/node_modules/bindings/README.md:54-64, an upstream error-output example includes /Users/nrajlich/ref/build/binding.node and related stack paths (SHA256 a5552f138725ba2768610c9362f5c7387c8ac80c61fc68477a4f97b7412bba86). node_modules/rc/README.md:155-157 includes /Users/stephen/repos/conftest/.myapprc (SHA256 3088babbed9971cd5ac60321b0818863c49ea773be0b14389494b4e7e4248d8d). The two shipped Rollup Windows binaries also embed C:\\Users\\<upstream-build-user>\\.cargo\\registry\\src paths: GNU binary byte offset 1788096, SHA256 e89280f954814d232cb32dbac2dafd8e7df994d4f02949762d446c58d660528a; MSVC byte offset 1966032, SHA256 3501fda4eb7a65644e019637ea3bfac493c861891fcd12aabca013d671e61c93. These are upstream documentation/build paths, not evidence of this task author leaking private credentials; the consequence is bounded but the workbook prohibits host paths anywhere in the task and the staged contract expressly excludes node_modules. solve.sh:38 copies the entire app tree. Positive findings: task.toml:34 is exactly the literal ${OPENROUTER_API_KEY} template, line 35 is empty; neither is a live credential. Seed snippets are empty and contain no identities. No real provider-key, private-key, task-author host-path, or scoring-injection payload was confirmed by the full 1384-file scan; apparent sk- matches in esbuild.exe were CSS mask-* string-table substrings. The 168 lockfile package entries all have registry URLs and integrity hashes. Both Dockerfiles are byte-identical to the frozen template. The synthetic network probe at tests/scored/functional/prompt.md:29-49 uses locally fulfilled exact .invalid URLs, not an unpinned external dependency. All 21 indexed raw artifact hashes matched; those scripted observations do not establish any configured-judge result. This is a static artifact finding; no provider or shared-container operation was performed.",
+  "counterexample": "Deliver the frozen reference exactly as packaged: solution/solve.sh:38 copies the host-path-bearing dependency tree into /app even if every product interaction works. A browser-only successful golden run would therefore miss this task-content violation. Conversely, the unchanged ${OPENROUTER_API_KEY} template is a conforming alternative to a secret literal and must not itself be failed as a credential.",
+  "suggested_fix": "Exclude solution/app/node_modules from the new candidate and package only the authored app, built browser assets, and pinned manifests; keep the template Dockerfiles and credential placeholders unchanged, then re-freeze and rescan the complete shipped tree.",
+  "run_verdict": "CONFIRMED"
+}

@@ -1,0 +1,30 @@
+{
+  "number": 21,
+  "id": "verifier_entrypoint_is_safe_and_always_scores",
+  "reviewer": "row-reviewer-21",
+  "input_sha256": "988cc513c1ccda1eec9563f88f73b3d673b5a7679727d55c68a85c2e7ca7985e",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/WebDev Rubrics QC.xlsx:Quality Checks!A22:D22 (quality row 21); Internal Quality Checks!A22:D22; Deterministic Checks sheet",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/harbor-webdev-rubric-qc/references/quality-checks.md:21",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md:tests/test.sh",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/projects/webdev-task-template/tests/test.sh",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/tests/test.sh",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/tests/tools/score.py",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/tests/Dockerfile",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/task.toml"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P1",
+  "evidence": "The entrypoint does initialize zero output and install an EXIT trap (task/tests/test.sh:14-22,60-61), rejects escaping symlinks (72-83), launches with setpriv (104-111), probes before RewardKit (115-125,203-209), and orders gates before scored (213-227); bash -n returned exit 0. However cleanup sends only SIGTERM to the application process group and then waits without a deadline (33-39). An HTTP-serving Node app that installs a SIGTERM handler without exiting causes test.sh to remain in its EXIT trap after judging, until the outer verifier kills it. Also, score.py is called after successful gates (217), but a nonzero or timed-out scored RewardKit run exits at 224-225 without running score.py again or write_zero_reward. score.py writes graded=1/no_op=0 even when it has only gate data (task/tests/tools/score.py:35-60), so that path leaves a gate-only report marked graded although no scored suite completed. The staged contract says any scored-suite failure writes the plain zero and the quality row requires safe completion and scoring on failures. The raw-evidence-index.json named in the assignment is absent; neither full verifier completion nor this failure path has runtime confirmation.",
+  "counterexample": "A submission can serve valid HTTP and ignore SIGTERM (for example, a Node SIGTERM handler that does not exit); after an otherwise completed judge run, cleanup blocks on wait. Separately, an otherwise conforming app with a scored RewardKit timeout/provider failure receives reward.txt=0 but retains the earlier gates-only reward.json with graded=1 and no_op=0. A broken 404-only HTTP server also passes the current HTTPError-as-ready probe at test.sh:48-55, though the gates should subsequently reject it.",
+  "suggested_fix": "Bound application shutdown in cleanup: send SIGTERM, wait briefly, then SIGKILL the process group and reap it; ensure reward before any potentially blocking wait. On every nonzero scored-suite result, write a consistent plain-zero reward/CTRF (or explicitly record evaluator failure without labeling the suite graded), and run score.py only after a complete suite result.",
+  "run_verdict": "NOT EXERCISED"
+}

@@ -1,0 +1,21 @@
+# Row 30 independent evidence
+
+Scope: frozen input `80865100dd4b973cb1cfb54e92a812e3f989440975a22dd2519f5f5d5256e841`. I inspected the frozen workbook's `Quality Checks!31` and `Internal Quality Checks!31`, the frozen QC skill and quality reference, the frozen template, current review policy, the task instruction/context, all five frozen judge TOML and prompt files, and the raw evidence index. No other reviewer verdict or historical report informed this review.
+
+The workbook asks whether every rejection, absence, hiding or unchanged check has a matching success control. The frozen quality reference at `references/quality-checks.md:127-129` adds that a blank app, empty database or login screen cannot pass by absence alone. `qc/REVIEW_POLICY.md:19` permits reuse of a directly observed control fact, but never a sibling row's verdict. The functional prompt at `tests/scored/functional/prompt.md:25` makes this a general instruction, and its shared-scenario scoring contract at lines 98-102 says the same thing.
+
+Specific negative/control pairings inspected:
+
+| Negative claim | Matching observed control required by the same scenario |
+| --- | --- |
+| Completed Stop suppresses old handlers or preserves preview | S03 first requires a completed render and an actual working click/key/input handler; the visible pre-Stop picture is recorded separately (`functional/prompt.md:129-151`). |
+| Pending timer cancellation and supersession | S04 first runs the exact uncancelled A callback and observes its delayed DOM/log/error; later attempts must start while it is genuinely pending (`functional/prompt.md:165-190`). |
+| Parent-origin and snippet network blocking | S05 establishes own-document DOM/log execution; S07 proves exact intercepted fetch and Image transport on unprotected `about:blank`, then requires ordinary snippet execution and visible refusal (`functional/prompt.md:191-211`). |
+| Unsupported families and loop/callback deadlines | S08 uses successful supported code and harmless-word controls; S09 executes bounded variants; S36 first completes a short nested-timer control (`functional/prompt.md:212-271,448-459`). |
+| Clear, Auto-run off, queued edit cancellation and document switching | S16 clears only after populated console rows; S17 requires a real automatic authored execution, then the pending source must execute manually or a fresh edit must auto-execute (`functional/prompt.md:381-408`). |
+| Save/load execution canary, stale Save and stale restore | S21 first proves a valid monitor write/read and later repeats the exact matching write; S23 first proves a newer UI Save; S37 first saves actual history and restores an actual snapshot (`functional/prompt.md:414-424,436-445,462-474`). |
+| History inspection does not execute or mutate; racing writes | S37 establishes a working Run/console control and actual saved snapshots. S38 uses valid Save/restore shapes and requires one accepted winner as well as one conflict, so a server that rejects everything fails (`functional/prompt.md:462-481`). |
+
+The render gate demands a newly authored computed value in both preview and console (`tests/gates/render/judge.toml:18-24`). The constraints gate demands a successful UI write and independent clean-context server read (`tests/gates/constraints/judge.toml:18-24`). Thus a blank app, dead Run, empty console, dead Auto-run, or reject-all Save cannot earn absence-based credit from the scored prompts. A conforming app that retains a static last-good picture after Stop, uses CSP to block snippet networking, or serves its library in HTML has explicit accepted branches (`functional/prompt.md:137-151,209; gates/constraints/judge.toml:22`).
+
+The raw index's 77 listed artifact bytes all matched SHA256 when checked with `python -B`. Its exact-current `runtime-results.json` says `scope: Continuous local reference browser proof; no LLM/provider/platform execution`, `status: completed`, and `criterion_verdicts_produced: false`. The separate `functional-coverage.json` maps all 82 functional IDs to scripted passing facts; this is reference behavior evidence, not configured judge scoring. No exact-current configured judge result was supplied. Therefore the source-level pairing assessment passes while runtime follow-through remains unmeasured.

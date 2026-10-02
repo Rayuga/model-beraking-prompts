@@ -1,0 +1,36 @@
+{
+  "number": 19,
+  "id": "solution_honors_the_runtime_contract_and_is_self_contained",
+  "reviewer": "row-reviewer-19",
+  "input_sha256": "988cc513c1ccda1eec9563f88f73b3d673b5a7679727d55c68a85c2e7ca7985e",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/WebDev Rubrics QC.xlsx:Quality Checks!row 20 (check 19)",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/WebDev Rubrics QC.xlsx:Internal Quality Checks!row 20",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/harbor-webdev-rubric-qc/references/quality-checks.md:check 19",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/projects/webdev-task-template/solution/solve.sh",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/solution/solve.sh",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/solution/app/server.js",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/solution/app/node_modules/better-sqlite3/lib/database.js",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/environment/Dockerfile",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/environment/instructions/integration.md",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/environment/assets/seed_data.json",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/tests/test.sh",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/coldwater-editor-2026-10-02-r1/preflight.json",
+    "qc/runs/coldwater-editor-2026-10-02-r1/manifest.json"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P0",
+  "evidence": "Frozen solution/solve.sh:38 copies the entire solution/app tree to /app, including 1,550 tracked node_modules files in the frozen manifest. The copied local node_modules/better-sqlite3 has no *.node native addon (recursive file inspection), but node_modules/better-sqlite3/lib/database.js:48 requires bindings('better_sqlite3.node') when a Database is constructed. solution/app/server.js:4-5 loads express and better-sqlite3, :8 honors DB_PATH, and :142-144 constructs the database during startup. Node resolves the local package before the working globally installed package supplied by environment/Dockerfile:10-13 and NODE_PATH, so the reference fails at startup despite the image dependency. Direct local command `node -e \"const Database=require('./.qc-cache/coldwater-editor-2026-10-02-r1/task/solution/app/node_modules/better-sqlite3'); new Database(':memory:')\"` exited 1 with `Could not locate the bindings file`; this is a host reproduction of the missing local addon, not a full Linux verifier run. Positive checks: solve.sh has bash shebang/LF and passed `bash -n`; it writes under /app only, has no pkill or NODE_ENV=production, and server.js selects DB_PATH. The seed JSON supplies no snippets, and schema creation uses IF NOT EXISTS/INSERT OR IGNORE. No current raw-evidence-index.json or full configured judge log was available. The preflight is only structural evidence, not private checker execution.",
+  "counterexample": "Run this exact frozen reference through solve.sh and start `node /app/server.js` with the declared NODE_PATH and DB_PATH. The copied local better-sqlite3 package shadows the image's globally installed Linux package and has no better_sqlite3.node, so startup fails. A conforming alternative that ships no local node_modules would resolve the global package and avoid this failure; a syntax-only contract check can miss the broken reference.",
+  "suggested_fix": "Remove solution/app/node_modules from the frozen reference and ensure solve.sh copies only runtime app files; then verify a clean install and startup with the Linux image, DB_PATH, and a save/restart readback before freezing a new candidate.",
+  "run_verdict": "PARTIAL"
+}

@@ -1,0 +1,40 @@
+{
+  "number": 24,
+  "id": "grading_wiring_is_structurally_correct",
+  "reviewer": "row-reviewer-24",
+  "input_sha256": "988cc513c1ccda1eec9563f88f73b3d673b5a7679727d55c68a85c2e7ca7985e",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/WebDev Rubrics QC.xlsx:Quality Checks!A25:D25; Internal Quality Checks!A25:D25; Deterministic Checks!A29:C29,A33:C33",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/harbor-webdev-rubric-qc/references/quality-checks.md:check 24",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md:check-rubric-schema.py and check-scoring-policy.py",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md:scoring.toml, judge.toml and test.sh contracts",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/projects/webdev-task-template/tests/scored/functional/judge.toml",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/coldwater-editor-2026-10-02-r1/per-row-review/prompts/24.md",
+    "qc/runs/coldwater-editor-2026-10-02-r1/per-row-review/rows/24.template.json",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/instruction.md",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/task.toml",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/tests/app_context.md",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/tests/scoring.toml",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/tests/test.sh",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/tests/tools/restart_mcp.py",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/tests/gates/render/judge.toml and prompt.md",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/tests/gates/constraints/judge.toml and prompt.md",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/tests/scored/functional/judge.toml and prompt.md",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/tests/scored/polish/judge.toml and prompt.md",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/tests/scored/visual/judge.toml and prompt.md"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P1",
+  "evidence": "Parsed scoring.toml and all five judge.toml files with Python tomllib. scoring.toml:1-11 has the expected two zero-weight gates, 0.6/0.2/0.2 scored weights and 0.05 functional floor; all five files have resolvable prompt.md files, browser MCP servers, typed positive-weight criteria, unique ids, and gate all_pass/binary criteria. However functional/judge.toml (SHA256 18fbf6979ef5c92da5930b1638f7ad26dfe4f839e4ff27bea011286ebab2e286) has only one [[judge.mcp_servers]] block at lines 8-12, named playwright; parsed server names are ['playwright']. Its cw_save_reload_restart criterion at lines 198-203 requires the verifier-provided restart_app tool. test.sh:193 exports APP_RESTART_HELPER and tools/restart_mcp.py defines restart_app, but the functional judge never declares the verifier MCP server or passes the helper argument. The frozen template's functional/judge.toml:14-18 shows the missing verifier block with args ['/tests/tools/restart_mcp.py', '$APP_RESTART_HELPER']. This is a static structural finding, not a measured full judge run. The referenced raw-evidence-index.json was absent at review time, so no runtime result or artifact hashes from it were used.",
+  "counterexample": "A fully conforming app that persists the saved revision through a server restart cannot have that behavior observed by the functional judge, because restart_app is unavailable to it. An app that survives only a page reload but loses data on process restart can look identical during the available browser-only part; scoring either app on the missing restart observation would misgrade it.",
+  "suggested_fix": "Restore the template's verifier MCP server block in tests/scored/functional/judge.toml, using /usr/local/bin/python3 with args ['/tests/tools/restart_mcp.py', '$APP_RESTART_HELPER'], then validate the structure and rerun the full configured judge on the changed candidate.",
+  "run_verdict": "NOT EXERCISED"
+}

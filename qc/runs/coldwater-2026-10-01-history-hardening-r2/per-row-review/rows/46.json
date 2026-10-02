@@ -1,0 +1,36 @@
+{
+  "number": 46,
+  "id": "tests_and_key_are_out_of_agent_reach",
+  "reviewer": "row-reviewer-46",
+  "input_sha256": "b10dbfae5ccc478c0bc422ac98a58494148a3c9c1df7b5b226d2b3a9a73f8863",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r2/rules/WebDev Rubrics QC.xlsx:Quality Checks!A47:D47 and Internal Quality Checks!A47:D47; both populated check inventories also read",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r2/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r2/rules/harbor-webdev-rubric-qc/references/quality-checks.md:184-185",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r2/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r2/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r2/rules/projects/webdev-task-template/environment/Dockerfile",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r2/rules/projects/webdev-task-template/tests/Dockerfile",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r2/rules/projects/webdev-task-template/tests/test.sh",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r2/rules/projects/webdev-task-template/task.toml",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r2/task/environment/Dockerfile",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r2/task/tests/Dockerfile",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r2/task/tests/test.sh",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r2/task/task.toml",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/coldwater-2026-10-01-history-hardening-r2/raw-evidence-index.json",
+    "qc/runs/coldwater-2026-10-01-history-hardening-r2/per-row-review/evidence/46/runtime-probe.json"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P0",
+  "evidence": "The builder image has no /tests, /logs/verifier, /solution, judge CLIs, or provider env keys in the isolated image probe, and the verifier's /tests is mode 0700. Those protections do not isolate the submitted app from the judge process. Frozen task tests/test.sh:104-111 starts the submitted Node server as UID 65534, then tests/test.sh:203-209 invokes root RewardKit in the same container. The installed harbor-rewardkit==0.1.7 code in verifier image sha256:139a46545d9b54aa2fef459e27aa8298de1fca6f12a11a3e9ebb1fe7dbf43c49 constructs ['claude','-p',prompt,...] at /usr/local/lib/python3.12/site-packages/rewardkit/agents.py:145-153 and launches that argv at rewardkit/judges.py:525-536. rewardkit/judges.py:77-89,126-133 and 507-510 show criterion descriptions are inserted into prompt. In the isolated no-network probe, UID 65534 could not read /tests/scored/functional/judge.toml or root /proc/7/environ, but did read a private marker in a root process's /proc/7/cmdline (runtime-probe.json: verifier_image.stdout.nobody_probe.stdout). All 15 files copied into the verifier /tests image match the frozen task byte-for-byte (runtime-probe.json: image_tests_match_frozen=true). Frozen template environment/Dockerfile, tests/Dockerfile, and tests/test.sh are byte-identical to task copies, so this is a shared runtime isolation defect, not a task-only difference. The raw-evidence index's full-install-binding.json hash was verified, but it measures scripted installation and does not address this leak. No full configured judge or provider run was performed.",
+  "counterexample": "A deliberately weak submitted /app/server.js serves a working health page, then polls /proc/*/cmdline while the verifier runs. When it sees the root `claude -p` process, it extracts the private criterion descriptions and sentinel/probe language from the prompt and tailors subsequent browser responses to those checks. The read requires only the submitted app's existing UID 65534; the isolated probe demonstrated that read even while direct /tests and root environment reads failed.",
+  "suggested_fix": "Run the submitted app in a separate PID namespace or container from RewardKit, with only the app's HTTP endpoint reachable to the verifier, and change the shared RewardKit Claude invocation to pass private prompts through stdin rather than argv; verify both criteria and provider credentials are inaccessible from the app process in a fresh candidate.",
+  "run_verdict": "PARTIAL"
+}

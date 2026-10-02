@@ -1,0 +1,40 @@
+{
+  "number": 35,
+  "id": "core_behavior_is_graded_and_state_is_proven_durable_where_it_must_be",
+  "reviewer": "row-reviewer-35",
+  "input_sha256": "988cc513c1ccda1eec9563f88f73b3d673b5a7679727d55c68a85c2e7ca7985e",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/WebDev Rubrics QC.xlsx:Quality Checks row 36 (quality check 35); Internal Quality Checks row 36",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/harbor-webdev-rubric-qc/references/quality-checks.md:check 35",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md:functional restart MCP contract",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/rules/projects/webdev-task-template/tests/scored/functional/judge.toml",
+    "qc/REVIEW_POLICY.md",
+    "qc/README.md",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/instruction.md",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/environment/instructions/overview.md",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/environment/instructions/behaviour.md",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/environment/instructions/integration.md",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/tests/app_context.md",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/tests/gates/render/judge.toml",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/tests/gates/render/prompt.md",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/tests/gates/constraints/judge.toml",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/tests/gates/constraints/prompt.md",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/tests/scored/functional/judge.toml",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/tests/scored/functional/prompt.md",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/tests/test.sh",
+    ".qc-cache/coldwater-editor-2026-10-02-r1/task/tests/tools/restart_mcp.py"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P1",
+  "evidence": "The defining edit-and-run behavior is tested by the Render gate: gates/render/judge.toml:18-23 requires authored keyboard-entered JavaScript, Run, and two button clicks with increasing preview and console results. Server readback after a Save, clean context, and reload is tested by gates/constraints/judge.toml:27-32. The public requirement explicitly says saved work and history survive a complete server restart (environment/instructions/behaviour.md:9; integration.md:7), and scored/functional/judge.toml:198-203 tries to grade that by calling restart_app. However that functional judge declares only the Playwright MCP server at lines 8-12 and starts [scoring] at line 14; it omits the verifier MCP server required by the frozen staged-task-contract.md and present in the frozen template functional judge.toml. test.sh:193 exports APP_RESTART_HELPER, but exporting it does not expose restart_app to the judge. Thus reload and clean-context persistence are graded, while the required complete-process restart is not executable through the configured functional judge. No raw-evidence-index.json or full configured judge log was present in the run root when reviewed; runtime confirmation remains unmeasured.",
+  "counterexample": "An app keeps snippets in server process memory. It can pass the Render gate and the Constraints gate's fresh-context/reload readback while the process stays alive, yet lose all saved work on restart. The functional judge cannot call restart_app because its MCP server is absent, so it cannot distinguish that broken app from a durable one; a fully durable app also cannot furnish the requested restart observation through this configuration.",
+  "suggested_fix": "Add the frozen template's verifier MCP server block to tests/scored/functional/judge.toml, with /tests/tools/restart_mcp.py and $APP_RESTART_HELPER, then run the configured judge and retain logs proving a successful process restart and fresh-page readback; report tool failure as missing evidence, not an app failure.",
+  "run_verdict": "NOT EXERCISED"
+}

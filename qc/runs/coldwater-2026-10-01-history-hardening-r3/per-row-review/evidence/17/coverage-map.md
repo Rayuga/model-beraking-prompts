@@ -1,0 +1,16 @@
+# Row 17: reference deliverable coverage
+
+Frozen workbook `rules/WebDev Rubrics QC.xlsx`, Quality Checks row 18 (check 17), asks whether the reference plausibly implements every feature/screen in the instruction. Its Internal Quality Checks row 18 has the same text and no further annotation. The frozen skill's `references/quality-checks.md:75-77` says to walk the brief line by line and report a requested capability with no implementation. `qc/REVIEW_POLICY.md` requires actual evidence and forbids calling scripted browser checks configured grading.
+
+| Public request | Reference implementation | Indexed scripted observation |
+| --- | --- | --- |
+| JS and complete HTML selected by filename; editor, preview, console | `solution/app/src/runtime.ts:29-30,309-360`; `solution/app/src/app.tsx:96-157`; `solution/app/src/style.css:1-3` | `functional-coverage.json`: S02, S14-S16, S19; `surface-results.json`: `workspace_organisation` |
+| Isolated execution; five-second run budget; old work cancelled; errors and rollback; interactive last good DOM, form and canvas state | `solution/app/src/runtime.ts:5-27,75-280,309-401`; `solution/app/public/runner.html:1-13` | `functional-coverage.json`: S03-S13, S36; `canvas-regression.json`: error, stop, timeout |
+| Auto-run queue, manual Run, Stop, clearable inspectable console, duration | `solution/app/src/app.tsx:15-19,41-55,99-107,131-157`; `solution/app/src/runtime.ts:155-160,362-401` | `functional-coverage.json`: S14-S17 |
+| Shared SQLite saved library, exact source, new draft, revision conflict, browser reload and process restart | `solution/app/server.js:8-12,41-89,143-171`; `solution/app/src/app.tsx:56-87,108-123,134-145` | `functional-coverage.json`: S21-S23; `history-results.json` and `post-results.json` |
+| Immutable history, read without running, restore as new revision, idempotent retry, save/restore race | `solution/app/server.js:60-62,91-119,157-169`; `solution/app/src/app.tsx:84-101,137-146` | `functional-coverage.json`: S37-S38 and S22 history/retry restart |
+| Keyboard and narrow-screen access | `solution/app/src/app.tsx:98-157`; `solution/app/src/style.css:1-3` | `surface-results.json`: named, reachable, focus, navigation and responsive checks; `post-desktop.png`, `post-mobile.png` inspected |
+
+`coverage-check.json` independently verifies the current SHA256 of all 77 artifacts in `raw-evidence-index.json` and all 15 frozen solution files against `full-install-binding.json`; it reports no mismatch. The browser evidence is local scripted reference evidence. It records no exact-current configured Oracle, Luna, visual Likert, or full judge timing result. This row therefore supports plausible reference coverage, with an unresolved runtime evidence risk; it does not assert a grade.
+
+Counterexample probe: a static three-pane shell with decorative Run/Save controls could look complete in a screenshot, yet would fail the observed source-run result, independent-context SQLite readback, revision race, and rollback facts. Conforming alternative probe: an implementation using different `/app` API routes or a different editor framework is allowed by the brief; this row does not treat the reference's route or React choice as a requirement.

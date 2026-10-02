@@ -1,0 +1,62 @@
+{
+  "scope": "Isolated no-network image inspection and Linux /proc permission probe; no RewardKit judge or provider call",
+  "frozen_test_sh_sha256": "bd68259276ca4b034654efc8a1723a4e702ed62dbe590af6201565f43eabe5aa",
+  "frozen_tests_file_hashes": {
+    "app_context.md": "ad2f814d56037ebabccd7186792db4600f0bd0f319ff3166093b2f744cd907f8",
+    "scoring.toml": "95f70d6e06aae5e765b2309d88c444aa36d4cd82763ea2212781b6a99311bbba",
+    "test.sh": "bd68259276ca4b034654efc8a1723a4e702ed62dbe590af6201565f43eabe5aa",
+    "tools/restart_mcp.py": "03c1426f00e451f4d86b7547761715328c63cdf299f5f812f46c9fa3b44979b5",
+    "tools/score.py": "13de2b3885967e22aa13ded3bf33c354e3e741e85be871612c04e996eef5c04e",
+    "gates/constraints/judge.toml": "6e6515ae9a6f82ef59ed4e07d19c6f406a82215cd57d326e39649c6d8a146fc5",
+    "gates/constraints/prompt.md": "c41d45a944cecf6864a8a2e5384d34f62e39475a28f44463e8ae0e440e3bdff2",
+    "gates/render/judge.toml": "6a4092063088a0f0d1e1560736ad7936522a4165aab348e944d0c07e39ff4824",
+    "gates/render/prompt.md": "3f19f0812f940410bcc1368cdeba54e0205b87beafac9bf568e9f02a4a33e660",
+    "scored/functional/judge.toml": "b8966a11831fb445824ed1104dbb415752d813b18bf95cb275193434482f15f9",
+    "scored/functional/prompt.md": "d34d6795d3ff5e6735f13013113bb1238d420f46e4a522809195b6a6efe88ce0",
+    "scored/polish/judge.toml": "afc00c437578ea29f2553b3215cb5ccf5ad08694a6ab1e05906045c68a8bdd51",
+    "scored/polish/prompt.md": "11619b3734c104f2aba845186f89bf05bc6a139971448eefeea85746eb527e65",
+    "scored/visual/judge.toml": "1c7be8e8972617a5072f2e86b73ac591e42f26945a39ccc1b8d1d45c40df2221",
+    "scored/visual/prompt.md": "fbe467bd481f8aa37f1204c6642d0b8cbfab9d464b26371964c3bc4c1c5db90f"
+  },
+  "agent_image": {
+    "name": "qc-coldwater-history:r2",
+    "id": "sha256:001e7d851703c4bdda8e84ad85377bb1118009fa9333be4ad3e47b8accdc3230",
+    "command": [
+      "docker",
+      "run",
+      "--rm",
+      "--read-only",
+      "--network",
+      "none",
+      "--entrypoint",
+      "node",
+      "qc-coldwater-history:r2",
+      "-e",
+      "\nconst fs = require('fs');\nconst files = ['/tests', '/logs/verifier', '/solution', '/instructions', '/assets', '/app'];\nconst packages = ['@anthropic-ai/claude-code/package.json', '@openai/codex/package.json', '@playwright/mcp/package.json'];\nconst found = Object.fromEntries(files.map(p => [p, fs.existsSync(p)]));\nconst installed = Object.fromEntries(packages.map(p => {try { return [p, require.resolve(p)]; } catch { return [p, null]; }}));\nconsole.log(JSON.stringify({uid: process.getuid(), found, installed, envKeys: Object.keys(process.env).filter(k => /REWARDKIT|ANTHROPIC|OPENROUTER/.test(k))}));\n"
+    ],
+    "exit_code": 0,
+    "stdout": "{\"uid\":0,\"found\":{\"/tests\":false,\"/logs/verifier\":false,\"/solution\":false,\"/instructions\":true,\"/assets\":true,\"/app\":true},\"installed\":{\"@anthropic-ai/claude-code/package.json\":null,\"@openai/codex/package.json\":null,\"@playwright/mcp/package.json\":null},\"envKeys\":[]}\n",
+    "stderr": ""
+  },
+  "verifier_image": {
+    "name": "qc-coldwater-row22:history-r2",
+    "id": "sha256:139a46545d9b54aa2fef459e27aa8298de1fca6f12a11a3e9ebb1fe7dbf43c49",
+    "command": [
+      "docker",
+      "run",
+      "--rm",
+      "--read-only",
+      "--network",
+      "none",
+      "--entrypoint",
+      "python3",
+      "qc-coldwater-row22:history-r2",
+      "-c",
+      "\nimport hashlib, json, os, stat, subprocess, sys\nfrom pathlib import Path\n\nmarker = 'ROW46_PRIVATE_CRITERION_MARKER_20261001'\nproc = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(15)', marker])\ntry:\n    nobody_code = r'''\nimport json, os, sys\nfrom pathlib import Path\npid = sys.argv[1]\nout = {'uid': os.geteuid(), 'pid_observed': pid}\nfor key, path in [('judge_toml', '/tests/scored/functional/judge.toml'), ('root_env', '/proc/' + pid + '/environ'), ('root_argv', '/proc/' + pid + '/cmdline')]:\n    try:\n        data = Path(path).read_bytes()\n        out[key] = {'readable': True, 'marker_visible': b'ROW46_PRIVATE_CRITERION_MARKER_20261001' in data, 'bytes': len(data)}\n    except OSError as exc:\n        out[key] = {'readable': False, 'error': str(exc)}\nprint(json.dumps(out))\n'''\n    probe = subprocess.run(['setpriv', '--reuid=65534', '--regid=65534', '--clear-groups', sys.executable, '-c', nobody_code, str(proc.pid)], text=True, capture_output=True)\n    source = Path('/usr/local/lib/python3.12/site-packages/rewardkit/agents.py')\n    caller = Path('/usr/local/lib/python3.12/site-packages/rewardkit/judges.py')\n    script = Path('/tests/test.sh')\n    output = {\n        'image_test_sh_sha256': hashlib.sha256(script.read_bytes()).hexdigest(),\n        'tests_file_hashes': {str(p.relative_to('/tests')): hashlib.sha256(p.read_bytes()).hexdigest() for p in Path('/tests').rglob('*') if p.is_file()},\n        'tests_mode': oct(stat.S_IMODE(Path('/tests').stat().st_mode)),\n        'agent_source_sha256': hashlib.sha256(source.read_bytes()).hexdigest(),\n        'judge_source_sha256': hashlib.sha256(caller.read_bytes()).hexdigest(),\n        'rewardkit_argv_source': {'agents.py:145-153': source.read_text().splitlines()[144:153], 'judges.py:522-537': caller.read_text().splitlines()[521:537]},\n        'nobody_probe': {'exit_code': probe.returncode, 'stdout': probe.stdout, 'stderr': probe.stderr},\n    }\n    print(json.dumps(output))\nfinally:\n    proc.terminate()\n    proc.wait(timeout=3)\n"
+    ],
+    "exit_code": 0,
+    "stdout": "{\"image_test_sh_sha256\": \"bd68259276ca4b034654efc8a1723a4e702ed62dbe590af6201565f43eabe5aa\", \"tests_file_hashes\": {\"scoring.toml\": \"95f70d6e06aae5e765b2309d88c444aa36d4cd82763ea2212781b6a99311bbba\", \"app_context.md\": \"ad2f814d56037ebabccd7186792db4600f0bd0f319ff3166093b2f744cd907f8\", \"test.sh\": \"bd68259276ca4b034654efc8a1723a4e702ed62dbe590af6201565f43eabe5aa\", \"tools/restart_mcp.py\": \"03c1426f00e451f4d86b7547761715328c63cdf299f5f812f46c9fa3b44979b5\", \"tools/score.py\": \"13de2b3885967e22aa13ded3bf33c354e3e741e85be871612c04e996eef5c04e\", \"gates/render/prompt.md\": \"3f19f0812f940410bcc1368cdeba54e0205b87beafac9bf568e9f02a4a33e660\", \"gates/render/judge.toml\": \"6a4092063088a0f0d1e1560736ad7936522a4165aab348e944d0c07e39ff4824\", \"gates/constraints/prompt.md\": \"c41d45a944cecf6864a8a2e5384d34f62e39475a28f44463e8ae0e440e3bdff2\", \"gates/constraints/judge.toml\": \"6e6515ae9a6f82ef59ed4e07d19c6f406a82215cd57d326e39649c6d8a146fc5\", \"scored/functional/prompt.md\": \"d34d6795d3ff5e6735f13013113bb1238d420f46e4a522809195b6a6efe88ce0\", \"scored/functional/judge.toml\": \"b8966a11831fb445824ed1104dbb415752d813b18bf95cb275193434482f15f9\", \"scored/polish/prompt.md\": \"11619b3734c104f2aba845186f89bf05bc6a139971448eefeea85746eb527e65\", \"scored/polish/judge.toml\": \"afc00c437578ea29f2553b3215cb5ccf5ad08694a6ab1e05906045c68a8bdd51\", \"scored/visual/prompt.md\": \"fbe467bd481f8aa37f1204c6642d0b8cbfab9d464b26371964c3bc4c1c5db90f\", \"scored/visual/judge.toml\": \"1c7be8e8972617a5072f2e86b73ac591e42f26945a39ccc1b8d1d45c40df2221\"}, \"tests_mode\": \"0o700\", \"agent_source_sha256\": \"726e408bfd390b71acbd92e99fd80c528a9de8b3bd89c9104296e9834e62d4a9\", \"judge_source_sha256\": \"bd713494ebdfc5c59cf14595c51cf6bbfd154c53ed73542e9421ea3e589a717e\", \"rewardkit_argv_source\": {\"agents.py:145-153\": [\"        cmd = [\", \"            \\\"claude\\\",\", \"            \\\"-p\\\",\", \"            prompt,\", \"            \\\"--output-format\\\",\", \"            \\\"json\\\",\", \"            \\\"--json-schema\\\",\", \"            json.dumps(schema),\", \"        ]\"], \"judges.py:522-537\": [\"    allowed_tools = tuple(\", \"        name for server in judge.mcp_servers for name in server.allowed_tool_names()\", \"    )\", \"    cmd = backend.build_command(prompt, schema, allowed_tools=allowed_tools)\", \"    if judge.model:\", \"        cmd.extend(backend.model_args(judge.model))\", \"\", \"    try:\", \"        for attempt in range(_MAX_JUDGE_RETRIES):\", \"            proc = await asyncio.create_subprocess_exec(\", \"                *cmd,\", \"                stdin=asyncio.subprocess.DEVNULL,\", \"                stdout=asyncio.subprocess.PIPE,\", \"                stderr=asyncio.subprocess.PIPE,\", \"                cwd=cwd,\", \"            )\"]}, \"nobody_probe\": {\"exit_code\": 0, \"stdout\": \"{\\\"uid\\\": 65534, \\\"pid_observed\\\": \\\"7\\\", \\\"judge_toml\\\": {\\\"readable\\\": false, \\\"error\\\": \\\"[Errno 13] Permission denied: '/tests/scored/functional/judge.toml'\\\"}, \\\"root_env\\\": {\\\"readable\\\": false, \\\"error\\\": \\\"[Errno 13] Permission denied: '/proc/7/environ'\\\"}, \\\"root_argv\\\": {\\\"readable\\\": true, \\\"marker_visible\\\": true, \\\"bytes\\\": 94}}\\n\", \"stderr\": \"\"}}\n",
+    "stderr": ""
+  },
+  "image_tests_match_frozen": true
+}

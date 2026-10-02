@@ -1,40 +1,9 @@
-# Running code and keeping work
+# Running and saving
 
-## The preview
+Run the current .js source in a fresh isolated preview document. A complete .html file replaces that document. The browser may execute supported code in the preview; the editor must continue to hold the exact source used for Run. Show console output and a useful error message with a one-based line number for a thrown error, including an error inside a complete HTML file.
 
-A JavaScript run starts with a fresh preview document. A complete HTML file replaces it.
+Keep the latest successful preview as a last-good picture. If a later run throws, is stopped or exceeds the five-second run budget, show the reason and restore that picture, including values typed into its controls and ordinary canvas drawing. The budget covers source execution and pending timer or Promise callbacks until that run settles. After it settles, a later user interaction in the preview starts a fresh five-second budget for its own callbacks. An older cancelled run must not later overwrite a newer preview or console output. A restored picture may be static. The workspace must accept a later valid Run.
 
-Starting another run cancels whatever the previous one still had pending. Stop does the same for the current run; when I use it, show that I stopped the run. Old work mustn't come back later with a log entry, replace the current preview or claim to be the current success. An error from that cancelled work shouldn't spoil the newer run either.
+Save a snippet's exact title, filename and source. A fresh page must read the saved record from the running app, and saved work and history must survive a complete server restart. Two tabs may load the same revision. One tab's later successful Save must make the other's old-revision Save fail without changing the saved record or discarding that tab's dirty draft. Give useful conflict feedback.
 
-Give each run five seconds altogether, including its scheduled callbacks. A timer doesn't get a new five seconds when it fires. This covers source-written loops, functions and timer or Promise callbacks. If it takes too long, end its visible run with a time-limit reason and leave the editor usable. Its old work can't change the current preview, add console entries or change the run status afterward. The limits of that promise are in /instructions/security.md.
-
-Keep the current successfully completed preview interactive until I stop it, it fails or another run replaces it. I might leave it there for a while before clicking a button or typing into a field. Once stopped, timed out or replaced, that preview's old handlers must no longer change the current preview, console or run status.
-
-It's fine to show a run's candidate preview while it works. It becomes the last good preview only when it finishes without an uncaught error. If it fails, is stopped or runs out of time, bring back the previous successful render. I don't want half of the failed attempt left behind. If I've had several successful runs, bring back the most recent one, not an earlier snapshot. Using Stop after a preview has completed should keep its current successful picture on screen too. Keep the actual latest successful picture, including text I typed into its inputs, changes made by its buttons and ordinary 2D canvas drawings. Do not rebuild an earlier picture by rerunning its original source. That restored picture can be static; I can run the source again when I want its handlers back.
-
-Errors need the message and a one-based line number from the source I actually entered. For HTML, count from the beginning of the complete document, including the lines before a script tag. The same applies to errors thrown later by a timer and to unhandled Promise rejections; both belong in the console and should restore the good preview.
-
-## Console and automatic runs
-
-Capture log, warn, error and info calls in order and make their levels clear. I need to open up objects and arrays to inspect their values. Keep recent entries between runs so I can compare them, and let me empty the history with Clear console. A sensible limit on the oldest entries is fine. Show how long each run took.
-
-Auto-run should wait for a short pause in typing, with each later edit starting that wait again. About two seconds after I stop typing is plenty. Switching it off should cancel a queued automatic run too. The ordinary Run action works whether auto-run is on or off. If an automatic run is queued, pressing Run consumes that pending attempt: execute the current code once, without a second run when the old wait expires. Opening a saved snippet or starting a new draft cancels queued work too. Merely opening that source must not execute it, even with Auto-run enabled; a later edit or an explicit Run can execute it.
-
-## Saved snippets
-
-A saved snippet has an identity, a title, a filename and its exact source. Save updates the record I'm editing. A new draft makes a separate record. Loading should bring back the title, filename and source unchanged.
-
-Use the .js or .html filename to choose the execution mode without a separate selector. Titles are just display names; two saved snippets can share one. Each record has its own identity.
-
-Two editors may have the same saved snippet open. Each successful saved change gets a revision, and Save refers to the revision that editor loaded. If another editor has moved it on, refuse the old operation without changing any field or revision. Keep my unsaved work so I can compare it with the latest copy, reload that copy and deliberately reapply my edit. We may keep editing from both windows, so this needs to keep working whichever editor saves first next time.
-
-
-## Going back to saved work
-
-Every successful Save keeps an immutable snapshot of the title, filename and exact source at that revision. Keep older snapshots when I save again. I should be able to read an older revision without changing either the current saved version or my unsaved draft, and without running that old source.
-
-Restoring an older snapshot makes a new current revision of the same snippet. It copies that snapshot's three fields; it doesn't erase the intervening history or put the revision counter backwards. Saving and restoring from two editors follow the same rule: the operation refers to the current revision the editor last loaded. If somebody has changed it, refuse my stale restore, leave the saved state alone and keep my unsaved fields with a useful explanation.
-
-A restore reply can get lost after the server has already accepted the change. Let me retry that same attempt. It must return the original restore result without creating another revision. That still holds if somebody saves newer work before my retry arrives: acknowledge the earlier result without replacing their newer work. A retry is the same attempt, distinct from deliberately requesting another restore.
-
-When two different changes arrive together for the same loaded revision, exactly one can become current. The loser gets a conflict, and no half-written or extra history entry should appear. This applies to two Saves as well as a Save racing a restore. Saved history and the results needed to recognise a retried restore must survive a reload and a process restart along with the current record.
+History inspection is read-only. Restoring an older snapshot creates a new current revision of the same record while retaining the intervening history. An old-revision restore must not overwrite a newer save. A repeated request for the same already committed restore must not create another revision.

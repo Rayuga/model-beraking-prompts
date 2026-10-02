@@ -1,0 +1,29 @@
+{
+  "number": 19,
+  "id": "solution_honors_the_runtime_contract_and_is_self_contained",
+  "reviewer": "row-reviewer-19",
+  "input_sha256": "ae1d6f45959dbff89eb8963973dd7cfd29f634674f246410819317a7a3fc57a0",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/rules/WebDev Rubrics QC.xlsx: Quality Checks!A20:D20 (row 19), Internal Quality Checks!A20:D20; Quality Checks and Deterministic Checks sheets read and list_checks.py enumerated 53/48",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/rules/harbor-webdev-rubric-qc/SKILL.md; references/quality-checks.md:83-85; references/deterministic-checks.md:check-solve-contract.py; references/staged-task-contract.md",
+    "qc/README.md; qc/REVIEW_POLICY.md; NEW_TASK_AUTHORING_CONTEXT.md:46-173; TASK_AUTHORING_WORKFLOW.md:1-146",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/rules/projects/webdev-task-template/solution/solve.sh; environment/Dockerfile; environment/instructions/integration.md",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/task/solution/solve.sh:1-38; solution/app/server.js:1-171; solution/app/package.json; environment/Dockerfile; environment/instructions/integration.md; task.toml",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/task/solution/app/node_modules/better-sqlite3/lib/database.js:45-48; solution/app/node_modules/bindings/bindings.js:126-135; better-sqlite3 directory inspected for native binaries",
+    "qc/runs/coldwater-2026-10-01-history-hardening-r1/manifest.json; raw-evidence-index.json (all 21 indexed artifact hashes verified; scoped limits read)",
+    "qc/repairs/coldwater-2026-10-01-stricter/install-r1-observation.md; drivers/install_smoke.sh",
+    "qc/runs/coldwater-2026-10-01-history-hardening-r1/row19-runtime-probe.sh; row19-runtime-control.cjs; row19-runtime-probe.log; row19-input-verification.json"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P0",
+  "evidence": "CONFIRMED runtime failure on the exact frozen solution. Integration.md:3-9 promises Node 22, NODE_PATH=/usr/local/lib/node_modules, node /app/server.js from an arbitrary CWD, and DB_PATH persistence. solve.sh:38 copies every app file, including frozen solution/app/node_modules, into /app. server.js:5 loads better-sqlite3 and :144 constructs Database; the copied better-sqlite3/lib/database.js:48 requests better_sqlite3.node, but the frozen package contains zero *.node files and shadows the working image-global Linux package. In row19-runtime-probe.log, the actual solve.sh passed bash -n and installation exited 0, then node /app/server.js from /tmp with the stated environment exited 1: 'Error: Could not locate the bindings file', stack at /app/server.js:144:22. The separate uniquely named disposable container used image sha256:d6bd1b069a0cf51e6ae1d5ba95b3cdc98367bf5692d45f1bb26288e30203a082. row19-input-verification.json records matching hashes for all 1,384 frozen task files and 34 rules files, runtime drivers/log and the prior raw installation observation. This independently confirms that observation. Scripted product evidence in raw-evidence-index.json expressly excluded this copied node_modules and cannot demonstrate delivery startup. Positive aspects: solve.sh has a bash shebang, LF only, writes only app files under /app, and has no pkill/NODE_ENV=production; server uses __dirname, honors DB_PATH, and creates tables/initial history idempotently. In a diagnostic control only, moving /app/node_modules aside yielded health 200, root 200, an initially empty library, custom /tmp/row19-custom/app.db, no /app/app.db, and exactly one saved record/history row after process restart. The frozen candidate remains failed. Workbook public-network language overrides the obsolete internal no-network/install annotation; no public fetch/install restriction is asserted. This is a direct install/runtime smoke test, not a configured judge, private checker suite, Oracle score or portal result.",
+  "counterexample": "The actual frozen reference is the broken witness: it appears functional if a test deploys only server.js and public, but its real solve.sh copies the incomplete local better-sqlite3 dependency and crashes before it can serve the app. A conforming alternative using the promised global dependencies succeeds (the disposable control excluded only copied node_modules and passed startup, DB_PATH and restart checks); it must not be falsely failed for lacking locally vendored dependencies or for a public-network install.",
+  "suggested_fix": "After this round, move build dependencies outside the shipped task (so solve.sh cannot copy them), retain the built public assets, freeze a new candidate, and rerun its complete unmodified solve.sh/startup contract before claiming readiness.",
+  "run_verdict": "CONFIRMED"
+}

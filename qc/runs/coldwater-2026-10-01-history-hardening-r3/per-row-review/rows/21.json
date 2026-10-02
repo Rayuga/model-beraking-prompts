@@ -1,0 +1,33 @@
+{
+  "number": 21,
+  "id": "verifier_entrypoint_is_safe_and_always_scores",
+  "reviewer": "row-reviewer-21",
+  "input_sha256": "80865100dd4b973cb1cfb54e92a812e3f989440975a22dd2519f5f5d5256e841",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r3/rules/WebDev Rubrics QC.xlsx:Quality Checks!A22:D22 and Internal Quality Checks!A22:D22; both rubric sheets enumerated",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r3/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r3/rules/harbor-webdev-rubric-qc/references/quality-checks.md:92-94",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r3/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md:98-111",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r3/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md:42-48",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r3/rules/projects/webdev-task-template/tests/test.sh",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r3/task/tests/test.sh",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r3/task/tests/tools/score.py",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r3/task/tests/scoring.toml",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r3/task/task.toml",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r3/task/environment/instructions/integration.md",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/coldwater-2026-10-01-history-hardening-r3/raw-evidence-index.json and three cited artifacts"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P1",
+  "evidence": "Source positive: frozen tests/test.sh:60-61 initializes zero reward and EXIT trap; :68-83 rejects missing entry/symlink escape; :104-111 runs app with sanitized env and uid 65534; :115-124 probes before RewardKit; :212-227 runs gates then scored and score.py after each successful suite. bash -n passed; task test.sh and frozen template are byte-identical (SHA256 bd68259276ca4b034654efc8a1723a4e702ed62dbe590af6201565f43eabe5aa). Defect: tests/test.sh:33-39 sends TERM once then waits without a bound for the original app child. Isolated Linux/POSIX probe at per-row-review/evidence/21/cleanup-wait-result.json confirms a TERM-resistant child held wait until watchdog KILL at three seconds. The initialized zero/reward file does not ensure a completed verifier rollout when cleanup stalls. This is an isolated shell proof, not an exact-current configured judge run; no row-relevant full-run evidence exists. See per-row-review/evidence/21/source-audit.md. Three sampled raw-index artifact hashes matched, but they describe scripted golden/application checks only.",
+  "counterexample": "A submitted Node server fully serves the requested app but installs a SIGTERM-ignoring handler. After RewardKit exits, the verifier's EXIT trap waits indefinitely on that child; the outer 13,200-second deadline may end the rollout before its valid score is returned. A no-server broken app correctly retains the initial zero, so that negative path does not hide this exit defect.",
+  "suggested_fix": "Bound cleanup: TERM the app process group, allow a short grace interval, KILL a still-live group, reap it, and preserve the already written reward and original exit status; test both resistant parent and child.",
+  "run_verdict": "PARTIAL"
+}

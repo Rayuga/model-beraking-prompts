@@ -1,0 +1,11 @@
+# Row 40 source and measurement note (no verdict)
+
+The frozen workbook `Quality Checks!A41:D41` and `Internal Quality Checks!A41:D41` state that this row asks whether the reward spreads across partial-quality apps. The frozen skill's `references/quality-checks.md:165-166` says a single all-or-nothing gate or criteria sharing one precondition can collapse the signal.
+
+The frozen `tests/scoring.toml:2-11` sets zero-weight Render and Constraints gates, scored weights Functional 0.6, Polish 0.2, Visual 0.2, and a Functional floor of 0.05. The frozen `tests/tools/score.py:41-48` applies the gates and floor before writing the weighted result. Parsing the five `judge.toml` files found one binary criterion in each gate, 80 Functional binary criteria with total criterion weight 45.25, six Polish binary criteria with total weight 3.0, and six Visual five-point Likert criteria with total weight 6.0. The criteria are weighted means within scored dimensions.
+
+`inspection.json` records runs of the unchanged frozen `score.py` on **synthetic dimension inputs**. With both gates set to 1, fixed Polish and Visual values of 0.5, and Functional values of 0.06, 0.25, and 0.65, rewards were 0.236, 0.35, and 0.59. A failed Render gate or Functional value of 0.04 yielded zero. This establishes scorer arithmetic only; it is not an app variant or configured judge measurement.
+
+All 60 artifacts in `raw-evidence-index.json` matched their listed SHA256 values when checked. The index explicitly describes scripted browser observations and disclaims current configured judge, Oracle, model, and portal scores. Its computed-mock artifact shows a literal-output mock failing the scripted Render probe; its computed-Luna artifact shows an older app passing that probe. The run's `runtime-evidence.json` was absent at inspection time. Empirical score spread across actual partial-quality apps therefore remains unmeasured here.
+
+The reviewing context was withdrawn from independent verdict duty after a broad text search unexpectedly displayed snippets of unrelated row reports. It did not open those reports or use their conclusions. This note and `inspection.json` are factual supporting material for a fresh reviewer, not a row-40 verdict.

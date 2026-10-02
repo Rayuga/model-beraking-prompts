@@ -1,0 +1,31 @@
+{
+  "number": 17,
+  "id": "solution_covers_every_deliverable",
+  "reviewer": "row-reviewer-17",
+  "input_sha256": "ae1d6f45959dbff89eb8963973dd7cfd29f634674f246410819317a7a3fc57a0",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/rules/WebDev Rubrics QC.xlsx: Quality Checks A18:D18 (check 17) and Internal Quality Checks A18:D18; complete Quality Checks and Deterministic Checks inventories read",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/rules/harbor-webdev-rubric-qc/references/quality-checks.md: section 17",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/rules/projects/webdev-task-template/instruction.md; solution/solve.sh; solution/app/server.js; environment/instructions/integration.md",
+    "qc/README.md; qc/REVIEW_POLICY.md; authoring entry-point guidance in NEW_TASK_AUTHORING_CONTEXT.md and TASK_AUTHORING_WORKFLOW.md",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/task/instruction.md; all six environment/instructions notes; environment/assets/seed_data.json",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r1/task/solution/solve.sh; solution/app/server.js; solution/app/src/app.tsx; solution/app/src/runtime.ts; solution/app/src/style.css; solution/app/static/runner.html",
+    "qc/runs/coldwater-2026-10-01-history-hardening-r1/raw-evidence-index.json; artifact hashes verified; proof-inputs.json source hashes compared with frozen source",
+    "qc/repairs/coldwater-2026-10-01-stricter/history-results.json; post-results.json; runtime-results.json; surface-results.json; functional-coverage.json (relevant raw observations read, not reviewer verdicts)",
+    "qc/runs/coldwater-2026-10-01-history-hardening-r1/row17-canvas-proof.cjs; row17-canvas-proof.json; row17-canvas-before.png; row17-canvas-after.png; row17-canvas-binding.json"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P1",
+  "evidence": "Core picture recovery is incomplete. Frozen task/instruction.md:3 requests the actual last good preview including changes made through controls. Frozen task/environment/instructions/behaviour.md:13 explicitly requires the actual latest successful picture, including button-made changes, after failure or Stop; the security note does not exclude ordinary Canvas 2D drawing. In frozen solution/app/src/runtime.ts:150-189, snapshot() clones document.documentElement (line 152), copies stylesheet/form state, then serializes copy.outerHTML (line 189). No canvas bitmap is copied. staticDocument()/PreviewRunner.restore() at lines 17-21 and 357-358 consequently restore an empty canvas.\n\nIndependent focused browser execution against cw-stricter-golden-20261001 confirmed this using only ordinary UI actions and a fresh isolated context: a complete HTML file renders a canvas; its Paint red button uses getContext(\"2d\").fillRect() and changes a paragraph to Painted red; execution completes. Before the next run, the canvas center was RGBA [224,36,36,255]. A subsequent JS run changes its candidate DOM then throws canvas-recovery-test. The reference reports Error - previous preview retained, restores the heading and Painted red paragraph, but the canvas center becomes [0,0,0,0]. The before/after screenshots visibly show the red rectangle disappearing. row17-canvas-proof.json (SHA256 5180199ab010452969fb0d96586143853229a506d6f5192cf906dc51f687fa51) preserves exact inputs, status, console and observed pixels. row17-canvas-binding.json records command, proof hashes, and exact matches for running server.js plus every served index/JS/CSS/runner asset against this frozen candidate.\n\nThe major requested surfaces do have implementations: app.tsx:15-17 console object/array inspection; :44-115 logs, Run, auto-run cancellation, save/conflict/recovery; :128-154 workspace/library/history/keyboard controls; server.js:52-118 revision checks, immutable snapshots, atomic restore and retry recognition; :142-168 durable SQLite schema; runtime.ts:24-67 guards, :149-269 console/timer/error handling, :299-346 filename-selected HTML/JS builds, and :349-387 isolated preview lifecycle; style.css:1-5 responsive panes/history overflow. Existing hash-verified scripted observations cover these ordinary controls, text/input rollback, history and race cases, but they do not cover canvas pixel preservation. Their success does not refute this additional valid input.\n\nConforming alternative considered: retaining canvas pixels as a static bitmap during rollback would satisfy the explicit permission for a static restored picture; original event handlers need not survive. This finding does not require a particular frontend framework, label, route, or reactivated handler. No configured judge or portal score is claimed. The browser deployment omits frozen local node_modules, so product behavior and installation evidence remain distinct.",
+  "counterexample": "Run a complete HTML document containing a 180x100 canvas, a Paint red button and an inline classic script whose button handler fills the canvas red and changes a paragraph to Painted red. Click the button and wait for Complete. Run a different JS source that modifies its own candidate document and throws an Error. The actual reference is a plausible broken implementation that passes text/input-only rollback checks: it restores the paragraph but erases the successful canvas drawing, violating instruction.md:3 and behaviour.md:13. Exact reproducer and observed output are in row17-canvas-proof.cjs/json.",
+  "suggested_fix": "Preserve visible canvas pixels in each successful snapshot, for example as inert bitmap replacements, and verify that errors, Stop and timeout restore the captured picture without executing old handlers.",
+  "run_verdict": "CONFIRMED"
+}

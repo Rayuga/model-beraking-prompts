@@ -1,0 +1,38 @@
+{
+  "number": 46,
+  "id": "tests_and_key_are_out_of_agent_reach",
+  "reviewer": "row-reviewer-46",
+  "input_sha256": "80865100dd4b973cb1cfb54e92a812e3f989440975a22dd2519f5f5d5256e841",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r3/rules/WebDev Rubrics QC.xlsx:Quality Checks!A47:D47; Internal Quality Checks!A47:D47; Deterministic Checks",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r3/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r3/rules/harbor-webdev-rubric-qc/references/quality-checks.md:184-185",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r3/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r3/rules/projects/webdev-task-template/environment/Dockerfile",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r3/rules/projects/webdev-task-template/tests/Dockerfile",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r3/rules/projects/webdev-task-template/tests/test.sh",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r3/rules/projects/webdev-task-template/task.toml",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r3/task/environment/Dockerfile",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r3/task/tests/Dockerfile",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r3/task/tests/test.sh",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r3/task/tests/gates/render/judge.toml",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r3/task/tests/gates/render/prompt.md",
+    ".qc-cache/coldwater-2026-10-01-history-hardening-r3/task/task.toml",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/coldwater-2026-10-01-history-hardening-r3/raw-evidence-index.json",
+    "qc/repairs/coldwater-2026-10-01-stricter-r3/local-proof-summary.json",
+    "qc/runs/coldwater-2026-10-01-history-hardening-r3/per-row-review/evidence/46/isolation-probe.md"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P0",
+  "evidence": "The frozen agent Dockerfile copies only public instructions/assets (lines 14-15) and task.toml sets separate verifier mode (line 28), so pre-submission image separation is sound. But tests/test.sh launches the submitted app as UID 65534 in the verifier container (lines 104-111) and then invokes RewardKit there (lines 203-209). The frozen verifier Dockerfile installs harbor-rewardkit==0.1.7 (line 31). In an existing verifier image with that exact installed version, rewardkit/judges.py builds a prompt containing each private criterion's name/description and passes it to ClaudeCodeCLI; rewardkit/agents.py puts the prompt in the command argv as ['claude','-p',prompt,...]. A targeted probe in that image showed a UID 65534 process could read a root-owned process's /proc/<pid>/cmdline: exit 0, visible_marker True. Thus a submitted app can read private criteria while being graded. The provider key was not shown exposed. See per-row-review/evidence/46/isolation-probe.md. The raw index's cited local-proof-summary.json hash was verified, but scripted golden results do not establish a configured judge or portal grade.",
+  "counterexample": "A broken server can poll /proc/*/cmdline while RewardKit starts Claude, extract the private -p prompt and criterion descriptions, then serve UI and responses tailored to those exact probes so it earns credit without implementing the general playground behavior. A conforming server does not remove this verifier isolation defect.",
+  "suggested_fix": "In the shared verifier runner, deliver private judge prompts without placing them in process arguments and isolate the untrusted app from verifier process metadata, then confirm with an unprivileged app-process probe and a configured judge run.",
+  "run_verdict": "CONFIRMED"
+}

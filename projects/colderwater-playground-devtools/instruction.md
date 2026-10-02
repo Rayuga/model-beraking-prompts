@@ -1,9 +1,5 @@
-I'd like a small playground for trying out browser ideas in JavaScript and complete HTML files. Keep the editor, preview and console together, with a shared library for the snippets worth keeping. No accounts or sign-in; it's a local tool.
+I'd like a small local playground for working on JavaScript and complete HTML files. The editor itself matters: I often paste a long one-line experiment, format it, make changes in several places, and then run it beside the source. I want to keep the versions that work without losing a draft when another tab saves first.
 
-The annoying part is losing something that was working. If my next attempt breaks or I stop it, bring back the actual last good preview, including changes I'd made using its controls. Re-running the original source isn't enough if that loses what I typed. I also want to go back through saved versions without losing newer work, especially when I've got two editors open.
+Please read the six notes in /instructions before building. They describe the custom editor, preview, saved snippets and runtime. /assets/seed_data.json describes the starting scope; there is no starter app to finish.
 
-Please read the six notes in /instructions before starting. They cover running code, saved history and the limits of the playground. /assets/seed_data.json describes the starting scope; there's no starter app to finish.
-
-I need to start a fresh draft, save it and come back later. Make the interface comfortable with a keyboard and on a narrow screen. A single clear colour scheme is enough.
-
-The finished app goes in /app. Our setup and start command are in /instructions/integration.md. External fonts, scripts and CDN assets are fine for the app itself.
+Put the app in /app and serve the workspace at /. I should be able to open it, edit code, run it and inspect the result without signing in.
