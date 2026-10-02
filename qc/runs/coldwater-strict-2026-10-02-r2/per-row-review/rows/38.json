@@ -1,0 +1,35 @@
+{
+  "number": 38,
+  "id": "batched_criteria_are_scored_independently",
+  "reviewer": "row-reviewer-38",
+  "input_sha256": "af036c0a436e39e00f094f9443448f26622386cecc722bfb987bb1d1f634d88e",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/WebDev Rubrics QC.xlsx :: 'Quality Checks' row 39 (check 38) and 'Internal Quality Checks' row 39 (no annotation cells populated, no cell comments)",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/harbor-webdev-rubric-qc/references/quality-checks.md:156-159",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md:54",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/harbor-webdev-rubric-qc/scripts/ (only build_report.py and list_checks.py present)",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/projects/webdev-task-template/tests/scored/functional/prompt.md:13,19,27-28,68-69",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/projects/webdev-task-template/tests/scored/polish/prompt.md:12-19",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/projects/webdev-task-template/tests/scored/visual/prompt.md:20,44-49",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/scored/functional/prompt.md (sha256 c1582811...)",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/scored/polish/prompt.md (sha256 41bd302c...)",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/scored/visual/prompt.md (sha256 877ab619...)",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/scored/{functional,polish,visual}/judge.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/scoring.toml",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/coldwater-strict-2026-10-02-r2/raw-evidence-index.json, preflight.json, manifest.json"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "low",
+  "evidence": "All three scored dimensions are mode=\"batched\" (tests/scored/*/judge.toml:3). No scored prompt tells the judge to stop at the first failure, and the only all-or-nothing rule is the template-given global browser gate (line 5 of each prompt; template functional:13, polish:12, visual:20). FUNCTIONAL meets the row in full: tests/scored/functional/prompt.md:10 'Never carry a verdict across criteria... a failure in one must not fail another whose own steps passed'; :14 'stop and fail that criterion, then continue with the rest'; :25 'give every criterion its own verdict'; :26 'fail that criterion and move on'. POLISH meets only the first half: tests/scored/polish/prompt.md:10 'Never carry a verdict across criteria, and never fabricate a pass. Unattempted criteria are failed and reported as such.' Its only continue instruction is :19, which is conditional on a browser tool error ('If a browser tool errors, retry once, then fail that criterion and move on'). There is no instruction to continue after a criterion fails on its merits and none to return a verdict for every criterion. VISUAL likewise: tests/scored/visual/prompt.md:11 'Give every criterion its own observation and its own score... Never carry a score across criteria'; the only 'move on' is :19, again conditional on a browser tool error. The frozen template carries an explicit 'Independent scoring' section in both of these dimensions (template polish/prompt.md:14-19 'One failed criterion does not zero the others. If a criterion cannot be performed, mark it failed and continue to every remaining criterion; return a verdict for all of them'; template visual/prompt.md:44-49); the candidate dropped it from polish and visual. quality-checks.md:157 requires that EVERY scored prompt tell the judge both to score each criterion on its own AND to continue after a failure; two of three do not state the second half in general form. Not measured: the owning deterministic checker check-batched-independence-wording.py is not present in the frozen rules scripts directory or anywhere in the workspace, and preflight.json has no entry for it, so its result on these bytes is unknown. raw-evidence-index.json states its scope is scripted golden behaviour only; there is no configured judge run showing actual judge behaviour after a failed polish or visual criterion. This verdict is a source reading only.",
+  "counterexample": "Broken-grading case: a submission whose first polish criterion (cw_controls_keyboard_and_focus) fails on its merits, with no browser tool error. polish/prompt.md gives no instruction to continue to the remaining criteria or to return a verdict for all of them, and :10 expressly sanctions leaving criteria unattempted and marking them failed. A judge under the 900 s budget can stop after the long failed keyboard walk and report the other five as unattempted/failed, so one miss zeroes a dimension that the app would otherwise largely pass. The same holds for visual, where a low first score has no stated continuation rule outside the tool-error branch. Conforming alternative that could fail: an app with a trapped-focus editor but correct feedback, undo/redo availability and unsaved marker loses all polish credit instead of one sixth.",
+  "suggested_fix": "In tests/scored/polish/prompt.md and tests/scored/visual/prompt.md restore the template's independence wording as one bullet under Evidence discipline, e.g. polish: 'Score each criterion independently. One failed criterion does not zero the others: after any failure, continue to every remaining criterion and return a verdict for all of them. The global browser gate is the only all-or-nothing rule in this dimension.' Visual: same sentence with 'score' in place of 'verdict'. Leave the functional prompt and the gate prompts unchanged. Then re-freeze and run check-batched-independence-wording.py (or record that it is unavailable).",
+  "run_verdict": "FAIL"
+}

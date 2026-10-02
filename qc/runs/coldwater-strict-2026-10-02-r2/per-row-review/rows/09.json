@@ -1,0 +1,34 @@
+{
+  "number": 9,
+  "id": "agent_environment_and_network_posture_are_correct",
+  "reviewer": "row-reviewer-09",
+  "input_sha256": "af036c0a436e39e00f094f9443448f26622386cecc722bfb987bb1d1f634d88e",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/WebDev Rubrics QC.xlsx :: Quality Checks row 10 (check 9); Internal Quality Checks row 10 (check 9); Deterministic Checks rows 19, 37, 41 (check-no-literal-secrets.py, check-allow-internet.sh, check-no-allow-internet-true.sh)",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/harbor-webdev-rubric-qc/SKILL.md (Delivery profile lines 24-29; Known false positives line 66)",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/harbor-webdev-rubric-qc/references/quality-checks.md:43-45",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md:53-78",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/projects/webdev-task-template/task.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/projects/webdev-task-template/environment/Dockerfile",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/task.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/environment/Dockerfile",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/environment/instructions/integration.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/environment (file listing and secret-pattern grep over Dockerfile, assets/seed_data.json, instructions/*.md)",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/solution/app/package.json",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/solution/solve.sh",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/coldwater-strict-2026-10-02-r2/raw-evidence-index.json"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Static configuration row, verified by reading the frozen bytes. task/task.toml:20-24 reads `[environment]` / `build_timeout_sec = 600.0` / `network_mode = \"public\"` / `cpus = 2` / `memory_mb = 4096`, identical to the frozen template task.toml:20-24 and to staged-task-contract.md:56-60. cpus and memory_mb are present and sane for the declared world: the agent image (task/environment/Dockerfile:1-26) is node:22-bookworm-slim plus apt ca-certificates/git/procps/sqlite3 and global express@5.1.0 and better-sqlite3@12.4.1; the reference app's heaviest build tooling is vite 7.1.7 and typescript 5.9.2 (task/solution/app/package.json:23-26), which fits 2 CPU / 4096 MB. task/environment/Dockerfile is byte-identical to the template Dockerfile (both SHA256 0a75419e9598ded9317b26bbf0d2b12de0b9b11185fb4c9fed1ca7f3e52467d1). No secret literal under `[environment]`: the block holds only the four keys above. The Dockerfile has one ENV (`NODE_PATH=/usr/local/lib/node_modules`, line 3), no ARG, and no credential; its only identity strings are the placeholder git user `Turing` / `turing@local.invalid` (lines 19-20). A case-insensitive grep for provider-key shapes, api key, secret, token, password, bearer, AKIA and PEM headers across task/task.toml and task/environment matched only task.toml:34 `ANTHROPIC_AUTH_TOKEN = \"${OPENROUTER_API_KEY}\"` (a ${VAR} template inside the frozen [verifier.env] block, expected per SKILL.md line 66), task.toml:35 `ANTHROPIC_API_KEY = \"\"` (empty, frozen), and the word `tokens` in ui.md:13 (syntax-highlighting prose). `docker_image`, `allow_internet` and `allowed_hosts` do not appear anywhere in task.toml, satisfying quality-checks.md:44 and staged-task-contract.md:78. network_mode = \"public\" at task.toml:22 and :38 is the required posture and is not flagged. Adversarial probes: (a) a conforming builder that fetches npm packages or CDN assets at build time is permitted, since quality-checks.md:45 says fetching at build or solve time on public network is not a defect and integration.md:5 allows external CDN assets; (b) a broken variant would be a raised/removed resource key, a pasted provider key under [environment] or in a Dockerfile ENV/ARG, or a docker_image shadowing the Dockerfile, and none is present. Recorded conflict, not a defect: the workbook's `Internal Quality Checks` row 9 still says `Agent image is no-network ... and nothing that secretly needs an install`, which contradicts the client-facing `Quality Checks` row 9, SKILL.md Delivery profile (lines 26) and the assignment; the public-network reading governs. Limits: no agent-image build or resource-usage measurement exists in this round (raw-evidence-index.json covers scripted golden behaviour only), so build success within 600 s and peak memory are not measured here; those belong to rows 11 and 15 and do not change this row's static finding.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

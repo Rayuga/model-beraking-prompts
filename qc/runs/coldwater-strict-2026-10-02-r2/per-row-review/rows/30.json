@@ -1,0 +1,35 @@
+{
+  "number": 30,
+  "id": "negative_checks_have_positive_controls",
+  "reviewer": "row-reviewer-30",
+  "input_sha256": "af036c0a436e39e00f094f9443448f26622386cecc722bfb987bb1d1f634d88e",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/WebDev Rubrics QC.xlsx (Quality Checks row 31 = check 30; Internal Quality Checks row 31, no further annotation cells)",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/harbor-webdev-rubric-qc/references/quality-checks.md (section 30)",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/projects/webdev-task-template (file list; tests layout compared)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/instruction.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/environment/instructions/{behaviour,integration,overview,policy,security,ui}.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/app_context.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/gates/render/judge.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/gates/constraints/judge.toml and prompt.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/scored/functional/judge.toml and prompt.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/scored/polish/judge.toml and prompt.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/scored/visual/judge.toml",
+    "qc/runs/coldwater-strict-2026-10-02-r2/raw-evidence-index.json (all 15 artifact hashes recomputed and matching; scripted golden only)",
+    "qc/repairs/coldwater-2026-10-02-strict/tests/runtime.cjs:111-119 and tests/persist.cjs:72-84"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "All 38 functional, 3 gate, 6 polish and 3 visual criteria were read for 'rejects / hides / absent / unchanged / never appears' legs. Most are correctly paired inside the criterion: cw_stop_cancels_pending_work (functional/judge.toml:272, a two-second timer control must write to preview and console first), cw_format_error_keeps_draft (:209), cw_error_message_and_line (:227), cw_promise_rejection_message_and_line (:236), cw_time_limit_recovery (:263), cw_preview_isolation (:290), cw_dynamic_code_refused (:299), cw_stale_save_refused (:317, A's accepted Save is the control), cw_history_restore_retry (:335), cw_live_update_keeps_editing_state (:353, 'If A's library never shows B's snippet, this criterion fails as well'), cw_newer_revision_notice_keeps_draft (:362), cw_replace_all_atomic (:155), cw_block_indent_undo (:74), polish cw_undo_redo_availability (polish/judge.toml:50) and cw_unsaved_marker (:59). Two functional criteria are not. (1) cw_newer_run_supersedes, functional/judge.toml:281: 'The old marker must never appear in the preview or the console' is the scored negative, but nothing in the criterion shows that a roughly three-second timer in this app ever writes to the preview and console. Its only success leg is the new draft that 'immediately writes a new marker', which is synchronous and proves Run, not timers. The sibling cw_stop_cancels_pending_work has exactly this control; this one omits it. (2) cw_stale_save_keeps_draft, functional/judge.toml:326: the 'unchanged' leg (B's title, filename and editor still hold B's values) is credited once 'B's Save has been answered', and the criterion says 'whether the server refused the Save is scored separately', so the refusal that makes the preservation meaningful is never an observed fact inside it. functional/prompt.md:13 ('A positive control must come before every negative claim') does not repair either, because prompt.md:23 also says 'Grade only the steps written in each criterion. Extra probes must not fail a criterion when its listed steps passed', and no control step is written. qc/REVIEW_POLICY.md:19 names both patterns ('Show a matching timer ... works before crediting suppression/refusal. Reuse an observed fact, not another row's pass flag. A dead feature must not earn credit for doing nothing'). Combined weight 3.0 of 54 functional weight, about 3.3 percent of total reward at the 0.6 functional share. The scripted golden (runtime.cjs:111-119) likewise asserts no timer control for the supersede check, so existing evidence does not exercise the gap. No configured judge run, weak-app run, Oracle or model score exists for this candidate; nothing here is a measured score. Lower-confidence observation, not part of the verdict: in cw_preview_isolation the localStorage leg has no known stored value to fail to read, though the parent-document leg makes a same-origin preview fail anyway.",
+  "counterexample": "Broken app that passes: (1) an app whose preview runner never delivers timer callbacks (setTimeout not wired into the sandbox, or the preview is frozen to a static snapshot as soon as synchronous execution ends). It passes the global gate and the render gate (synchronous sum), fails cw_stop_cancels_pending_work on its control, yet earns cw_newer_run_supersedes in full: the new marker appears immediately and the old marker never appears because no timer ever fires. (2) a last-write-wins app with no revision check: B's stale Save is accepted, B's three fields naturally still show B's values and remain editable, so cw_stale_save_keeps_draft passes although no refusal ever happened and the behaviour it grades (a refused save not discarding the draft) was never produced. Conforming alternative that could fail: none found for this row; the controls that exist do not demand anything beyond the public notes.",
+  "suggested_fix": "In cw_newer_run_supersedes, add an in-criterion control before the negative: first run a draft whose timer writes a control marker to the preview and console after about two seconds and confirm both appear, and add 'or if the control marker never appeared' to the fail clause (mirroring cw_stop_cancels_pending_work). In cw_stale_save_keeps_draft, require as an observed precondition that B's Save visibly did not succeed (conflict or failure feedback shown in B) and state that the criterion fails if B's Save was accepted because the situation could not be produced, as cw_live_update_keeps_editing_state already does; keep the record-unchanged readback in cw_stale_save_refused so the two outcomes stay separately scored. Re-run the scripted golden and re-freeze after the edit.",
+  "run_verdict": "NOT EXERCISED"
+}

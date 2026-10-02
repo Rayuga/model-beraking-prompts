@@ -1,0 +1,40 @@
+{
+  "number": 40,
+  "id": "reward_is_graded_not_binary_and_discriminates",
+  "reviewer": "row-reviewer-40",
+  "input_sha256": "af036c0a436e39e00f094f9443448f26622386cecc722bfb987bb1d1f634d88e",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/WebDev Rubrics QC.xlsx :: Quality Checks!A41:D41 and Internal Quality Checks!A41:D41 (row 40, no internal annotation on this row; E43 annotation belongs to row 42)",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/harbor-webdev-rubric-qc/references/quality-checks.md:165-166 (and 168-179 for neighbouring rows)",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (scoring/judge sections)",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/projects/webdev-task-template/tests/scoring.toml, tests/tools/score.py, tests/test.sh, tests/scored/functional/prompt.md (diffed against the task)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/scoring.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/tools/score.py",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/test.sh:203-227",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/gates/render/judge.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/gates/constraints/judge.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/scored/functional/judge.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/scored/functional/prompt.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/scored/polish/judge.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/scored/visual/judge.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/app_context.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/task.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/instruction.md and environment/instructions/*.md",
+    "qc/runs/coldwater-strict-2026-10-02-r2/raw-evidence-index.json (hashes of run_golden.sh, results/editor.json, results/runtime.json recomputed and matching)",
+    "qc/repairs/coldwater-2026-10-02-strict/STRICT_CANDIDATE.md:3,41-43"
+  ],
+  "verdict": "Not exercised",
+  "risk": true,
+  "severity": null,
+  "evidence": "Static design: no structural collapse found. tests/scoring.toml:1-10 keeps the template policy (identical to template; score.py and test.sh identical too): two zero-weight gates, weights 0.6/0.2/0.2, functional floor 0.05. tests/scored/functional/judge.toml:23-363 has 38 binary criteria, weights 1.0-2.0 summing to 54.0 under weighted_mean (judge.toml:20-21), so one criterion moves the reward by 0.011-0.022; polish has 6 binary criteria and visual 3 five-point likert criteria with anchors. Criteria do not all hang on one precondition: the largest shared one is Undo, named in 14 of 38 criteria (21.0/54.0 = 38.9% of functional, 0.233 of reward); multi-caret is 3 criteria (10.2%); two-tab/saved-record flows are 6 (17.6%); last-good picture 4 (13.0%). Weak-app probes by reasoning: a golden with Undo/Redo broken keeps 24 criteria (about 0.37 functional contribution); one with no live library refresh loses only judge.toml:339-363 (5.0/54); one with no multi-caret loses 5.5/54; these land at distinct intermediate rewards. The render gate (gates/render/judge.toml:23) asks only typing plus Run, and the constraints gate (gates/constraints/judge.toml:23,32) asks only the publicly mandated own editing surface (environment/instructions/ui.md:3) and a shared saved record, so a partial-quality conforming app reaches the scored suite. The floor needs more than 2.7 of 54 weight, i.e. two to three criteria. HOWEVER the row's claim is empirical and nothing measures it: raw-evidence-index.json limitations state 'Visual ratings, judge duration, Oracle reward and reward discrimination are not measured', and STRICT_CANDIDATE.md:43 records 'No configured judge run, so no Oracle score, no judge duration and no Luna score for this candidate' (last attempt failed with unrecognized_model and HTTP 401). qc/REVIEW_POLICY.md:31 requires a hash-bound runtime record for reward discrimination before local clearance; it does not exist. Two unmeasured ways the spread could collapse in practice: (a) all 38 long conjunctive functional criteria run in one batched judge call (functional/judge.toml:3-4, timeout 9000) inside a scored budget of 11100 s (test.sh:224-226); if that budget is exhausted rewardkit is killed, no scored reward.json exists, and every app including the golden keeps reward 0.0; short of that, functional/prompt.md:11 fails every unattempted criterion, capping all apps alike; (b) every criterion is a multi-leg conjunction with strict exactness, so mid-quality apps may cluster near the floor rather than spread. The scripted golden run in the index covers the golden only and is not a judge run or a weak-app run. The skill forbids upgrading an unmeasured claim to Pass, so this stays Not exercised with risk.",
+  "counterexample": "Not demonstrated. Hypothetical collapse to check: the configured judge (z-ai/glm-5.3-flashx via claude-code) does not finish 38 conjunctive browser criteria within 9000/11100 s, so test.sh:224-226 exits with the zero reward for a strong app and a weak app alike; or it finishes only the first N criteria and functional/prompt.md:11 fails criteria 32-38 (persistence, live update) for every app, removing those criteria as discriminators. Conforming-alternative probe: an app with a correct editor surface that passes only two functional criteria worth 2.5/54 (0.046) falls under the 0.05 floor and scores 0.0 regardless of polish and visual; that is template policy, not a task defect.",
+  "suggested_fix": "No task edit is indicated by this row. Before clearance, record hash-bound runtime evidence for this candidate: run the configured judge on the golden and on at least three mutated weak apps (for example Undo disabled, live library refresh removed, multi-caret removed, and a near-empty conforming editor) and show distinct, ordered intermediate rewards plus the functional judge duration against the 9000 s and 11100 s budgets. If the judge cannot finish, reduce public scope and criteria together rather than raising the timeout automatically.",
+  "run_verdict": "NOT EXERCISED"
+}

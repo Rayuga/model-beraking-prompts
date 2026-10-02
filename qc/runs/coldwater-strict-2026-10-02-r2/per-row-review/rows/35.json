@@ -1,0 +1,39 @@
+{
+  "number": 35,
+  "id": "core_behavior_is_graded_and_state_is_proven_durable_where_it_must_be",
+  "reviewer": "row-reviewer-35",
+  "input_sha256": "af036c0a436e39e00f094f9443448f26622386cecc722bfb987bb1d1f634d88e",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/WebDev Rubrics QC.xlsx (Quality Checks row 35, sheet row 36; Internal Quality Checks row 35, annotation columns empty)",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/harbor-webdev-rubric-qc/references/quality-checks.md (section 35, lines 145-147)",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/projects/webdev-task-template (file list; tests/tools/restart_mcp.py and judge wiring compared through the task copy)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/instruction.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/environment/instructions/{behaviour,integration,overview,policy,security,ui}.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/app_context.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/gates/render/{prompt.md,judge.toml}",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/gates/constraints/{prompt.md,judge.toml}",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/scored/functional/{prompt.md,judge.toml}",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/scoring.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/tools/restart_mcp.py",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/test.sh (restart helper section, grep only)",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/solution/app/server.js (routes and database path, grep only)",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/solution/app/src/app.tsx (storage and fetch use, grep only)",
+    "qc/runs/coldwater-strict-2026-10-02-r2/raw-evidence-index.json",
+    "qc/repairs/coldwater-2026-10-02-strict/results/{persist-before,persist-after,restart}.json (SHA256 recomputed, all three match the index)",
+    "qc/repairs/coldwater-2026-10-02-strict/tests/{persist.cjs,lib.cjs} and run_golden.sh (grep only)"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P1",
+  "evidence": "Half of the row passes. The defining behaviour (type in the custom editor, Run, see output) is graded by the render gate cw_authored_custom_editor_run (tests/gates/render/judge.toml:17-24), by the functional global gate (tests/scored/functional/prompt.md:5) and by many functional criteria. Reload and process restart are exercised by cw_save_reload_restart (tests/scored/functional/judge.toml:303, weight 1.5) with a real restart tool (tests/tools/restart_mcp.py:25-47), and the gate cw_shared_saved_record (tests/gates/constraints/judge.toml:27-33) does a save plus second-page readback and reload. The server-backed half is not proven. The brief requires it: environment/instructions/integration.md:7 says 'The library must be shared between independent browser contexts' and integration.md:9 says 'Use SQLite for persistent records'; behaviour.md:9 says 'A fresh page must read the saved record from the running app'. But every durability readback allows 'a second tab or browser context' (constraints/judge.toml:32; functional cw_save_reload_restart, cw_stale_save_refused, cw_history_restore_retry, cw_live_library_update), and tests/app_context.md:22 says 'any two independent pages of the app are acceptable'. All judges run one playwright-mcp process with '--isolated' (functional/judge.toml:12, constraints/judge.toml:12); its tab tool opens tabs inside one browser context, so every page shares localStorage and IndexedDB, and restart_app restarts only the Node server, not the browser. cw_save_reload_restart ends with 'or if the saved data is only held in the browser' but gives no step that decides it, while functional/prompt.md:23 says 'Grade only the steps written in each criterion. Extra probes must not fail a criterion when its listed steps passed', prompt.md:19 forbids changing app state from script and prompt.md:26 forbids shell. So the judge has no permitted way to tell origin storage from server storage. This is the convincing dead app that qc/REVIEW_POLICY.md ('Gates must exclude convincing dead apps ... Use an actual successful operation and independent-context readback where the product requires shared storage') requires the gate to exclude. Measured evidence: only the scripted golden run in raw-evidence-index.json, whose three persistence artifact hashes I recomputed and which match; it uses separate Playwright contexts (tests/lib.cjs:14) that the configured judge cannot create, so it does not show the judge can discriminate. No configured judge run, Oracle or weak-app run exists for this point. The golden itself is server-backed (solution/app/server.js:5,8,65-120) and uses localStorage only for pane sizes (solution/app/src/app.tsx:35-36,102), so it would survive a stricter check.",
+  "counterexample": "Broken app that passes: server.js serves static files and /api/health only. Snippets, revisions and history live in localStorage; Save does a compare-and-swap on the stored revision; open tabs update through the 'storage' event; restore is idempotent by a stored request key. In the judge's single shared browser context this passes the constraints gate cw_shared_saved_record (second tab and reload read the same localStorage), cw_save_reload_restart (the browser profile outlives the server restart, so a fresh page shows the same identity, revision and history), cw_stale_save_refused, cw_stale_save_keeps_draft, cw_history_restore_retry (its retry control path), cw_live_library_update, cw_live_update_keeps_editing_state and cw_newer_revision_notice_keeps_draft, although it violates integration.md:7 and :9 and behaviour.md:9. Conforming alternative that could fail: none found for this row; a correct SQLite app passes these criteria as written.",
+  "suggested_fix": "Give the judge a tool-feasible independent-context readback in the constraints gate cw_shared_saved_record and in cw_save_reload_restart: after the Save (and after restart_app reports completion), close the browser with the Playwright close tool and open the app again, which under --isolated starts with empty origin storage, then require the record with its exact title, filename, source, revision and history. Reword app_context.md:22 so a second tab is not accepted for those two readbacks, and drop or back with this step the undecidable clause 'only held in the browser'. Confirm in the judge image that close-and-reopen really yields an empty profile, then re-measure with the golden and a localStorage-only weak app before clearing the candidate.",
+  "run_verdict": "NOT EXERCISED"
+}

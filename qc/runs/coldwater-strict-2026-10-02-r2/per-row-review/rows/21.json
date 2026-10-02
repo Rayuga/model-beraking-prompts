@@ -1,0 +1,37 @@
+{
+  "number": 21,
+  "id": "verifier_entrypoint_is_safe_and_always_scores",
+  "reviewer": "row-reviewer-21",
+  "input_sha256": "af036c0a436e39e00f094f9443448f26622386cecc722bfb987bb1d1f634d88e",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/WebDev Rubrics QC.xlsx :: Quality Checks row 22 (check 21), Internal Quality Checks row 22, Deterministic Checks rows 33 (check-scoring-policy.py) and 36 (check-verifier-contract.py)",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/harbor-webdev-rubric-qc/references/quality-checks.md:92-94",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md:98-111",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/projects/webdev-task-template/tests/{test.sh,tools/score.py,tools/restart_mcp.py,scoring.toml,Dockerfile}",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/test.sh",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/tools/score.py",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/tools/restart_mcp.py",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/scoring.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/Dockerfile",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/{gates,scored}/*/judge.toml (timeout lines)",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/task.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/instruction.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/environment/instructions/integration.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/solution/app/server.js (lines 8, 12, 142)",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/coldwater-strict-2026-10-02-r2/raw-evidence-index.json"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "Static review of the frozen source; no verifier execution was performed or cited. tests/test.sh, tools/score.py, tools/restart_mcp.py, scoring.toml and tests/Dockerfile are byte-identical to the frozen template (diff clean); test.sh is LF-only and passes bash -n. Contract items (staged-task-contract.md:102-109): (1) write_zero_reward runs at test.sh:60 before any exit, trap cleanup EXIT at :61 calls ensure_reward (:20-23, :39); the zero record at :8 carries reward, all five dimensions, gates_passed, floors_passed, weighted_score, graded, no_op; no exec anywhere. (2) Missing /app/server.js exits with the zero at :68-70; symlinks escaping /app/node_modules are refused at :72-83, and integration.md:11 states that rule publicly. (3) /app is copied aside (:90-95) and the app launched in its own session, unprivileged, with a sanitized environment: setsid env -i ... setpriv --reuid=65534 --regid=65534 --clear-groups node (:104-111); cleanup kills the process group (:36). (4) Liveness is probed on /api/health then / for 120 x 0.25 s (:42-58, :115-125) before any RewardKit call; not ready exits with the zero. (5) Gates suite runs first (:213), score.py after it (:217) with 0 continue / 1 stop keeping the detailed record / other plain zero (:218-222); scored suite then score.py again with zero fallback (:224-227). Every early exit (:65, :69, :78, :81, :124, :214, :225) and every set -e abort leaves a non-empty reward.txt and reward.json. score.py:48 zeroes the reward unless gates and the functional floor pass, and returns 1 on gate failure (:83), 2 on any exception (:87-91). Budgets nest: gate judges 600+600 < 1500, scored judges 9000+900+900 = 10800 < 11100, 1500+11100 = 12600 < verifier 13200 (task.toml:27). Probes tried: an app answering HTTP 500 everywhere passes liveness (HTTPError counts as alive, :51-52) but can only reach the gates suite, where a render failure yields score.py exit 1 and reward 0; a gates timeout or RewardKit crash leaves the pre-written zero; a scored-suite crash leaves the gates-only record with reward 0. Conforming alternative: the golden answers /api/health (server.js:12), listens on 0.0.0.0:3000 (:142) and honours DB_PATH (:8), all stated in integration.md:3,9. Risk is true because raw-evidence-index.json records scripted golden behaviour only (its scope line says it is not a configured judge run); there is no hash-bound record of this test.sh actually launching the app and writing a reward in the verifier image, which qc/REVIEW_POLICY.md requires before local clearance. That gap is unmeasured, not a demonstrated defect.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

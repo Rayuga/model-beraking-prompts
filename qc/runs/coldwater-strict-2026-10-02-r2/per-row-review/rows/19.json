@@ -1,0 +1,37 @@
+{
+  "number": 19,
+  "id": "solution_honors_the_runtime_contract_and_is_self_contained",
+  "reviewer": "row-reviewer-19",
+  "input_sha256": "af036c0a436e39e00f094f9443448f26622386cecc722bfb987bb1d1f634d88e",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/WebDev Rubrics QC.xlsx: 'Quality Checks'!A20:D20 (row 19) and 'Internal Quality Checks'!A20:D20 (internal wording: 'no network / no run-time install'); 'Deterministic Checks' rows check-solve-contract.py, check-runtime-contract-strings.py",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/harbor-webdev-rubric-qc/references/quality-checks.md:83-85",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md:62",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (runtime contract lines 103-104, 173-175)",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/projects/webdev-task-template/solution/solve.sh and environment/instructions/integration.md",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/solution/solve.sh",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/solution/app/server.js",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/solution/app/package.json, vite.config.mjs, index.html, public/index.html, public/runner.html, static/runner.html, public/assets/index.js, public/assets/index.css, src/* (imports and runner URL logic)",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/environment/Dockerfile",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/environment/instructions/integration.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/instruction.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/task.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/test.sh, tests/Dockerfile",
+    "qc/runs/coldwater-strict-2026-10-02-r2/raw-evidence-index.json (all 15 artifact SHA256 values recomputed and matched)",
+    "qc/repairs/coldwater-2026-10-02-strict/run_golden.sh and results/{build.log,persist-before.json,restart.log,persist-after.json,runtime.json}"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": "P3",
+  "evidence": "Source: solution/solve.sh:1 has '#!/bin/bash', 0 CR bytes, 'set -euo pipefail' (line 2); it writes only under /app ('mkdir -p /app' line 4, 'rm -f -- /app/app.db /app/app.db-wal /app/app.db-shm' line 37, 'cp -a \"$source_app/.\" /app/' line 38), nothing to /tests, /logs/verifier or /solution, no pkill, no NODE_ENV, no install or network fetch. It extends the template's two-line copy (template solve.sh:4-5) only with a guard that refuses to delete an open database. The copied tree contains server.js, which tests/test.sh:68 and :97 require. server.js:4-5 requires only express and better-sqlite3, the two packages environment/Dockerfile:9-11 and tests/Dockerfile:20-21 install globally at identical pins (5.1.0 / 12.4.1) behind NODE_PATH; no node_modules or symlinks ship in solution/. server.js:7 resolves from __dirname (cwd-independent), :8 honours DB_PATH with default /app/app.db, :12 registers /api/health before any database middleware and the database opens inside the listen callback (:142-169), :142 listens on 0.0.0.0 and PORT||3000, :130-131 serve the prebuilt public/ at /. Schema creation is 'CREATE TABLE IF NOT EXISTS' / 'INSERT OR IGNORE' (:147-168), so restart is idempotent and nothing is seeded. Self-contained frontend: public/index.html references only /assets/index.js and /assets/index.css; the 1.9 MB bundle has no top-level import/bare specifiers and its only URLs are namespace/doc strings (w3.org, react.dev/errors, prettier.io), consistent with the CSP 'default-src self' at server.js:16; public/assets/index.css is byte-identical to src/style.css and public/runner.html to static/runner.html (same manifest hashes), so the shipped build is not stale relative to source for those files. No install or build step is needed at launch, satisfying integration.md:5. Runtime evidence (hashes verified; frozen solution/ is byte-identical to projects/colderwater-playground-devtools/solution by diff -rq): run_golden.sh:22-24 mounted solution read-only at /solution in the agent image, ran 'bash /solution/solve.sh', then 'cd / && exec node /app/server.js'; runtime.json and persist-before.json report all listed checks true with no page errors, restart.log shows a real process replacement (pid 25 -> 53) and persist-after.json shows cw_save_reload_restart true. Risk remains true because that scripted run launched the app as root with no DB_PATH and not through tests/test.sh; the verifier launch (env -i, uid 65534 via setpriv, explicit DB_PATH, separate verifier image, test.sh:104-111) has no measured record in this round, and the scripted run is not a configured judge or Oracle run. Internal sheet wording 'no network / no run-time install' is superseded by the public sheet and SKILL.md delivery profile (network public); the reference meets the stricter internal wording anyway.",
+  "counterexample": null,
+  "suggested_fix": "No task change required. To clear the residual risk, record one hash-bound run of the frozen reference through tests/test.sh in the verifier image (or at least a launch with env -i, uid 65534 and DB_PATH set) showing /api/health and a save/restart readback. Latent only: solve.sh:20-25 rethrows /proc read errors other than ENOENT/ESRCH (e.g. EACCES when run non-root on a reinstall with an existing database), which would abort a reinstall; a first install is unaffected because the scan is skipped when no database file exists.",
+  "run_verdict": "PARTIAL"
+}

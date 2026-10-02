@@ -1,0 +1,39 @@
+{
+  "number": 6,
+  "id": "instruction_is_achievable_and_unambiguous_in_the_environment",
+  "reviewer": "row-reviewer-06",
+  "input_sha256": "af036c0a436e39e00f094f9443448f26622386cecc722bfb987bb1d1f634d88e",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/WebDev Rubrics QC.xlsx :: Quality Checks row 7 (check 6) and Internal Quality Checks row 7 (check 6, no extra annotation cells)",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/harbor-webdev-rubric-qc/references/quality-checks.md :: section 6",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/projects/webdev-task-template/instruction.md, environment/instructions/*.md, environment/Dockerfile",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/instruction.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/environment/instructions/{overview,ui,behaviour,security,integration,policy}.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/environment/Dockerfile",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/environment/assets/seed_data.json",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/task.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/app_context.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/gates/render/judge.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/gates/constraints/judge.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/scored/functional/judge.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/Dockerfile",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/solution/app/src/custom-editor.js (grep: typing undo grouping, lines 204, 554-563)",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/solution/app/src/runtime.ts (grep: acorn loop guard, CSP, lines 1-7, 33-63)",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/solution/app/src/app.tsx (grep: restore retry, lines 77-87, 157)",
+    "qc/runs/coldwater-strict-2026-10-02-r2/raw-evidence-index.json (all 15 artifact SHA256 values recomputed and matched)"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "REACHABILITY: no unreachable capability found. The agent image (task/environment/Dockerfile:1-12) pins Node 22, express 5.1.0 and better-sqlite3 12.4.1 via NODE_PATH; task.toml:22 sets network_mode public, and integration.md:5 and policy.md:3 allow frontend tools, parser and formatter libraries, so a standalone formatter, a JS parser for loop guards, and a browser for self-testing are all obtainable. The hard items have a known route shown by the golden: endless-loop time limit via parser instrumentation (solution/app/src/runtime.ts:1-2, 33-63), preview network and dynamic-eval refusal via sandbox CSP (runtime.ts:7), grapheme stepping via Intl.Segmenter, restart durability via SQLite. The six notes named in instruction.md:3 exist (six files under environment/instructions). seed_data.json is empty by design and both instruction.md:3 and integration.md:7 say so. Scripted golden evidence exists and its hashes verify, but it is not a configured judge run.\n\nAMBIGUITY 1 (graded, the reason for Fail): the undo granularity of ordinary single-caret typing is never stated. ui.md names the single-undo units explicitly: a paste (ui.md:7), block indent (ui.md:7), 'A continuous multi-caret typing burst is one Undo action' (ui.md:9), Replace all (ui.md:11) and Format (ui.md:15). It says nothing about a single-caret typing burst, so per-keystroke Undo is a reasonable reading. tests/scored/functional/judge.toml:127-128 (cw_undo_restores_caret) nevertheless requires 'type a short marker ... type a second marker there. Press Undo once: the second marker is removed. Press Undo again: the first marker is removed.' The task itself concedes the point is open in judge.toml:352-353 (cw_live_update_keeps_editing_state): 'Undo, pressed once or twice depending on how the app groups typing'. The golden groups typing (custom-editor.js:204, 554-563), which is a golden default, not a public requirement (REVIEW_POLICY 'No hidden requirements').\n\nAMBIGUITY 2 (latent, lower impact): behaviour.md:13 'A repeated request for the same already committed restore must not create another revision' has two readings: (a) replay of the identical network request is idempotent, (b) a user pressing Restore on the same old snapshot a second time must not add a revision. Under (a) a second deliberate UI restore from the new head is a new restore and legitimately adds a revision. judge.toml:424 offers 'the control the app offers for retrying it, or ... replaying the recorded request'; the golden only shows 'Retry same restore' after an unconfirmed restore (app.tsx:87, 157), so no retry control exists in the normal flow and a judge may fall back to a second UI click.\n\nAMBIGUITY 3 (latent, not graded): behaviour.md:3 asks for 'a one-based line number ... including ... a Promise rejection that nothing handles; the message is the text of the Error or rejected value'. A rejected non-Error value (Promise.reject('text')) carries no stack, so a line number is not obtainable from the browser for that case. judge.toml:325 only uses Error objects, so no score impact today.\n\nAMBIGUITY 4 (latent, not graded): behaviour.md:7 'Stop ends the current run at once' cannot be honoured for a synchronous endless loop in an in-process preview until the loop guard fires; the criteria only exercise Stop on a pending timer (judge.toml:361).\n\nNot defects: integration.md:7 'identities' reads as snippet identities; ui.md:3 'small input' for plumbing is matched leniently by the constraints gate (gates/constraints/judge.toml:53 allows input or textarea); 'about five seconds' (behaviour.md:11) is graded with a ten-second window.",
+  "counterexample": "Conforming alternative that fails: an editor that implements every single-undo unit ui.md names (paste, indent, multi-caret burst, Replace all, Format) and restores the caret on Undo, but records ordinary single-caret typing one keystroke per Undo step. In cw_undo_restores_caret the second marker (several characters) is not removed by 'Undo once', so the criterion (weight 1.5) fails although no public sentence was broken. Secondary: an app whose restore is idempotent per client-generated operation id (reading a) gains a fifth revision if the judge repeats the restore by clicking Restore again, failing cw_history_restore_retry (weight 1.5).",
+  "suggested_fix": "State the rule in ui.md, for example 'A continuous run of typing at one caret is one Undo action; moving the caret starts a new one', or else reword cw_undo_restores_caret to press Undo until each marker is gone and judge only where the next typed character lands. For restore, say in behaviour.md what counts as the repeated request (the identical request sent again, for example after a lost response) and restrict the Promise line-number promise to rejections carrying an Error.",
+  "run_verdict": "NOT EXERCISED"
+}

@@ -1,0 +1,38 @@
+{
+  "number": 26,
+  "id": "dimensions_cover_every_graded_requirement",
+  "reviewer": "row-reviewer-26",
+  "input_sha256": "af036c0a436e39e00f094f9443448f26622386cecc722bfb987bb1d1f634d88e",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/WebDev Rubrics QC.xlsx (Quality Checks row 26; Internal Quality Checks row 26 annotation: flows may combine several verifiers)",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/harbor-webdev-rubric-qc/references/quality-checks.md (check 26)",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/projects/webdev-task-template (file list only; template criteria not compared line by line)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/instruction.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/environment/instructions/{overview,ui,behaviour,security,integration,policy}.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/environment/assets/seed_data.json",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/gates/render/judge.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/gates/constraints/{judge.toml,prompt.md}",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/scored/functional/{judge.toml,prompt.md} (all 38 criteria)",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/scored/polish/judge.toml (6 criteria)",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/scored/visual/judge.toml (3 criteria)",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/app_context.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/solution/app/src/runtime.ts (grep of lines 269-280, 400 only)",
+    "qc/runs/coldwater-strict-2026-10-02-r2/raw-evidence-index.json (all 15 artifact SHA256 values recomputed and matched)",
+    "qc/runs/coldwater-strict-2026-10-02-r2/manifest.json (top-level fields)"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "Requirement -> criterion map built from instruction.md and the six notes against 3 gate, 38 functional, 6 polish and 3 visual criteria. Coverage is broad: every editor rule in ui.md (typing/join, navigation and intended column, graphemes, mouse selection, replace/paste undo, block indent, caret in view, long line, multi-caret on different and same lines, undo caret, find/replace incl. self-containing text, JS and HTML colouring, JS/HTML format, format error, focus return, undo/redo availability, unsaved marker, 390 px), the run/stop/last-good/time-limit/supersede rules, save/restart/stale save/draft kept/history restore/live library/newer-revision notice, preview isolation and dynamic-code refusal each map to at least one criterion. Gaps found (every gap reported): (G1, basis of the Fail) behaviour.md:5 states 'After it settles, a later user interaction in the preview starts a fresh five-second budget for its own callbacks.' No criterion grades it: tests/scored/functional/judge.toml:258 cw_time_limit_recovery only runs an endless loop in the source and a self-rescheduling timer started by Run; judge.toml:213 cw_html_preview and :249 cw_last_good_recovery click a preview button but never test a budget for the work that click starts. The golden implements the rule (solution/app/src/runtime.ts:269-280 and :400), so it is a real, costly behaviour with zero reward mass. (G2) ui.md:9 'Undo and Redo also work from visible controls and normal keyboard shortcuts': no criterion requires the keyboard shortcut; functional criteria say only 'Undo'/'Redo' (e.g. judge.toml:123), and polish cw_focus_returns_to_code and cw_undo_redo_availability use the visible controls. (G3) security.md:3 'must not be able to make network requests from the preview, including to this app's own routes': judge.toml:285 cw_preview_isolation probes only a fetch of the app's own health address; requests to any other host, and non-fetch channels, are ungraded. (G4) behaviour.md:1 'Show console output in the order it was written': only marker-above-reason is checked (judge.toml:240); the order of two or more authored console lines is never checked. (G5, minor, within one flow) behaviour.md:7 names intervals and Promise callbacks pending after Stop; only a timer is exercised (judge.toml:267). Lenient but not a gap: live library 'within about five seconds' is graded with a ten-second window. Runtime contract items in integration.md (entry, port, health, DB_PATH) are exercised by test.sh and the restart criterion. Raw evidence is scripted golden behaviour only; no configured judge run exists, so nothing here is measured against a real judge.",
+  "counterexample": "Broken app that loses no credit: it enforces the five-second budget only for work started by Run. After the run settles, a preview button whose handler starts a self-rescheduling timer or an endless loop runs without any limit, the preview and console keep changing indefinitely (or the page hangs) and no time-limit reason or last-good restore ever appears. Every criterion still passes, because cw_time_limit_recovery only uses Run-started work. Second broken app (G3): a sandboxed opaque-origin preview with no network block; a plain fetch of the app's own health address fails on CORS so cw_preview_isolation passes, while fetch to any CORS-enabled public host succeeds from user-entered code. Third (G2): an editor with Undo/Redo buttons and no Ctrl/Cmd+Z handling can pass when the judge uses the buttons.",
+  "suggested_fix": "Either add one functional criterion (or a leg in cw_time_limit_recovery) where, after a run has settled, a click in the preview starts a self-rescheduling timer and the app must end it with a visible time-limit reason within about ten seconds and stay usable, with a short click-started timer as the working control; or remove the interaction-budget sentence from behaviour.md and the golden together. For the smaller gaps: say 'with the usual keyboard shortcut' for Undo and Redo in one existing undo criterion, add an external public-host fetch probe to cw_preview_isolation, and add two ordered console lines to one existing run criterion. Weigh any added browser work against the measured judge budget before freezing.",
+  "run_verdict": "NOT EXERCISED"
+}

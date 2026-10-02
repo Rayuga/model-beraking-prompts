@@ -1,0 +1,37 @@
+{
+  "number": 37,
+  "id": "later_dimensions_tolerate_earlier_mutations",
+  "reviewer": "row-reviewer-37",
+  "input_sha256": "af036c0a436e39e00f094f9443448f26622386cecc722bfb987bb1d1f634d88e",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/WebDev Rubrics QC.xlsx (Quality Checks sheet row 38 = check 37; Internal Quality Checks sheet row 38)",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/harbor-webdev-rubric-qc/references/quality-checks.md:153-154",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/projects/webdev-task-template/tests (app_context.md, test.sh, scored/functional prompt and judge.toml grep)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/app_context.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/test.sh",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/tools/restart_mcp.py",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/gates/{render,constraints}/{prompt.md,judge.toml}",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/scored/{functional,polish,visual}/{prompt.md,judge.toml}",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/scoring.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/task.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/instruction.md and environment/instructions/*.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/environment/assets/seed_data.json",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/solution/solve.sh, solution/app/server.js (grep), solution/app/src/app.tsx (grep), solution/app/src/style.css (grep)",
+    "qc/runs/coldwater-strict-2026-10-02-r2/raw-evidence-index.json (all 15 artifact SHA256 values recomputed and matching)",
+    "qc/repairs/coldwater-2026-10-02-strict/run_golden.sh, results/polish.json, results/persist-before.json, results/persist-after.json, results/restart.log, results/golden-1440.png"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": "P3",
+  "evidence": "Shared state: test.sh:203-224 runs the gates suite then the scored suite serially (--max-concurrent-agent 1) against one app process and one DB_PATH; nothing resets the database between dimensions, and the Functional restart (tests/tools/restart_mcp.py:25-47, single use) relaunches on the same database. The seed is empty (environment/assets/seed_data.json: \"snippets\": []), so the only pristine-seed assumption possible is an empty library or absolute ids/revision numbers. None is made. app_context.md:21, injected into all five prompts, says: \"Saved records are identified by the server, not by title, and the library may already hold records from earlier checks. Do not assume an empty library and do not delete records that earlier checks created.\" app_context.md:20 adds \"Use fresh scratch drafts for editor checks. The app may ask for confirmation before discarding an unsaved draft; accepting that dialog is normal.\" Every state-dependent criterion builds its own fixture and grades relative to it: gates/constraints/judge.toml:32 \"Create one new .js snippet with a unique title ... Leave the saved record in place\"; gates/render/judge.toml:23 \"Clear the draft ... Do not save anything\"; scored/functional/judge.toml:308 \"Use New to start a snippet, give it an exact unique title ... record its identity, revision and history\" then compares after restart to what it recorded; :317 \"advances the revision by one\"; :326 \"with a new snippet\"; :335 builds its own three revisions; :344 \"save a new snippet with a unique title\"; :290 \"its library entry must be unchanged afterwards\" (relative to its own control). Polish: scored/polish/judge.toml:50 \"Load a saved snippet or start a new draft so there is no editing history\" (either source works with a populated library); :59 saves its own snippet; :68 ends with \"Restore the desktop viewport afterwards\". Visual: scored/visual/prompt.md:9-10 sets its own 1440x900 viewport and enters its own ten-line draft; no visual anchor refers to an empty or particular library. Each judge uses playwright-mcp --isolated (judge.toml:12 in each dimension), so browser storage and viewport do not leak between dimensions; only server records do. No criterion quotes an absolute record count, id or revision number. Measured (scripted, not a judge run): qc/repairs/coldwater-2026-10-02-strict/run_golden.sh:27-41 runs editor, runtime, persist-before, a real process restart (restart.log pid 25 -> 53), persist-after and polish in one container on one database without reset; polish.json shows all six Polish criteria and the surface gate true after those mutations, persist-after.json shows cw_save_reload_restart true, and golden-1440.png shows the golden with \"Saved snippets 11\" accumulated, the library confined to a scrolling strip and no overlap or clipping. Hashes of all indexed artifacts were recomputed and match raw-evidence-index.json. Residual risk (why risk=true): no configured claude-code judge run exists, so judge behaviour on a populated library, the Visual Likert scores with accumulated records, and judge tab reuse across the restart inside Functional are unmeasured. Minor latent point: Functional lets the judge share one browser session (scored/functional/prompt.md:25); a tab opened before restart_app and reused as 'tab A' in cw_live_library_update could hold a dead live-update connection. The criterion's wording 'Open the app in tab A' (judge.toml:344) and the restart section's 'open a fresh page' (prompt.md:30) make a fresh navigation the natural reading, so this is not a demonstrated defect.",
+  "counterexample": null,
+  "suggested_fix": "Optional hardening only, not required for this row: add to app_context.md Notes for grading a sentence such as 'After the restart tool has been used, open fresh pages for later checks rather than reusing tabs opened before the restart.' Obtain one full configured judge run to measure Polish and Visual behaviour on the mutated library.",
+  "run_verdict": "PARTIAL"
+}

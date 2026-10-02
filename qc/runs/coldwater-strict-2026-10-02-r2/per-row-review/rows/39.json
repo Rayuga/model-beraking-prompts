@@ -1,0 +1,37 @@
+{
+  "number": 39,
+  "id": "floor_is_low_for_shells_mocks_and_stuffing",
+  "reviewer": "row-reviewer-39",
+  "input_sha256": "af036c0a436e39e00f094f9443448f26622386cecc722bfb987bb1d1f634d88e",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/WebDev Rubrics QC.xlsx :: Quality Checks row 40 (check 39) and Internal Quality Checks row 40 (no cell comments, no extra annotation columns filled)",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/harbor-webdev-rubric-qc/references/quality-checks.md (check 39 and neighbours 29, 30, 40, 42)",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (scoring/floor/prompt sections, by search)",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/projects/webdev-task-template (tests/scoring.toml, tests/tools/score.py, tests/test.sh, tests/tools/restart_mcp.py byte-compared to the task; gates/constraints/judge.toml and scored/functional/prompt.md head read)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/scoring.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/tools/score.py",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/test.sh",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/app_context.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/gates/render/{judge.toml,prompt.md}",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/gates/constraints/{judge.toml,prompt.md}",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/scored/functional/{judge.toml,prompt.md}",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/scored/polish/{judge.toml,prompt.md}",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/scored/visual/{judge.toml,prompt.md}",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/instruction.md, environment/instructions/*.md, environment/assets/seed_data.json, task.toml",
+    "qc/runs/coldwater-strict-2026-10-02-r2/raw-evidence-index.json (all 15 artifact SHA256 values recomputed and matching)"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P1",
+  "evidence": "What holds (reasoned from source, not measured): a blank page, a generic error page, a static mock whose editor takes no keys, a keyword-stuffed page and an app that refuses every action all fail the render gate, because tests/gates/render/judge.toml:23 makes the judge type a program adding two integers of its own choice, Run it, change one integer and Run again; gates are all_pass and score.py:41-48 zeroes the reward and test.sh skips the scored suite. A seed copy is not an app (seed_data.json has an empty snippets list and no starter), so test.sh exits at the missing /app/server.js with reward 0. A textarea or CodeMirror wrapper fails tests/gates/constraints/judge.toml:23. Each scored prompt restates the typing-and-Run gate. scoring.toml, score.py and test.sh are byte-identical to the frozen template.\n\nTwo gaps remain for the 'mock' and thin-shell cases.\n\n(A) Browser-storage mock is not excluded by any gate or criterion. tests/gates/constraints/judge.toml:32 (cw_shared_saved_record) accepts 'a second tab or browser context', and tests/app_context.md:22 says 'any two independent pages of the app are acceptable'. The judge's only browser is playwright-mcp launched with --isolated (judge.toml:12), whose tab tool opens pages in the same browser context, so localStorage/IndexedDB is shared between the judge's tabs and survives a reload. tests/scored/functional/judge.toml:308 (cw_save_reload_restart) says it fails 'if the saved data is only held in the browser', but restart_app restarts only the Node process; the judge's browser context and its storage survive, so the restart readback cannot tell the difference either. The public brief requires server-side shared SQLite persistence (integration.md: 'The library must be shared between independent browser contexts', 'Use SQLite for persistent records').\n\n(B) cw_stale_save_keeps_draft (tests/scored/functional/judge.toml:326, weight 1.5 of 54) has no working control for the refusal: 'Judge only what happens to B's draft; whether the server refused the Save is scored separately.' An app with no conflict detection that accepts every Save keeps B's fields trivially and passes. This vacuous 1.5 is what carries a thin shell over the functional floor of 0.05 in scoring.toml:11 (2.7 of 54 weight needed).\n\nNo configured judge run, weak-app run, Oracle or reward-discrimination measurement exists for this candidate; the raw evidence index states that itself. Both gaps are source-derived and not exercised at runtime. The shared-context behaviour of playwright-mcp tabs is from tool knowledge, not from a run in this review.",
+  "counterexample": "Thin shell: server.js serves one static page; the editor is a div that appends typed characters and handles Backspace only (no caret movement, selection, undo, find, format, multi-caret, colouring); Run writes the source into a fresh iframe each time; Save writes to localStorage with no revision check; the library is rendered from localStorage; styled neatly. It passes the render gate and both constraints criteria (own non-editable surface; second tab reads localStorage and survives reload). Functional: cw_html_preview 1.0 + cw_newer_run_supersedes 1.5 (replacing the iframe discards the old timer) + cw_stale_save_keeps_draft 1.5 (vacuous) = 4.0/54 = 0.074 > 0.05, so the floor passes; without the vacuous 1.5 it would be 2.5/54 = 0.046 and the reward would be 0. Polish then counts: cw_controls_keyboard_and_focus only grades controls 'the app offers' (polish/judge.toml:23), plus feedback/labels and narrow width, about 3 of 6; visual Likert around 4. Estimated reward roughly 0.6*0.074 + 0.2*0.5 + 0.2*0.75 = about 0.29 for an app with no editor depth and no server persistence (estimate, assuming Likert 4 maps to 0.75; not measured). Separately, a full-featured app that stores everything in localStorage and never touches SQLite can pass every persistence, conflict, history and live-update criterion.",
+  "suggested_fix": "1) In cw_stale_save_keeps_draft, make the refusal the control: state that if B's Save is accepted, or no conflict feedback is shown, the situation was not produced and the criterion fails (the same pattern cw_live_update_keeps_editing_state already uses). 2) Make the shared-storage readback independent of browser storage in cw_shared_saved_record and cw_save_reload_restart with a step the available tools can perform, for example explicitly permitting the judge to clear the origin's localStorage, sessionStorage, IndexedDB and cookies before the fresh-page readback, and drop the 'second tab' alternative in app_context.md:22 for those two checks. Then measure with a browser-storage-only weak app and a thin typing-and-Run shell under the configured judge before clearing this row.",
+  "run_verdict": "NOT EXERCISED"
+}

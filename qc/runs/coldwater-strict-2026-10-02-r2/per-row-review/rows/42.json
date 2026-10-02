@@ -1,0 +1,36 @@
+{
+  "number": 42,
+  "id": "reward_ranking_is_monotone",
+  "reviewer": "row-reviewer-42",
+  "input_sha256": "af036c0a436e39e00f094f9443448f26622386cecc722bfb987bb1d1f634d88e",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/WebDev Rubrics QC.xlsx (Quality Checks row 43 = check 42; Internal Quality Checks row 43 annotation 'Mukesh - we need to monitor this one.')",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/harbor-webdev-rubric-qc/references/quality-checks.md (section 42, also 39-44)",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/projects/webdev-task-template/tests/scoring.toml, tests/tools/score.py, tests/test.sh (byte-compared with the task copies: identical)",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/coldwater-strict-2026-10-02-r2/raw-evidence-index.json (hashes of results/polish.json, editor.json, runtime.json recomputed and matching)",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/instruction.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/environment/instructions/{overview,ui,behaviour,integration,policy,security}.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/scoring.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/tools/score.py",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/test.sh",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/app_context.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/gates/{render,constraints}/{prompt.md,judge.toml}",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/scored/{functional,polish,visual}/{prompt.md,judge.toml}",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/solution/app/src/custom-editor.js (Escape/Tab handling, lines 251-258, 324, 1144)",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/task.toml"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "What holds: tests/scoring.toml and tests/tools/score.py are byte-identical to the frozen template (gates render/constraints 0.0, weights functional 0.6 / polish 0.2 / visual 0.2, floor functional 0.05). score.py:41-48 zeroes the reward on a failed gate or floor and otherwise returns a weighted mean, which is non-decreasing in every dimension score. Functional has 38 binary criteria with weights summing to 54.0 (floor needs more than 2.7 weight points); polish has 6 equal binary criteria; visual has 3 likert criteria. At dimension level a pretty floor-level app (functional about 4.5/54, polish 5/6, visual 5/5 = about 0.42) does not beat a functionally strong plain app (functional 34/54, polish 3/6, visual low = about 0.53), so the template weights do not invert realistic orderings. Both gates test publicly stated hard requirements (ui.md:3 own surface; behaviour.md:9 and integration.md:7 shared saved record), so a gate failing a stronger app is not shown.\n\nDefect 1 (criterion-level inversion). tests/scored/polish/judge.toml:23 fails an app 'if keyboard focus is trapped inside the code editor with no working way out', and expects leaving 'through whatever key sequence the app states or the ordinary Tab key'. No public note asks for a keyboard way out of the editor: grep for escape/leave/trap over instruction.md and environment/instructions returns nothing; ui.md:17 only says 'Label controls clearly and show keyboard focus'. ui.md:7 on the other hand requires Tab and Shift+Tab to indent and outdent, graded by cw_block_indent_undo (tests/scored/functional/judge.toml:69-75, weight 1.0 of 54). The golden satisfies both only through an unrequested Escape-then-Tab convention (solution/app/src/custom-editor.js:251-258 and the label at :1144). One polish criterion is worth 0.2/6 = 0.0333 of reward; cw_block_indent_undo is worth 0.6*1/54 = 0.0111. So capturing Tab as the brief requires costs more than it earns unless the builder also guesses the unstated escape hatch.\n\nDefect 2 (credit for a dead feature). cw_stale_save_keeps_draft (tests/scored/functional/judge.toml:321-326, weight 1.5) says 'Judge only what happens to B's draft; whether the server refused the Save is scored separately' and has no control that the stale Save was refused. An app with no revision check at all (last write wins) accepts B's Save, B's fields are trivially unchanged, and it earns 1.5/54 (0.0167) for doing nothing. An app that does detect the conflict and protects the saved record but refreshes the editor on refusal without readable feedback earns 0 on both stale-save criteria, although it honours half of behaviour.md:9 and the first app honours none of its intent.\n\nRuntime evidence: raw-evidence-index.json covers the scripted golden only and states 'Visual ratings, judge duration, Oracle reward and reward discrimination are not measured'. REVIEW_POLICY.md requires separate hash-bound reward discrimination and reward ordering records before local clearance; none exist for this input hash. No configured judge run on mutated weak apps was available, so the ordering claims above are derived from the scoring arithmetic and criterion text, not measured.",
+  "counterexample": "App A = the golden without its Escape-then-Tab exit: it meets every public requirement, including Tab/Shift+Tab block indent (ui.md:7), but Tab never leaves the editor. It fails cw_controls_keyboard_and_focus only: reward = 1 - 0.2/6 = 0.9667. App B = the golden without Tab indentation: Tab is not handled by the editor and moves focus natively to the next control. It violates ui.md:7 and fails cw_block_indent_undo only: reward = 1 - 0.6*(1/54) = 0.9889. B, which omits a publicly required editing feature, outscores A, which omits only a behaviour no public note requests, by 0.022. Second pair: an app with no stale-save detection scores 1.5/54 on cw_stale_save_keeps_draft while an app that refuses the stale save and keeps the record intact but reloads B's editor without readable feedback scores 0 on both stale-save criteria.",
+  "suggested_fix": "Add one public sentence to ui.md saying a keyboard user must be able to leave the code editor and that the app should say how (so the polish clause grades a stated requirement), or drop the trapped-focus clause from cw_controls_keyboard_and_focus. In cw_stale_save_keeps_draft, require as its control that B's Save was observed to be refused (reusing the observed fact, not the sibling verdict), so an app with no conflict handling cannot pass it. Then obtain the reward discrimination and ordering runtime records the review policy requires for the new candidate.",
+  "run_verdict": "NOT EXERCISED"
+}

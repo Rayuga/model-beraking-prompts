@@ -1,0 +1,35 @@
+{
+  "number": 48,
+  "id": "dimension_prompts_are_accurate_and_consistent",
+  "reviewer": "row-reviewer-48",
+  "input_sha256": "af036c0a436e39e00f094f9443448f26622386cecc722bfb987bb1d1f634d88e",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/WebDev Rubrics QC.xlsx (Quality Checks row 49 = check 48; Internal Quality Checks row 49 = check 48, no further annotation cells)",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/harbor-webdev-rubric-qc/references/quality-checks.md (section 48)",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/projects/webdev-task-template/tests/app_context.md and the five template prompt.md files",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/instruction.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/environment/instructions/{overview,ui,behaviour,security,policy,integration}.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/environment/assets/seed_data.json",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/app_context.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/gates/{render,constraints}/{prompt.md,judge.toml}",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/scored/{functional,polish,visual}/{prompt.md,judge.toml}",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/task.toml, tests/scoring.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/test.sh and tests/tools/restart_mcp.py (grep of port, health, app_context injection, tool name)",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/solution/app/server.js and src/app.tsx (grep of health route and confirm dialogs)",
+    "qc/runs/coldwater-strict-2026-10-02-r2/raw-evidence-index.json (scope statement and limitations; artifact hashes not recomputed)"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "What is correct: all five prompts and tests/app_context.md describe this app and nothing else. Name 'Colderwater playground', URL http://localhost:3000 (app_context.md:3-4, matches integration.md:3 and test.sh:108), 'Accounts: None. The app has no sign-in' (app_context.md:10, matches instruction.md:5 and policy.md:3), one workspace at / with the controls named in ui.md:17 (app_context.md:14). The template's sign-in, accounts, forged-request, tenant and 0-5 scale wording has been removed from every prompt; a case-insensitive search of tests/, instruction.md, environment/ and task.toml for hireops, coldwater, password, admin, tenant, recruit, CHANGE_ME, placeholder, TBD and similar found no residue. The restart paragraph (functional/prompt.md:30) names the `restart_app` tool of the `verifier` server, matching functional/judge.toml:14-18 and restart_mcp.py:14, and only cw_save_reload_restart names it. 'each ends with the conditions under which it fails' (functional/prompt.md:12, polish/prompt.md:11) holds: 38 of 38 functional and 6 of 6 polish criteria contain 'Fails if'. Visual prompt says 'the stated scale' and the three likert criteria state 1-5 anchors. No criterion count is quoted in any description.\n\nDefect (one instance): the functional prompt and app context omit an app fact that a criterion depends on, and the prompt forbids obtaining it. functional/prompt.md:21 says 'Do not guess URL paths or API routes. Replaying a request you recorded from the app's own network activity is allowed where a criterion says so.' functional/judge.toml:290 (cw_preview_isolation) requires 'confirm that the app page itself can load its own health address, as working controls' and later drafts that 'try to fetch the app's own health address'. Neither functional/prompt.md nor app_context.md:1-24 states what the health address is; it is public only to the builder (integration.md:3 'answer GET /api/health promptly'). The judge receives only prompt + app_context + criteria, so the address is unknown to it, and a conforming app need not call its own health route from the page (the golden's only reference is the server route, solution/app/server.js:12), so it cannot be recorded from network activity either. functional/prompt.md:13 then says 'If the control cannot be performed, the criterion fails'. qc/REVIEW_POLICY.md asks to avoid 'an arbitrary app-route assumption' and to 'Define ambiguous or missing evidence consistently across prompt, context and criterion'.\n\nObservation, not a defect: the product name 'Colderwater' appears only in tests/ and task.toml, never in the public brief, so a submission will not carry that name; no criterion grades the name.\n\nNo configured judge run exists (raw-evidence-index.json scope: 'Scripted golden behaviour evidence only. Not a configured LLM judge run'), so how the judge resolves this conflict is unmeasured.",
+  "counterexample": "Conforming alternative that can fail: a fully correct app (including the golden) that serves GET /api/health but never requests it from the page. A judge obeying functional/prompt.md:21 has no stated or recorded health address, cannot perform the positive control of cw_preview_isolation (judge.toml:290), and under functional/prompt.md:13 fails that criterion (weight 1.5 of 54 functional weight, about 1.7% of reward). Alternatively the judge guesses a route, contradicting the prompt, and outcomes differ between runs. Weak app direction: a judge that guesses a wrong address sees the app-page control fail and the preview fetch fail alike, so the isolation leg carries no information.",
+  "suggested_fix": "State the address where the judge can read it: add to tests/app_context.md a line such as 'Health address: GET http://localhost:3000/api/health (required by the brief)', so cw_preview_isolation no longer conflicts with 'Do not guess URL paths or API routes'. Then re-freeze and re-review the changed prompt inputs.",
+  "run_verdict": "NOT EXERCISED"
+}

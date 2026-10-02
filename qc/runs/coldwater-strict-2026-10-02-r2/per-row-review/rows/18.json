@@ -1,0 +1,31 @@
+{
+  "number": 18,
+  "id": "solution_covers_every_graded_dimension",
+  "reviewer": "row-reviewer-18",
+  "input_sha256": "af036c0a436e39e00f094f9443448f26622386cecc722bfb987bb1d1f634d88e",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/WebDev Rubrics QC.xlsx (Quality Checks row 19 = check 18; Internal Quality Checks row 19, no further annotation cells or comments)",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/harbor-webdev-rubric-qc/references/quality-checks.md (section 18)",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/projects/webdev-task-template (file list; structure compared with the task)",
+    "qc/REVIEW_POLICY.md",
+    "task/instruction.md, task/environment/instructions/*.md, task/tests/app_context.md",
+    "task/tests/gates/{render,constraints}/{prompt.md,judge.toml}",
+    "task/tests/scored/{functional,polish,visual}/{prompt.md,judge.toml}, task/tests/scoring.toml, task/task.toml",
+    "task/solution/solve.sh, task/solution/app/server.js, src/app.tsx, src/custom-editor.js, src/runtime.ts, src/style.css, static/runner.html, public/assets (string checks)",
+    "qc/runs/coldwater-strict-2026-10-02-r2/raw-evidence-index.json (all 15 artifact SHA256 values recomputed and matching)",
+    "qc/repairs/coldwater-2026-10-02-strict: run_golden.sh, tests/lib.cjs, tests/editor.cjs, tests/polish.cjs (excerpt), results/*.json, results/golden-1440.png, results/golden-390.png, STRICT_CANDIDATE.md"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "Walked all 3 gate, 38 Functional, 6 Polish and 3 Visual criteria against the reference source. The frozen task tree is byte-identical to projects/colderwater-playground-devtools (diff -rq empty) and the shipped bundle contains the current source strings. Scripted golden results (hashes verified) report all 47 binary criteria true with real keys, mouse and real Ctrl+C/Ctrl+V; the decomposed accent fixture is genuinely e+U+0301. The walk found no criterion the reference cannot pass, but found one confirmed brief non-conformance that a judge-chosen fixture reaches, plus two fixture-dependent weak spots. (1) CONFIRMED: task/solution/app/src/custom-editor.js:121 colours a token as keyword only when acorn sets token.type.keyword. acorn classifies let, of, async, await and static as plain name tokens (ran acorn tokenizer: 'async:plain function:KW let:plain for:KW const:KW of:plain await:plain return:KW static:plain'). results/golden-1440.png shows this in the reference itself: line 3 'let sum = 0;' and line 4 'of' are rendered in the plain identifier colour while function/for/const/if/return are purple. task/environment/instructions/ui.md:13 requires colouring 'JavaScript keywords', and task/tests/scored/functional/judge.toml:168-173 (cw_js_semantic_coloring, weight 1.5) requires 'The keyword ... must each have a visibly distinct treatment from plain identifiers' on a fixture the judge writes. The scripted check (tests/editor.cjs:254) only used function/return, so this path was not exercised. (2) task/solution/app/src/app.tsx:113 resets editor history only when the loaded code differs from the editor text, so re-opening the just-saved snippet in the same page leaves Undo enabled; task/tests/scored/polish/judge.toml:45-50 (cw_undo_redo_availability) starts with 'Load a saved snippet or start a new draft so there is no editing history ... both must be shown as unavailable'. (3) custom-editor.js:82-86 calls Prettier without matching the source quote style, so a single-quoted string fixture is rewritten with double quotes while judge.toml cw_js_format_semantics_and_undo fails 'if the string or comment is altered'. Unmeasured: no configured judge run exists for these bytes (STRICT_CANDIDATE.md: judge attempt failed with unrecognized_model / HTTP 401), so no Oracle score, no Visual Likert ratings and no judge-tool evidence (the judge has no coordinate-click tool by default and fill() cannot target the non-editable editor div); results/golden-390.png shows an empty preview pane although the script asserted the text, probably a full-page capture artifact, not verified. What the task does well: every graded behaviour has a matching implementation, including grapheme movement, same-line carets on document offsets, idempotent restore, last-good canvas and input restore, and the 2 s library poll that never touches editor state.",
+  "counterexample": "A conforming judge fixture for cw_js_semantic_coloring such as '// sum\\nfunction add(a, b) { return a + b; }\\nlet total = add(1, 2);\\nconsole.log(\"sum\", total);' in which the judge inspects 'let' as the keyword: the reference renders 'let' with the same computed colour, weight and style as the plain identifier 'total', so the Oracle loses this 1.5-weight criterion although the brief asks for JavaScript keywords to be coloured. Secondary: a judge that saves a typed snippet and re-opens it from the library in the same page sees Undo still enabled and fails cw_undo_redo_availability for the reference.",
+  "suggested_fix": "In custom-editor.js syntaxForLine treat name tokens let, of, async, await, static, yield, get and set as kind 'keyword' (contextual keywords), reset editor history in openRecord even when the loaded source equals the current text, pass singleQuote to Prettier when the source uses single quotes, then rebuild the bundle, extend the scripted colouring check with let/async, and obtain a configured judge run before claiming an Oracle score.",
+  "run_verdict": "PARTIAL"
+}

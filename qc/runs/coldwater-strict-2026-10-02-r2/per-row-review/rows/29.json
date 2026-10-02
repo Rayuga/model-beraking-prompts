@@ -1,0 +1,42 @@
+{
+  "number": 29,
+  "id": "global_browser_gate_is_present_and_correct_in_every_dimension",
+  "reviewer": "row-reviewer-29",
+  "input_sha256": "af036c0a436e39e00f094f9443448f26622386cecc722bfb987bb1d1f634d88e",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/WebDev Rubrics QC.xlsx (Quality Checks row 29, cell D30; Internal Quality Checks row 29)",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/harbor-webdev-rubric-qc/references/quality-checks.md:123-125,145-147",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md:156",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/projects/webdev-task-template/tests/gates/render/prompt.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/projects/webdev-task-template/tests/gates/constraints/prompt.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/projects/webdev-task-template/tests/scored/functional/prompt.md",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/gates/render/prompt.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/gates/render/judge.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/gates/constraints/prompt.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/gates/constraints/judge.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/scored/functional/prompt.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/scored/functional/judge.toml (lines 290, 308, 317, 344, 353)",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/scored/polish/prompt.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/scored/visual/prompt.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/scoring.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/app_context.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/instruction.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/environment/instructions/integration.md:7-9",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/task.toml:22,38",
+    "qc/runs/coldwater-strict-2026-10-02-r2/raw-evidence-index.json (two artifact hashes spot-verified: tests/smoke.cjs, results/persist-before.json)"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "What is correct: all three scored prompts carry an identical in-dimension gate at line 5 of tests/scored/{functional,polish,visual}/prompt.md: loads from http://localhost:3000 without a fatal browser error, typed text appears in the editor, Run shows the program's output, and 'If the gate fails, assign 0 to every criterion in this dimension' (hard zero, no partial credit). That zeroes blank and static-shell apps. None of the five prompts requires same-origin; each says 'External font, script or CDN asset requests are allowed', matching network_mode = \"public\" (task.toml:22,38). There is no sign-in (app_context.md:10), so no auth leg is needed. tests/gates/render/prompt.md:5 fails a blank page, generic error, unavailable server or static shell, and its criterion cw_authored_custom_editor_run (gates/render/judge.toml:23) demands type, Run, edit, Run again with a changed sum. scoring.toml:1-3 has both gates at 0.0 with all_pass aggregation. Defect: the app has server backing (integration.md:7 'The library must be shared between independent browser contexts'; integration.md:9 SQLite), and the only backing leg of the real gate, cw_shared_saved_record (gates/constraints/judge.toml:32), accepts 'a second tab or browser context'. app_context.md:22 widens this to 'any two independent pages of the app are acceptable'. The judge browser is one Playwright MCP instance started with --isolated (gates/constraints/judge.toml:12), i.e. one browser context, so a second tab shares localStorage/IndexedDB with the first. The backing leg therefore does not distinguish server storage from browser-only storage. qc/REVIEW_POLICY.md:21 requires 'an actual successful operation and independent-context readback where the product requires shared storage'. The scored prompts' gate has no backing leg at all, and the scored restart criterion (scored/functional/judge.toml:308) has the same 'second tab or browser context' wording and reopens 'a fresh page' in the same browser after restart_app, so its 'only held in the browser' failure clause has no step that can observe it. Evidence limits: this is a source reading; the raw evidence index is scripted golden behaviour only, with no configured judge run and no weak-app discrimination run, so the counterexample is not runtime-measured.",
+  "counterexample": "Broken app that could pass: a server that serves static files and GET /api/health, with the whole library, revisions and history kept in localStorage and synchronised between tabs by the storage event. Typing and Run work, so render passes and the scored in-dimension gate passes. In cw_shared_saved_record the judge saves, opens a second tab in the same context, finds the snippet with exact title, filename and source, reloads and finds it again: the constraints gate passes with no server-side record. In cw_save_reload_restart the browser keeps its localStorage across restart_app, so the fresh page still shows the same identity, revision and history. Conforming alternative that could fail: none found for this row; a conforming SQLite-backed app passes every gate leg as written.",
+  "suggested_fix": "In gates/constraints/judge.toml cw_shared_saved_record (and scored/functional cw_save_reload_restart), require the readback from a browser context that does not share storage with the saving page (a new Playwright browser context, not a second tab), and state that a readback from a tab of the same context is not evidence; narrow app_context.md:22 so it does not override this for backing checks. If the judge tooling cannot open a separate context, state that as a tool-feasibility gap and coordinate with the owner rather than leaving the tab option.",
+  "run_verdict": "NOT EXERCISED"
+}

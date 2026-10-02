@@ -1,0 +1,38 @@
+{
+  "number": 22,
+  "id": "verifier_image_can_launch_and_grade",
+  "reviewer": "row-reviewer-22",
+  "input_sha256": "af036c0a436e39e00f094f9443448f26622386cecc722bfb987bb1d1f634d88e",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/WebDev Rubrics QC.xlsx (Quality Checks row 23 = check 22; Internal Quality Checks row 23, no extra annotation cells or comments; Deterministic Checks rows for check-dockerfiles.py, check-runtime-deps-in-both-images.py, check-verifier-tooling-baked.sh)",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/harbor-webdev-rubric-qc/references/quality-checks.md:96-98",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md:60",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/projects/webdev-task-template/tests/Dockerfile (byte comparison with task copy)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/Dockerfile",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/.dockerignore",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/test.sh",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/{gates,scored}/*/judge.toml (mcp server command/args lines)",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/tools/restart_mcp.py (header)",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/task.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/environment/Dockerfile",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/solution/solve.sh",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/solution/app/server.js (require lines 2-5, static serving 130-131, listen 142)",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/solution/app/package.json",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/solution/app/public/index.html",
+    "qc/runs/coldwater-strict-2026-10-02-r2/raw-evidence-index.json"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "Source conformance (static, not a build): task/tests/Dockerfile is byte-identical to the frozen template tests/Dockerfile (cmp; sha256 72998ab8...a55fdd), as are test.sh, .dockerignore, tools/score.py, tools/restart_mcp.py and environment/Dockerfile. tests/Dockerfile:16-22 installs the judge CLI @anthropic-ai/claude-code@2.1.281 (matches task.toml:31 REWARDKIT_JUDGE=claude-code), @playwright/mcp@0.0.79, express@5.1.0 and better-sqlite3@12.4.1; :31 pins harbor-rewardkit==0.1.7; :33-39 installs Chromium through the Playwright CLI bundled with the pinned MCP package into /opt/playwright-browsers and symlinks /usr/local/bin/chromium, which is exactly the --executable-path every one of the five judge.toml files passes to playwright-mcp (line 12 of each). :2 python:3.12-slim supplies /usr/local/bin/python3 used by scored/functional/judge.toml:17 for restart_mcp.py and by test.sh probes; :1,:4 copy Node 22 from node:22-bookworm-slim; :12-14 adds procps and util-linux (setsid/setpriv used at test.sh:104-111) plus fonts; :43 COPY . /tests. App runtime: solution/app/server.js:2-5 requires only node built-ins, express and better-sqlite3, resolved via NODE_PATH=/usr/local/lib/node_modules (Dockerfile:9, test.sh:106); both are the same versions as environment/Dockerfile:9-11, so check-runtime-deps-in-both-images holds by manual application. The other package.json dependencies (react, prettier, acorn, @lezer/html) are build-time inputs bundled into public/assets/index.js, served statically (server.js:130-131); public/index.html references only same-origin /assets files, and solve.sh:38 copies the prebuilt app with no install step. Weak-app probe: an app that needs an npm module absent from the verifier image fails liveness and scores 0 - correct, since the agent image offers the same two modules. Conforming-alternative probe: an agent that vendors extra modules into /app/node_modules still starts because test.sh:72-83 allows in-tree node_modules links and Node resolves local modules first. Limits: base tags node:22-bookworm-slim and python:3.12-slim and the apt packages are floating (template-controlled; the deterministic rule treats unpinned apt as a NOTE), and the Chromium build is pinned only transitively through @playwright/mcp@0.0.79. MISSING MEASUREMENT: raw-evidence-index.json covers scripted golden behaviour only and states 'Not a configured LLM judge run'; no hash-bound record shows this verifier image built, the app launched under test.sh, or rewardkit graded. The Dockerfile:41 assert-and-patch of rewardkit/agents.py and the Playwright browser download can only be confirmed by an actual build. qc/REVIEW_POLICY.md requires a full verifier launch/grading runtime record before local clearance, so risk stays true.",
+  "counterexample": null,
+  "suggested_fix": "No task edit. Owner should build tests/Dockerfile for this input hash and record a hash-bound full verifier launch (image build log, app liveness, rewardkit gates+scored run) before clearance; do not alter the template-controlled Dockerfile.",
+  "run_verdict": "NOT EXERCISED"
+}

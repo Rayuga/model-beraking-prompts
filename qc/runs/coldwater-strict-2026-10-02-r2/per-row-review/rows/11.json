@@ -1,0 +1,38 @@
+{
+  "number": 11,
+  "id": "timeouts_fit_the_work",
+  "reviewer": "row-reviewer-11",
+  "input_sha256": "af036c0a436e39e00f094f9443448f26622386cecc722bfb987bb1d1f634d88e",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/WebDev Rubrics QC.xlsx :: Quality Checks row 12 (check 11), Internal Quality Checks row 12 (check 11, 'inner < outer, sum of judges < verifier'), Deterministic Checks check-scoring-policy.py",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/harbor-webdev-rubric-qc/references/quality-checks.md:50-51",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md:53-63,98-111,163",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/projects/webdev-task-template/task.toml and tests/test.sh (diffed against the task)",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/rules/projects/webdev-task-template/tests/scored/functional/judge.toml (2 criteria, timeout 9000)",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/task.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/test.sh",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/gates/render/judge.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/gates/constraints/judge.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/scored/functional/judge.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/scored/functional/prompt.md",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/scored/polish/judge.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/scored/visual/judge.toml",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/tests/tools/restart_mcp.py:11",
+    ".qc-cache/coldwater-strict-2026-10-02-r2/task/environment/Dockerfile",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/coldwater-strict-2026-10-02-r2/raw-evidence-index.json"
+  ],
+  "verdict": "Not exercised",
+  "risk": true,
+  "severity": "P1",
+  "evidence": "NESTING HALF (static, holds). task.toml:18 agent timeout_sec=7200.0; task.toml:21 build_timeout_sec=600.0; task.toml:27 verifier timeout_sec=13200.0. test.sh:213 'run_suite gates 1500'; test.sh:224 'run_suite scored 11100'; test.sh:207 runs rewardkit with '--max-concurrent-agent 1', so judges in a suite run one after another and their timeouts add. Gate judges: gates/render/judge.toml:4 timeout=600 and gates/constraints/judge.toml:4 timeout=600; each 600 < 1500 and the sum 1200 < 1500 (300 s spare). Scored judges: scored/functional/judge.toml:4 timeout=9000, scored/polish/judge.toml:4 timeout=900, scored/visual/judge.toml:4 timeout=900; each < 11100 and the sum 10800 < 11100 (300 s spare). Budgets: 1500 + 11100 = 12600 < 13200 (600 s spare); sum of all judge timeouts 12000 < 13200. Liveness: test.sh:116-122 polls 120 x 0.25 s sleep (about 30 s nominal, more if each 2 s probe at test.sh:50 hangs) and fits inside the 600 s spare; the restart helper waits the same 120 probes (test.sh:171-177) under restart_mcp.py:11 HELPER_TIMEOUT_SEC=55. Every value equals the frozen template and staged-task-contract.md:111 ('gates 1500, scored 11100, verifier 13200'); task/tests/test.sh is byte-identical to the template test.sh, and task.toml differs from the template only in identity/metadata lines 5-7 and 10-15. Agent image (environment/Dockerfile) is a slim node base plus one apt layer and a global npm install of express and better-sqlite3 (native build), plausible within 600 s but no cold-build time was recorded. LONG-ENOUGH HALF (unmeasured). The functional judge is one batched session with 38 conjunctive criteria (26,080 characters of criterion text) inside timeout=9000, i.e. about 237 s per criterion on average, whereas the template that the 9000 s value comes from ships 2 functional criteria. scored/functional/prompt.md:19 requires real key presses, clicks and drags for graded actions, prompt.md:24 forbids shortening stated waits, and criteria include a five-second time-limit recovery, stop/supersede waits, a real process restart, and multi-context stale-save/live-update flows. qc/runs/coldwater-strict-2026-10-02-r2/raw-evidence-index.json states its scope is 'Scripted golden behaviour evidence only. Not a configured LLM judge run' and lists the limitation 'Visual ratings, judge duration, Oracle reward and reward discrimination are not measured.' qc/REVIEW_POLICY.md says 'Workload is measured, not inferred from a timeout number' and 'Scripted Playwright duration is not LLM judge duration.' No full configured judge run, agent build run, or cold image build timing exists for this input hash, so whether 9000 s (functional), 7200 s (agent) and 600 s (build) are long enough cannot be confirmed. The row therefore cannot be upgraded to Pass; the nesting arithmetic is not a defect and I found no static timeout defect.",
+  "counterexample": "Not demonstrated, risk only: a fully conforming app graded by the configured claude-code judge that needs more than about 237 s per criterion on average (for example 20-30 Playwright MCP tool round-trips per conjunctive criterion) exhausts the 9000 s functional judge timeout before reaching the later persistence criteria. prompt.md:11 then has unattempted criteria marked failed, or if rewardkit exits non-zero test.sh:224-226 exits with the zero reward, so a harness time limit would be scored against the submission.",
+  "suggested_fix": "Do not change any timeout now. Run one full configured verifier pass on the golden for this exact hash and record per-judge wall time (functional especially), plus the agent image cold-build time. If functional finishes with clear headroom under 9000 s, this row passes as is. If it does not, first cut redundant browser work in the 38 criteria together with the public scope; only then, with a recorded workload reason and explicit authorization under the below-five-hour limit, consider a timeout change that keeps the nesting above.",
+  "run_verdict": "NOT EXERCISED"
+}
