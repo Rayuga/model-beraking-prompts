@@ -95,12 +95,48 @@ We are working on the HireOps task in this repo:
 projects/hireops-recruiting-operations/hireops-recruiting-operations
 
 Read handoffs/HIREOPS_NEW_CHAT_CONTEXT_2026-10-02.md first, then the files it
-lists in order. Then tell me, briefly:
-1. the current state of the task and its latest candidate ZIP;
-2. whether you think it is hard enough to put GPT-5.6 Luna in the 0.10-0.70 band,
-   and why;
-3. the risks that could make the Oracle score below 0.95 on the portal;
-4. what you recommend doing before we spend a portal try.
+lists in order, including WebDev_guide.md and the task's brief, notes, judge
+files and golden source. Do not edit anything yet. Portal tries are limited.
 
-Do not edit anything yet. Portal tries are limited, so I want your read first.
+The goal is to get GPT-5.6 Luna into the 0.10-0.70 band (ideally 0.4-0.5) while
+the golden still scores Oracle 1.0. I think the task as it stands is not hard
+enough: it is mostly server-side rules, and Luna usually gets those right from
+the brief. We need to do something exceptional to make it tougher, not just add
+more rules.
+
+Step 1. Give me your honest read, briefly:
+- the current state of the task and its latest candidate ZIP;
+- where you expect Luna to land today, per area, and why;
+- what could make the Oracle score below 0.95 on the portal (145 Functional
+  criteria in one 9000-second judge session is my main worry).
+
+Step 2. Brainstorm. Come up with at least ten distinct ideas for making this
+task genuinely harder for Luna. Think widely before narrowing. For each idea give:
+- what the user would see and why a real Finance team would want it;
+- why Luna is likely to get it wrong (Luna writes the whole frontend in one go
+  and tests with curl, never in a browser);
+- how a judge would check it in the browser, including the working control for
+  any negative check;
+- how much golden work it needs;
+- the risk that it fails a correct app or that the judge cannot perform it.
+
+Favour behaviour that only works when built and tested in a real browser:
+state that survives live updates from another user, drafts and focus that are
+kept, multi-row forms with per-row previews, keyboard-only flows, optimistic
+updates that roll back, long lists that stay usable, undo across a multi-step
+change, concurrent editors seeing each other's work. Also consider exact-value
+edges stated as a rule without the giveaway example, and screens for roles that
+Luna tends to lock out or forget. Do not propose hidden requirements, changes to
+the reward weights, the judge model or the shared harness, or timing windows the
+judge cannot hit.
+
+Step 3. Rank the ideas by expected drop in Luna's score per unit of golden work
+and judge time, and recommend the three to five you would build. Say what you
+would remove to make room, since 145 Functional criteria is already a lot.
+
+Step 4. Use two independent subagents to attack your shortlist: one arguing that
+Luna will still pass each idea, one looking for ways each idea breaks the Oracle,
+fails a correct alternative app or cannot be judged. Revise the shortlist with
+what they find, then show me the final plan and wait for my go-ahead before
+building anything.
 ```
