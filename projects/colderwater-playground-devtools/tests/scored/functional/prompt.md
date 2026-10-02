@@ -23,7 +23,7 @@ Global browser gate: before scoring, confirm in the live browser that the applic
 - You may choose the exact fixture text for each criterion. Check that the editor holds it before acting.
 - Grade only the steps written in each criterion. Extra probes must not fail a criterion when its listed steps passed.
 - Where waiting is required, wait the stated time; do not shorten it.
-- Share one browser session across criteria where convenient, but give every criterion its own verdict. Do not repeat the gate fixtures.
+- Share one browser session across criteria where convenient, but give every criterion its own verdict.
 - Judge behavior, not styling. Do not repair the app. If a browser tool errors, retry once, then fail that criterion and move on; never run shell or install commands.
 
 ## Restart evidence

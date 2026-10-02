@@ -130,6 +130,9 @@ const { assert } = t;
   await t.run(page);
   await t.clickAt(page, 4, 8); await page.keyboard.down('Shift'); await key('End'); await page.keyboard.up('Shift');
   await page.screenshot({ path: '/state/golden-1440.png' });
+  await page.getByRole('button', { name: 'Save', exact: true }).click(); await t.sleep(700);
+  await page.getByRole('button', { name: /^Revision 1/ }).click(); await t.sleep(300);
+  await page.screenshot({ path: '/state/golden-1440-history.png' });
 
   t.report('polish', results, page);
   const failed = Object.entries(results).filter(([, value]) => value !== true);
