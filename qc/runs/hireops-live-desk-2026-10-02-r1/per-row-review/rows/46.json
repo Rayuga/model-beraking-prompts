@@ -1,0 +1,32 @@
+{
+  "number": 46,
+  "id": "tests_and_key_are_out_of_agent_reach",
+  "reviewer": "row-reviewer-46",
+  "input_sha256": "ac48a4edff5d38f0a291772fad106133411095257fe2f2a504b96b0872abc62f",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/rules/WebDev Rubrics QC.xlsx (Quality Checks row 47 = check 46; Internal Quality Checks row 47; no cell comments on the row)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/rules/harbor-webdev-rubric-qc/references/quality-checks.md (section 46)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md and deterministic-checks.md (grep of isolation-related lines only: contract 104-108, deterministic 60-62, 78)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/rules/projects/webdev-task-template (environment/Dockerfile, tests/Dockerfile, tests/.dockerignore, tests/test.sh, tests/tools/score.py, tests/tools/restart_mcp.py, tests/scoring.toml, task.toml, environment/instructions/integration.md: diffed against the task)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/task.toml",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/environment/Dockerfile",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/environment (file listing), instructions/*.md and assets/seed_data.json (keyword scan), instruction.md (keyword scan)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/tests/Dockerfile, tests/.dockerignore, tests/test.sh (full read)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/solution/solve.sh (full read); solution/app/server.js and src/*.js (grep for /tests, /logs, reward, child_process)",
+    "qc/runs/hireops-live-desk-2026-10-02-r1/manifest.json and raw-evidence-index.json (header and first entry)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Source review only; no image was built or probed by this reviewer. (1) Agent image: task/environment/Dockerfile copies only its own build context ('COPY instructions/ /instructions/' and 'COPY assets/ /assets/', lines 14-15) and installs only express@5.1.0 and better-sqlite3@12.4.1 (lines 9-12): no rewardkit, no claude-code/codex judge client, no Playwright. The environment/ build context holds exactly four files (Dockerfile, assets/seed_data.json, instructions/hireops_rules.md, instructions/integration.md); none is a copy of tests/ or solution/. The file is byte-identical to the frozen template (diff: SAME). (2) No rubric leak in agent-visible text: the skill's deterministic grep (judge|rubric|criteri|dimension|reward|weight|score.py|playwright|glm|claude|/tests) extended with verifier|grad over instruction.md and environment/instructions returns one hit, hireops_rules.md:20 'amortized weight', which is product domain language; the same scan of seed_data.json returns nothing. (3) Key: task.toml [verifier.env] carries only the template placeholder 'ANTHROPIC_AUTH_TOKEN = \"${OPENROUTER_API_KEY}\"' and [agent] has no env block, so the judge credential exists only in the verifier phase; task.toml differs from the template only in name/description/keywords/metadata fields. (4) Verifier isolation: 'environment_mode = \"separate\"'; tests/Dockerfile ends 'COPY . /tests' then 'chmod +x /tests/test.sh && chmod -R go-rwx /tests'; test.sh sets 'umask 077' (line 3), 'chmod 700 \"$LOG_DIR\"' (11), 'chmod -R go-rwx /tests' (12), and launches the submission with 'setsid env -i PATH=... NODE_PATH=... HOME=... PORT=... DB_PATH=... setpriv --reuid=65534 --regid=65534 --clear-groups node \"$APP_ENTRY\"' (104-111; the restart helper repeats this at 160-167). The submitted server therefore runs as nobody with a scrubbed environment: it cannot read /tests criteria, cannot write reward.txt/reward.json under the 0700 root-owned log directory, and does not inherit the judge token. Symlinks escaping /app/node_modules cause an early zero (72-83), closing the link-to-/tests route. Reward is written only by root-run tools/score.py. tests/Dockerfile, .dockerignore, test.sh, score.py, restart_mcp.py and scoring.toml are all byte-identical to the frozen template. (5) solve.sh writes only under /app and removes only the database path constrained to /app/*; the reference app has no reference to /tests, /logs or reward. Broken-app probe considered: a submission whose server.js tries fs.readFileSync('/tests/scored/functional/judge.toml') or writes /logs/verifier/reward.json gets EACCES as uid 65534, and a symlink /app/x -> /tests is zeroed; a conforming app is not penalised by any of these controls (integration.md publicly states the symlink rule). Limits: the frozen input SHA256 was not recomputed by me; the raw-evidence index has no configured verifier run and no in-container permission probe, so run_verdict is NOT EXERCISED. I do not treat that as required missing evidence for this row because the row's verify clause concerns image contents and file permissions that are fixed by template-identical source. Steering the judge through page content served by the app is row 45's subject and was not assessed here.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

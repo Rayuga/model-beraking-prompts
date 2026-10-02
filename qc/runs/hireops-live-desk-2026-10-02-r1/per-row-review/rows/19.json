@@ -1,0 +1,33 @@
+{
+  "number": 19,
+  "id": "solution_honors_the_runtime_contract_and_is_self_contained",
+  "reviewer": "row-reviewer-19",
+  "input_sha256": "ac48a4edff5d38f0a291772fad106133411095257fe2f2a504b96b0872abc62f",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    "rules/WebDev Rubrics QC.xlsx: Quality Checks row 20 (check 19), Internal Quality Checks row 20, Deterministic Checks rows 31 and 34 (check-runtime-contract-strings.py, check-solve-contract.py)",
+    "rules/harbor-webdev-rubric-qc/SKILL.md (delivery profile, layers, verdicts)",
+    "rules/harbor-webdev-rubric-qc/references/quality-checks.md section 19",
+    "rules/harbor-webdev-rubric-qc/references/deterministic-checks.md lines 50-62",
+    "rules/harbor-webdev-rubric-qc/references/staged-task-contract.md cross-file agreements table",
+    "rules/projects/webdev-task-template: solution/solve.sh, tests/test.sh, environment/Dockerfile (diffed against the task)",
+    "qc/REVIEW_POLICY.md",
+    "task/solution/solve.sh",
+    "task/solution/app/server.js, package.json, src/bootstrap.js, src/index.js (head, listener), src/db.js, public/index.html",
+    "task/environment/Dockerfile, task/environment/instructions/integration.md, task/instruction.md lines 15-17",
+    "task/tests/test.sh, task/tests/Dockerfile, task/task.toml",
+    "qc/runs/hireops-live-desk-2026-10-02-r1/raw-evidence-index.json and manifest.json (hashes recomputed)",
+    "qc/repairs/hireops-2026-10-02-live-desk/live-desk.cjs, results/live-desk.json, results/server.log"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "Static review of the frozen bytes found no defect. solution/solve.sh: shebang at line 1, `set -euo pipefail` line 2, no CR bytes (count 0), `bash -n` clean; it writes only under /app (mkdir line 3, `cp -a \"$(dirname \"$0\")/app/.\" /app/` line 35, removal of the database and its -wal/-shm line 36, guarded to /app/* by lines 5-9); nothing is written to /tests, /logs/verifier or /solution; no pkill, no NODE_ENV=production, no install or network fetch. The copy creates /app/server.js (solution/app/server.js:2 requires ./src/index.js), which is the file tests/test.sh:68 requires and test.sh:111 launches as `node /app/server.js`. Runtime contract: src/bootstrap.js:43 listens on PORT||3000 on 0.0.0.0; bootstrap.js:20-24 answers GET /api/health before the SQLite worker is started (line 45), matching integration.md:9-10 and test.sh:48; src/db.js:13 honours DB_PATH with /app/app.db as the default; db.js seedIfEmpty returns when users is non-empty (db.js:122-124, `if (n > 0) return`), so restarts neither reseed nor duplicate; db.js:14 reads the co-located src/seed_data.json, byte-identical to environment/assets/seed_data.json (cmp), so the reference does not need /assets at run time (instruction.md:17). Dependencies are only express and better-sqlite3 plus Node built-ins, both preinstalled in environment/Dockerfile:9-11 and tests/Dockerfile:16-21 and resolved through NODE_PATH that test.sh:106 passes; the worker inherits process.env (bootstrap.js:45). public/index.html loads only same-origin files (lines 7, 52-54); no http(s) URL in server sources; no symlinks in solution/. One Node process (worker thread, not a child process) as integration.md:3 states. tests/test.sh and environment/Dockerfile are identical to the frozen template; solve.sh extends the template's two-line body with the database reset guard. Actual-run evidence: all 10 raw-evidence-index entries match their sha256 and all listed source hashes match the frozen task; all 37 manifest task hashes match. live-desk.cjs:14 launches `node /app/server.js` with NODE_PATH, PORT=3000 and DB_PATH=/tmp/hireops-live-desk.db in the verifier image; live-desk.json records 11/11 scripted observations passed including a real SIGTERM restart over the same database (live-desk.cjs:257-268); server.log shows two clean `listening on 3000` lines. RISK (missing measurement, not a demonstrated defect): no indexed evidence shows solve.sh itself being executed in the agent image, nor the frozen test.sh launching the installed app as uid 65534 via setpriv with DB_PATH=/app/app.db followed by the restart helper; the scripted run used a custom launcher and a /tmp database. The check-solve-contract.py checker was applied by hand, not run. Minor observation: solve.sh lines 17-23 abort a reinstall when a /proc/<pid>/fd directory is unreadable (EACCES), which only matters if solve.sh runs as non-root over an existing database; a first install exits the scan at line 16.",
+  "counterexample": null,
+  "suggested_fix": "Record a hash-bound run of `bash /solution/solve.sh` in the agent image followed by the frozen tests/test.sh launch path (uid 65534, DB_PATH=/app/app.db, restart helper) to close the measurement gap. No source change is indicated.",
+  "run_verdict": "PASS WITH RISK"
+}

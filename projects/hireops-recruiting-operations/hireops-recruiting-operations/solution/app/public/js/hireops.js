@@ -35,6 +35,9 @@
       return instant;
     };
 
+    // Suggested identifiers are unique per form so a second record never collides with the first.
+    const suggest = (prefix) => prefix + '-' + Array.from(crypto.getRandomValues(new Uint8Array(3)), (b) => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+
     const kv = (k, v) => el('div', { class: 'kv' }, [
       el('div', { class: 'k', text: k }),
       el('div', { class: 'v', 'data-field': k }, [el('span', { text: v == null ? '—' : String(v) })]),
@@ -59,7 +62,7 @@
     }
 
     const draftReqForm = () => {
-      const idIn = el('input', { id: 'req-id', type: 'text', value: 'REQ-NEW-1' });
+      const idIn = el('input', { id: 'req-id', type: 'text', value: suggest('REQ') });
       const titleIn = el('input', { id: 'req-title', type: 'text', value: 'New Requisition' });
       const deptIn = el('input', { id: 'req-dept', type: 'text', value: 'Engineering' });
       const budgetIn = el('input', { id: 'req-budget', type: 'number', value: '300000', min: '0', step: '0.01', required: '' });
@@ -202,7 +205,7 @@
 
     const employees = boot.employees || [];
     const draftOfferForm = () => {
-      const idIn = el('input', { id: 'off-id', type: 'text', value: 'OFF-NEW-1' });
+      const idIn = el('input', { id: 'off-id', type: 'text', value: suggest('OFF') });
       const reqSel = el('select', { id: 'off-req' }, (boot.requisitions || []).map((r) =>
         el('option', { value: r.id, text: `${r.id} · ${r.title}` })));
       const candIn = el('input', { id: 'off-cand', type: 'text', value: 'New Candidate' });

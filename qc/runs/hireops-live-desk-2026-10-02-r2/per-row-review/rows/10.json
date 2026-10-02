@@ -1,0 +1,32 @@
+{
+  "number": 10,
+  "id": "verifier_is_isolated_pinned_and_credentialed",
+  "reviewer": "row-reviewer-10",
+  "input_sha256": "52feaddee9b66910d586883a4531bd13a3459c3f0c399a10e5a42e66cda46393",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-live-desk-2026-10-02-r2/rules/WebDev Rubrics QC.xlsx (sha256 6d44970b..., matches manifest): Quality Checks sheet row 11 (check #10), Deterministic Checks rows for check-canonical-shared-files.py, check-dockerfiles.py, check-pip-pinning.sh, Internal Quality Checks row 11 (check #10 annotation); read via openpyxl keyword scan of all sheets incl. cell comments, not a cell-by-cell read of unrelated rows",
+    ".qc-cache/hireops-live-desk-2026-10-02-r2/rules/harbor-webdev-rubric-qc/SKILL.md (full)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r2/rules/harbor-webdev-rubric-qc/references/quality-checks.md (full; check 10 at lines 47-48)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r2/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (full; frozen block lines 62-74, judge.toml rules lines 113-140)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r2/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (full)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r2/rules/projects/webdev-task-template/task.toml ([agent] onward, byte-compared) and template tests/Dockerfile, tests/test.sh, tests/scoring.toml, tests/tools/*, tests/.dockerignore, environment/Dockerfile (byte-compared with cmp)",
+    "qc/REVIEW_POLICY.md (full)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r2/task/task.toml (lines 17-38 read; whole file parsed with tomllib; sha256 71f1802d... matches manifest)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r2/task/tests/Dockerfile (full, 45 lines)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r2/task/tests/{gates/render,gates/constraints,scored/functional,scored/polish,scored/visual}/judge.toml ([judge] and mcp_servers blocks read; all five parsed with tomllib; prohibited-key grep over whole files)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r2/task/tests/test.sh (grep for judge/model/credential handling only: lines 63-64, 207-209)",
+    "qc/runs/hireops-live-desk-2026-10-02-r2/raw-evidence-index.json (full) and manifest.json (top-level keys and relevant hashes)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "ISOLATED: task.toml:26-28 '[verifier] timeout_sec = 13200.0 / environment_mode = \"separate\"'; task.toml:37-38 '[verifier.environment] network_mode = \"public\"' (public network is the delivery profile per SKILL.md:26, no allowed_hosts needed; grep for allowed_hosts|allow_internet|docker_image in task.toml, tests/, environment/ returned nothing). tests/Dockerfile:43 'COPY . /tests' builds its own grading image. FROZEN BLOCK: task.toml:30-35 is REWARDKIT_JUDGE=\"claude-code\", REWARDKIT_MODEL=\"z-ai/glm-5.3-flashx\", ANTHROPIC_BASE_URL=\"https://openrouter.ai/api\", ANTHROPIC_AUTH_TOKEN=\"${OPENROUTER_API_KEY}\", ANTHROPIC_API_KEY=\"\". Measured: the [verifier.env] section extracted from the frozen task and from the frozen template both hash to sha256 4c6cb37a949ff3da6c9e52f32339f5472a5f71f6d619c53724847c59e0487b71 (byte-equal, LF endings, ASCII per od -c), and the whole tail of task.toml from [agent] to EOF diffs empty against the template; values also match staged-task-contract.md:66-71 line for line. Credential is a ${VAR} template, not a literal; grep for sk-or-/sk-ant- found nothing. JUDGE.TOML: all five files have [judge] keys exactly {isolated, judge, mcp_servers, mode, prompt_template, timeout} with judge = \"claude-code\" (line 2 of each); tomllib parse confirms no model/reasoning_effort/temperature/weight key in any [judge]; grep for model=|glm|openrouter|sonnet|opus|haiku|gpt in the five files returned nothing. test.sh:63-64 refuses to grade when REWARDKIT_JUDGE or REWARDKIT_MODEL is unset, so the model comes only from task.toml. PINNED: tests/Dockerfile is byte-identical (cmp) to the frozen template's tests/Dockerfile (sha256 72998ab8... in manifest); bases 'node:22-bookworm-slim' and 'python:3.12-slim' (lines 1-2), npm '@anthropic-ai/claude-code@2.1.281', '@openai/codex@0.151.0', '@playwright/mcp@0.0.79', 'express@5.1.0', 'better-sqlite3@12.4.1' (lines 17-21), pip 'harbor-rewardkit==0.1.7' (line 31), Chromium installed through the pinned Playwright's own cli.js (lines 34-35). CAVEATS (not defects under this row): base images are pinned by tag, not digest, and apt packages (line 12-13) are unpinned; the workbook's check-dockerfiles.py row states 'unpinned apt is a NOTE' and counts base-image tag + pip == + npm @version as pinned, and the file is template-controlled, so no task-level change is warranted. The Internal Quality Checks annotation for #10 still says 'pinned image + allowlist'; this conflicts with the public Quality Checks wording and SKILL.md:26 ('missing allowed_hosts allowlist ... Never report'); I applied the current public wording and record the conflict. NOT MEASURED: no configured verifier launch exists for this candidate (raw-evidence-index.json scope: 'Full configured grading/workload ... absent'; its entries are scripted golden runs in an image tagged hireops-verifier:20261002-permission-repair, which I did not inspect or rebuild). So that ${OPENROUTER_API_KEY} resolves at run time, that OpenRouter accepts model id z-ai/glm-5.3-flashx, and that the image builds reproducibly from these tags today are unverified. These belong to full-verifier-launch evidence (rows 22/47 and the runtime records in REVIEW_POLICY.md lines 29-31); this row's documented procedure (quality-checks.md:47-48) is static and every leg of it was checked directly. Adversarial probes for this row: a task copy with a model key in a judge.toml, a literal API key, a drifted model id, or environment_mode omitted would each be caught by the comparisons above; none is present.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

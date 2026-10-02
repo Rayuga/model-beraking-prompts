@@ -1,0 +1,33 @@
+{
+  "number": 9,
+  "id": "agent_environment_and_network_posture_are_correct",
+  "reviewer": "row-reviewer-09",
+  "input_sha256": "52feaddee9b66910d586883a4531bd13a3459c3f0c399a10e5a42e66cda46393",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-live-desk-2026-10-02-r2/rules/WebDev Rubrics QC.xlsx :: Quality Checks row 10 (check 9), Deterministic Checks sheet (network/secret/Dockerfile checkers), Internal Quality Checks row 10 (older no-network wording) and rows 15/53 annotations on credentials",
+    ".qc-cache/hireops-live-desk-2026-10-02-r2/rules/harbor-webdev-rubric-qc/SKILL.md (whole file)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r2/rules/harbor-webdev-rubric-qc/references/quality-checks.md :: section '9 - agent_environment_and_network_posture_are_correct' and neighbouring checks 10-15",
+    ".qc-cache/hireops-live-desk-2026-10-02-r2/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (whole file)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r2/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (grep for network/secret/resource lines only, not the whole file)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r2/rules/projects/webdev-task-template/task.toml",
+    ".qc-cache/hireops-live-desk-2026-10-02-r2/rules/projects/webdev-task-template/environment/Dockerfile",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/hireops-live-desk-2026-10-02-r2/task/task.toml",
+    ".qc-cache/hireops-live-desk-2026-10-02-r2/task/environment/Dockerfile",
+    ".qc-cache/hireops-live-desk-2026-10-02-r2/task/environment/instructions/hireops_rules.md, integration.md and assets/seed_data.json (pattern scan for secret shapes, not a full read)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r2/task/solution/app/package.json and the first 40 lines of solution/solve.sh",
+    "qc/runs/hireops-live-desk-2026-10-02-r2/manifest.json (top-level keys) and raw-evidence-index.json (scope and first entries)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Checked every item in the skill's verify list for check 9 (quality-checks.md:44) against the frozen bytes. (1) CPU/memory present and sane: task/task.toml:23 `cpus = 2`, task.toml:24 `memory_mb = 4096`, identical to the frozen template task.toml:23-24 and to the contract block in staged-task-contract.md:59-60. The workload is a Node 22 Express plus better-sqlite3 app with two runtime dependencies (solution/app/package.json), so 2 CPU / 4 GB is not undersized. (2) No secret literal under [environment]: task.toml:20-24 holds only build_timeout_sec, network_mode, cpus and memory_mb; there is no [environment.env] table. The only credential-shaped lines in task.toml are 34 `ANTHROPIC_AUTH_TOKEN = \"${OPENROUTER_API_KEY}\"` (a ${VAR} template) and 35 `ANTHROPIC_API_KEY = \"\"`, both in the frozen [verifier.env] block, which belongs to check 10. (3) Agent image carries no secret: task/environment/Dockerfile (sha256 0a75419e...) is byte-identical to the template Dockerfile (diff returned no output); its only ENV is line 3 `ENV NODE_PATH=/usr/local/lib/node_modules`, it has no ARG, and its only COPY sources are instructions/ and assets/ (lines 14-15). A case-insensitive scan of task/environment and task.toml for provider key shapes (sk-, sk-or-, AKIA, ghp_, xox*), PEM private-key headers and the words api key/secret/token/bearer/password returned only: hireops_rules.md:25 and :361 (the documented demo password `Hireops!2026`, which the skill lists as a known false positive), hireops_rules.md:460 (prose 'freshness tokens') and the two task.toml lines above. seed_data.json had no hit. No .env or docker-compose file exists in the frozen task. (4) Network posture: task.toml:22 `network_mode = \"public\"` and task.toml:38 the same under [verifier.environment]; correct for this project and not flagged, per workbook row 10 and the SKILL.md delivery profile. (5) grep of task.toml for docker_image, allow_internet and allowed_hosts returned no match, so none is set. task.toml lines 17-38 diff clean against the template. Counterexample attempts: I looked for a secret reaching the agent through ENV/ARG, a COPY of a credential file, or an [environment] env table, and for a resource figure drifting from the template; none exists. The Internal Quality Checks row 10 still says 'no-network ... nothing that secretly needs an install'; the client-facing row and the skill supersede it for this project, and the image pre-installs express@5.1.0 and better-sqlite3@12.4.1 (Dockerfile:9-11) in any case. Limits of this review: it is static. I did not build the agent image or measure memory use, and the raw evidence index records scripted golden runs in the verifier image, not the agent image, so no run touched this row. The skill's verify list for check 9 is static configuration, so I do not treat a runtime measurement as required evidence for it.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

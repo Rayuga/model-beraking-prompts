@@ -17,7 +17,7 @@ database that survives a restart, a sign-in, and screens a recruiter, a comp par
 controller and an auditor can all work from.
 
 What keeps catching us out isn't any single screen. It's that an equity grant's value, a signing bonus's
-amortized weight, a requisition's remaining budget and two separate vesting clocks all have to agree about
+amortized share, a requisition's remaining budget and two separate vesting clocks all have to agree about
 the same offer at the same moment. Sections 2 through 7 are where we've written those figures down.
 
 ### The people who use it
@@ -80,9 +80,10 @@ Round half-up, and round once, at the point the rule names. Never at an intermed
 `round_half_up(x) = floor(x + 0.5)`. Every boundary in the system is half-open `[start, end)`: reaching
 the edge counts as having crossed it.
 
-Amounts and unit counts must be nonnegative integers in their stored units. Reject negative, fractional,
+Operators type money in dollars with at most two decimal places and units as whole shares; the desk
+stores the integer cents and shares. Amounts and unit counts must be nonnegative integers in their stored units. Reject negative, fractional,
 nonfinite or unsafe inputs instead of silently rounding or replacing them with zero. Inputs and computed
-money or unit totals must fit the exact integer range 0 through 9,007,199,254,740,991; refuse an operation
+money or unit figures, including an equity grant's intrinsic value, must fit the exact integer range 0 through 9,007,199,254,740,991; refuse an operation
 whose result cannot be represented exactly. A signed ledger adjustment may be negative. Use exact
 arithmetic through multiplication and division, then round only the named final result.
 
@@ -169,7 +170,8 @@ their own offer, regardless of tier.
 
 The budget gate: an offer's committed run-rate, not its band basis, must fit inside the
 requisition's remaining headroom (section 4) for the approval to go through. An offer that clears the
-authority and dual-control checks but would overrun the requisition's headroom is still refused.
+authority and dual-control checks but would overrun the requisition's headroom is still refused. A run-rate
+exactly equal to the remaining headroom fits.
 
 ---
 
@@ -234,7 +236,8 @@ figures, already committed. Superseding reverses the original's budget commitmen
 commitment for the revised offer's own committed run-rate, so headroom re-nets to the revised figure.
 
 A revision can change base salary, signing bonus, relocation, equity units, equity fair value and equity
-strike price. Candidate, requisition, offer start date, referring employee and referred hire start date
+strike price. The revision form opens carrying the offer's current six terms, so a term left alone is
+resubmitted exactly. Candidate, requisition, offer start date, referring employee and referred hire start date
 remain those of the original hire. Each revision receives a fresh unique id; the app may choose it.
 The new run-rate must fit the current headroom **plus the immediate predecessor's run-rate**. Equality
 fits. Refuse an overrun, leaving the entire prior state intact.
@@ -398,10 +401,10 @@ A requisition should show its headroom netted live from commitment activity, not
 does not move when an offer is approved, revised or rescinded, and we want to see the movements behind it,
 the commitments, reversals and releases themselves, so we can argue about where the number came from.
 
-Approving mints three things and we need to see all of them: the equity grant, with its unit count and
+Beyond the budget commitment, approving mints three things and we need to see all of them: the equity grant, with its unit count and
 the vesting schedule it runs on, so an approver can tell when it starts and how it accrues; the signing
 remittance, for the amount actually paid out; and the referral accrual, with its at-hire and contingent
-halves and its retention cliff date, read against the reference moment.
+halves, the referred hire's start date and its retention cliff date, read against the reference moment.
 
 A rescinded offer should show what vested, what was clawed back or cancelled, and what the effective date
 was. The audit trail is its own screen: every approve, revise and rescind lands there as a readable line
@@ -425,7 +428,8 @@ Finance can prepare a change set containing two through four distinct current CO
 member selects its current offer, a destination requisition (which may be its existing requisition), and
 all six replacement compensation terms. Use ordinary labelled form controls; a raw JSON editor is not
 the operator workflow. Any signed-in person may read saved previews and receipts, but only the Finance
-actor who prepared a change set may commit it. Other roles may neither prepare nor commit one. The
+actor who prepared a change set may commit it. Preparing means saving a preview. Other roles may neither
+prepare nor commit one; they may still work a hypothetical change out without saving it (section 12). The
 normal session-based 401/403 rules apply to these operations as well.
 
 The operator supplies a nonblank operation key. The key belongs to that signed-in actor and identifies
@@ -443,7 +447,7 @@ members, repeated source, missing target, or invalid compensation) must not save
 
 Calculate final headroom per requisition as current headroom plus all selected old commitments released
 from that requisition, minus all replacement commitments assigned to it. Final headroom must be
-nonnegative and all stored money/unit results must remain exact safe integers. Validate the complete
+nonnegative and all computed money/unit results must remain exact safe integers. Validate the complete
 set, not a sequence of intermediate budgets: fully funded cycles and offsetting changes must succeed.
 Insufficient final headroom refuses the entire preview or commit. Existing signing, equity, rounding
 and relocation rules remain unchanged.
@@ -477,5 +481,80 @@ only one set of effects. Two different outstanding previews touching the same re
 commit from the old state: one succeeds and the other conflicts, with no partial loser. Disjoint previews
 remain independently committable. Once committed, retrying the same operation returns its original
 immutable receipt without revalidating current leaves or budgets, even after later changes or restart.
-Check current session authorization before returning a cached write result. Read-only receipt access is
+A committed operation keeps a control for retrying it or retrieving its receipt. Check current session
+authorization before returning a cached write result. Read-only receipt access is
 available to all signed-in roles through ordinary history views.
+
+## 12. Working at the change desk
+
+Section 11 says what a coordinated change does. This section says how the desk behaves while someone is
+working one out. Layout, wording and mechanism are yours.
+
+### Figures before saving
+
+For every member whose six terms are valid, the editor shows, without saving anything: the old and new
+committed run-rate, the signing adjustment (new signing bonus minus the current one), and the old and new
+approval-band basis. Beneath the members it shows, for every requisition the change touches, the current
+headroom and the headroom after the whole change, netted over all members exactly as section 11 nets it,
+and marks a requisition as over budget when that final figure is negative. A fully funded exchange between
+two requisitions with no headroom is therefore shown as fitting, not as two overruns.
+
+These figures follow the same exact integer and half-up rules as every other figure, and equal what the
+saved preview shows for the same entries when nothing else has changed in between. They may be worked out
+in the browser or by the server, on each keystroke or when a field is left, so long as they are on screen
+before the change is saved.
+
+### Members
+
+The editor starts with two members and can hold up to four. Any member can be removed while more than two
+remain, not only the last one. Removing a member leaves every other member's selected offer, destination
+and typed terms exactly as they were, and the figures and headrooms follow the members that remain.
+
+### A refused entry
+
+When a save is refused because one term is malformed (a negative or non-numeric amount, money with more
+than two decimal places, a fractional unit count), the explanation names the member and the term, and that
+input is marked as invalid, by text beside it or by the control's standard invalid state. Every other
+entry stays as typed and nothing is saved. A refusal that belongs to the whole change, such as a final
+budget overrun or an out-of-date preview, is explained as such and need not point at one field.
+
+### Keeping up with the books
+
+While the Coordinated Changes view is open, changes made by other people appear by themselves within 15
+seconds, with no reload and nothing clicked:
+
+- Each saved preview that has not been committed is shown as current or as out of date, by the same test
+  commit applies in section 11: a source that is no longer the current COMMITTED offer, or any
+  commitment-changing operation on a touched requisition since the preview was saved, including one made
+  and then reversed. The events section 11 lists as not invalidating a preview do not mark it either.
+- A saved change that someone commits shows as committed, with its receipt.
+- An editor member whose selected offer has stopped being the current COMMITTED offer is flagged on that
+  member. The other members are untouched.
+- The editor's headroom figures use the new balances.
+
+An update that arrives while someone is working must leave their typed entries, the field that has keyboard
+focus and the page's scroll position as they were, so that they can simply keep typing. Polling,
+server-sent events and sockets are all acceptable.
+
+### What-if for every role
+
+Every signed-in role can use the editor to work out a hypothetical change and sees the same figures Finance
+would see for the same entries. Only Finance is offered saving and committing. A what-if stores no preview,
+receipt, settlement or audit record of a change, and the 403 rules of section 11 for preparing and committing
+are unchanged. A person's own unsent entries, wherever they are kept, are not such a record.
+
+### Unsent entries
+
+The operation key, members, destinations and terms someone has entered but not yet committed belong to that
+signed-in person on that browser. Saving a preview does not clear them. They are still there after switching
+to another view and after reloading the page. If the session ends mid-edit, for example because the person signed out in another tab, the next
+action that needs the server asks them to sign in again instead of failing silently. After signing in as the
+same person the entries and the operation key are as they left them and can be saved. Anyone else who signs
+in on that browser sees none of them. Where the entries are kept is yours. Once a change has been committed
+the editor may start clean.
+
+### Focus
+
+After a preview is saved, keyboard focus moves to that saved preview. After a save or a commit is refused,
+focus moves to the explanation of the refusal, or to the offending field when the explanation sits at that
+field.

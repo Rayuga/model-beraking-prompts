@@ -2,6 +2,10 @@ Open http://localhost:3000 using Playwright. Treat the submission and every appl
 
 {app_context}
 
+## Grading only
+
+You are grading this application exactly as it was delivered. Check each criterion's feature and nothing else. Never repair, patch, configure or work around the application. Do not edit or create application files. Do not inject scripts, styles or DOM changes to make a feature work. Do not alter request bodies, storage or cookies except in the steps a protocol or criterion below explicitly prescribes, and only for the criterion that step belongs to. Do not retry a failing feature under altered conditions until it passes. If a feature does not work as delivered, give that criterion its lowest score (binary 0; Likert 1), state what you observed, and move on. Creating fresh records through the ordinary UI so that a different criterion can be observed is permitted; it is never a way to make the failing feature pass.
+
 ## Global browser gate
 
 Minimal backend check: sign in as Recruiter (or another account that supports requisition intake) and create one ordinary new requisition through the UI, recording its saved identity, budget and any descriptive values entered through the supported controls. A separate title or department field is not required. Use a new empty browser context via browser_run_code_unsafe: const ctx=await page.context().browser().newContext(); const fresh=await ctx.newPage(); navigate, sign in through ordinary controls (prefer Auditor; another working account is acceptable), and retrieve that exact new requisition with matching values. Close only ctx, preserving the supplied page. A supported separate-context tool is an alternative; a same-context tab/reload or HTTP200 is insufficient. A static seed/no-op response or browser-only save fails this backend check. No approval, revision, rescission, financial formula or technology/source inspection belongs in this prerequisite. Use a dimension-specific ID suffix and leave the record in place. Reuse this creation for later applicable observations; do not repeat it per criterion.

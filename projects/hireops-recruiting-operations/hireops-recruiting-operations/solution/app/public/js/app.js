@@ -45,6 +45,7 @@ async function api(method, path, body) {
   }); } catch { return { ok: false, status: 0, data: { error: 'The server could not be reached. Your entries are still here; try again.' } }; }
   let data = null;
   try { data = await res.json(); } catch { /* non-json */ }
+  if (res.status === 401 && STATE.user && !path.startsWith('/api/auth/')) sessionLost();
   return { ok: res.ok, status: res.status, data };
 }
 
@@ -243,10 +244,12 @@ function renderAll() {
     else btn.removeAttribute('aria-current');
   }
   const root = $('#workspace');
-  root.innerHTML = '';
   const pages = window.renderWorkspaces ? window.renderWorkspaces(boot, HELPERS()) : [];
   const byId = Object.fromEntries(pages.map((p) => [p.dataset.workspace, p]));
+  // The change desk is one long-lived node patched in place; it is never detached,
+  // so a refresh cannot take the operator's typing, focus or scroll with it.
   byId.changes = window.renderChangeSets(boot, HELPERS());
+  for (const old of [...root.children]) if (old !== byId.changes) old.remove();
   for (const ws of WORKSPACES) {
     const page = byId[ws.id];
     if (!page) continue;
@@ -257,17 +260,76 @@ function renderAll() {
       const heading = scroll.closest('.panel')?.querySelector('h2');
       scroll.setAttribute('aria-label', (heading ? heading.textContent : ws.label) + ' table; scroll horizontally for more columns');
     }
-    root.append(page);
+    if (page !== byId.changes || !page.isConnected) root.append(page);
   }
 }
 
-async function refresh() {
-  const done = pendingState(null, $('#workspace'), 'Loading workspace…');
+async function refresh(opts = {}) {
+  // On the change desk nothing is inserted above the editor while loading.
+  const quiet = opts.quiet || (STATE.view === 'changes' && STATE.boot);
+  const done = quiet ? () => {} : pendingState(null, $('#workspace'), 'Loading workspace…');
   const r = await api('GET', '/api/bootstrap');
   done();
-  if (r.ok) { STATE.boot = r.data; renderNav(); renderAll(); }
-  else flash(r.data || 'The workspace could not be loaded. Please try again.', 'error');
+  if (!STATE.user) return r;
+  if (r.ok) { STATE.boot = r.data; if (!$('#nav').children.length) renderNav(); renderAll(); }
+  else if (!quiet) flash(r.data || 'The workspace could not be loaded. Please try again.', 'error');
   return r;
+}
+
+/* Live desk. One tab per browser profile holds the event stream and relays it to
+ * the others, so any number of open tabs costs one connection. */
+let liveTimer = null, stream = null, relay = null, releaseStream = null, lockWait = null;
+function liveUpdate() {
+  clearTimeout(liveTimer);
+  liveTimer = setTimeout(async () => {
+    if (!STATE.user) return;
+    // The other workspaces rebuild, so an update waits while one of their forms holds unsent entries.
+    const dirty = STATE.view !== 'changes' && (!$('#detail-backdrop').hidden
+      || [...$('#workspace').querySelectorAll('.page.active input, .page.active select')].some((n) =>
+        n.tagName === 'SELECT' ? n.selectedIndex !== Math.max(0, [...n.options].findIndex((o) => o.defaultSelected)) : n.value !== n.defaultValue));
+    if (dirty) return liveUpdate();
+    const x = window.scrollX, y = window.scrollY;
+    await refresh({ quiet: true });
+    if (STATE.view !== 'changes') window.scrollTo(x, y);
+  }, 400);
+}
+function startLive() {
+  stopLive();
+  if (window.BroadcastChannel) { relay = new BroadcastChannel('hireops-books'); relay.onmessage = liveUpdate; }
+  const open = () => {
+    if (!STATE.user) return;
+    stream = new EventSource('/api/events');
+    stream.onopen = liveUpdate;               // catch up on anything posted while no stream was open
+    stream.addEventListener('books', () => { liveUpdate(); if (relay) relay.postMessage('changed'); });
+    stream.onerror = () => {
+      if (stream && stream.readyState === EventSource.CLOSED) { stream = null; setTimeout(() => { if (!stream && (releaseStream || !navigator.locks)) open(); }, 3000); }
+    };
+  };
+  if (navigator.locks) {
+    lockWait = new AbortController();
+    navigator.locks.request('hireops-events', { signal: lockWait.signal }, () => {
+      lockWait = null;
+      if (!STATE.user) return undefined;      // signed out while queued: do not hold the stream for nobody
+      return new Promise((resolve) => { releaseStream = resolve; open(); });
+    }).catch(() => {});
+  } else open();
+}
+function stopLive() {
+  clearTimeout(liveTimer);
+  if (stream) { stream.close(); stream = null; }
+  if (relay) { relay.close(); relay = null; }
+  if (releaseStream) { releaseStream(); releaseStream = null; }
+  if (lockWait) { lockWait.abort(); lockWait = null; }
+}
+/* A session that ends mid-edit returns to sign-in. Unsent change entries stay in
+ * this browser for the same person and are never shown to anyone else. */
+function sessionLost() {
+  const email = STATE.user && STATE.user.email;
+  STATE = { user: null, boot: null, view: STATE.view };
+  closeDetail();
+  showLogin();
+  if (email) $('#email').value = email;
+  $('#login-error').textContent = 'Your session has ended. Sign in again to continue; your unsent coordinated-change entries are kept for you.';
 }
 
 function showApp() {
@@ -275,6 +337,7 @@ function showApp() {
   $('#app-view').hidden = false;
   $('#logout').hidden = false;
   $('#who').textContent = STATE.user ? `${STATE.user.name} · ${roleLabel(STATE.user)}` : '';
+  startLive();
 }
 function showLogin() {
   $('#login-view').hidden = false;
@@ -283,6 +346,8 @@ function showLogin() {
   $('#who').textContent = '';
   $('#nav').innerHTML = '';
   $('#workspace').innerHTML = '';
+  window.resetChangeDesk();
+  stopLive();
   $('#flash').innerHTML = '';
   $('#email').focus();
 }
@@ -301,7 +366,7 @@ $('#login-form').addEventListener('submit', async (e) => {
   const done = pendingState($('#login-form button[type="submit"]'), $('#login-form'), 'Signing in…');
   const r = await api('POST', '/api/auth/login', { email: $('#email').value, password: $('#password').value });
   done();
-  if (r.ok) { STATE.user = r.data; STATE.view = 'changes'; showApp(); await refresh(); }
+  if (r.ok) { STATE.user = r.data; showApp(); await refresh(); }
   else $('#login-error').textContent = (r.data && r.data.error) || 'sign-in failed';
 });
 

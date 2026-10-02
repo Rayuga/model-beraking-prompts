@@ -1,0 +1,34 @@
+{
+  "number": 11,
+  "id": "timeouts_fit_the_work",
+  "reviewer": "row-reviewer-11",
+  "input_sha256": "ac48a4edff5d38f0a291772fad106133411095257fe2f2a504b96b0872abc62f",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/rules/WebDev Rubrics QC.xlsx :: Quality Checks row 12 (check 11), Internal Quality Checks row 12, Deterministic Checks rows 29 and 33",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/rules/harbor-webdev-rubric-qc/references/quality-checks.md (check 11, lines 50-51)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (timeout lines 54-63, 111, 119 via search)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (check-scoring-policy line 42 via search)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/rules/projects/webdev-task-template (task.toml, tests/test.sh, five judge.toml timeout lines)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/task.toml",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/tests/test.sh (timeout, budget and liveness lines)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/tests/{gates/render,gates/constraints,scored/functional,scored/polish,scored/visual}/judge.toml (headers and criterion counts)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/tests/tools/restart_mcp.py (line 11)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/environment/Dockerfile and task/tests/Dockerfile (build steps)",
+    "qc/runs/hireops-live-desk-2026-10-02-r1/raw-evidence-index.json",
+    "qc/runs/hireops-live-desk-2026-10-02-r1/preflight.json (head)"
+  ],
+  "verdict": "Not exercised",
+  "risk": true,
+  "severity": "P1",
+  "evidence": "STATIC NESTING HOLDS (arithmetic). Gate judges: tests/gates/render/judge.toml:4 timeout = 600 and tests/gates/constraints/judge.toml:4 timeout = 600; gates budget is tests/test.sh:213 'run_suite gates 1500'. Each 600 < 1500, and because test.sh:207 runs 'rewardkit --max-concurrent-agent 1' (serial), the sum 600 + 600 = 1200 < 1500 (300 s slack). Scored judges: tests/scored/functional/judge.toml:4 timeout = 9000, tests/scored/polish/judge.toml:4 timeout = 900, tests/scored/visual/judge.toml:4 timeout = 900; scored budget is tests/test.sh:224 'run_suite scored 11100'. Each < 11100 and the serial sum 9000 + 900 + 900 = 10800 < 11100 (300 s slack). Budgets: 1500 + 11100 = 12600 < task.toml:27 [verifier] timeout_sec = 13200.0 (600 s slack). Liveness: test.sh:116 and :171 poll 120 x 0.25 s (about 30 s each, urlopen timeout=2 at :50/:138) and :155 50 x 0.1 s, roughly 65 s nominal and bounded by the 600 s slack; restart helper tests/tools/restart_mcp.py:11 HELPER_TIMEOUT_SEC = 55. Agent: task.toml:18 timeout_sec = 7200.0; build: task.toml:21 build_timeout_sec = 600.0 for a node:22-bookworm-slim image with one apt-get and one global npm install layer. Verifier 13200 s = 3 h 40 min, under the five-hour ceiling. All of these values are byte-identical to the frozen template (task.toml lines 18/21/27, the five judge.toml timeouts, and 'diff task/tests/test.sh template/tests/test.sh' is empty), so no unauthorized timeout change was made. LONG ENOUGH IS NOT MEASURED. The functional judge is mode = \"batched\" (functional/judge.toml:3) and carries 152 [[criterion]] blocks (template: 2) in a 106,190-byte judge.toml plus a 34,761-byte prompt.md, all inside one 9000 s judge call: 9000 / 152 = 59.2 s per criterion, including browser setup, multi-actor fixtures, the process restart and live multi-member desk scenarios. Polish and visual have 5 criteria each in 900 s (180 s each). raw-evidence-index.json states in its own scope: 'Full configured grading/workload, reward discrimination/ranking and target/Oracle scores are absent' and every entry is 'Not a configured judge run, Oracle grade, model score or judge-duration measurement'; I verified qc/repairs/hireops-2026-10-02-live-desk/results/live-desk.json hashes to abb06ce3...b878 as indexed, and it is scripted Playwright, not judge duration. qc/REVIEW_POLICY.md line 25: 'Workload is measured, not inferred from a timeout number ... Scripted Playwright duration is not LLM judge duration.' No full configured judge run exists for this input hash, so whether 9000 s suffices for 152 criteria is unmeasured. Agent sufficiency (7200 s for a hard full-stack build) and cold build time under 600 s are likewise not measured for this candidate. I did not run Docker or a judge (not authorized in this assignment).",
+  "counterexample": "Unmeasured, therefore not asserted as a demonstrated defect: a conforming app whose 152-criterion functional judge needs more than 9000 s (over 59 s per criterion on average with the configured glm-5.3-flashx claude-code judge) would have its functional judge timed out, losing the 0.6-weight dimension and the functional floor through harness time rather than product behaviour. A weak app that fails fast would not be affected, so the risk is one-directional against complete submissions.",
+  "suggested_fix": "Run one full configured verifier pass on the golden for this exact input hash and record the per-judge wall time against 600/600/9000/900/900 and the 1500/11100/13200 budgets. If the functional judge does not finish with margin, either reduce redundant browser work and public scope together, or request an explicitly authorized, reasoned timeout change below five hours and adapt the nesting (judge sum < suite budget < verifier) accordingly; do not raise it automatically.",
+  "run_verdict": "NOT EXERCISED"
+}

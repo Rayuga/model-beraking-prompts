@@ -1,0 +1,37 @@
+{
+  "number": 10,
+  "id": "verifier_is_isolated_pinned_and_credentialed",
+  "reviewer": "row-reviewer-10",
+  "input_sha256": "ac48a4edff5d38f0a291772fad106133411095257fe2f2a504b96b0872abc62f",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/rules/WebDev Rubrics QC.xlsx :: Quality Checks sheet row 11 (check 10) and Internal Quality Checks sheet row 11 (check 10 annotation: 'pinned image + allowlist, with the judge model and API key fully wired'; the allowlist part is superseded by the public-network delivery profile)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/rules/harbor-webdev-rubric-qc/SKILL.md (Delivery profile lines 26-27, Known false positives line 66)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/rules/harbor-webdev-rubric-qc/references/quality-checks.md lines 47-48",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md lines 55-80 and 113-135",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md lines 60, 81",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/rules/projects/webdev-task-template/task.toml",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/rules/projects/webdev-task-template/tests/Dockerfile (by hash)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/task.toml",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/tests/Dockerfile",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/environment/Dockerfile",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/tests/gates/render/judge.toml",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/tests/gates/constraints/judge.toml",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/tests/scored/functional/judge.toml ([judge] block and mcp_servers, parsed with tomllib)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/tests/scored/polish/judge.toml ([judge] block, parsed)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/tests/scored/visual/judge.toml ([judge] block, parsed)",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/hireops-live-desk-2026-10-02-r1/raw-evidence-index.json"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Isolated: task/task.toml:28 `environment_mode = \"separate\"`; task/environment/Dockerfile:14-15 copies only instructions/ and assets/ and installs no judge CLI or RewardKit, while task/tests/Dockerfile:43-44 copies /tests into the verifier image and removes group/other access. Credentialed: task/task.toml:30-35 is `REWARDKIT_JUDGE = \"claude-code\"`, `REWARDKIT_MODEL = \"z-ai/glm-5.3-flashx\"`, `ANTHROPIC_BASE_URL = \"https://openrouter.ai/api\"`, `ANTHROPIC_AUTH_TOKEN = \"${OPENROUTER_API_KEY}\"`, `ANTHROPIC_API_KEY = \"\"`. Scripted comparison: everything from `[verifier]` to end of file is byte-equal to the frozen template task.toml, and the five env lines equal the frozen block in staged-task-contract.md:66-71; no CRLF; no live secret, only the ${VAR} template. task.toml:22 and :38 are `network_mode = \"public\"`; no allowed_hosts, docker_image or allow_internet keys (correct for this profile). Judge files: all five judge.toml have `judge = \"claude-code\"` at line 2 (expected fallback); tomllib parse of each [judge] table yields only judge, mode, timeout, isolated, prompt_template and mcp_servers - no model, reasoning_effort, temperature or weight key in any [judge] table. The `weight =` lines found by the deterministic-checks.md:81 grep are all inside [[criterion]] tables, which the contract allows. Pinned: task/tests/Dockerfile:17-21 pins @anthropic-ai/claude-code@2.1.281, @openai/codex@0.151.0, @playwright/mcp@0.0.79, express@5.1.0, better-sqlite3@12.4.1; line 31 pins harbor-rewardkit==0.1.7; Chromium comes from the pinned Playwright MCP's bundled CLI (lines 33-35). task/tests/Dockerfile sha256 72998ab8...a55fdd is identical to the template's, so it is the unchanged template-controlled file. Observation, not a task defect: the bases at lines 1-2 (`node:22-bookworm-slim`, `python:3.12-slim`) are tag-pinned, not digest-pinned, and apt packages at lines 12-13 are unversioned; this is the shared template's own pinning level and the task must not edit it. Counterexample search: a task that swapped the judge model would have to do so either in [verifier.env] (byte-equal, so not present) or in a judge.toml [judge] table (parsed, not present); a conforming task cannot fail this row for public network or the claude-code fallback, and neither is flagged. Not measured here: no configured verifier launch exists in raw-evidence-index.json (its scope states full configured grading is absent), so whether OPENROUTER_API_KEY resolves and the judge authenticates at run time is unobserved. That evidence belongs to the verifier-launch row (22) and the runtime records, and this Pass is a static wiring verdict only; it is not a claim that the judge ran.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

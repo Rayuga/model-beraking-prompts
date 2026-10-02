@@ -14,22 +14,44 @@ module.exports = function installChangeSets(H) {
     // Append-only ledger identity detects ABA even when the balance returns.
     return String(one('SELECT COALESCE(MAX(id),0) AS version FROM commitment_movements WHERE req_id=?', reqId).version);
   }
+  // Read-side freshness uses the same two tests as commit, so a reader can see
+  // that a saved preview has gone out of date before anyone tries to post it.
+  function freshness(preview) {
+    const reasons = [];
+    for (const c of preview.changes) {
+      const o = one('SELECT status,superseded_by_id FROM offers WHERE id=?', c.old_offer_id);
+      if (!o || o.status !== 'COMMITTED' || o.superseded_by_id) reasons.push(`Offer ${c.old_offer_id} is no longer the current committed offer.`);
+    }
+    for (const r of preview.requisitions) {
+      if (version(r.req_id) !== r.version) reasons.push(`Requisition ${r.req_id} has had commitment activity since this preview was saved.`);
+    }
+    return {current: reasons.length === 0, stale_reasons: reasons};
+  }
   function publicRow(row) {
+    const preview = JSON.parse(row.preview_json);
     return {id: row.id, actor_id: row.actor_id, operation_key: row.operation_key,
-      state: row.state, preview: JSON.parse(row.preview_json),
-      receipt: row.receipt_json ? JSON.parse(row.receipt_json) : null};
+      state: row.state, preview,
+      receipt: row.receipt_json ? JSON.parse(row.receipt_json) : null,
+      ...(row.state === 'PREVIEW' ? freshness(preview) : {})};
+  }
+  function memberFault(index, field, message) {
+    const e = new Error(message); e.status = 400; e.details = {member_index: index, field}; throw e;
   }
   function canonical(body) {
     if (!Array.isArray(body.members) || body.members.length < 2 || body.members.length > 4)
       reject('A coordinated change needs 2 through 4 distinct current offers.');
     const seen = new Set();
-    const members = body.members.map(m => {
+    const members = body.members.map((m, index) => {
       if (!m || typeof m !== 'object') reject('Each member must describe an offer.');
       const offer_id = idValue(m.offer_id, 'source offer');
       if (seen.has(offer_id)) reject('An offer may appear only once in a change set.');
       seen.add(offer_id);
       const destination_req_id = idValue(m.destination_req_id, 'destination requisition');
-      for (const key of economicKeys) if (!Object.hasOwn(m, key)) reject('Supply every compensation term for each member.');
+      for (const key of economicKeys) {
+        if (!Object.hasOwn(m, key)) memberFault(index, key, `Member ${index + 1}: supply ${key}.`);
+        if (typeof m[key] !== 'number' || !Number.isSafeInteger(m[key]) || m[key] < 0)
+          memberFault(index, key, `Member ${index + 1}: ${key} must be a nonnegative safe integer.`);
+      }
       return {offer_id, destination_req_id, ...economics(m)};
     });
     members.sort((a,b) => a.offer_id < b.offer_id ? -1 : a.offer_id > b.offer_id ? 1 : 0);
@@ -57,7 +79,7 @@ module.exports = function installChangeSets(H) {
     });
     const requisitions = [...budgets.values()].sort((a,b) => a.req_id < b.req_id ? -1 : 1).map(r => {
       const after = R.sumSafe(r.before_headroom_cents, ...r.deltas);
-      if (after < 0) reject(`Coordinated change exceeds requisition ${r.req_id} by ${-after} cents.`, 409);
+      if (after < 0) reject(`Coordinated change exceeds requisition ${r.req_id} by $${Math.floor(-after / 100)}.${String(-after % 100).padStart(2, '0')}.`, 409);
       return {req_id: r.req_id, version: r.version,
         before_headroom_cents: r.before_headroom_cents, after_headroom_cents: after};
     });
@@ -68,7 +90,7 @@ module.exports = function installChangeSets(H) {
     if (row.actor_id !== actor.id) reject('Only the Finance actor who prepared this change may submit it.', 403);
   }
 
-  app.get('/api/change-sets', auth(), (_req,res) => res.json(all('SELECT * FROM change_sets ORDER BY id').map(publicRow)));
+  app.get('/api/change-sets', auth(), (_req,res) => res.json(all('SELECT * FROM change_sets ORDER BY rowid DESC').map(publicRow)));
   app.get('/api/change-sets/:id', auth(), (req,res) => {
     const row = one('SELECT * FROM change_sets WHERE id=?', req.params.id);
     if (!row) reject('No such change set.', 404);
@@ -124,20 +146,22 @@ module.exports = function installChangeSets(H) {
         mintGrant(revised);
         transitions.push({before, newId: id, delta});
       }
+      const headrooms = preview.requisitions.map(r => ({req_id: r.req_id,
+        before_headroom_cents: r.before_headroom_cents, after_headroom_cents: R.headroom(db,r.req_id).headroom_cents}));
       const changes = transitions.map(t => {
         const after = snapshot(one('SELECT * FROM offers WHERE id=?', t.newId));
-        receipt('REVISE', req.user, t.before, after, {change_set_id: row.id, signing_adjustment_cents: t.delta});
+        receipt('REVISE', req.user, t.before, after, {change_set_id: row.id, signing_adjustment_cents: t.delta, transaction_headrooms: headrooms});
         return {old_offer_id: t.before.id, new_offer_id: after.id,
           source_req_id: t.before.req_id, destination_req_id: after.req_id,
           signing_adjustment_cents: t.delta, before: t.before, after};
       });
       const settled = {change_set_id: row.id, operation_key: row.operation_key, actor_id: req.user.id,
-        actor_name: req.user.name, requisitions: preview.requisitions.map(r => ({req_id: r.req_id,
-          before_headroom_cents: r.before_headroom_cents, after_headroom_cents: R.headroom(db,r.req_id).headroom_cents})), changes};
+        actor_name: req.user.name, requisitions: headrooms, changes};
       db.prepare("UPDATE change_sets SET state='COMMITTED',receipt_json=? WHERE id=?").run(JSON.stringify(settled), row.id);
       audit(req.user.id, 'CHANGE_SET_COMMITTED', row.id, `${changes.length} coordinated revisions committed atomically.`);
       return publicRow(one('SELECT * FROM change_sets WHERE id=?', row.id));
     }).immediate();
     res.json(result);
   });
+  return publicRow;
 };

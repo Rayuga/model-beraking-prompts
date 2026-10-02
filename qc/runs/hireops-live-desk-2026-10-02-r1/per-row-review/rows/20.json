@@ -1,0 +1,41 @@
+{
+  "number": 20,
+  "id": "solution_is_frozen_and_deterministic",
+  "reviewer": "row-reviewer-20",
+  "input_sha256": "ac48a4edff5d38f0a291772fad106133411095257fe2f2a504b96b0872abc62f",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/rules/WebDev Rubrics QC.xlsx (Quality Checks row 20 and Internal Quality Checks row 20; no internal annotation text on this row)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/rules/harbor-webdev-rubric-qc/references/quality-checks.md (section 20, lines 87-88)",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/hireops-live-desk-2026-10-02-r1/per-row-review/rows/20.template.json",
+    "qc/runs/hireops-live-desk-2026-10-02-r1/raw-evidence-index.json (head; solution hashes)",
+    "task/solution/solve.sh",
+    "task/solution/app/package.json",
+    "task/solution/app/server.js",
+    "task/solution/app/src/db.js (whole file)",
+    "task/solution/app/src/index.js (targeted lines 62-63, 78, 112, 325-341, 370-380 and grep of time/random/order usage)",
+    "task/solution/app/src/rules.js (grep: clock/refAt/date handling)",
+    "task/solution/app/src/change-sets.js (lines 100-112, 133 and grep)",
+    "task/solution/app/src/bootstrap.js (grep)",
+    "task/solution/app/public/index.html, public/js/*.js, public/styles.css (grep for network, time and randomness)",
+    "task/solution/app/src/seed_data.json and task/environment/assets/seed_data.json (hash comparison, reference_moment)",
+    "task/environment/Dockerfile",
+    "task/task.toml",
+    "task/instruction.md (line 17)",
+    "task/environment/instructions/hireops_rules.md (lines 55-66, 200-205)",
+    "task/tests/**/*.md and instruction files (grep for pinned record identifiers)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Static source review only; no container was run by this reviewer, so this is not a measured double-seed comparison. (1) Static baseline: solution/solve.sh only does `cp -a \"$(dirname \"$0\")/app/.\" /app/` and deletes the disposable DB under /app; no npm install, curl, wget, git clone, code generation or build step. A grep of solution/ for http(s) URLs, fetch-from-network, CDN, child_process returned nothing except the browser's same-origin `fetch(path, ...)` at public/js/app.js:40; index.html lines 7, 52-54 load only /styles.css and /js/*.js. Dependencies are exact pins (package.json: better-sqlite3 12.4.1, express 5.1.0) matching environment/Dockerfile global installs. (2) Seeding: src/db.js:122-124 seeds once when users is empty; every seeded row comes from the co-located src/seed_data.json, which is byte-identical to environment/assets/seed_data.json (sha256 1b390154...bcf7 for both). Seeded ids are literal or derived (`GR-${offer_id}` db.js:162, `RM-${offer_id}-${kind}` db.js:167, `RA-${offer_id}` db.js:172); all created_at values are the constant REF (db.js:127, 132, 158-177). (3) Clock: no Date.now(), argument-less new Date(), Math.random or performance.now anywhere in solution/. `const now = () => R.refAt(db)` (src/index.js:62) reads system_clock (src/rules.js:17-21), seeded from reference_moment 2026-08-01T00:00:00Z, which matches hireops_rules.md:59-60 ('Nothing in this app reads the operating system's clock'). All `new Date(x)` calls in rules.js:29-42 and public/js parse supplied instants; display formatting pins locale en-US and timeZone UTC (public/js/app.js:63, index.js:78). List reads use explicit ORDER BY (index.js:227-240). (4) Only randomness: `uid` = crypto.randomBytes(4) (index.js:63) used for change-set ids (change-sets.js:109) and as a collision fallback for revised offer ids after the deterministic `${o.id}-R` (index.js:377-378, change-sets.js:133), plus the session token (index.js:112). None is a pinned value: a grep of tests/, instruction.md and environment/instructions for OFF-/CS-/RM-/GR-/EC-/RA- literals found none, and hireops_rules.md:203-204 states record identifiers may be generated and their format is the builder's choice. The 25 s SSE keep-alive (index.js:51) writes a comment frame and moves no figure. (5) Frozen bytes: all 14 solution files in the frozen snapshot equal the current project files and the hashes listed in raw-evidence-index.json sampled for solve.sh/seed. Housekeeping observation, not a task-package defect: `git status` shows six solution files (public/js/app.js, change-sets.js, hireops.js, styles.css, src/change-sets.js, src/index.js) modified relative to HEAD, i.e. the frozen candidate is hash-bound by the manifest but not yet a git commit; commit the candidate bytes before packaging so the reference is a committed baseline in the repository sense too.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

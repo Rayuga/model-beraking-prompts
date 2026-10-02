@@ -1,0 +1,38 @@
+{
+  "number": 22,
+  "id": "verifier_image_can_launch_and_grade",
+  "reviewer": "row-reviewer-22",
+  "input_sha256": "52feaddee9b66910d586883a4531bd13a3459c3f0c399a10e5a42e66cda46393",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-live-desk-2026-10-02-r2/rules/WebDev Rubrics QC.xlsx :: Quality Checks rows 1-53 (row 22 = A23:D23), Deterministic Checks all 48 rows, Internal Quality Checks (row 22 = A23:D23, no annotation cells on that row; the 16 annotation cells sit on other rows)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r2/rules/harbor-webdev-rubric-qc/SKILL.md (all 90 lines)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r2/rules/harbor-webdev-rubric-qc/references/quality-checks.md (all; check 22 at lines 96-98)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r2/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (all)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r2/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (all; Dockerfile recipe at line 60)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r2/rules/projects/webdev-task-template/tests/Dockerfile, tests/test.sh, tests/.dockerignore, tests/tools/restart_mcp.py, tests/tools/score.py, tests/scoring.toml, environment/Dockerfile, task.toml (byte-diffed against the task copies)",
+    "qc/REVIEW_POLICY.md (all)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r2/task/tests/Dockerfile (all 45 lines)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r2/task/tests/test.sh (all 227 lines)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r2/task/tests/.dockerignore",
+    ".qc-cache/hireops-live-desk-2026-10-02-r2/task/tests/tools/restart_mcp.py",
+    ".qc-cache/hireops-live-desk-2026-10-02-r2/task/tests/{gates,scored}/*/judge.toml ([judge] and mcp_servers headers of all five)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r2/task/environment/Dockerfile",
+    ".qc-cache/hireops-live-desk-2026-10-02-r2/task/task.toml",
+    ".qc-cache/hireops-live-desk-2026-10-02-r2/task/solution/solve.sh, solution/app/package.json, solution/app/server.js, require() lines of solution/app/src/*.js",
+    "qc/runs/hireops-live-desk-2026-10-02-r2/raw-evidence-index.json (all 10 artifact hashes and the 14 matching source hashes recomputed)",
+    "qc/repairs/hireops-2026-10-02-live-desk/live-desk.cjs (launch lines), results/live-desk.json, results/server.log",
+    "docker image inspect / docker image history of hireops-verifier:20261002-permission-repair (metadata only; no container started)"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "Static reading passes every item the workbook row (Quality Checks A23:D23) and skill check 22 (quality-checks.md:96-98) name. All paths below are under .qc-cache/hireops-live-desk-2026-10-02-r2/task. (1) Pinned bases: tests/Dockerfile:1 'FROM node:22-bookworm-slim AS node-runtime', :2 'FROM python:3.12-slim'. (2) Judge CLI and Playwright MCP pinned: tests/Dockerfile:17 '@anthropic-ai/claude-code@2.1.281', :19 '@playwright/mcp@0.0.79'; this matches task.toml:31 REWARDKIT_JUDGE = \"claude-code\". (3) Pinned browser: tests/Dockerfile:34-38 installs chromium through the Playwright bundled inside the pinned @playwright/mcp and symlinks it to /usr/local/bin/chromium, which is the exact path every judge.toml passes ('--executable-path=/usr/local/bin/chromium', command 'playwright-mcp') in all five dimensions. An empty find result would make 'ln -sf \"\"' fail the build rather than ship a broken image. (4) Pinned RewardKit: tests/Dockerfile:31 'pip3 install --no-cache-dir harbor-rewardkit==0.1.7'. (5) python3 for the restart server: the python:3.12-slim base provides /usr/local/bin/python3, the path tests/scored/functional/judge.toml uses for restart_mcp.py; the COPY of node's /usr/local at tests/Dockerfile:4 adds node and does not remove python. (6) App runtime: tests/Dockerfile:20-21 'express@5.1.0', 'better-sqlite3@12.4.1' with NODE_PATH=/usr/local/lib/node_modules (:9), identical to environment/Dockerfile:10-11 and :3 and to solution/app/package.json dependencies; the golden's only non-builtin requires are express (src/index.js:22) and better-sqlite3 (src/db.js:10); test.sh:106 injects the same NODE_PATH. (7) Launch tools: tests/Dockerfile:13 installs util-linux (setpriv, setsid used at test.sh:99-111) and procps. (8) tests/Dockerfile:43-44 copies /tests and makes test.sh executable; .dockerignore excludes only Dockerfile, .dockerignore, __pycache__. (9) tests/Dockerfile, tests/test.sh, tests/.dockerignore, tests/tools/*, tests/scoring.toml and environment/Dockerfile are byte-identical to the frozen template (tests/Dockerfile sha256 72998ab8... on both sides), so no template-controlled setting drifted. Runtime evidence, partial: a local image hireops-verifier:20261002-permission-repair exists whose build history reproduces every RUN/COPY/ENV line of this Dockerfile, so the pinned versions resolved and the image built (amd64, Python 3.12.14, created 2026-10-01T19:03Z). The raw-evidence index (all 10 artifact hashes and all 14 source hashes verified by me) records scripted golden runs in that image: live-desk.cjs:5 loads Playwright from the image's @playwright/mcp and :62 launches /usr/local/bin/chromium; results/live-desk.json shows 11 of 11 scripted observations passed with no page errors; results/server.log shows '[hireops] listening on 3000' twice (start and restart). That confirms the browser and the app runtime work in the image. Why risk stays true: no configured grading run exists for this candidate. Nothing shows claude-code 2.1.281, rewardkit 0.1.7 and playwright-mcp actually starting and returning a verdict in this image through OpenRouter; the index itself says full configured grading is absent. qc/REVIEW_POLICY.md requires a hash-bound full verifier launch/grading record before local clearance, so the 'grade' half is unmeasured. I did not check whether the image's /tests layer matches the frozen tests bytes (that needs a container). Latent robustness points, P3, all template-controlled and not task defects: bases are tag-pinned, not digest-pinned (python:3.12-slim currently resolves to Debian trixie while node comes from bookworm; the existing build works); apt packages and Playwright --with-deps are unpinned, which the workbook's check-dockerfiles.py treats as a NOTE; tests/Dockerfile:41 patches rewardkit's Codex flags with an assert tied to python3.12 and rewardkit 0.1.7, which would fail the build loudly, not silently, if either moved. Counterexample search: a broken app cannot gain from the image contents; a conforming alternative app that uses only express and better-sqlite3 from NODE_PATH, as the agent image provides, starts identically in the verifier image. An app that npm-installs extra packages into /app/node_modules is copied with them by test.sh:92, so it is not penalised by the image.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL"
+}

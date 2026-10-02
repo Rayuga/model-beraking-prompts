@@ -37,6 +37,19 @@ app.use(cookieParser);
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 app.use(express.static(PUBLIC_DIR));
 
+// Live desk: every successful write tells open workspaces that the books moved.
+// The stream carries no data; each listener re-reads through its own session.
+const streams = new Set();
+app.use((req, res, next) => {
+  if (req.method !== 'GET' && req.method !== 'HEAD' && !req.path.startsWith('/api/auth/')) {
+    res.on('finish', () => {
+      if (res.statusCode < 400) for (const stream of streams) stream.write('event: books\ndata: changed\n\n');
+    });
+  }
+  next();
+});
+setInterval(() => { for (const stream of streams) stream.write(': keep-alive\n\n'); }, 25000).unref();
+
 function cookieParser(req, _res, next) {
   req.cookies = {};
   for (const part of String(req.headers.cookie || '').split(';')) {
@@ -199,6 +212,13 @@ function reqView(r) {
 }
 
 // ================================================================= bootstrap / reads
+app.get('/api/events', auth(), (req, res) => {
+  res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache, no-transform', 'X-Accel-Buffering': 'no' });
+  res.write('retry: 3000\n\n');
+  streams.add(res);
+  req.on('close', () => streams.delete(res));
+});
+let changeSetView = null; // Supplied by the change-set module below.
 app.get('/api/bootstrap', auth(), (req, res) => {
   res.json({
     user: { id: req.user.id, name: req.user.name, email: req.user.email, role: req.user.role, authority_tier: req.user.authority_tier },
@@ -216,9 +236,7 @@ app.get('/api/bootstrap', auth(), (req, res) => {
       .map((a) => ({ ...a, figures: safeParse(a.figures_json) })),
     users: all('SELECT id,name,email,role,authority_tier FROM users ORDER BY id'),
     employees: all('SELECT * FROM employees ORDER BY id'),
-    change_sets: all('SELECT * FROM change_sets ORDER BY id').map(r => ({id:r.id, actor_id:r.actor_id,
-      operation_key:r.operation_key, state:r.state, preview:JSON.parse(r.preview_json),
-      receipt:r.receipt_json ? JSON.parse(r.receipt_json) : null})),
+    change_sets: all('SELECT * FROM change_sets ORDER BY rowid DESC').map(changeSetView),
     audit: all('SELECT * FROM audit_log ORDER BY id DESC'),
   });
 });
@@ -279,7 +297,11 @@ function receipt(action, actor, before, after, settlement = {}) {
   afterImage(after.id, action, actor.id, { actor_id: actor.id, actor_name: actor.name, actor_role: actor.role, before, after, ...settlement });
   audit(actor.id, `OFFER_${{ APPROVE: 'APPROVED', REVISE: 'REVISED', RESCIND: 'RESCINDED' }[action]}`, after.id,
     `${before.candidate}: ${before.id} ${before.status} -> ${after.id} ${after.status}; `
-    + `headroom ${money(before.headroom_cents)} -> ${money(after.headroom_cents)}; `
+    // A coordinated member reports every requisition of its transaction, never one
+    // requisition's opening balance against another's closing balance.
+    + (settlement.transaction_headrooms
+      ? `headroom ${settlement.transaction_headrooms.map((r) => `${r.req_id} ${money(r.before_headroom_cents)} -> ${money(r.after_headroom_cents)}`).join(', ')}; `
+      : `headroom ${money(before.headroom_cents)} -> ${money(after.headroom_cents)}; `)
     + `run-rate ${money(before.composition.committed_run_rate_cents)} -> ${money(after.composition.committed_run_rate_cents)}; `
     + `signing net ${money(before.net_signing_outflow_cents)} -> ${money(after.net_signing_outflow_cents)}`);
 }
@@ -407,7 +429,7 @@ app.post('/api/offers/:id/rescind', auth('finance_controller'), (req, res) => {
     equity_vested_units: ec ? ec.vested_units : 0, req_headroom_cents: after.headroom_cents, req_headroom_display: money(after.headroom_cents) });
 });
 
-require('./change-sets')({app, db, R, auth, reject, idValue, economics, economicKeys,
+changeSetView = require('./change-sets')({app, db, R, auth, reject, idValue, economics, economicKeys,
   storedOffer, snapshot, movement, remit, mintGrant, receipt, audit, now, uid, one, all});
 
 // ================================================================= append-only trail (edits/deletes refused)
@@ -435,7 +457,8 @@ app.use((req, res, next) => {
 app.use((error, _req, res, _next) => {
   const status = error.status && error.status >= 400 && error.status < 500 ? error.status : 500;
   if (status === 500) console.error('[hireops] operation failed:', error.message);
-  res.status(status).json({ error: status === 500 ? 'Operation failed; no financial changes were committed.' : error.message });
+  res.status(status).json({ error: status === 500 ? 'Operation failed; no financial changes were committed.' : error.message,
+    ...(status !== 500 && error.details ? error.details : {}) });
 });
 const server = app.listen(PORT, '127.0.0.1', () => {
   parentPort.postMessage({ port: server.address().port });

@@ -1,0 +1,37 @@
+{
+  "number": 15,
+  "id": "dockerfile_builds_the_declared_world",
+  "reviewer": "row-reviewer-15",
+  "input_sha256": "ac48a4edff5d38f0a291772fad106133411095257fe2f2a504b96b0872abc62f",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/rules/WebDev Rubrics QC.xlsx :: Quality Checks row 16 (check 15) and Internal Quality Checks row 16 (no extra annotation or cell comment on this row); Deterministic Checks rows for check-dockerfiles.py, check-fixtures.py, check-runtime-deps-in-both-images.py",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/rules/harbor-webdev-rubric-qc/references/quality-checks.md (check 15, lines 66-67)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (Dockerfile lines 22, 27, 60)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/rules/projects/webdev-task-template/environment/Dockerfile and tests/Dockerfile (diffed against the task)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/environment/Dockerfile",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/environment/assets/seed_data.json",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/environment/instructions/integration.md",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/tests/Dockerfile",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/task.toml",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/instruction.md (lines 15, 17)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/solution/solve.sh",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/solution/app/package.json and require() scan of solution/app/**/*.js",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/tests/test.sh (install/NODE_PATH grep)",
+    "qc/runs/hireops-live-desk-2026-10-02-r1/raw-evidence-index.json (all 10 artifact hashes and all matching_source_files hashes recomputed and matched)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Static review of the frozen bytes; every element of the skill's check-15 procedure is present. (1) Pinned base: environment/Dockerfile:1 `FROM node:22-bookworm-slim` (tag pin, not a digest; identical to the frozen template). (2) Runtime dependencies pre-installed at exact versions, globally, matching NODE_PATH: Dockerfile:3 `ENV NODE_PATH=/usr/local/lib/node_modules`, Dockerfile:9-12 `npm install -g ... express@5.1.0 better-sqlite3@12.4.1`. The golden's only non-builtin requires are `express` and `better-sqlite3` (require scan of solution/app; the rest are crypto, fs, path, node:http, node:worker_threads and local modules), and solution/app/package.json:13-16 declares exactly those two at the same versions. (3) No run-time install: grep for npm install/ci, npx, apt-get, pip install, yarn, pnpm, curl, wget across solution/, tests/test.sh, tests/tools, instruction.md and environment/instructions returned nothing; solve.sh:35 only copies files; instruction.md:15 says `Server dependencies are already available, so don't install packages` and integration.md:3-5 says the packages are `already available through NODE_PATH`. (4) Assets staged: Dockerfile:14-15 `COPY instructions/ /instructions/` and `COPY assets/ /assets/`; both source directories exist in the build context; seed_data.json parses as a JSON object (sha256 1b390154...8bcf7, byte-equal to the copy the golden ships at solution/app/src/seed_data.json). (5) Dockerfile:16 `chmod -R a+rX /instructions /assets`; Dockerfile:17-23 create /app, git-init it and commit only .gitkeep. (6) The agent Dockerfile does not COPY solution/ or tests/; task.toml has no docker_image and no allow_internet. (7) environment/Dockerfile (sha256 0a75419e...467d1) and tests/Dockerfile are byte-identical to the frozen template copies (diff empty), and tests/Dockerfile:20-21 carries the same two runtime pins. Observations that are not defects under the workbook: apt packages at Dockerfile:5-7 are unversioned (the deterministic sheet classes unpinned apt as a NOTE) and the base is pinned by tag rather than digest; both are template-controlled. Measurement limits: no build of the agent image from these frozen bytes is recorded in raw-evidence-index.json. Its entries are scripted golden runs inside the verifier image hireops-verifier:20261002-permission-repair (server.log shows `[hireops] listening on 3000`), which shows the same two pinned packages resolve through NODE_PATH there, but it is not an agent-image build or run. Local hireops-agent:20261001-* images exist in `docker images`, but they are not hash-bound to this candidate and I did not build or start anything. The verdict is therefore a source-level Pass, not a measured build.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

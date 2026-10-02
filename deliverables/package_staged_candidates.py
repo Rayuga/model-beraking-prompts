@@ -83,10 +83,10 @@ for source in (extracted / task.name / 'tests').glob('*/*/judge.toml'):
     parsed = tomllib.loads(source.read_text(encoding='utf-8'))
     dimensions[source.parent.name] = {'criteria': len(parsed['criterion']), 'weight': float(sum(Decimal(str(item['weight'])) for item in parsed['criterion']))}
 assert set(dimensions) == {'render', 'constraints', 'functional', 'polish', 'visual'}
-expected_functional = {'ridgeline-print-storefront': (42, 35), 'colderwater-playground-devtools': (79, 32.85), 'hireops-recruiting-operations': (86, 45)}[task.name]
+expected_functional = {'ridgeline-print-storefront': (42, 35), 'colderwater-playground-devtools': (79, 32.85), 'hireops-recruiting-operations': (152, 66.3028)}[task.name]
 assert dimensions['functional'] == dict(zip(('criteria', 'weight'), expected_functional))
-assert dimensions['polish']['criteria'] == {'ridgeline-print-storefront': 7, 'colderwater-playground-devtools': 6, 'hireops-recruiting-operations': 14}[task.name]
-assert dimensions['visual']['criteria'] == 6
+assert dimensions['polish']['criteria'] == {'ridgeline-print-storefront': 7, 'colderwater-playground-devtools': 6, 'hireops-recruiting-operations': 5}[task.name]
+assert dimensions['visual']['criteria'] == (5 if task.name == 'hireops-recruiting-operations' else 6)
 result = {'archive': archive.name, 'sha256': sha, 'bytes': archive.stat().st_size, 'files': len(files), 'single_root': task.name,
           'public_criterion_id_hygiene_passed': True,
           'public_grading_term_hygiene_passed': True,

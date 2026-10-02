@@ -1,0 +1,33 @@
+{
+  "number": 21,
+  "id": "verifier_entrypoint_is_safe_and_always_scores",
+  "reviewer": "row-reviewer-21",
+  "input_sha256": "ac48a4edff5d38f0a291772fad106133411095257fe2f2a504b96b0872abc62f",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/rules/WebDev Rubrics QC.xlsx: Quality Checks row 22 (check 21), Internal Quality Checks row 22 (no annotation on check 21), Deterministic Checks rows 33 (check-scoring-policy.py) and 36 (check-verifier-contract.py)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/rules/harbor-webdev-rubric-qc/references/quality-checks.md:92-94",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md:98-111,152,160-164",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/rules/projects/webdev-task-template/tests/{test.sh,tools/score.py,tools/restart_mcp.py,Dockerfile,*/*/judge.toml timeouts}",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/tests/test.sh (all 227 lines)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/tests/tools/score.py (all 91 lines)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/tests/scoring.toml",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/tests/Dockerfile",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/task.toml",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/hireops-live-desk-2026-10-02-r1/raw-evidence-index.json (10 entries, all sha256 recomputed and matching)",
+    "qc/runs/hireops-live-desk-2026-10-02-r1/per-row-review/evidence/21/early-exit-paths.log (my own run)"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": "P3",
+  "evidence": "Source review against the eight-step test.sh contract (staged-task-contract.md:98-111). tests/test.sh is byte-identical to the frozen template test.sh (diff empty; sha256 bd68259276ca4b034654efc8a1723a4e702ed62dbe590af6201565f43eabe5aa); tools/score.py, tools/restart_mcp.py and tests/Dockerfile are also byte-identical to the template. bash -n passes, no CRLF. (1) Zero reward first: write_zero_reward at test.sh:60 precedes every exit, and `trap cleanup EXIT` at :61 calls ensure_reward (:39, :20-23) so set -e aborts (e.g. cp -a at :92, chown at :93) still leave reward.txt/reward.json; the zero record at :8 carries reward, five dimensions, gates_passed, floors_passed, weighted_score, graded, no_op. No `exec` builtin (only `find -exec` at :86). A SIGKILL at the verifier timeout cannot run the trap, but the zero record from :60 already exists. (2) Refuses to grade without /app/server.js (:68-70); symlinks whose real target leaves /app/node_modules exit with the zero (:72-83). (3) Unprivileged sanitized launch: copy to /tmp/submission (:90-95), `setsid env -i` with PATH, NODE_PATH, HOME, PORT, DB_PATH and `setpriv --reuid=65534 --regid=65534 --clear-groups` (:104-111); process group killed in cleanup (:36). (4) Liveness on /api/health then / for up to 120 x 0.25 s (:42-58, :115-125) before any rewardkit call; not ready exits with the zero. (5) Restart helper heredoc + sed + chmod 755 + export APP_RESTART_HELPER (:127-193). (6) {app_context} substitution (:195-201). (7) gates suite (:213) then score.py (:217) with 0 continue / 1 keep detailed record / other write_zero_reward (:218-222). (8) scored suite (:224) then score.py with `|| write_zero_reward` (:227). A scored-suite timeout exits at :225 keeping the valid gate-stage record, in which score.py:42-48 sets scored dimensions and reward to 0. score.py exits 2 on any exception (score.py:87-91), which both call sites turn into the zero record. Budgets nest: gates 600+600 <= 1500, scored 9000+900+900 = 10800 <= 11100, 1500+11100 = 12600 < verifier timeout 13200 (task.toml), all equal to template values. Actual-run evidence (mine, host bash, no Docker, frozen bytes): with REWARDKIT_JUDGE/MODEL unset, and with them set but /app/server.js absent, test.sh exited 0 and left reward.txt `0.0`, the full zero reward.json and ctrf.json (evidence/21/early-exit-paths.log). Weak-app probe: the liveness probe accepts any HTTP status including 404 (:51-52), so a server that answers but serves nothing passes liveness; that is template-controlled and excluded by the render/constraints gates, not by this row. Conforming-alternative probe: an app is only launched as /app/server.js on port 3000 with DB_PATH; whether the brief states that is row 23, not this row. Risk stays true because the raw evidence index states full configured grading is absent: no run in this candidate exercised app launch as uid 65534 inside the verifier image, the liveness loop, rewardkit, either score.py call, or the timeout paths. Those are read from source only and are not measured.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL: two early-exit paths executed and CONFIRMED to write the zero reward; launch, liveness, gates, scored and score.py paths NOT EXERCISED (no full configured verifier run for this candidate)."
+}

@@ -1,0 +1,29 @@
+{
+  "number": 51,
+  "id": "everything_parses_and_would_run",
+  "reviewer": "row-reviewer-51",
+  "input_sha256": "52feaddee9b66910d586883a4531bd13a3459c3f0c399a10e5a42e66cda46393",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-live-desk-2026-10-02-r2/rules/WebDev Rubrics QC.xlsx :: 'Quality Checks'!A52:D52 (row 51, block F) and 'Internal Quality Checks'!A52:D52 (annotation: 'both TOML families, the shell scripts (bash -n, no CRLF), and the reference/app entry'; no further annotation cells on that row); 'Deterministic Checks' row check-solve-contract.py (A34:C34)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r2/rules/harbor-webdev-rubric-qc/SKILL.md (whole file)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r2/rules/harbor-webdev-rubric-qc/references/quality-checks.md:204-206 (check 51 procedure)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r2/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md:46-48,62,81-87 (verifier/solve contract, shell hygiene and TOML parse commands; matched excerpts only, not the whole file)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r2/rules/projects/webdev-task-template: task.toml (diffed against the task), tests/scored/functional/judge.toml (head), and byte comparison of tests/test.sh, tests/Dockerfile, environment/Dockerfile, tests/scoring.toml, tests/tools/score.py, tests/tools/restart_mcp.py, tests/.dockerignore, solution/app/server.js",
+    "qc/REVIEW_POLICY.md (whole file)",
+    "qc/runs/hireops-live-desk-2026-10-02-r2/manifest.json, preflight.json (first part), raw-evidence-index.json",
+    "Frozen task .qc-cache/hireops-live-desk-2026-10-02-r2/task: task.toml, tests/scoring.toml, all five tests/*/*/judge.toml (parsed in full; functional head read), tests/test.sh, tests/Dockerfile, tests/.dockerignore, environment/Dockerfile, tests/tools/score.py and restart_mcp.py (parsed only), solution/solve.sh, solution/app/package.json, solution/app/server.js, solution/app/src/bootstrap.js, require/path lines of solution/app/src/index.js and db.js, script tags of public/index.html, both seed_data.json (parsed)",
+    "qc/repairs/hireops-2026-10-02-live-desk/results/server.log and live-desk.json (head)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Snapshot integrity: all 37 task files and 34 rules files hash-match manifest.json; no extra or missing task file. Checks run read-only on the frozen bytes with Python 3.12.10 (tomllib), GNU bash 5.2.26 and Node v24.19.0 (image pins node:22; syntax check only).\n\nTOML: tomllib.load succeeded for task.toml (schema_version, artifacts, task, metadata, agent, environment, verifier), tests/scoring.toml (gates, weights, floors) and all five judge.toml files: gates/render 1 criterion, gates/constraints 1, scored/functional 152, scored/polish 5, scored/visual 5 (likert with points). Every criterion has non-empty name, type and description; names are unique per file; each judge's prompt_template = \"prompt.md\" exists beside it and its only placeholders are {app_context} and {criteria}; tests/app_context.md exists for the substitution at tests/test.sh:195-201.\n\nShell: `bash -n` returned 0 for tests/test.sh and solution/solve.sh; both start with `#!/bin/bash`. A byte scan of every task file found no CR, no BOM, no NUL, no non-UTF-8 content and no missing final newline. Embedded payloads also parse: the three Python heredocs in test.sh (ast.parse), the generated app-restart.sh heredoc at test.sh:127-184 (bash -n rc 0), and the inline Node script in solve.sh (node --check rc 0). tests/test.sh, both Dockerfiles, scoring.toml, score.py, restart_mcp.py and .dockerignore are byte-identical to the frozen template.\n\nPython/JSON/JS: ast.parse OK for tests/tools/score.py and restart_mcp.py. json.load OK for environment/assets/seed_data.json, solution/app/src/seed_data.json (identical hash 1b390154...) and solution/app/package.json. `node --check` rc 0 for all nine solution JS files (server.js, src/bootstrap.js, change-sets.js, db.js, index.js, rules.js, public/js/app.js, change-sets.js, hireops.js).\n\nEntry resolution: test.sh:68 requires /app/server.js; solve.sh copies solution/app/. to /app/; server.js:2 requires ./src/index.js, which loads ./bootstrap, ./db, ./rules, ./change-sets (all present). The only third-party requires are express and better-sqlite3, which both Dockerfiles install globally at the versions package.json pins (5.1.0, 12.4.1) and expose through NODE_PATH, which test.sh:106 also sets. db.js:14 finds src/seed_data.json; index.js:37 serves ../public, whose index.html references /styles.css and three /js files that exist. Suite budgets nest: 1500 + 11100 = 12600 <= verifier timeout_sec 13200; scored judge timeouts 9000 + 900 + 900 = 10800 <= 11100.\n\nRun evidence: raw-evidence-index.json carries the same input_sha256; all ten entries hash-match their files and their matching_source_files match the frozen solution bytes. results/server.log shows `[hireops] listening on 3000` and live-desk.json records passing scripted golden browser observations, i.e. the frozen reference entry actually started in the verifier image.\n\nLimits (not waived, outside what this row measures): rewardkit is not installed locally, so the judge.toml files were validated by a TOML parser and field inspection, not by the real RewardKit 0.1.7 loader; preflight.json itself says its criterion-schema check 'does not replace real loader/schema verification'. I started no container and ran no configured judge suite; the scripted golden run is not a full verifier run. bootstrap.js:20-23 answers /api/health with 200 before the SQLite worker is ready, so the readiness probe does not prove the worker booted; that belongs to the gate rows, not to parsing.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL"
+}

@@ -1,0 +1,30 @@
+{
+  "number": 12,
+  "id": "no_prebuilt_image_shadows_the_agent_dockerfile",
+  "reviewer": "row-reviewer-12",
+  "input_sha256": "ac48a4edff5d38f0a291772fad106133411095257fe2f2a504b96b0872abc62f",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/rules/WebDev Rubrics QC.xlsx :: Quality Checks row 13 (check 12) and Internal Quality Checks row 13 (check 12; annotation columns empty)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/rules/harbor-webdev-rubric-qc/references/quality-checks.md:43-54",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md:66-78",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/rules/projects/webdev-task-template/task.toml",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/rules/projects/webdev-task-template/environment/Dockerfile",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/task.toml:1-38",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/environment/Dockerfile:1-26",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/hireops-live-desk-2026-10-02-r1/manifest.json:6 (input_sha256)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "task/task.toml:20-24 is the whole [environment] table: `build_timeout_sec = 600.0`, `network_mode = \"public\"`, `cpus = 2`, `memory_mb = 4096`. No `docker_image` key exists there or anywhere else in the frozen task: a recursive search of task/ for `docker_image` over toml/yaml/yml/json returned no match, and task/environment holds only Dockerfile, assets/ and instructions/ (no compose file or other image override). The agent Dockerfile has active build steps that would be dead code if an image were set: task/environment/Dockerfile:1 `FROM node:22-bookworm-slim`, :5-7 apt install of ca-certificates git procps sqlite3, :9-12 `npm install -g ... express@5.1.0 better-sqlite3@12.4.1`, :14-15 `COPY instructions/ /instructions/` and `COPY assets/ /assets/`, :16-23 /app git initialisation. Because nothing shadows it, these steps are what builds the agent image. Template comparison: task/environment/Dockerfile is byte-identical to the frozen template Dockerfile (both SHA256 0a75419e9598ded9317b26bbf0d2b12de0b9b11185fb4c9fed1ca7f3e52467d1); task/task.toml (SHA256 71f1802d130825bf3babb046228be6976028f1e337d8fe3e400adf35416734da) differs from the template task.toml only in [task] name/description/keywords and [metadata] difficulty, difficulty_explanation, category, provenance, arena_slice; the [environment] table is unchanged from the template. This matches quality-checks.md:53-54 and staged-task-contract.md:78. Adversarial check: the failing shape would be a `docker_image = \"...\"` line under [environment], making the COPY of /instructions and /assets and the pinned npm installs silently skipped; that shape is absent. This is a static source finding; I did not build the image or start a container, and no run log was consulted, so the run verdict is NOT EXERCISED. The row is fully decidable from the two files, so no measurement is missing for it.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

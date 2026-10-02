@@ -1,0 +1,38 @@
+{
+  "number": 24,
+  "id": "grading_wiring_is_structurally_correct",
+  "reviewer": "row-reviewer-24",
+  "input_sha256": "ac48a4edff5d38f0a291772fad106133411095257fe2f2a504b96b0872abc62f",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/rules/WebDev Rubrics QC.xlsx (Quality Checks row 24 = C25/D25; Internal Quality Checks C25/D25)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/rules/harbor-webdev-rubric-qc/references/quality-checks.md (row 24, lines 104-106)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (scoring.toml, test.sh and judge.toml sections, lines 95-185)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (check-rubric-schema, check-verifier-contract, lines 38-46)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/rules/projects/webdev-task-template/tests (scoring.toml, test.sh, tools/, five judge.toml)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/tests/scoring.toml",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/tests/test.sh",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/tests/gates/render/{judge.toml,prompt.md}",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/tests/gates/constraints/{judge.toml,prompt.md}",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/tests/scored/functional/{judge.toml,prompt.md}",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/tests/scored/polish/{judge.toml,prompt.md}",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/tests/scored/visual/{judge.toml,prompt.md}",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/tests/app_context.md",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/task.toml ([verifier.env])",
+    "qc/runs/hireops-live-desk-2026-10-02-r1/raw-evidence-index.json",
+    "qc/runs/hireops-live-desk-2026-10-02-r1/manifest.json (input_sha256 only)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Static structural review of the frozen bytes; all TOML files parsed with Python tomllib (no RewardKit run). (1) tests/scoring.toml has all three tables: gates render=0.0/constraints=0.0, weights functional 0.6 + polish 0.2 + visual 0.2 = 1.0, floors functional=0.05; it is byte-identical to the frozen template scoring.toml (sha256 prefix 95f70d6e06aae5e7 both). test.sh, tools/score.py and tools/restart_mcp.py are likewise byte-identical to the template (bd68259276ca4b03, 13de2b3885967e22, 03c1426f00e451f4). (2) Layout: tests/gates/{render,constraints} and tests/scored/{functional,polish,visual} each contain exactly judge.toml + prompt.md; every scoring.toml name has its directory in the right suite. (3) Each judge.toml [judge] block (line 1) has judge='claude-code' (matches task.toml:31 REWARDKIT_JUDGE), mode='batched', timeout, isolated=false, prompt_template='prompt.md' (line 6); no model, reasoning_effort, temperature or [judge].weight key. Timeouts 600/600/9000/900/900 equal the template values. [scoring] aggregation is all_pass for both gates (line 14-15) and weighted_mean for scored (functional line 20-21, polish/visual line 14-15), same as template. (4) Browser MCP: every judge.toml declares the playwright stdio server at line 8-12 (playwright-mcp --headless --isolated --executable-path=/usr/local/bin/chromium --no-sandbox), identical to the template. (5) Restart server: only scored/functional/judge.toml declares it (lines 14-18: name='verifier', command /usr/local/bin/python3, args ['/tests/tools/restart_mcp.py', '$APP_RESTART_HELPER']); test.sh:193 exports APP_RESTART_HELPER=$LOG_DIR/app-restart.sh after generating it and chmod 755 (test.sh:185-193). restart_app appears in no other dimension's judge.toml or prompt. The functional prompt asks for one call (prompt.md:57 'Call restart_app once', P10 last) and the only criterion that instructs the call is hro_restart (judge.toml:897-902 'Call restart_app exactly once'); hro_change_retry_restart (judge.toml:1122-1127) reuses the same P10 restart, so the single-use tool is not over-subscribed. No prompt sends the judge to a shell. (6) Criteria: render 1 binary, constraints 1 binary (gates binary, weight 1.0); functional 152 binary; polish 5 binary; visual 5 likert with points=5. Every criterion has id, name, type in binary|likert, a non-empty description and a positive numeric weight; no duplicate ids within a dimension and none across dimensions. Functional weights are heterogeneous (0.01 to 6, sum 74.0) but all positive; weighted_mean normalises them, so this is not a structural defect for this row. (7) Prompts resolve: all five prompt.md files exist beside their judge.toml and contain exactly the two placeholders {app_context} (render:3, constraints:3, functional:5, polish:3, visual:3) and {criteria} (render:13, constraints:15, functional:99, polish:20, visual:18); no other brace characters occur in any prompt.md, in app_context.md (1527 bytes, non-empty) or in functional judge.toml, so the test.sh:195-201 substitution and RewardKit's criteria injection cannot be broken by stray braces. All five prompts name http://localhost:3000. Counterexample probes: a broken variant (restart server on polish, a likert gate, a duplicate id, or [judge].weight) is absent; a conforming alternative is not penalised by anything in this wiring. Limits: this is source/parser evidence only. raw-evidence-index.json states that full configured grading is absent, so acceptance of these files by the RewardKit binary and runtime expansion of $APP_RESTART_HELPER are not measured for this candidate; they rest on byte/semantic identity with the frozen template wiring. That runtime gap belongs to the launch/grading rows and is not waived here.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PASS"
+}

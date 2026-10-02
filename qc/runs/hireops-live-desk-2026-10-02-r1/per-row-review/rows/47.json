@@ -1,0 +1,38 @@
+{
+  "number": 47,
+  "id": "verifier_is_deterministic_and_offline_pinned",
+  "reviewer": "row-reviewer-47",
+  "input_sha256": "ac48a4edff5d38f0a291772fad106133411095257fe2f2a504b96b0872abc62f",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/rules/WebDev Rubrics QC.xlsx :: Quality Checks row 47 and Internal Quality Checks row 47",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/rules/harbor-webdev-rubric-qc/references/quality-checks.md (check 47, lines 187-189)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/rules/projects/webdev-task-template (task.toml, tests/Dockerfile, tests/test.sh, tests/tools/*, tests/scoring.toml, environment/Dockerfile; byte comparison)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/task.toml",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/tests/Dockerfile",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/tests/test.sh",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/tests/{gates,scored}/*/judge.toml ([judge] blocks; time-related criteria by search, not every criterion in full)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/tests/scored/{functional,polish}/prompt.md (time-related passages by search)",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/tests/app_context.md lines 24-30",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/environment/Dockerfile",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/environment/instructions/hireops_rules.md lines 55-66",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/instruction.md lines 13, 17",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/environment/assets/seed_data.json line 3",
+    ".qc-cache/hireops-live-desk-2026-10-02-r1/task/solution/app/src/{db.js,rules.js,index.js} (clock and randomness search)",
+    "qc/runs/hireops-live-desk-2026-10-02-r1/raw-evidence-index.json (scope statement and first entries)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Workbook row 47 (Quality Checks): 'Shared pinned judge agent + model, pinned judge CLIs and browser, graded time rules on a fixed clock'; temperature/prompt-version not required and open network not a defect. The Internal sheet's 'temperature 0, versioned prompt, no unpinned network' wording is superseded by the Quality Checks row and the skill delivery profile, so it was not applied. Skill check 47 adds the shared tools/ builds.\n\nJudge agent + model: task.toml:31-35 carries REWARDKIT_JUDGE=\"claude-code\", REWARDKIT_MODEL=\"z-ai/glm-5.3-flashx\", OpenRouter base URL; the [verifier] section through end of file is byte-identical to the frozen template's. All five judge.toml [judge] blocks hold only judge=\"claude-code\", mode, timeout, isolated, prompt_template; no model, temperature or reasoning_effort key. test.sh:63-66 refuses to grade without both env variables, so there is no silent fallback model.\n\nCLIs, browser, RewardKit: tests/Dockerfile:16-22 pins @anthropic-ai/claude-code@2.1.281, @openai/codex@0.151.0, @playwright/mcp@0.0.79, express@5.1.0, better-sqlite3@12.4.1; line 31 pins harbor-rewardkit==0.1.7; lines 33-38 install Chromium through the Playwright CLI bundled in the pinned @playwright/mcp, so the browser build follows that pin, and every judge.toml points at --executable-path=/usr/local/bin/chromium.\n\nShared files: tests/Dockerfile, tests/test.sh, tests/tools/score.py, tests/tools/restart_mcp.py, tests/scoring.toml and environment/Dockerfile are byte-identical (cmp) to rules/projects/webdev-task-template. This is a manual comparison against the frozen template, not a run of check-canonical-shared-files.py. score.py sha256 13de2b38...c04e, restart_mcp.py 03c1426f...79b5, test.sh bd682592...e5aa.\n\nFixed clock: seed_data.json:3 reference_moment 2026-08-01T00:00:00Z; hireops_rules.md:59-61 'one stored reference moment ... Nothing in this app reads the operating system's clock'; instruction.md:17 'fixed clock'; app_context.md:27 restates it. Criterion hro_referral_clock (functional/judge.toml:609-614) uses judge-supplied start instants around the fixed reference (2026-02-01T00:00:00Z vs ...00.001Z giving 10000.00 vs 5000.00; 2026-01-31T12:00:00Z fully vested), and rescission criteria use a supplied effective date. Expected figures therefore do not move with the run date. The golden reads the stored clock (rules.js:17-21, db.js:127-133); no Date.now()/new Date() without argument in solution source. crypto.randomBytes at index.js:63,112 only makes ids and session tokens, not graded figures.\n\nBroken app that could pass: an app deriving referral vesting from the OS clock. On any run date after 2026-08-01T00:00:00.001Z it reports the .001Z case as vested (10000.00) where the criterion expects 5000.00, so it fails; it cannot pass. Conforming alternative that could fail: none found from date drift, since all inputs and the reference are fixed.\n\nResiduals, not failures of this row: (1) base images node:22-bookworm-slim and python:3.12-slim are floating tags without digests; template-controlled and identical to the template. (2) The live-desk criteria (functional/judge.toml:1334,1343,1352; polish/judge.toml:23) grade an update 'within 15 seconds'. That is an elapsed interval required publicly, not a run-date rule, and functional/prompt.md:77 accepts an update present in the first snapshot at or after 15 seconds; its timing reliability under the LLM judge belongs to the feasibility/workload rows. (3) raw-evidence-index.json states full configured grading is absent, so repeatability of judge verdicts is unmeasured; the row as written asks for pinning and a fixed clock, which are source properties verified here.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}
