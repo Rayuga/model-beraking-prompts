@@ -216,7 +216,9 @@ function sandboxBootstrap(token, key) {
     if (settleTimer) clearNative(settleTimer);
     for (const id of timers) { clearNative(id); clearIntervalNative(id); }
     timers.clear();
-    send('error', { message: String(error?.message ?? error), line: sourceLine(error) || line || lastThrownLine(error), duration: now() - started });
+    let message = String(error?.message ?? error);
+    if (/Content Security Policy|unsafe-eval/i.test(message)) message = 'Dynamic evaluation, imports, WebAssembly and workers are outside this playground’s supported execution modes.';
+    send('error', { message, line: sourceLine(error) || line || lastThrownLine(error), duration: now() - started });
   }
   addEventListener('error', event => { fail(event.error || event.message, event.lineno || 0); event.preventDefault(); });
   addEventListener('securitypolicyviolation', event => {

@@ -26,7 +26,7 @@ name = "cw_custom_typing_and_line_join"
 type = "binary"
 weight = 1.0
 description = """
-In a fresh draft, type two lines through the visible custom editor using real keys. At the start of the second line press Backspace once: require exactly one joined line with no missing or duplicate character. Undo once restores both lines. At the end of the first line press Delete once for the same exact join; Undo restores both. Real keyboard interaction and exact source readback are required.
+In a scratch draft, type two short lines through the visible custom editor using real keys. Put the caret at the start of the second line and press Backspace once: the source must become exactly one line made of the two texts joined, with no character missing or doubled. Undo once must bring back both lines. Then put the caret at the end of the first line and press Delete once: the same exact join must result, and one Undo must bring back both lines. Fails if either join loses or duplicates a character, if either Undo does not return the exact two-line source, or if the text can only be changed by setting it programmatically.
 """
 
 [[criterion]]
@@ -35,7 +35,7 @@ name = "cw_caret_navigation_and_line_numbers"
 type = "binary"
 weight = 1.0
 description = """
-Use a three-line source whose middle line is shorter than both neighbors. With real Home, End and Arrow keys, verify the visible caret and line/column readout agree with text positions and displayed logical line numbers. ArrowDown onto the shorter line clamps the caret; ArrowDown again restores the intended longer-line column. Cross a newline with Left and Right. No source change is allowed.
+Use a three-line source whose middle line is shorter than both neighbours. With real Home, End and Arrow keys, check that the displayed line and column readout matches the caret's text position and the displayed logical line numbers. From the end of the first line, ArrowDown must clamp the caret to the end of the short line, and a second ArrowDown must return it to the original longer column on the third line. ArrowLeft at the start of a line must move to the end of the previous line and ArrowRight must return. Fails if the readout disagrees with the caret position, if the intended column is forgotten after the short line, if a line break cannot be crossed with Left and Right, or if any of these moves changes the source.
 """
 
 [[criterion]]
@@ -44,7 +44,7 @@ name = "cw_grapheme_navigation_and_deletion"
 type = "binary"
 weight = 1.0
 description = """
-Type or paste a line containing an emoji and a decomposed accented letter between ASCII characters. Real Arrow and Shift+Arrow actions must traverse and select each complete visible character, confirmed by copied text. One Backspace after the emoji and one Delete before the accented letter each remove only that whole grapheme; one Undo per action restores exact code points. Do not inspect editor internals or dispatch synthetic key events.
+Enter one line that has an emoji and a decomposed accented letter (a base letter followed by a combining accent) between plain ASCII characters. Each single ArrowRight or ArrowLeft press must step over the emoji or the accented letter as one visible character, and Shift+Arrow must select it whole, confirmed by the copied or highlighted text. One Backspace directly after the emoji must remove only the whole emoji, and one Delete directly before the accented letter must remove only the whole accented letter; one Undo after each must restore the exact original line. Fails if a single arrow press or a single Backspace or Delete leaves half of the emoji or a stray accent behind, or if Undo does not restore the exact characters.
 """
 
 [[criterion]]
@@ -53,7 +53,16 @@ name = "cw_mouse_selection"
 type = "binary"
 weight = 1.0
 description = """
-In visible source with three distinct lines, use real mouse double-click to select exactly one word, triple-click to select exactly one logical line, and drag to select a range crossing a line break. Copy each live selection and compare exact text before replacing any part. A clicked decoration without a real editor selection fails.
+In a source with three distinct lines, use the real mouse: a double click on a word must select exactly that word, a triple click must select exactly that logical line (with or without its line break), and a drag from the middle of one line to the middle of the next must select exactly the text between those two points across the line break. Confirm each selection by copying it with the usual keyboard shortcut and comparing the copied text, before any typing. Fails if any of the three gestures selects more or less than stated, if nothing is copied, or if only a highlight is drawn while the copied text is empty or different.
+"""
+
+[[criterion]]
+id = "cw_selection_replace_and_paste_undo"
+name = "cw_selection_replace_and_paste_undo"
+type = "binary"
+weight = 1.5
+description = """
+In a known three-line source, select a range inside the middle line and type one character: the selected text must be replaced by that character and nothing else changes. Undo must restore the exact source. Then copy a selection that spans two lines, select a different word, and paste over it with the usual shortcut: the word must be replaced by the complete copied two-line text. A single Undo must then remove the whole paste and bring the replaced word back. Fails if typing or pasting inserts beside the selection instead of replacing it, if the paste needs more than one Undo, or if the source after Undo is not exactly the earlier source.
 """
 
 [[criterion]]
@@ -62,88 +71,16 @@ name = "cw_block_indent_undo"
 type = "binary"
 weight = 1.0
 description = """
-Select at least two complete logical lines through the visible editor. Tab adds one consistent indent unit to each selected line without changing their text; Shift+Tab removes it. After another Tab, one Undo returns both lines to the prior state and one Redo reindents both. A selection ending at the next line's column zero must not indent that next line. Judge exact source, not the appearance alone.
+Select two complete logical lines whose selection ends at column zero of the following third line, then press Tab: each of the two lines gains the same indent and their text is otherwise unchanged, while the third line is not indented. Shift+Tab removes that indent again. Press Tab once more, then one Undo returns both lines to the unindented state and one Redo indents both again. Finally select a few characters inside a single line and press Tab: that line must be indented as a whole and the selected characters must not be replaced. Fails if the third line is indented, if the indent step needs more than one Undo, or if Tab replaces the characters selected inside the single line.
 """
 
 [[criterion]]
-id = "cw_multi_caret_typing_atomic"
-name = "cw_multi_caret_typing_atomic"
-type = "binary"
-weight = 2.0
-description = """
-Use one ordinary click and two real Alt+Click or Ctrl/Cmd+Click actions to place three visible carets after distinct words on three lines. Type the five characters MULTI as normal sequential keys. Require the suffix once at each caret and nowhere else. One Undo removes all fifteen inserted characters; one Redo restores them. Multiple key events that require multiple Undo actions fail. Do not set the caret model programmatically.
-"""
-
-[[criterion]]
-id = "cw_multi_caret_delete"
-name = "cw_multi_caret_delete"
+id = "cw_caret_kept_in_view"
+name = "cw_caret_kept_in_view"
 type = "binary"
 weight = 1.5
 description = """
-Establish two visible carets after different line-ending characters with real modifier-clicks. One Backspace removes one complete character at each; one Undo restores both. Establish two carets before different first characters. One Delete removes both first characters; one Undo restores both. Adjacent lines and other source must remain exact.
-"""
-
-[[criterion]]
-id = "cw_find_forward_backward_wrap"
-name = "cw_find_forward_backward_wrap"
-type = "binary"
-weight = 1.0
-description = """
-Use a draft with three case-sensitive occurrences of a distinctive literal on different lines and a differently cased near-match. Use the visible Find control and real keyboard Next/Previous actions to visit all three in document order, wrap forward and backward, and copy the active match each time. The near-match must not count. Do not treat decorative highlights as an active selection.
-"""
-
-[[criterion]]
-id = "cw_replace_current"
-name = "cw_replace_current"
-type = "binary"
-weight = 1.0
-description = """
-With three literal matches, choose the middle one through the visible Find flow and Replace current once. Require only that occurrence to change, the others and surrounding source unchanged, and one Undo/Redo to reverse/reapply the one replacement. Do not let a different active match count as the requested middle replacement.
-"""
-
-[[criterion]]
-id = "cw_replace_all_atomic"
-name = "cw_replace_all_atomic"
-type = "binary"
-weight = 1.5
-description = """
-In a fresh draft with at least four literal matches across lines and one differently cased near-match, use Replace all once. Require exactly the four intended replacements and unchanged near-match. One Undo restores every original occurrence and one Redo reapplies all. A new edit after Undo must clear that Redo; neither operation saves the draft automatically.
-"""
-
-[[criterion]]
-id = "cw_js_semantic_coloring"
-name = "cw_js_semantic_coloring"
-type = "binary"
-weight = 1.5
-description = """
-Enter valid JavaScript containing a function declaration name, a keyword, a quoted string, a number, a comment, and a call of that function. Inspect the rendered editor text and computed visible styles, not source code or CSS selectors. Require distinct treatments for keyword, function name at declaration and call, string, number and comment; the function name must not inherit the keyword or string treatment. The source text must remain exact. No fixed RGB values are required.
-"""
-
-[[criterion]]
-id = "cw_html_semantic_coloring"
-name = "cw_html_semantic_coloring"
-type = "binary"
-weight = 1.0
-description = """
-Enter complete HTML with a tag name, attribute name, quoted attribute value and comment. Inspect the rendered editor text and computed visible styles. Each category must be distinguishable by the offered colour/treatment, with source text unchanged. Do not require a particular DOM tag or CSS class in the editor.
-"""
-
-[[criterion]]
-id = "cw_js_format_semantics_and_undo"
-name = "cw_js_format_semantics_and_undo"
-type = "binary"
-weight = 2.0
-description = """
-Paste a compact one-line valid JavaScript function with nested if/loop blocks, a string containing braces and semicolons, and a comment. Activate Format document. Require readable multiple lines with consistent two-space nesting and exact literal/comment preservation. Run the formatted source and compare its computed preview result with the original. Formatting again must produce identical text. One Undo restores the exact original one-line source and one Redo restores the formatted source.
-"""
-
-[[criterion]]
-id = "cw_html_format_semantics_and_undo"
-name = "cw_html_format_semantics_and_undo"
-type = "binary"
-weight = 1.5
-description = """
-Paste a compact complete HTML document with nested tags, an attribute value containing a greater-than sign, a comment, and inline JavaScript. Format it through the UI. Require readable lines with consistent two-space nesting, preserved attribute/comment/script meaning and the same rendered preview. A second Format is idempotent. One Undo returns the exact original source; Redo returns the formatted source. Separately submit an invalid HTML draft: a useful formatting error must leave its exact source intact.
+Use a draft with more lines than fit in the visible editor (for example sixty short numbered lines). Put the caret at the very start, then move it to the end of the document with the keyboard and type a marker: the editor must have scrolled by itself so the last line, its line number and the caret are inside the visible editor area. Move the caret back to the document start with the keyboard: the first line must be visible again. Then on one line keep typing until the line is clearly wider than the editor: after the last typed character the caret must still be visible at the right, without manual scrolling. Fails if the caret or the text being typed is outside the visible editor area at any of these three points, or if only a manual scroll brings it back.
 """
 
 [[criterion]]
@@ -152,7 +89,124 @@ name = "cw_long_line_editing"
 type = "binary"
 weight = 1.0
 description = """
-Use a valid one-line JavaScript draft at least 500 characters long with unique start, middle and tail markers. Horizontally scroll the visible editor to reach the tail, then use real mouse/keyboard editing to change only that marker. Confirm the complete source before and after, including intact start/middle markers, and Run to show the changed tail output. Finding the tail through a search control alone does not prove horizontal reachability.
+Use a valid one-line JavaScript draft at least 500 characters long that carries unique start, middle and tail markers and writes the tail marker to the preview. The line must be shown unwrapped as one logical line. Scroll the visible editor horizontally to reach the tail, then use the real mouse and keyboard to change only the tail marker. The complete source must be otherwise identical, including the start and middle markers, and Run must show the changed tail output. Fails if the line is wrapped into several numbered lines, if the tail cannot be reached by horizontal scrolling, or if the edit damages any other part of the line.
+"""
+
+[[criterion]]
+id = "cw_multi_caret_typing_atomic"
+name = "cw_multi_caret_typing_atomic"
+type = "binary"
+weight = 2.0
+description = """
+Use one ordinary click and two real Alt+Click or Ctrl/Cmd+Click actions to place three visible carets after distinct words on three different lines. Type the five characters MULTI as normal sequential keys. The suffix must appear exactly once at each caret and nowhere else. One Undo must remove all fifteen inserted characters and one Redo must restore all of them. Fails if fewer than three carets are shown or receive the text, if the burst needs more than one Undo, or if Redo does not restore the same fifteen characters.
+"""
+
+[[criterion]]
+id = "cw_multi_caret_delete"
+name = "cw_multi_caret_delete"
+type = "binary"
+weight = 1.5
+description = """
+With real modifier-clicks place two carets at the ends of two different lines. One Backspace must remove exactly the last character of each of those two lines, and one Undo must restore both. Then place two carets at the starts of two different lines. One Delete must remove exactly the first character of each, and one Undo must restore both. Fails if only one caret is affected, if a neighbouring line or character changes, or if either Undo does not restore the exact source.
+"""
+
+[[criterion]]
+id = "cw_same_line_carets"
+name = "cw_same_line_carets"
+type = "binary"
+weight = 2.0
+description = """
+On a single line that contains three separate words, place one caret after each word using one ordinary click and two real Alt+Click or Ctrl/Cmd+Click actions, so three carets sit on the same line. Type two characters: both characters must appear directly after each of the three words, in order, and nowhere else. Press Backspace once: exactly one character must be removed after each word. One Undo must restore the line as it was before that Backspace, and a further Undo must remove the typed characters. Fails if a second caret cannot be added on the same line, if any inserted characters land at a shifted position inside or before a word, or if the line after either Undo is not exact.
+"""
+
+[[criterion]]
+id = "cw_undo_restores_caret"
+name = "cw_undo_restores_caret"
+type = "binary"
+weight = 1.5
+description = """
+In a four-line source put the caret in the middle of the second line and type a short marker. Move the caret to the end of the last line with the keyboard and type a second marker there. Press Undo once: the second marker is removed. Press Undo again: the first marker is removed. Without clicking or moving the caret, immediately type one character: it must be inserted in the middle of the second line at the exact place where the first marker had begun, and the line and column readout must show that position. Fails if the character typed after Undo lands anywhere else, such as the end of the document or the start of the file.
+"""
+
+[[criterion]]
+id = "cw_find_forward_backward_wrap"
+name = "cw_find_forward_backward_wrap"
+type = "binary"
+weight = 1.0
+description = """
+Use a draft with three case-sensitive occurrences of a distinctive literal on different lines and one differently cased near-match on a fourth line. With the caret at the document start, use the visible Find control and its Next action to visit the three occurrences in document order, then a fourth Next must wrap to the first. Previous from the first must wrap to the last. At each step the current match must be a real selection on the expected line, confirmed by the line readout and the copied or highlighted text. Fails if the differently cased text is ever visited, if the order is wrong, if either wrap does not happen, or if matches are only decorated and never become the current selection.
+"""
+
+[[criterion]]
+id = "cw_replace_current"
+name = "cw_replace_current"
+type = "binary"
+weight = 1.0
+description = """
+With three literal matches on three lines, navigate with Find so the middle match is the current one and use Replace current once. Only that middle occurrence may change; the first and last occurrences and all other text stay exact, and the current match must then be the last occurrence. One Undo must restore the middle occurrence and one Redo must reapply that single replacement. Fails if a different occurrence or more than one occurrence changes, if the current match does not move on to the following occurrence, or if Undo and Redo do not reverse and reapply exactly the one replacement.
+"""
+
+[[criterion]]
+id = "cw_replace_all_atomic"
+name = "cw_replace_all_atomic"
+type = "binary"
+weight = 1.5
+description = """
+In a scratch draft with exactly four literal matches across several lines and one differently cased near-match, use Replace all once. All four matches must be replaced and the near-match must stay unchanged. One Undo must restore all four original occurrences and one Redo must replace all four again. After a further Undo, type one new character: Redo must then be unavailable and must not bring the replacements back. Fails if fewer or more than the four matches change, if Replace all needs more than one Undo, or if Redo still works after the new edit.
+"""
+
+[[criterion]]
+id = "cw_replace_self_containing_text"
+name = "cw_replace_self_containing_text"
+type = "binary"
+weight = 1.5
+description = """
+Use a draft with exactly three occurrences of a short literal, and a replacement text that itself contains that literal (for example replacing a word with the same word twice joined by a hyphen). Replace all once: each of the three original occurrences must be replaced exactly once, so the result holds exactly three copies of the replacement and the operation ends. Undo. Then make the first occurrence current and use Replace current twice in a row: the first use must change the first occurrence and the second use must change the second original occurrence, never the text that was just inserted. Fails if Replace all rescans its own output or does not finish, if the count of replacements is not three, or if the second Replace current changes text inside the first replacement.
+"""
+
+[[criterion]]
+id = "cw_js_semantic_coloring"
+name = "cw_js_semantic_coloring"
+type = "binary"
+weight = 1.5
+description = """
+Enter valid JavaScript containing a function declaration name, a keyword, a quoted string, a number, a comment and a call of that function. Inspect the rendered editor text and its computed visible styles, not CSS selectors or source files. The keyword, the function name, the string, the number and the comment must each have a visibly distinct treatment from plain identifiers, and the function name must look the same at its declaration and at its call while differing from the keyword and string treatments. The source text must stay exact. No fixed colour values are required. Fails if two of those five categories share one treatment, if the function name is styled only at one of the two places, or if the displayed text contains stray markup characters that are not in the source.
+"""
+
+[[criterion]]
+id = "cw_html_semantic_coloring"
+name = "cw_html_semantic_coloring"
+type = "binary"
+weight = 1.0
+description = """
+With an .html filename, enter complete HTML that has a tag name, an attribute name, a quoted attribute value and a comment. Inspect the rendered editor text and its computed visible styles. The tag name, the attribute name, the quoted value and the comment must each have a visibly distinct treatment, and the displayed text must equal the source. Do not require a particular DOM tag or CSS class. Fails if two of the four categories share one treatment or if the displayed text shows characters that are not in the source.
+"""
+
+[[criterion]]
+id = "cw_js_format_semantics_and_undo"
+name = "cw_js_format_semantics_and_undo"
+type = "binary"
+weight = 2.0
+description = """
+Paste or type a compact one-line valid JavaScript program that has a function with a nested loop and if block, a string containing braces and a semicolon, and a comment, and that writes a computed result to the preview. Run it and note the result. Use Format document: the source must become several lines with consistent two-space nesting, with the string and comment text preserved exactly. Run the formatted source: the result must equal the earlier result. Formatting again must leave the text identical. One Undo must restore the exact original one-line source and one Redo must restore the formatted source. Fails if the result changes, if the string or comment is altered, if nesting is not in two-space steps, if a second Format changes the text, or if Undo or Redo need more than one step.
+"""
+
+[[criterion]]
+id = "cw_html_format_semantics_and_undo"
+name = "cw_html_format_semantics_and_undo"
+type = "binary"
+weight = 1.5
+description = """
+With an .html filename, paste or type a compact one-line complete HTML document with nested tags, an attribute value containing a greater-than sign, a comment and an inline script that changes visible text. Run it and note the rendered result. Use Format document: the source must become several lines with consistent two-space nesting, keeping the attribute value and comment exactly. Run again: the rendered result must be the same. A second Format must leave the text identical. One Undo must return the exact original source and one Redo the formatted source. Fails if the rendered result changes, if the attribute value or comment is altered, if a second Format changes the text, or if Undo or Redo need more than one step.
+"""
+
+[[criterion]]
+id = "cw_format_error_keeps_draft"
+name = "cw_format_error_keeps_draft"
+type = "binary"
+weight = 1.0
+description = """
+First format a small valid JavaScript draft and see it change, as the working control. Then, with a .js filename, enter a JavaScript draft that has a clear syntax error (for example a missing closing brace) spread over two lines, and use Format document. A visible message must say that formatting failed, and the draft must be exactly the same text as before the attempt. Fails if the draft is changed, emptied or partly formatted, if no visible failure message appears, or if the valid control did not format.
 """
 
 [[criterion]]
@@ -161,7 +215,7 @@ name = "cw_html_preview"
 type = "binary"
 weight = 1.0
 description = """
-Enter a complete .html document with a heading, inline button handler and console marker. Run it through the visible editor. Require the heading in the preview, an interactive button update and the expected console marker. The document must be executed as HTML rather than shown as escaped source. A .js extension is not a valid substitute.
+With an .html filename, enter a complete HTML document with a heading, a button whose inline handler changes visible text, and an inline script that writes a console marker. Run it through the visible editor. The heading must be rendered in the preview as a heading, the console marker must appear in the app console, and clicking the button in the preview must change the visible text. Fails if the document is shown as escaped source text, if the button does nothing, or if the console marker is missing.
 """
 
 [[criterion]]
@@ -170,7 +224,25 @@ name = "cw_error_message_and_line"
 type = "binary"
 weight = 1.0
 description = """
-First run a valid JavaScript control and a successful complete HTML file with an inline script. Then run JavaScript with a deliberate thrown error on a known nonfirst line and a complete HTML file with a deliberate inline-script error below preceding markup. For each failure, require the authored error message and a one-based line number relative to the actual entered source in the visible console. An arbitrary constant line number or copied source text fails.
+First run a small valid JavaScript draft as the working control. Then run a JavaScript draft that throws an Error with a distinctive message on its fourth line. Then, with an .html filename, run a complete HTML file whose inline script throws an Error with another distinctive message on a known line of the whole file, below several lines of markup. For each failure the app console must show the authored message and the one-based line number counted from the first line of the entered source: four for the JavaScript draft and the whole-file line for the HTML file. Fails if either message is missing, if a line number is absent or wrong, or if the HTML line is counted from the start of the script block instead of the file.
+"""
+
+[[criterion]]
+id = "cw_promise_rejection_message_and_line"
+name = "cw_promise_rejection_message_and_line"
+type = "binary"
+weight = 1.5
+description = """
+First run a draft whose rejected Promise is handled by a catch that logs a marker: the marker must appear and the run must finish without an error, as the working control. Then run a draft that calls Promise.reject with a new Error carrying a distinctive message on its third line and never handles it. Then run a draft in which an async function, called on the first line, throws a new Error with another distinctive message on its fourth line after an await, and nothing handles it. For both unhandled cases the app console must show the authored message text and the one-based line number of the line that created the rejection (three and four). Fails if the message is shown as an empty object or a generic text without the authored message, if the line number is missing or wrong, or if the unhandled rejection is not reported at all.
+"""
+
+[[criterion]]
+id = "cw_output_before_failure_kept"
+name = "cw_output_before_failure_kept"
+type = "binary"
+weight = 1.5
+description = """
+Run three separate drafts, each of which first writes its own distinctive console marker and then ends badly: one throws an Error on a later line, one enters an endless loop written in the source, and one schedules a timer for three seconds later and is ended with Stop about one second after Run. In each case the marker written before the failure must be visible in the app console together with, and above, the visible reason for that run (the error, the time limit, or the stop). Fails if any of the three markers is missing after its run ended, or if a marker appears only after its reason.
 """
 
 [[criterion]]
@@ -179,25 +251,52 @@ name = "cw_last_good_recovery"
 type = "binary"
 weight = 2.0
 description = """
-Run a successful preview with an input and a 2D canvas, then change the input value and canvas drawing through its ordinary controls. Run a failing candidate. Require the most recent actual successful visible state, including changed input value and canvas pixels, to return without rerunning source. A static restored picture is valid. A later ordinary Run must still work.
+Run a successful preview that shows a text input, a 2D canvas and a button that draws a filled shape on the canvas. In the preview type a distinctive value into the input and click the button so the canvas visibly changes. Then run a different draft that throws an Error. The preview must return to the most recent successful picture: the input still shows the typed value and the canvas still shows the drawn shape, without the first source being run again. The restored picture may be static. A later valid Run must work normally. Fails if the preview is blank, shows the failed draft's partial output, shows the input or canvas in their initial untouched state, or if a later valid Run does not work.
 """
 
 [[criterion]]
-id = "cw_timeout_stop_and_supersession"
-name = "cw_timeout_stop_and_supersession"
+id = "cw_time_limit_recovery"
+name = "cw_time_limit_recovery"
 type = "binary"
 weight = 1.5
 description = """
-Establish a working short timer control. Start a source-written endless loop or callback chain and require a visible time-limit reason within a bounded wait, restoration of the last-good picture and later ordinary recovery. In separate attempts start a delayed marker, then immediately Run a distinct newer marker; repeat with Stop. Wait past the old marker's delay in both cases. The old marker must never appear later in the current preview/console/status. Give the five-second budget normal scheduling margin; do not demand hidden thread termination or subsecond reaction.
+First run a draft that finishes a short timer and shows a marker, as the working control and last-good picture. Then run a draft with an endless loop written in the source: within about ten seconds a visible time-limit reason must appear and the preview must show the control's picture again. Then run a draft whose timer callback schedules itself again without end: the same must happen. After each, the page and its controls must stay responsive, and a final valid Run must show its own new output. Give the five-second budget normal scheduling margin and do not demand sub-second precision. Fails if either run is never ended with a visible time-limit reason, if the page becomes unusable, if the last-good picture is not shown afterwards, or if the final valid Run does not work.
 """
 
 [[criterion]]
-id = "cw_preview_boundary"
-name = "cw_preview_boundary"
+id = "cw_stop_cancels_pending_work"
+name = "cw_stop_cancels_pending_work"
+type = "binary"
+weight = 2.0
+description = """
+First run a control draft that writes a distinctive marker to the preview and the console from a timer after about two seconds, wait, and confirm both appear. Then run a second draft that would write a different marker to the preview and the console from a timer after about three seconds, and press Stop about one second after Run. A visible stop reason must appear at once. Wait at least six more seconds. The second marker must never appear in the preview or in the console, and the preview must show the control's picture. Fails if the second marker appears anywhere after Stop, if no stop reason is shown, if the preview does not return to the control's picture, or if the control marker never appeared.
+"""
+
+[[criterion]]
+id = "cw_newer_run_supersedes"
+name = "cw_newer_run_supersedes"
 type = "binary"
 weight = 1.5
 description = """
-Prove ordinary own-preview DOM and console activity works. Then attempt parent-document/origin-storage access and a separate user-authored network request from the preview. Require the parent/library data to remain untouched and no network delivery, with clear refusal or blocked-effect evidence. App-owned external resources are allowed. Test harmless quoted or commented mentions as a positive control. Then try real eval, Function, WebAssembly, Worker and dynamic import in separate small drafts; each must be refused with clear feedback without losing the last good preview.
+Run a draft that would write an old marker to the preview and the console from a timer after about three seconds. About one second later, before it fires, replace the source with a draft that immediately writes a new marker to the preview and the console, and Run it. Confirm the new marker appears. Wait at least six more seconds. The old marker must never appear in the preview or the console, and the preview must still show the new marker. Fails if the old marker appears anywhere after the newer Run, if the newer preview is overwritten, or if the new marker did not appear.
+"""
+
+[[criterion]]
+id = "cw_preview_isolation"
+name = "cw_preview_isolation"
+type = "binary"
+weight = 1.5
+description = """
+First save one snippet and confirm in the app page that its library entry is shown, and confirm that the app page itself can load its own health address, as working controls. Run a draft that changes its own preview document and logs a marker: both must work. Then run drafts that, from the preview, try to read the parent page's document or title, try to read or write the origin's localStorage, and try to fetch the app's own health address, each logging what it obtained or the failure. None may obtain the parent's content, stored values or a network response, and the app page, its title and its library entry must be unchanged afterwards. Fails if the preview reads or changes anything of the playground page or its storage, if the fetch from the preview receives a response, or if ordinary own-preview DOM and console activity did not work.
+"""
+
+[[criterion]]
+id = "cw_dynamic_code_refused"
+name = "cw_dynamic_code_refused"
+type = "binary"
+weight = 1.5
+description = """
+First run a draft that only mentions eval, Function, WebAssembly, Worker and import inside ordinary string literals and comments and logs a marker: it must run normally and log the marker, as the working control and last-good picture. Then run five separate small drafts that really use eval, the Function constructor, WebAssembly compilation, a new Worker and a dynamic import. Each of the five must be refused with a visible reason in the app, must not produce the result of the dynamically created code, and must leave the control's last-good picture in the preview. Fails if any of the five dynamic forms executes its payload, if any is refused silently, or if the harmless control draft is refused.
 """
 
 [[criterion]]
@@ -206,16 +305,25 @@ name = "cw_save_reload_restart"
 type = "binary"
 weight = 1.5
 description = """
-Use New to create one snippet with exact title, filename and source through the editor, Save once and record identity, revision and history. Reload and read from an independent clean browser context: require exact fields and one record. Then use the verifier-provided restart_app tool once; after a completed restart, a fresh page must show the same identity, revision, fields and history. Do not infer restart from reload or health alone. If the restart tool fails, report unavailable restart evidence rather than declaring a product failure.
+Use New to start a snippet, give it an exact unique title, filename and source through the editor, Save once, and record its identity, revision and history. Reload the page and also read the library from a second tab or browser context: both must show the exact title, filename and source, as one record. Then call the verifier-provided restart_app tool once. After it reports a completed restart, a fresh page must show the same identity, revision, title, filename, source and history. Do not infer a restart from a reload or a health response. Fails if any field, the revision or the history differs after the restart, if the record is duplicated or missing, or if the saved data is only held in the browser. If the restart tool itself reports an error, state that the restart evidence is unavailable.
 """
 
 [[criterion]]
-id = "cw_stale_save_draft_safety"
-name = "cw_stale_save_draft_safety"
+id = "cw_stale_save_refused"
+name = "cw_stale_save_refused"
 type = "binary"
 weight = 1.5
 description = """
-Open the same saved revision in two ordinary editor contexts. Save a changed exact title/filename/source from A. Change all three fields in B and attempt its stale Save. Require refusal or clear proactive prevention, useful conflict feedback, B's exact unsaved fields retained, and a fresh server read showing only A's whole accepted record and one advanced revision. Reverse editor roles in a second valid trial. A rejected request with unrelated invalid fields is not evidence.
+Save a snippet, then open that same saved revision in two tabs or browser contexts, A and B. In A change the source and Save successfully: this accepted Save is the working control and advances the revision by one. In B, which still holds the old revision, change the title, filename and source to different valid values and press Save. B's Save must be refused with visible feedback that the snippet changed elsewhere. A fresh read of the record in a third page or after a reload in A must show exactly A's saved title, filename and source and exactly one new revision. Fails if B's Save is accepted, if the saved record or its history contains any of B's values, if no conflict feedback is shown in B, or if A's control Save did not succeed.
+"""
+
+[[criterion]]
+id = "cw_stale_save_keeps_draft"
+name = "cw_stale_save_keeps_draft"
+type = "binary"
+weight = 1.5
+description = """
+Create the same situation again with a new snippet: A saves a newer revision, and B, still on the old revision, has edited the title, filename and source and presses Save. After B's Save has been answered, B's title field, filename field and editor must still hold exactly B's unsaved values, and B must still be able to keep typing in its draft. Fails if any of B's three unsaved fields is replaced by the saved record, emptied or reloaded, or if B's draft can no longer be edited. Judge only what happens to B's draft; whether the server refused the Save is scored separately.
 """
 
 [[criterion]]
@@ -224,5 +332,32 @@ name = "cw_history_restore_retry"
 type = "binary"
 weight = 1.5
 description = """
-Build three saved revisions of one identity through valid UI Saves. Inspect an older snapshot and require its exact fields without mutating the current saved head or dirty draft. Restore that snapshot deliberately: require a new advanced revision, older and intervening snapshots intact. Retry the same already committed restore operation through the offered UI/observed request contract and require no additional revision; a genuinely new restore action is allowed to create one. A stale restore after a newer Save must be refused without changing the saved head.
+Build three saved revisions of one snippet through valid Saves with different sources. Inspect the first revision in history: its exact title, filename and source must be shown without changing the current saved revision. Restore that first revision: the snippet must get a fourth revision whose fields equal the first, with revisions one, two and three still listed. Repeat the same already completed restore request through the control the app offers for retrying it, or by replaying the recorded request: no fifth revision may be created. Then, with a second tab holding the fourth revision, save a fifth revision elsewhere and try a restore from the stale tab: it must be refused and the saved head must stay the fifth revision. Fails if inspecting changes the record, if the restore overwrites history instead of adding a revision, if the repeated request adds a revision, or if the stale restore replaces the newer save.
+"""
+
+[[criterion]]
+id = "cw_live_library_update"
+name = "cw_live_library_update"
+type = "binary"
+weight = 1.5
+description = """
+Open the app in tab A and leave it open. In a second tab or browser context B, save a new snippet with a unique title. Return to A and, without reloading or pressing anything in A, watch its library for up to ten seconds: the new title must appear. Then in B change that snippet's title and Save again: within ten seconds A's library must show the changed title, again without a reload. Fails if A shows either change only after a reload, a click or another action in A, or not at all. The earlier saves in this session show that the library works at all; this criterion is only about already open tabs staying current.
+"""
+
+[[criterion]]
+id = "cw_live_update_keeps_editing_state"
+name = "cw_live_update_keeps_editing_state"
+type = "binary"
+weight = 2.0
+description = """
+In tab A enter a draft of at least forty lines, type a custom title and filename without saving, type a marker in the middle of a line near the bottom so the editor is scrolled down and the caret is in the middle of that line. In a second tab or context B save a new snippet with a unique title, and wait until A's library shows it. Then check A: the title, the filename and the full source must be exactly as left, the editor must still be scrolled to the same lines, and typing one more character must insert it at the same caret position, directly after the marker. Undo, pressed once or twice depending on how the app groups typing, must then remove that character and the marker, returning exactly the draft as it was before the marker was typed. Fails if the library refresh changes or reloads the draft or either field, moves the caret, scrolls the editor to another place, or empties the Undo history. If A's library never shows B's snippet, this criterion fails as well because the situation could not be produced.
+"""
+
+[[criterion]]
+id = "cw_newer_revision_notice_keeps_draft"
+name = "cw_newer_revision_notice_keeps_draft"
+type = "binary"
+weight = 1.5
+description = """
+Save a snippet and open that saved revision in tabs A and B. In A change the source without saving, so A has an unsaved draft. In B change the source to something different and Save successfully. Within ten seconds and without any action in A, A must show a visible notice that a newer revision of the open snippet exists or was saved elsewhere. A's editor must still hold exactly A's unsaved draft, and A must still show that its draft is unsaved. Fails if no such notice appears in A, if A's draft is replaced by B's saved source, or if A silently treats the newer revision as loaded.
 """

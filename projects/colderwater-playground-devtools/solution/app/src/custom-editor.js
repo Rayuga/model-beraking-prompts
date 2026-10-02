@@ -29,6 +29,7 @@ export function mountCodeEditor(host, callbacks = {}) {
   let suppressChange = false;
   let lastEmitted = '';
   let leaveOnNextTab = false;
+  let lastCaretKey = '';
   let syntaxCache = null;
   let syntaxSource = null;
   let syntaxMode = null;
@@ -40,13 +41,14 @@ export function mountCodeEditor(host, callbacks = {}) {
   };
   editor.addEventListener('keydown', onKey);
   editor.addEventListener('paste', onPaste);
+  editor.addEventListener('copy', onCopy);
+  editor.addEventListener('cut', onCut);
   editor.addEventListener('mousedown', onMouseDown);
   document.addEventListener('focusin', renderFocusStatus);
   document.addEventListener('focusout', () => queueMicrotask(renderFocusStatus));
   const findBox = host.querySelector('#find-box');
   findBox.addEventListener('input', event => {
-    state.query = event.target.value; state.activeMatch = -1;
-    state.selection = null; recomputeMatches(); render();
+    state.query = event.target.value; recomputeMatches(); render();
   });
   findBox.addEventListener('keydown', event => {
     if (event.key === 'Enter') { event.preventDefault(); event.shiftKey ? findPrevious() : findNext(); }
@@ -58,6 +60,10 @@ export function mountCodeEditor(host, callbacks = {}) {
     ['replace-all-btn', replaceAll]
   ]) host.querySelector('#' + id).addEventListener('click', () => {command(); editor.focus();});
   host.querySelector('#format-btn').addEventListener('click', () => formatDocument());
+  host.querySelector('#replace-box').addEventListener('keydown', event => {
+    if (event.key === 'Enter') { event.preventDefault(); replaceCurrent(); }
+    if (event.key === 'Escape') { event.preventDefault(); editor.focus(); }
+  });
 
   function setValue(value, resetHistory = true) {
     suppressChange = true;
@@ -79,7 +85,7 @@ export function mountCodeEditor(host, callbacks = {}) {
         tabWidth: 2, useTabs: false, printWidth: 80, semi: true
       });
       const formatted = result.replace(/\n$/, '');
-      if (formatted === before) {message.textContent = 'Already formatted.'; return;}
+      if (formatted === before) {message.textContent = 'Already formatted.'; editor.focus(); return;}
       pushUndo();
       const priorLine = state.caret.line;
       state.lines = formatted.split('\n');
@@ -87,7 +93,10 @@ export function mountCodeEditor(host, callbacks = {}) {
       state.extraCarets = []; state.selection = null;
       markDirty(); recomputeMatches(); render(); editor.focus();
       message.textContent = 'Document formatted. Undo restores the previous source.';
-    } catch (error) {message.textContent = `Format failed: ${error.message}`;}
+    } catch (error) {
+      message.textContent = `Format failed, draft unchanged: ${String(error.message).split('\n')[0]}`;
+      editor.focus();
+    }
   }
   function syntaxForLine(line) {
     const value = textContent();
@@ -202,12 +211,14 @@ export function mountCodeEditor(host, callbacks = {}) {
     if (!state.undo.length) return;
     state.redo.push(snapshot());
     restore(state.undo.pop());
+    message.textContent = 'Undid the last change.';
   }
 
   function redo() {
     if (!state.redo.length) return;
     state.undo.push(snapshot());
     restore(state.redo.pop());
+    message.textContent = 'Redid the change.';
   }
 
   function textContent() {
@@ -218,6 +229,21 @@ export function mountCodeEditor(host, callbacks = {}) {
     event.preventDefault();
     const text = (event.clipboardData?.getData('text/plain') || '').replace(/\r\n?/g, '\n');
     if (text) insertText(text);
+  }
+
+  function onCopy(event) {
+    const text = selectedText();
+    if (!text) return;
+    event.preventDefault();
+    event.clipboardData?.setData('text/plain', text);
+  }
+
+  function onCut(event) {
+    const text = selectedText();
+    if (!text) return;
+    event.preventDefault();
+    event.clipboardData?.setData('text/plain', text);
+    removeSelection();
   }
 
   function onKeyDown(event) {
@@ -270,21 +296,8 @@ export function mountCodeEditor(host, callbacks = {}) {
         selectAll();
         return;
       }
-      if (key === 'c') {
-        event.preventDefault();
-        copySelection();
-        return;
-      }
-      if (key === 'x') {
-        event.preventDefault();
-        cutSelection();
-        return;
-      }
-      if (key === 'v') {
-        event.preventDefault();
-        pasteFromClipboard();
-        return;
-      }
+      // Copy, cut and paste arrive through the browser's own clipboard events.
+      if (key === 'c' || key === 'x' || key === 'v') return;
     }
 
     const navKeys = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'];
@@ -311,7 +324,7 @@ export function mountCodeEditor(host, callbacks = {}) {
     if (event.key === 'Tab') {
       if (leaveOnNextTab) { leaveOnNextTab = false; return; }
       event.preventDefault();
-      if (!collapsedSelection() && selectionRange().start.line !== selectionRange().end.line) indentSelectedLines(event.shiftKey);
+      if (!collapsedSelection()) indentSelectedLines(event.shiftKey);
       else if (event.shiftKey) outdentCurrentLine();
       else insertText('  ');
       return;
@@ -476,35 +489,8 @@ export function mountCodeEditor(host, callbacks = {}) {
     return parts.join('\n');
   }
 
-  async function writeClipboard(text) {
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(text);
-    }
-    window.__patchpadClipboard = text;
-  }
-
-  async function readClipboard() {
-    try {
-      if (navigator.clipboard?.readText) {
-        const text = await navigator.clipboard.readText();
-        return text;
-      }
-    } catch {
-
-    }
-    return window.__patchpadClipboard || '';
-  }
-
-  async function copySelection() {
-    const text = selectedText();
-    if (!text) return;
-    await writeClipboard(text);
-  }
-
-  async function cutSelection() {
-    const text = selectedText();
-    if (!text) return;
-    await writeClipboard(text);
+  function removeSelection() {
+    if (collapsedSelection()) return;
     pushUndo();
     const { start, end } = selectionRange();
     state.caret = replaceRange(start, end, '');
@@ -514,11 +500,6 @@ export function mountCodeEditor(host, callbacks = {}) {
     markDirty();
     recomputeMatches();
     render();
-  }
-
-  async function pasteFromClipboard() {
-    const text = (await readClipboard()).replace(/\r\n?/g, '\n');
-    if (text) insertText(text);
   }
 
   function pointToPosition(event) {
@@ -568,6 +549,7 @@ export function mountCodeEditor(host, callbacks = {}) {
 
   function insertText(text) {
     if (!text) return;
+    message.textContent = '';
     const replacingSelection = state.selection && !collapsedSelection();
     const canGroupTyping = text.length === 1 && !state.selection;
     if (canGroupTyping) {
@@ -592,14 +574,20 @@ export function mountCodeEditor(host, callbacks = {}) {
         .map(normalizePos)
         .sort(comparePos)
         .filter((pos, index, arr) => index === 0 || !samePos(pos, arr[index - 1]));
-      const advancedCarets = [];
-      for (const pos of [...carets].sort((a, b) => comparePos(b, a))) {
-        replaceRange(pos, pos, text);
-        advancedCarets.push(advancePosition(pos, text));
-      }
-      const orderedAdvanced = advancedCarets.sort(comparePos);
-      state.caret = orderedAdvanced[0];
-      state.extraCarets = orderedAdvanced.slice(1);
+      // Work on document offsets so carets sharing a line keep their own text.
+      const offsets = carets.map(positionToIndex);
+      const source = textContent();
+      let output = '';
+      let consumed = 0;
+      offsets.forEach((offset) => {
+        output += source.slice(consumed, offset) + text;
+        consumed = offset;
+      });
+      output += source.slice(consumed);
+      state.lines = output.split('\n');
+      const moved = offsets.map((offset, index) => indexToPosition(offset + (index + 1) * text.length));
+      state.caret = moved[0];
+      state.extraCarets = moved.slice(1);
     } else {
       const next = replaceRange(state.caret, state.caret, text);
       state.caret = next;
@@ -970,64 +958,93 @@ export function mountCodeEditor(host, callbacks = {}) {
         from = col + Math.max(q.length, 1);
       }
     }
-    if (state.activeMatch >= state.matches.length) state.activeMatch = -1;
+    // The current match is whichever match the live selection covers exactly.
+    state.activeMatch = -1;
+    if (state.selection && !collapsedSelection()) {
+      const { start, end } = selectionRange();
+      state.activeMatch = state.matches.findIndex((m) =>
+        m.line === start.line && m.col === start.col && m.line === end.line && m.endCol === end.col);
+    }
+  }
+
+  function selectMatch(index) {
+    const match = state.matches[index];
+    state.activeMatch = index;
+    state.selection = {
+      anchor: { line: match.line, col: match.col },
+      head: { line: match.line, col: match.endCol }
+    };
+    state.caret = { line: match.line, col: match.endCol };
+    state.preferredCol = state.caret.col;
+    state.extraCarets = [];
+    state.typingGroup = null;
+  }
+
+  function clearMatchSelection(text) {
+    state.activeMatch = -1;
+    state.selection = null;
+    message.textContent = text;
+    render();
   }
 
   function findNext() {
     state.query = document.getElementById('find-box').value;
     recomputeMatches();
     if (!state.matches.length) {
-      state.activeMatch = -1;
-      state.selection = null;
-      render();
+      clearMatchSelection(state.query ? 'No matches.' : 'Type text to find.');
       return;
     }
-    state.activeMatch = (state.activeMatch + 1) % state.matches.length;
-    const match = state.matches[state.activeMatch];
-    state.selection = {
-      anchor: { line: match.line, col: match.col },
-      head: { line: match.line, col: match.endCol }
-    };
-    state.caret = { line: match.line, col: match.endCol };
-    state.extraCarets = [];
+    const from = state.selection && !collapsedSelection() ? selectionRange().end : normalizePos(state.caret);
+    let index = state.matches.findIndex((m) => comparePos({ line: m.line, col: m.col }, from) >= 0);
+    if (index < 0) index = 0;
+    selectMatch(index);
+    message.textContent = `Match ${index + 1} of ${state.matches.length}.`;
     render();
-    scrollCaretIntoView();
   }
 
   function findPrevious() {
     state.query = document.getElementById('find-box').value;
     recomputeMatches();
     if (!state.matches.length) {
-      state.activeMatch = -1;
-      state.selection = null;
-      render();
+      clearMatchSelection(state.query ? 'No matches.' : 'Type text to find.');
       return;
     }
-    state.activeMatch = state.activeMatch <= 0 ? state.matches.length - 1 : state.activeMatch - 1;
-    const match = state.matches[state.activeMatch];
-    state.selection = {
-      anchor: { line: match.line, col: match.col },
-      head: { line: match.line, col: match.endCol }
-    };
-    state.caret = { line: match.line, col: match.endCol };
-    state.extraCarets = [];
+    const from = state.selection && !collapsedSelection() ? selectionRange().start : normalizePos(state.caret);
+    let index = -1;
+    state.matches.forEach((m, i) => {
+      if (comparePos({ line: m.line, col: m.endCol }, from) <= 0) index = i;
+    });
+    if (index < 0) index = state.matches.length - 1;
+    selectMatch(index);
+    message.textContent = `Match ${index + 1} of ${state.matches.length}.`;
     render();
-    scrollCaretIntoView();
   }
 
   function replaceCurrent() {
-    if (!state.matches.length || state.activeMatch < 0) return;
+    state.query = document.getElementById('find-box').value;
+    recomputeMatches();
+    if (!state.matches.length || state.activeMatch < 0) {
+      message.textContent = 'Use Next or Previous to choose a match first.';
+      return;
+    }
     const match = state.matches[state.activeMatch];
     const replacement = document.getElementById('replace-box').value;
     pushUndo();
-    state.caret = replaceRange(
-      { line: match.line, col: match.col },
-      { line: match.line, col: match.endCol },
-      replacement
-    );
+    const start = { line: match.line, col: match.col };
+    const end = replaceRange(start, { line: match.line, col: match.endCol }, replacement);
+    state.caret = end;
+    state.preferredCol = end.col;
     state.selection = null;
+    state.extraCarets = [];
     markDirty();
     recomputeMatches();
+    // Move to the following original match, skipping text that was just inserted.
+    const outside = (m) => comparePos({ line: m.line, col: m.endCol }, start) <= 0 ||
+      comparePos({ line: m.line, col: m.col }, end) >= 0;
+    let next = state.matches.findIndex((m) => comparePos({ line: m.line, col: m.col }, end) >= 0);
+    if (next < 0) next = state.matches.findIndex(outside);
+    if (next >= 0) selectMatch(next);
+    message.textContent = next >= 0 ? 'Replaced one match. The next match is selected.' : 'Replaced one match. No matches remain.';
     render();
   }
 
@@ -1035,16 +1052,22 @@ export function mountCodeEditor(host, callbacks = {}) {
     state.query = document.getElementById('find-box').value;
     const replacement = document.getElementById('replace-box').value;
     recomputeMatches();
-    if (!state.query || !state.matches.length) return;
+    if (!state.query || !state.matches.length) {
+      message.textContent = state.query ? 'No matches to replace.' : 'Type text to find.';
+      return;
+    }
+    const count = state.matches.length;
     pushUndo();
+    // split/join visits each original match once, so inserted text is never rescanned.
     const next = state.lines.map((line) => line.split(state.query).join(replacement));
-    state.lines = next;
+    state.lines = next.join('\n').split('\n');
     state.caret = { line: 0, col: 0 };
+    state.preferredCol = 0;
     state.selection = null;
     state.extraCarets = [];
-    state.activeMatch = -1;
     markDirty();
     recomputeMatches();
+    message.textContent = `Replaced ${count} ${count === 1 ? 'match' : 'matches'}. Undo restores them.`;
     render();
   }
 
@@ -1083,7 +1106,27 @@ export function mountCodeEditor(host, callbacks = {}) {
     }
     editor.replaceChildren(fragment);
     const next = textContent();
+    const caretKey = `${state.caret.line}:${state.caret.col}:${next.length}`;
+    if (caretKey !== lastCaretKey) { lastCaretKey = caretKey; revealCaret(); }
     if (!suppressChange && next !== lastEmitted) { lastEmitted = next; callbacks.onChange?.(next); }
+  }
+
+  // Keep the primary caret inside the visible part of the scrolling editor.
+  function revealCaret() {
+    const caretEl = editor.querySelector('.primary-caret');
+    if (!caretEl) return;
+    const box = editor.getBoundingClientRect();
+    const caretBox = caretEl.getBoundingClientRect();
+    const gutter = editor.querySelector('.gutter')?.getBoundingClientRect().width || 0;
+    const left = box.left + gutter + 8;
+    const right = box.left + editor.clientWidth - 16;
+    if (caretBox.left < left) editor.scrollLeft -= left - caretBox.left;
+    else if (caretBox.right > right) editor.scrollLeft += caretBox.right - right;
+    const rowBox = (caretEl.closest('.line') || caretEl).getBoundingClientRect();
+    const top = box.top;
+    const bottom = box.top + editor.clientHeight;
+    if (rowBox.top < top) editor.scrollTop -= top - rowBox.top;
+    else if (rowBox.bottom > bottom) editor.scrollTop += rowBox.bottom - bottom;
   }
 
   function renderStatus() {
@@ -1098,7 +1141,7 @@ export function mountCodeEditor(host, callbacks = {}) {
     const active = document.activeElement;
     const label = document.getElementById('focus-state');
     if (active === editor) {
-      label.textContent = 'Editing area focused. Escape opens Find.';
+      label.textContent = 'Editing area focused. Escape, then Tab leaves the editor.';
     } else if (active === document.getElementById('find-box')) {
       label.textContent = state.activeMatch >= 0 && !collapsedSelection()
         ? `Find focused. Match ${state.activeMatch + 1} of ${state.matches.length} selected. Escape returns to the editor.`
@@ -1143,11 +1186,11 @@ export function mountCodeEditor(host, callbacks = {}) {
     let html = '';
     for (let i = 0; i < sorted.length; i += 1) {
       const col = sorted[i];
-      for (const caret of caretSet) {
+      caretSet.forEach((caret, caretIndex) => {
         if (caret.line === lineIndex && caret.col === col) {
-          html += `<span class="caret ${caret === state.caret ? '' : 'multi-caret'}"></span>`;
+          html += `<span class="caret ${caretIndex === 0 ? 'primary-caret' : 'multi-caret'}"></span>`;
         }
-      }
+      });
       const next = sorted[i + 1];
       if (next === undefined || next === col) continue;
       const text = line.slice(col, next);
@@ -1176,8 +1219,7 @@ export function mountCodeEditor(host, callbacks = {}) {
   }
 
   function scrollCaretIntoView() {
-    const row = editor.querySelector(`.line[data-line="${state.caret.line}"]`);
-    row?.scrollIntoView({ block: 'nearest' });
+    revealCaret();
   }
 
   function clearMessage() {

@@ -67,7 +67,7 @@ function App() {
     } catch (error) {
       log('error', [error.message]); setStatus('Save failed — your draft is kept');
       if (error.data?.code === 'REVISION_CONFLICT') setConflict({ current: error.data.current, message: error.message });
-    } finally { setSaveBusy(false); }
+    } finally { setSaveBusy(false); editor.current?.focus(); }
   }
   async function loadLatest() {
     if (!record) return;
@@ -126,15 +126,27 @@ function App() {
     if (initialised.current) return; initialised.current = true;
     refresh().catch(error => log('error', [error.message]));
   }, []);
+  // Other tabs share this library. Refresh only the list; the draft, caret and
+  // undo history live in the editor and are never reloaded from here.
+  useEffect(() => {
+    const quiet = () => { refresh().catch(() => {}); };
+    const timer = setInterval(quiet, 2000);
+    addEventListener('focus', quiet); document.addEventListener('visibilitychange', quiet);
+    return () => { clearInterval(timer); removeEventListener('focus', quiet); document.removeEventListener('visibilitychange', quiet); };
+  }, []);
+  const remote = record ? snippets.find(item => item.id === record.id) : null;
+  const newerRevision = remote && remote.revision > record.revision ? remote.revision : null;
+  const draftState = record ? (dirty ? 'Unsaved changes' : 'Saved') : (dirty ? 'Unsaved draft' : 'Nothing to save');
   return h(React.Fragment, null,
     h('header', null, h('div', { className: 'brand' }, h('span', { className: 'mark', 'aria-hidden': true }, '≈'), h('div', null, h('h1', null, 'Colderwater'), h('p', null, 'Experiment. Recover. Keep the history.')), h('span', { className: 'badge' }, 'PLAYGROUND')), h('div', { className: 'toolbar' }, h('span', { className: 'offline' }, '● Local library'))),
     h('div', { className: 'commandbar' }, h('div', null,
-      h('button', { className: 'primary', onClick: run }, 'Run ', h('kbd', null, 'Ctrl ↵')), h('button', { onClick: () => runner.current.stop('Run cancelled') }, 'Stop'), h('label', { className: 'check' }, h('input', { type: 'checkbox', checked: auto, onChange: event => { cancelAuto(); setAuto(event.target.checked); } }), 'Auto-run')),
+      h('button', { className: 'primary', onClick: run }, 'Run ', h('kbd', null, 'Ctrl ↵')), h('button', { onClick: () => runner.current.stop('Run stopped') }, 'Stop')),
       h('span', { className: 'runstatus', role: 'status' }, status, duration !== null ? ` · ${duration.toFixed(1)} ms` : '')),
     h('main', { className: 'workspace', style: { gridTemplateColumns: `minmax(0,${width}fr) 8px minmax(0,${100 - width}fr)` } },
-      h('section', { className: 'editor pane', 'aria-label': 'Editor' }, h('div', { className: 'paneheading' }, h('h2', null, '01 / Editor'), h('span', { className: dirty ? 'dirty' : '' }, `${record ? `Loaded #${record.id} · revision ${record.revision}` : 'New snippet'} · ${dirty ? 'Unsaved changes' : 'Unchanged'}`)),
+      h('section', { className: 'editor pane', 'aria-label': 'Editor' }, h('div', { className: 'paneheading' }, h('h2', null, '01 / Editor'), h('span', { className: dirty ? 'dirty' : '', role: 'status', 'aria-label': 'Draft state' }, `${record ? `Loaded #${record.id} · revision ${record.revision}` : 'New snippet'} · ${draftState}`)),
         h('div', { className: 'filebar' }, h('label', null, 'Title', h('input', { 'aria-label': 'Snippet title', value: title, onChange: event => setTitle(event.target.value) })), h('label', null, 'Filename', h('input', { 'aria-label': 'Filename', value: filename, onChange: event => setFilename(event.target.value) })), h('button', { onClick: () => save(), disabled: saveBusy }, saveBusy ? 'Saving…' : 'Save')),
         conflict && h('div', { className: 'conflict-notice', role: 'alert' }, h('strong', null, 'This snippet changed in another editor.'), h('p', null, 'Your draft is still here. Load the latest saved revision before saving or restoring.'), h('button', { onClick: loadLatest }, 'Reload latest')),
+        newerRevision && !conflict && h('div', { className: 'conflict-notice', role: 'status' }, h('strong', null, `Revision ${newerRevision} of this snippet was saved in another tab.`), h('p', null, 'Your draft is kept and nothing was loaded over it. Load the latest revision when you are ready.'), h('button', { onClick: loadLatest }, 'Load latest revision')),
         recoveryDraft && !conflict && h('div', { className: 'draft-notice' }, 'Your previous draft is available.', h('button', { onClick: () => { setCode(recoveryDraft.code); setFilename(recoveryDraft.filename); setTitle(recoveryDraft.title); setRecoveryDraft(null); setStatus('Previous draft restored over the loaded revision — review, then Save'); } }, 'Restore previous draft')),
         h('div', { ref: editorHost, className: 'codehost' }),
         h('div', { className: 'library' }, h('div', { className: 'paneheading' }, h('h3', null, 'Saved snippets ', h('span', null, snippets.length)), h('div', { className: 'tools' }, h('button', { onClick: newSnippet }, 'New'))),

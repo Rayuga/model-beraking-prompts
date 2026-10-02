@@ -1,3 +1,17 @@
+# Current Colderwater status, 2 October 2026 (strict candidate)
+
+Branch `task/colderwater-editor-strict`. The task was hardened to bring GPT-5.6 Luna
+into the 0.10-0.70 band (the 1 October candidate scored Oracle 1.0, Luna 0.8564).
+See [strict candidate notes](repairs/coldwater-2026-10-02-strict/STRICT_CANDIDATE.md).
+Criteria: 1 render gate, 2 constraints gates, 38 Functional (weight 54), 6 Polish, 3 Visual.
+The scripted golden passes all 3 gate, 38 Functional and 6 Polish checks with a real
+process restart. **Not cleared:** no configured judge, Oracle or Luna measurement
+exists for these bytes, and the QC round for them is recorded separately under `qc/runs/`.
+
+Everything below is historical and does not clear the current candidate.
+
+---
+
 # Current Colderwater status, 1 October 2026
 
 The test candidate ZIP at
