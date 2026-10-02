@@ -59,6 +59,9 @@ const { assert } = t;
     await t.setSource(page, 'throw new Error("visible-problem");'); await t.run(page);
     assert.match(await t.status(page), /Error/); assert.match(await t.consoleText(page), /visible-problem/);
     await save.click(); await t.sleep(600); assert.match(await t.status(page), /Saved/);
+    await t.setSource(page, 'const a=1;const b=2;');
+    await page.getByRole('button', { name: 'Format document' }).click(); await t.sleep(300);
+    assert.match(await page.locator('#editor-message').innerText(), /formatted/i);
   });
 
   await check('cw_focus_returns_to_code', async () => {

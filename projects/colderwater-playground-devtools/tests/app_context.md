@@ -16,6 +16,8 @@ One workspace at /. It shows title and filename fields, the code editor with its
 ## Notes for grading
 
 - The editor is the app's own surface, not a form field. Enter text with real key presses, or by pasting with the usual shortcut. Read the current source from the rendered editor lines and check it equals your fixture before acting on it.
+- Real input includes driving the real mouse and keyboard at coordinates you choose, for example a triple click or a modifier-click at a character position, through the browser tool. That is not script use. Dispatching synthetic DOM events or calling the app's own functions is never allowed.
+- Characters that cannot be produced by a single key press, such as an emoji or a letter followed by a combining accent, may be typed into an ordinary field such as Find, copied from there with the usual shortcut and pasted into the editor.
 - A selection can be confirmed by copying it with the usual shortcut and pasting it into an ordinary field such as Find, or by reading the highlighted text.
 - Use fresh scratch drafts for editor checks. The app may ask for confirmation before discarding an unsaved draft; accepting that dialog is normal.
 - Saved records are identified by the server, not by title, and the library may already hold records from earlier checks. Do not assume an empty library and do not delete records that earlier checks created.
