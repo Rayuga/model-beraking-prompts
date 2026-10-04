@@ -64,3 +64,12 @@ The 1 October candidate scored Oracle 1.0 and GPT-5.6 Luna 0.8564, above the 0.1
 - Round r16 on the fixed bytes: 49 Pass, 0 Fail, 3 Note, 1 Not exercised; deterministic 37 Pass, 0 Fail. Pipeline status stays BLOCKED only for the missing configured judge run (portal).
 - Final candidate: v9, `deliverables/colderwater-playground-devtools/strict-candidate-2026-10-02-v9`, SHA256 `f021d71e…220d91`. Scripted golden 52 of 52 after the round. v4 to v8 superseded.
 - Working copy: the main folder was switched to `task/hireops-live-desk` by another session on 2 October, so Colderwater work continues in the git worktree `F:/Documents/turing-workspace/cw-strict-worktree` (branch `task/colderwater-editor-strict`).
+
+## Where to pick up (written 4 October 2026)
+
+- Upload candidate: v10, `F:/Documents/turing-workspace/cw-strict-worktree/deliverables/colderwater-playground-devtools/strict-candidate-2026-10-02-v10/colderwater-playground-devtools.zip`, SHA256 `4b8147d1d42261cd4340d6a897ec057d325a5b3cde75c1b807e9f56f7c763dc1` (commit 5d68d1b9). v10 = v9 plus four wording tidy-ups; no golden code change. Scripted golden 52 of 52 on v10. No review round on v10 itself; r16 on v9 had 0 failing rows.
+- Criteria: 1 render gate, 2 constraints gates, 43 Functional (59.0), 6 Polish, 3 Visual. Judge prompts carry the check-only rule.
+- Expected, not measured: Oracle about 0.97 to 1.0 (visual ratings and two four-second Stop windows are the only soft spots); Luna roughly 0.3 to 0.55, could exceed 0.70 if its editor and Run both work well, or score 0 if it uses a textarea or its Save fails.
+- Portal tries: 3 left before uploading v10.
+- Next steps: when the portal run finishes, export Oracle and Luna, read `reward-details.json` and Luna's trajectory and app, then decide whether to make it harder or easier. Do not change anything before reading the result.
+- Working copy: do Colderwater work in the worktree above (branch `task/colderwater-editor-strict`); the main folder is on `task/hireops-live-desk` for the HireOps session.
