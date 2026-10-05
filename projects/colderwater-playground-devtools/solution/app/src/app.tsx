@@ -45,7 +45,7 @@ function App() {
   function log(level, values) { setEntries(previous => [...previous.slice(-999), { level, values, id: crypto.randomUUID() }]); }
   function setRunStatus(next, time) { setStatus(next); setDuration(time); }
   function cancelAuto() { clearTimeout(autoTimer.current); autoTimer.current = null; }
-  function run() { cancelAuto(); runner.current?.run(current.current.code, current.current.filename); }
+  function run() { cancelAuto(); runner.current?.run(current.current.code, current.current.filename); editor.current?.focus(); }
   function clear() { following.current = true; setEntries([]); }
   const discardAllowed = () => !current.current.dirty || confirm('Discard unsaved changes?');
   async function refresh() { const list = await api('/api/snippets'); setSnippets(list); return list; }

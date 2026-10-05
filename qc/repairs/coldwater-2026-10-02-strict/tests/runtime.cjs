@@ -166,8 +166,10 @@ const { assert } = t;
     const oldDraft = 'setTimeout(() => { document.body.textContent = "old-marker"; console.log("old-marker"); }, 4000);';
     await runSource('old.js', oldDraft.replaceAll('old-marker', 'ctl-marker'), 4800);
     assert.equal(await body().innerText(), 'ctl-marker'); assert.match(await t.consoleText(page), /ctl-marker/);
-    await runSource('old.js', oldDraft, 500);
-    await t.setSource(page, 'document.body.textContent = "new-marker"; console.log("new-marker");');
+    await runSource('old.js', oldDraft, 300);
+    // Straight after Run the code area has focus, so select-all and typing replace the draft.
+    await page.keyboard.press('ControlOrMeta+A'); await page.keyboard.type('document.body.textContent = "new-marker"; console.log("new-marker");');
+    assert.equal(await t.source(page), 'document.body.textContent = "new-marker"; console.log("new-marker");');
     await t.run(page);
     assert.equal(await body().innerText(), 'new-marker'); assert.match(await t.consoleText(page), /new-marker/);
     await t.sleep(8000);

@@ -40373,6 +40373,7 @@ function App() {
   function run() {
     cancelAuto();
     runner.current?.run(current2.current.code, current2.current.filename);
+    editor.current?.focus();
   }
   function clear() {
     following.current = true;
