@@ -140,6 +140,19 @@ const { assert } = t;
   await page.getByRole('button', { name: /^Revision 1/ }).click(); await t.sleep(300);
   await page.screenshot({ path: '/state/golden-1440-history.png' });
 
+  // Layout proxy for the visual check: with several revisions and one selected, the
+  // revision details and Restore stay reachable by scrolling the library with the wheel.
+  await check('cw_visual_workspace_layout', async () => {
+    for (let i = 2; i <= 6; i++) { await t.setSource(page, '// revision ' + i); await page.getByRole('button', { name: 'Save', exact: true }).click(); await t.sleep(500); }
+    await page.getByRole('button', { name: /^Revision 1/ }).click(); await t.sleep(300);
+    const lib = page.locator('.library'); await page.getByRole('heading', { name: 'Revision history' }).hover(); await page.mouse.wheel(0, 900); await t.sleep(300);
+    const box = await page.getByRole('button', { name: 'Restore selected revision' }).boundingBox();
+    const area = await lib.boundingBox();
+    assert.ok(box && area, 'restore button and library present');
+    assert.ok(box.y >= area.y - 1 && box.y + box.height <= area.y + area.height + 1 && box.y + box.height <= 900, 'restore reachable by wheel inside the library: ' + JSON.stringify({ box, area }));
+    await page.screenshot({ path: '/state/golden-1440-history-scrolled.png' });
+  });
+
   t.report('polish', results, page);
   const failed = Object.entries(results).filter(([, value]) => value !== true);
   await browser.close();
