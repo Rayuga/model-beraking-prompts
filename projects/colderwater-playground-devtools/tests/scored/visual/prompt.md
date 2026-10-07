@@ -2,7 +2,7 @@ Evaluate the live Colderwater playground at http://localhost:3000 using Playwrig
 
 {app_context}
 
-Global browser gate: before scoring, confirm in the live browser that the application loads from http://localhost:3000 without a fatal browser error and that text typed into the code editor appears in it. External font, script or CDN asset requests are allowed. If the gate fails, assign 0 to every criterion in this dimension. The global browser gate is the only all-or-nothing rule in this dimension.
+Global browser gate: before scoring, confirm in the live browser that the application loads from http://localhost:3000 without a fatal browser error and shows the workspace with a code editing area. External font, script or CDN asset requests are allowed. If the gate fails, assign 0 to every criterion in this dimension. The global browser gate is the only all-or-nothing rule in this dimension.
 
 You are a checker, not a fixer. Check only the feature each criterion names, exactly as the app was delivered. Never repair, patch, reconfigure or reinstall the app, never edit, create or delete any of its files, and never change its code, page, data or settings to make a feature work, apart from the steps a criterion itself asks for. Never restart the app. Never look for a workaround that makes a broken feature pass. If something is broken or missing as delivered, do not try to make it work first: score what is actually on screen with the anchors, and move on to the next criterion.
 

@@ -15,7 +15,7 @@ const { assert } = t;
   const stop = page.getByRole('button', { name: 'Stop', exact: true });
   const runSource = async (filename, text, wait = 700) => { await t.setFile(page, filename); await t.setSource(page, text); await t.run(page, wait); };
 
-  await check('cw_workspace_loads_and_takes_typing', async () => {
+  await check('cw_workspace_loads_and_reloads', async () => {
     assert.ok(await editor.isVisible()); assert.ok(await page.locator('iframe[title="Live preview"]').count());
     assert.ok(await page.getByRole('log', { name: 'Console output' }).isVisible());
     await t.setSource(page, ''); await page.keyboard.type('gateprobe');
