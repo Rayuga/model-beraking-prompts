@@ -1,0 +1,40 @@
+{
+  "number": 46,
+  "id": "tests_and_key_are_out_of_agent_reach",
+  "reviewer": "row-reviewer-46",
+  "input_sha256": "62b67c0517689833807fe690bec0bb6d251f744264d2ef6e0ae6f181ae9f7826",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    "qc/runs/hireops-workspace-2026-10-03-r2/per-row-review/prompts/46.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/rules/WebDev Rubrics QC.xlsx: 'Quality Checks' row 46 (E - tests/, tests_and_key_are_out_of_agent_reach: 'The agent can't read the criteria it's graded on or influence the reward - grading is isolated in the verifier.'), 'Internal Quality Checks' row 46 (same text, no extra annotation), related rows 9, 15, 16, 22 and deterministic rows check-assets-referenced.py, check-verifier-contract.py, check-runtime-deps-in-both-images.py",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/rules/harbor-webdev-rubric-qc/references/quality-checks.md: '### 46 · tests_and_key_are_out_of_agent_reach' (agent image ships no criteria, no judge client, no RewardKit, no readable rubric copy; grading isolated in the verifier image)",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (closed file list, test.sh flow, tools/)",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/rules/projects/webdev-task-template/{environment/Dockerfile, tests/Dockerfile, tests/.dockerignore, tests/test.sh, tests/tools/score.py, tests/tools/restart_mcp.py} (diffed against task)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/task/task.toml",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/task/environment/Dockerfile",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/task/environment/instructions/integration.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/task/environment/instructions/hireops_rules.md (opening sections read; whole file scanned for grading terms and 12-gram overlap with all criteria)",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/task/environment/assets/ (listing; seed_data.json only)",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/task/instruction.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/task/solution/solve.sh",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/task/tests/Dockerfile",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/task/tests/.dockerignore",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/task/tests/test.sh",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/task/tests/tools/score.py (policy path and reward writes)",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/task/tests/gates/render/judge.toml (judge block) and all tests/*/*/judge.toml criteria descriptions (55, parsed programmatically)",
+    "qc/runs/hireops-workspace-2026-10-03-r2/raw-evidence-index.json (6 artifact hashes recomputed: all match)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Agent side: task.toml sets [verifier] environment_mode = \"separate\", so the verifier is a different image/container. The agent image (task/environment/Dockerfile) installs only node:22 + git/procps/sqlite3 and express@5.1.0, better-sqlite3@12.4.1, and copies only 'COPY instructions/ /instructions/' and 'COPY assets/ /assets/'. No tests/, solution/, judge CLI (claude-code/codex), Playwright MCP or harbor-rewardkit is present in the agent image. environment/instructions holds only hireops_rules.md and integration.md; environment/assets holds only seed_data.json. A grep of environment/ and instruction.md for criteri|rubric|judge|reward|grader|scor returned nothing, and a 12-word-ngram overlap check between all 55 criterion descriptions in tests/*/*/judge.toml and instruction.md + hireops_rules.md found 0 verbatim overlaps, so the rubric is not reproduced in the agent's world (the brief states public product requirements, which is intended). Verifier side: criteria, prompts, scoring.toml and score.py exist only in tests/, copied by tests/Dockerfile 'COPY . /tests' then 'RUN chmod +x /tests/test.sh && chmod -R go-rwx /tests'; test.sh:12 repeats 'chmod -R go-rwx /tests', test.sh:3 'umask 077', test.sh:11 'chmod 700 \"$LOG_DIR\"'. The submitted app is started at test.sh:104-111 with 'setsid env -i ... setpriv --reuid=65534 --regid=65534 --clear-groups node \"$APP_ENTRY\"', i.e. as nobody with a scrubbed environment (no ANTHROPIC_AUTH_TOKEN/REWARDKIT vars), so it cannot read /tests (root-only), cannot write $LOG_DIR/reward.txt or reward.json (700 root), and cannot tamper with $LOG_DIR/app-restart.sh (root-owned inside the 700 dir) that the judge's restart MCP invokes. test.sh:60 writes a zero reward first and cleanup/ensure_reward keeps it on every exit; final reward is computed by root-run score.py (test.sh:217,227) from RewardKit outputs, not from anything the app writes. Submission-to-verifier transfer: test.sh:72-83 rejects any symlink in /app except ones under /app/node_modules resolving inside it, preventing link tricks toward /tests or /logs before the root chown/cp at lines 85-95. All of tests/test.sh, tests/Dockerfile, tests/.dockerignore, environment/Dockerfile, tests/tools/score.py and tests/tools/restart_mcp.py are byte-identical (CRLF-normalised diff) to the frozen template, so isolation is template-controlled and unchanged by this task. Raw-evidence index (hashes verified) records the scripted golden ran in the verifier image as uid 65534, consistent with the privilege drop, though it is not a configured judge run.\n\nAdversarial probes: (1) Broken app that could pass by reading criteria: at agent time no criteria exist in its container; at grade time it runs as uid 65534 with /tests mode go-rwx, so it cannot open judge.toml/prompt.md. (2) Broken app that writes reward.txt=1.0: $LOG_DIR is 0700 root, write fails; test.sh/score.py overwrite reward anyway. (3) App that ships a symlink /app/x -> /logs/verifier/reward.txt hoping root cp/chown follows it: test.sh:72-83 exits with zero reward. (4) Conforming alternative that could fail due to this isolation: an app needing to write its DB works because /app (or the /tmp/submission copy) is chowned to 65534 and DB_PATH passed; nothing in the isolation penalises a conforming app.\n\nLatent, unmeasured P3 note (not a defect, template-controlled): /proc is not mounted hidepid, so the nobody-run app could read world-readable /proc/<pid>/cmdline of root processes during grading; if RewardKit passes the judge prompt (with criteria) as a CLI argument to claude-code, criteria text would be visible to the running app. RewardKit 0.1.7 source is not in the workspace, so this was not verified; it would require a deliberately adversarial submission and affects every template task equally. Prompt injection via UI content is row 45's scope, not this row.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

@@ -1,0 +1,34 @@
+{
+  "number": 15,
+  "id": "dockerfile_builds_the_declared_world",
+  "reviewer": "row-reviewer-15",
+  "input_sha256": "62b67c0517689833807fe690bec0bb6d251f744264d2ef6e0ae6f181ae9f7826",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r2/rules/WebDev Rubrics QC.xlsx: 'Quality Checks' row 16 (#15, block 'C - environment/ (assets & agent image)', C16 dockerfile_builds_the_declared_world, D16 'Agent image is pinned, pre-installs every runtime dependency (no run-time install), and stages the assets.'); 'Internal Quality Checks' row 16 (same text, no extra annotation columns populated for this row); 'Deterministic Checks' A9-A11/C9-C12 and C32 for the related Dockerfile checkers (read for context only)",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/rules/harbor-webdev-rubric-qc/SKILL.md (full)",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/rules/harbor-webdev-rubric-qc/references/quality-checks.md:66-68 (### 15 Verify/Defect)",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (full)",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md:22-27,60-62",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/rules/projects/webdev-task-template/environment/Dockerfile, task.toml, environment/instructions/integration.md, tests/Dockerfile, tests/test.sh (diffed)",
+    "qc/REVIEW_POLICY.md (full)",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/task/environment/Dockerfile (full)",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/task/environment/instructions/integration.md (full)",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/task/environment/assets/seed_data.json (parse + hash)",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/task/task.toml (full)",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/task/tests/Dockerfile (full)",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/task/solution/solve.sh (full), solution/app/package.json (full), all require() calls in solution/app/server.js and solution/app/src/*.js",
+    "qc/runs/hireops-workspace-2026-10-03-r2/raw-evidence-index.json (entries and hashes verified)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Agent Dockerfile (task/environment/Dockerfile, sha256 0a75419e...d1) is byte-identical to the frozen template rules/projects/webdev-task-template/environment/Dockerfile (same sha256), i.e. template-controlled. Pinning: line 1 'FROM node:22-bookworm-slim' (tag-pinned major/distro, as in the template; no digest, which the template does not use either); lines 9-11 'npm install -g --no-audit --no-fund express@5.1.0 better-sqlite3@12.4.1' (exact versions); apt packages at line 5-6 unpinned, which deterministic-checks.md/workbook C11 classify as a NOTE, not a defect. Runtime deps: line 3 'ENV NODE_PATH=/usr/local/lib/node_modules' matches the global npm root; the golden's only non-builtin requires are 'express' (src/index.js:18) and 'better-sqlite3' (src/db.js:7), and package.json:13-16 pins exactly express 5.1.0 / better-sqlite3 12.4.1, so the golden needs no run-time install; solve.sh only copies files and resets the DB (no npm/apt). integration.md:3-5 tells agents these two packages are available via NODE_PATH, consistent with the image. Verifier image tests/Dockerfile:16-22 installs the same two pinned packages with the same NODE_PATH, so the app can start at grade time without network. Staging: line 14 'COPY instructions/ /instructions/', line 15 'COPY assets/ /assets/', line 16 'chmod -R a+rX /instructions /assets', lines 17-23 create /app, git init, commit only .gitkeep; WORKDIR /app. No COPY of solution/ or tests/. environment/assets/seed_data.json parses and is byte-identical (a1c65c80...40) to solution/app/src/seed_data.json; task.toml:2 declares artifacts ['/app','/assets'] so the staged assets travel to the separate verifier. No [environment].docker_image shadows the Dockerfile. Adversarial probes: (a) a broken app that depends on an unlisted package (e.g. ws) would not be rescued by this image; that is fair because integration.md:4 restricts to Express/better-sqlite3/built-ins and the network is public for agent-time installs into /app/node_modules (allowed by integration.md:16-19); (b) a conforming app that reads /assets/seed_data.json instead of a private copy is supported because /assets is staged and declared as an artifact. Limitation: the agent image build itself was not executed in this round; the raw-evidence index (hashes verified, all 6 entries match) covers only scripted golden runs in the verifier image hireops-verifier:20261002-permission-repair, not an agent-image build. Because the Dockerfile is byte-identical to the template, this is a template-level build fact rather than a task-specific unmeasured risk.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

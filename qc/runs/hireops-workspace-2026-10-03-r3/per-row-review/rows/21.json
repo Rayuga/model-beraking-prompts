@@ -1,0 +1,35 @@
+{
+  "number": 21,
+  "id": "verifier_entrypoint_is_safe_and_always_scores",
+  "reviewer": "row-reviewer-21",
+  "input_sha256": "f53d9ed60d12f2a653d497dc98fac56a662e0d84393cdc5ff130c8a915d956db",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r3/rules/WebDev Rubrics QC.xlsx: Quality Checks row 22 (#21, 'test.sh launches the app safely, gates on liveness, runs the gates suite before the scored suite with tools/score.py after each, and writes a reward on every code path (including failures).'); Internal Quality Checks row 22 (#21, no internal annotation beyond the shorter description); Deterministic Checks rows for check-verifier-contract.py, check-scoring-policy.py, check-required-files.py (context only); no cell comments in the workbook",
+    ".qc-cache/hireops-workspace-2026-10-03-r3/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r3/rules/harbor-webdev-rubric-qc/references/quality-checks.md section 21",
+    ".qc-cache/hireops-workspace-2026-10-03-r3/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (whole; test.sh ordered contract lines 98-111)",
+    ".qc-cache/hireops-workspace-2026-10-03-r3/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md lines 38-50 (verifier-contract / scoring-policy recipes, exec rule)",
+    ".qc-cache/hireops-workspace-2026-10-03-r3/rules/projects/webdev-task-template/tests/{test.sh,tools/score.py,tools/restart_mcp.py,Dockerfile,scoring.toml} (diffed against task)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r3/task/tests/test.sh (all 227 lines)",
+    ".qc-cache/hireops-workspace-2026-10-03-r3/task/tests/tools/score.py",
+    ".qc-cache/hireops-workspace-2026-10-03-r3/task/tests/scoring.toml",
+    ".qc-cache/hireops-workspace-2026-10-03-r3/task/tests/*/*/judge.toml (timeouts, restart helper arg)",
+    ".qc-cache/hireops-workspace-2026-10-03-r3/task/task.toml",
+    ".qc-cache/hireops-workspace-2026-10-03-r3/task/solution/solve.sh (head)",
+    ".qc-cache/hireops-workspace-2026-10-03-r3/task/instruction.md and environment/instructions/{integration.md,hireops_rules.md} (launch-contract lines only)",
+    "qc/runs/hireops-workspace-2026-10-03-r3/raw-evidence-index.json and manifest.json (input hash)"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "SOURCE: task/tests/test.sh is byte-identical to the frozen template test.sh (sha256 bd68259276ca4b034654efc8a1723a4e702ed62dbe590af6201565f43eabe5aa for both; `diff` empty); score.py, restart_mcp.py, tests/Dockerfile and scoring.toml are also identical to the template. Against the staged-task-contract ordered list: (1) write_zero_reward at test.sh:60 then `trap cleanup EXIT` at :61, cleanup calls ensure_reward (:20-23,:33-40); zero record (:8) carries reward, all five dimensions, gates_passed, floors_passed, weighted_score, graded, no_op. No shell exec (`grep -nE '^\\s*exec\\s'` empty; only `find ... -exec chmod` at :86). `bash -n` OK, LF only, #!/bin/bash shebang. (2) refuses missing /app/server.js (:68-70) and any symlink outside /app/node_modules or whose readlink -f target escapes it (:72-83). (3) copies /app to /tmp/submission (:90-95), launches via `setsid env -i PATH NODE_PATH HOME PORT DB_PATH setpriv --reuid=65534 --regid=65534 --clear-groups node` (:104-111); /tests made go-rwx (:12), LOG_DIR 700 with umask 077. (4) liveness probe /api/health then / for up to 120x0.25s before RewardKit, exit 0 (zero reward) if not ready (:115-125). (5) restart helper heredoc+sed, chmod 755, `export APP_RESTART_HELPER` (:127-193), referenced by scored/functional/judge.toml:18. (6) {app_context} substitution (:195-201); app_context.md is 1658 bytes and all five prompts contain the placeholder. (7) gates suite (budget 1500) then score.py: 0 continue, 1 exit keeping detailed record, else write_zero_reward (:212-222). (8) scored suite (11100) then score.py || write_zero_reward (:224-227). Budgets nest: gates judges 600+600 serial (--max-concurrent-agent 1) < 1500; scored 9000+900+900=10800 < 11100; 1500+11100=12600 < verifier 13200. Every exit path leaves a reward: after gates pass, score.py has already written reward 0.0 (floors_passed false while scored absent), so a scored-suite timeout or outer kill still yields 0. LOCAL EXECUTION (Git Bash, no Docker, evidence/21/): ran frozen test.sh with REWARDKIT_* unset -> exit 0, reward.txt 0.0, full zero reward.json, ctrf.json (evidence/21/path-missing-judge-env); with REWARDKIT_* set and no /app -> exit 0, same zero files (evidence/21/path-missing-app). Ran frozen score.py on synthetic suite outputs (evidence/21/score-py/): no gates reward.json -> exit 2 (test.sh then writes plain zero); render 0 -> exit 1, reward 0.0000; gates pass + no scored -> exit 0, 0.0000; gates pass + functional .8/polish .5/visual .5 -> 0.6800; functional 0 (floor) -> 0.0000; functional 1.5 -> exit 2. Instruction side: integration.md:5-10 states /app/server.js, port 3000, DB_PATH, and that GET /api/health answers before database work can block startup; integration.md:17-18 discloses the node_modules symlink rule; hireops_rules.md:200-201 lists the sanitized env vars. ADVERSARIAL: a broken app answering HTTP 500/404 on every route passes the liveness probe (HTTPError counts as alive, :51-52) but that only admits it to the binary render/constraints gates, which zero it; not a test.sh scoring hole. A conforming app that is slow to start (>30s) would be zeroed as no_op, but the brief requires /api/health to answer before DB work, so this is disclosed. RISK REASON: no full configured verifier run of this candidate exists (raw-evidence-index.json scope: 'Full configured grading/workload, reward discrimination/ranking and Oracle/target scores are absent'; the scripted golden run did not go through test.sh). The launch-under-setpriv, liveness, restart-helper and two-suite RewardKit paths are therefore verified by source and template identity only; REVIEW_POLICY requires a hash-bound full verifier launch/grading record before clearance.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL - early zero-reward exit paths of the frozen test.sh and all score.py branches were executed locally (evidence/21/); the app launch, liveness gate, gates/scored RewardKit suites and restart helper were NOT EXERCISED for this candidate"
+}

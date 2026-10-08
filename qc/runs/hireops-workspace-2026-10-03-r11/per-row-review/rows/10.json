@@ -1,0 +1,30 @@
+{
+  "number": 10,
+  "id": "verifier_is_isolated_pinned_and_credentialed",
+  "reviewer": "row-reviewer-10",
+  "input_sha256": "4bd1eea4300538bac22f9b8dcda9da2275fa78d20f45231f132076233ce1bf9f",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r11/rules/WebDev Rubrics QC.xlsx (openpyxl read_only, in memory): Quality Checks row #10 verifier_is_isolated_pinned_and_credentialed; Internal Quality Checks row #10 ('pinned image + allowlist, judge model and API key fully wired'); Deterministic Checks check-canonical-shared-files.py, check-dockerfiles.py, check-rubric-schema.py, check-pip-pinning.sh; related quality rows 22 and 47",
+    ".qc-cache/hireops-workspace-2026-10-03-r11/rules/harbor-webdev-rubric-qc/assets/WebDev_Rubrics_QC.xlsx: Quality row 10 and check-dockerfiles.py text identical to the rules workbook",
+    ".qc-cache/hireops-workspace-2026-10-03-r11/rules/harbor-webdev-rubric-qc/SKILL.md (full; Delivery profile)",
+    ".qc-cache/hireops-workspace-2026-10-03-r11/rules/harbor-webdev-rubric-qc/references/quality-checks.md (A-B blocks incl. section 10)",
+    ".qc-cache/hireops-workspace-2026-10-03-r11/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (full)",
+    ".qc-cache/hireops-workspace-2026-10-03-r11/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (overrides, canonical/rubric-schema/dockerfiles sections)",
+    ".qc-cache/hireops-workspace-2026-10-03-r11/rules/projects/webdev-task-template/task.toml, tests/Dockerfile, tests/test.sh, tests/tools/*, tests/.dockerignore, all five template judge.toml/prompt.md",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r11/task/task.toml, task/tests/Dockerfile, task/tests/test.sh, all five task/tests/*/*/judge.toml",
+    "qc/runs/hireops-workspace-2026-10-03-r11/manifest.json (input hashes), raw-evidence-index.json (scope statement)"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "Isolation: task/task.toml:26-28 '[verifier] timeout_sec = 13200.0 / environment_mode = \"separate\"'; [verifier.environment] network_mode = \"public\" (line 37-38), which the workbook row says needs no allowlist (the Internal sheet's older '+ allowlist' wording is superseded by the public-network Quality row and SKILL.md Delivery profile). Credential block: task/task.toml:30-35 is REWARDKIT_JUDGE=\"claude-code\", REWARDKIT_MODEL=\"z-ai/glm-5.3-flashx\", ANTHROPIC_BASE_URL=\"https://openrouter.ai/api\", ANTHROPIC_AUTH_TOKEN=\"${OPENROUTER_API_KEY}\", ANTHROPIC_API_KEY=\"\". Python byte comparison: the text from '[verifier]' to EOF is identical to the frozen template task.toml and to staged-task-contract.md:62-75; no CRLF; tomllib shows no extra env keys; no docker_image, no allow_internet. Judge files: tomllib parse of all five task/tests/{gates/render,gates/constraints,scored/functional,scored/polish,scored/visual}/judge.toml [judge] tables gives only judge='claude-code', mode, timeout, isolated, prompt_template (+mcp_servers); no model/reasoning_effort/temperature/weight; grep of tests/*.toml for model/OPENROUTER/ANTHROPIC finds none. Fallback 'claude-code' matches REWARDKIT_JUDGE. test.sh:63-66 refuses to grade (zero reward) if REWARDKIT_JUDGE/MODEL missing, so the model comes only from [verifier.env]. Pinned verifier image: task/tests/Dockerfile (sha256 72998ab8..., byte-identical to template tests/Dockerfile and to manifest input hash) uses tagged bases node:22-bookworm-slim and python:3.12-slim, npm @anthropic-ai/claude-code@2.1.281, @openai/codex@0.151.0, @playwright/mcp@0.0.79, express@5.1.0, better-sqlite3@12.4.1, pip harbor-rewardkit==0.1.7; Chromium installed through the pinned @playwright/mcp's bundled playwright CLI; apt unpinned (NOTE per check-dockerfiles.py). COPY . /tests with chmod go-rwx. task.toml/test.sh/judge.toml hashes in the frozen cache match manifest.json inputs. Counterexamples tried: (a) a judge.toml adding model='...' or a drifted [verifier.env] (e.g. ANTHROPIC_API_KEY set to a literal key, different model) would be caught -- none present; (b) a conforming task cannot fail this row because the block is template-exact. Note (not a defect): base images are version tags, not digests (node:22 is a major-only tag); this is the template-controlled shared Dockerfile and must not be edited for QC. Risk=true because runtime credentialing is NOT EXERCISED: raw-evidence-index.json scope states 'Full configured grading/workload ... are absent'; the scripted golden run used image hireops-verifier:20261002-permission-repair without a judge. No measured evidence shows the claude-code CLI authenticating to OpenRouter with ${OPENROUTER_API_KEY} and the glm model in this candidate's verifier. Source wiring passes; end-to-end launch remains a required missing measurement under REVIEW_POLICY.md 'Runtime and model evidence'.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

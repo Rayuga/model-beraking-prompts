@@ -1,0 +1,30 @@
+{
+  "number": 22,
+  "id": "verifier_image_can_launch_and_grade",
+  "reviewer": "row-reviewer-22",
+  "input_sha256": "c5cd697aaa5daabac57bf7269873a877973f00326c7dcba6c4df9ac69303cb6c",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r9/rules/WebDev Rubrics QC.xlsx :: Quality Checks row 23 (#22 verifier_image_can_launch_and_grade), Internal Quality Checks row 23 (no extra annotation column), Deterministic Checks rows 11 (check-dockerfiles.py), 32 (check-runtime-deps-in-both-images.py), 49 (check-verifier-tooling-baked.sh) -- read in memory with openpyxl read_only",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/rules/harbor-webdev-rubric-qc/references/quality-checks.md (section 22, also 21)",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (full)",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (Dockerfile/runtime-deps entries, lines 22, 60)",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/rules/projects/webdev-task-template/tests/{Dockerfile,.dockerignore,test.sh,tools/*,*/*/judge.toml}, environment/Dockerfile (diffed)",
+    "qc/REVIEW_POLICY.md",
+    "task/tests/Dockerfile, task/tests/.dockerignore, task/tests/test.sh, task/tests/*/*/judge.toml, task/tests/tools/score.py, task/environment/Dockerfile, task/task.toml, task/solution/app/package.json, task/solution/app/server.js, task/solution/app/src/bootstrap.js (head), task/solution/app/src/index.js (requires), task/solution/solve.sh, task/instruction.md line 13, task/environment/instructions/integration.md lines 3-18",
+    "qc/runs/hireops-workspace-2026-10-03-r9/raw-evidence-index.json; qc/repairs/hireops-2026-10-03-workspace/workspace.cjs, results/workspace.json, results/server.log (hashes re-verified)",
+    "docker image history hireops-verifier:20261002-permission-repair (read-only metadata; no container started)"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "STATIC: task/tests/Dockerfile is byte-identical to the frozen template (sha256 72998ab8...5fdd for both; diff SAME), as are tests/.dockerignore, tests/test.sh, tests/tools/restart_mcp.py, tests/tools/score.py and environment/Dockerfile. It ships: base images by tag (node:22-bookworm-slim runtime copied into python:3.12-slim), judge CLI '@anthropic-ai/claude-code@2.1.281' (plus @openai/codex@0.151.0), Playwright MCP '@playwright/mcp@0.0.79', browser installed via that package's bundled playwright cli ('node \"$PW_CLI\" install --with-deps chromium') and symlinked to /usr/local/bin/chromium, which every judge.toml passes as '--executable-path=/usr/local/bin/chromium'; 'pip3 install --no-cache-dir harbor-rewardkit==0.1.7'; python3 (/usr/local/bin/python3, used by the functional 'verifier' MCP server running /tests/tools/restart_mcp.py); util-linux (setpriv) and procps for test.sh; fonts. App runtime: the golden's only non-builtin requires are 'express' and 'better-sqlite3' (grep of solution/app; package.json pins express 5.1.0, better-sqlite3 12.4.1), both installed globally at the same versions in the verifier image with NODE_PATH=/usr/local/lib/node_modules, which test.sh passes to the unprivileged app. Agent image (environment/Dockerfile) installs exactly the same two npm packages, so runtime-deps parity holds; instruction.md:13 and integration.md:3-4 tell the agent to use only those packages and Node. COPY . /tests with .dockerignore excluding Dockerfile/__pycache__.\nRUNTIME (partial): raw-evidence-index artifacts re-hashed and match (workspace.cjs 5c88d7b1..., workspace.json 49ff6246..., server.log 6752f461...), and their recorded solution hashes match the frozen package.json, server.js, bootstrap.js, db.js, index.js, solve.sh. That run occurred in hireops-verifier:20261002-permission-repair, whose docker history shows the same layer commands as the frozen tests/Dockerfile (claude-code@2.1.281, @playwright/mcp@0.0.79, rewardkit 0.1.7, chromium symlink, rewardkit patch, COPY . /tests). server.log shows '[hireops] listening on 3000' twice (initial launch + restart); workspace.cjs loads playwright from /usr/local/lib/node_modules/@playwright/mcp/node_modules/playwright and launches executablePath '/usr/local/bin/chromium' with --no-sandbox; workspace.json records passing results. So the image demonstrably starts the golden app via node + global express/better-sqlite3 and launches the pinned Chromium.\nNOT MEASURED: the index scope states 'Full configured grading/workload ... absent'. No observed run of rewardkit invoking claude-code, the playwright-mcp stdio binary, or restart_mcp.py inside this image for the frozen candidate; I could not confirm the image tag was built from the current frozen tests/ bytes (COPY . /tests layer content not compared). Hence risk=true: the 'and grade' half rests on template identity, not a measured run for this candidate. Not a task defect.\nProbes: weak app passing -- not applicable to this row (image contents do not credit an app). Conforming alternative failing -- an app that shells out to the sqlite3 CLI or git (present in agent image apt, absent from verifier) would fail at grade time, but integration.md:3-4 restricts apps to Node plus Express/better-sqlite3, so that is non-conforming; an app with native modules vendored under /app/node_modules built against Node 22 on bookworm should load on the verifier's Node 22 (same node:22-bookworm-slim tag, trixie glibc newer) -- latent P3 only if tags resolve to different Node majors, which they cannot. Base images are tag- not digest-pinned and transitive npm deps are unlocked; this is template-controlled and accepted by the workbook's pinning wording (P3 latent, not a defect for this task).",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL"
+}

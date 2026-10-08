@@ -1,0 +1,36 @@
+{
+  "number": 24,
+  "id": "grading_wiring_is_structurally_correct",
+  "reviewer": "row-reviewer-24",
+  "input_sha256": "f3019705d6c93cd3614b12ba2579b06da00436576e2d71dd57ed4d4e28173657",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-lessons-2026-10-08-r1/rules/WebDev Rubrics QC.xlsx (read in memory via zipfile/XML; openpyxl unavailable): Quality Checks row 25 (#24 grading_wiring_is_structurally_correct), Internal Quality Checks row 25 (legacy reward.toml wording, no team annotation), Deterministic Checks rows 29 check-rubric-schema.py and 33 check-scoring-policy.py, plus all other rows of the three sheets",
+    ".qc-cache/hireops-lessons-2026-10-08-r1/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-lessons-2026-10-08-r1/rules/harbor-webdev-rubric-qc/references/quality-checks.md (### 24, plus 22/23/25 context)",
+    ".qc-cache/hireops-lessons-2026-10-08-r1/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (check-scoring-policy.py, check-rubric-schema.py, check-verifier-contract.py)",
+    ".qc-cache/hireops-lessons-2026-10-08-r1/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md",
+    ".qc-cache/hireops-lessons-2026-10-08-r1/rules/projects/webdev-task-template/tests/** (scoring.toml, five judge.toml, five prompt.md, test.sh, Dockerfile, tools/score.py, tools/restart_mcp.py)",
+    "qc/REVIEW_POLICY.md",
+    "handoffs/LESSONS_FROM_COLDERWATER_2026-10-08.md",
+    "qc/runs/hireops-lessons-2026-10-08-r1/per-row-review/prompts/24.md",
+    "qc/runs/hireops-lessons-2026-10-08-r1/raw-evidence-index.json (scope header and first entries)",
+    ".qc-cache/hireops-lessons-2026-10-08-r1/task/tests/scoring.toml",
+    ".qc-cache/hireops-lessons-2026-10-08-r1/task/tests/gates/{render,constraints}/{judge.toml,prompt.md}",
+    ".qc-cache/hireops-lessons-2026-10-08-r1/task/tests/scored/{functional,polish,visual}/{judge.toml,prompt.md}",
+    ".qc-cache/hireops-lessons-2026-10-08-r1/task/tests/app_context.md, test.sh, Dockerfile, tools/score.py, tools/restart_mcp.py",
+    ".qc-cache/hireops-lessons-2026-10-08-r1/task/task.toml ([verifier], [verifier.env], timeouts)",
+    "deliverables/colderwater-playground-devtools/final-cross-check-2026-09-27/harness/rewardkit-0.1.7-source/{models.py,runner.py,judges.py} (library parser behaviour only; not a QC report)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Parsed every file with Python tomllib (read-only, scratchpad script, -I -B). scoring.toml: [gates] render=0.0, constraints=0.0; [weights] functional=0.6, polish=0.2, visual=0.2 (sum 1.0); [floors] functional=0.05 - byte-identical in values to the template and the staged contract. Directory placement: tests/gates/{render,constraints} and tests/scored/{functional,polish,visual}, each with judge.toml + prompt.md; no extra dimension dirs. All five [judge] blocks: judge=\"claude-code\" fallback, mode=\"batched\", isolated=false, prompt_template=\"prompt.md\"; keys exactly {isolated, judge, mcp_servers, mode, prompt_template, timeout}; no model/reasoning_effort/temperature/weight. Every judge.toml has [[judge.mcp_servers]] name=playwright, stdio, command playwright-mcp, args [--headless, --isolated, --executable-path=/usr/local/bin/chromium, --no-sandbox]. Only scored/functional/judge.toml:14-18 adds name=\"verifier\", command=\"/usr/local/bin/python3\", args=[\"/tests/tools/restart_mcp.py\", \"$APP_RESTART_HELPER\"]; test.sh:193 `export APP_RESTART_HELPER=\"$LOG_DIR/app-restart.sh\"` precedes run_suite gates/scored (test.sh:213,224). test.sh, tests/Dockerfile, tools/score.py and tools/restart_mcp.py are byte-identical to the frozen template (diff empty). restart_app is referenced only by scored/functional/prompt.md:59 ('Call restart_app once') and the single criterion hro_restart (functional judge.toml:413-418), consistent with the single-use tool. [scoring] aggregation: gates all_pass, scored weighted_mean. Criteria: render 1 binary, constraints 1 binary (gates binary as required); functional 44 binary (weights 1/1.5/2; 21/12/11), polish 5 binary (2x4, 1.5x1), visual 5 likert points=5 weight 1 each with all anchors 1-5 present. All ids unique per file, id==name, names match RewardKit's ^[a-zA-Z0-9_-]{1,64}$ guard (models.py Criterion validator), weights positive, descriptions non-empty, no extra keys. Prompts resolve: each prompt.md exists, contains {criteria} (required by rewardkit runner.py:143) and {app_context} (substituted by test.sh:198-200 from tests/app_context.md), and no other {placeholder}; files are UTF-8, no BOM, no CRLF. Timeouts nest with --max-concurrent-agent 1: gates 600+600=1200 < 1500; scored 9000+900+900=10800 < 11100; 1500+11100=12600 < [verifier].timeout_sec 13200 (same values as template). [verifier.env] is the frozen block. Lesson 10 (128 KB prompt limit): largest assembled prompt is functional, about 20.5 KB prompt + 1.9 KB app_context + <=25.6 KB criteria = about 48 KB, well under 128 KB. Lesson 11 (infra crashes) and lessons 6/7/9 are content/judge-behaviour matters owned by other rows; structurally every prompt carries the 'Grading only' checker-not-fixer block. Only deviation from template: criterion weights are TOML integers (1, 2) rather than floats (1.0); rewardkit-0.1.7 runner.py:151 passes the raw value into list[float]/Score.weight: float (pydantic coerces int to float), so this is not a parse defect. Adversarial: a broken app cannot exploit the wiring (gates all_pass binary, zero-weight, floor 0.05, score.py unchanged); a conforming app cannot be failed by the wiring (restart server correctly expanded, prompts resolve). Minor non-structural observation for other rows: scored/polish/prompt.md:12 reads 'gives binary0 throughout' (missing space); meaning is unambiguous. Run evidence: raw-evidence-index.json scope states 'Full configured grading/workload ... are absent'; no configured RewardKit run on these bytes was cited, so actual RewardKit loading of these files is NOT EXERCISED. The row is a static structural check and was verified completely against the shipped files and the RewardKit 0.1.7 parser source; the missing full-run evidence is owned by the runtime/workload rows (11, 22, 51) rather than an open defect here.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

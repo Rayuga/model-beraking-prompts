@@ -1,0 +1,29 @@
+{
+  "number": 21,
+  "id": "verifier_entrypoint_is_safe_and_always_scores",
+  "reviewer": "row-reviewer-21",
+  "input_sha256": "c5cd697aaa5daabac57bf7269873a877973f00326c7dcba6c4df9ac69303cb6c",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r9/rules/WebDev Rubrics QC.xlsx (openpyxl read_only, in memory): 'Quality Checks' row #21 'test.sh launches the app safely, gates on liveness, runs the gates suite before the scored suite with tools/score.py after each, and writes a reward on every code path (including failures).'; 'Internal Quality Checks' row #21 (older wording, no internal annotation on this row); 'Deterministic Checks' check-verifier-contract.py and check-scoring-policy.py descriptions",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/rules/harbor-webdev-rubric-qc/references/quality-checks.md section '21 · verifier_entrypoint_is_safe_and_always_scores' (P0 if any path exits without a reward)",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md section '`tests/test.sh`' (ordered contract 1-8, budgets 1500/11100/13200)",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/rules/projects/webdev-task-template/tests/test.sh, tests/tools/score.py, tests/tools/restart_mcp.py, tests/Dockerfile (template)",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/hireops-workspace-2026-10-03-r9/per-row-review/prompts/21.md",
+    "qc/runs/hireops-workspace-2026-10-03-r9/raw-evidence-index.json",
+    "task/tests/test.sh, task/tests/tools/score.py, task/tests/scoring.toml, task/tests/Dockerfile, task/task.toml, task/tests/*/*/judge.toml timeouts, task/instruction.md line 13/15, task/environment/instructions/integration.md (all under .qc-cache/hireops-workspace-2026-10-03-r9/)"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "Source: frozen task/tests/test.sh is byte-identical to the template test.sh (diff empty; sha256 bd68259276ca4b034654efc8a1723a4e702ed62dbe590af6201565f43eabe5aa, bash, LF, no CR); tools/score.py (sha256 13de2b38...c04e996eef5c04e), tools/restart_mcp.py and tests/Dockerfile are also identical to template. Contract walk against staged-task-contract.md: (1) write_zero_reward at line 60 before any grading, `trap cleanup EXIT` line 61 with cleanup->ensure_reward (lines 20-23, 33-40); no `exec` anywhere; zero record carries reward, all five dims, gates_passed, floors_passed, weighted_score, graded, no_op (line 8). (2) missing REWARDKIT_JUDGE/MODEL -> exit 0 (63-66); missing /app/server.js -> exit 0 (68-70); any symlink outside /app/node_modules or resolving outside it -> exit 0 (72-83). (3) /app copied to /tmp/submission, app launched with `setsid env -i PATH NODE_PATH HOME PORT=3000 DB_PATH setpriv --reuid=65534 --regid=65534 --clear-groups node $APP_ENTRY` (104-111); LOG_DIR chmod 700 and /tests go-rwx (10-12) so the unprivileged app cannot touch reward files or criteria; process group killed in cleanup. (4) liveness probe /api/health then / for up to 120x0.25s before RewardKit; not ready -> exit 0 with zero reward (115-125). (5) restart helper heredoc + sed + chmod 755 + export APP_RESTART_HELPER (127-193). (6) {app_context} substitution (195-201). (7) gates suite (timeout 1500) then score.py: 0 continue, 1 exit keeping detailed graded zero, other -> write_zero_reward (212-222); rewardkit failure/timeout -> exit 0 with pre-written zero. (8) scored suite (timeout 11100) then score.py || write_zero_reward (224-227). Budgets nest: gate judges 600+600=1200<1500 and scored 9000+900+900=10800<11100 with --max-concurrent-agent 1; 1500+11100=12600 plus <=30s startup < verifier timeout_sec 13200 (task.toml line 27). Required tools present in verifier image: python3 (python:3.12-slim), util-linux (setpriv), coreutils timeout, procps, rewardkit==0.1.7. Runtime contract it assumes (node /app/server.js, port 3000, /api/health, DB_PATH, symlink rule) is stated in instruction.md line 13 and integration.md lines 5-19. Local partial exercise (scratchpad, Git Bash, no Docker, outputs not in workspace): REWARDKIT_JUDGE unset -> exit 0, reward.txt 0.0 and full zero reward.json; env set but no /app/server.js -> exit 0, reward.txt 0.0. score.py with frozen scoring.toml: gate constraints=0 -> exit 1, reward 0.0000; gates pass and no scored json -> exit 0, reward 0.0000; functional 0.04 (<= floor 0.05) -> 0.0000; functional .5/polish 1/visual .5 -> 0.6000; malformed scored -> exit 2 (test.sh then writes plain zero); missing gates json -> exit 2. Adversarial: a broken app that returns HTTP 500 everywhere passes the liveness probe (HTTPError counts as up) but that only lets grading start; it cannot earn reward without the render/constraints gates, so not a row-21 defect. A double-forking app escaping the process group is torn down with the container. A conforming alternative that does slow DB work before listening could miss the 30s window, but integration.md line 9-10 publicly requires /api/health to answer before DB work can block startup, so that is a stated contract. No defect found. Risk stays true because the raw-evidence-index for this round explicitly records that full configured grading/verifier launch is absent: the Docker path (setpriv launch as 65534, probe, rewardkit suites, restart helper, timeout kill) was not executed against these bytes in recorded evidence, and the policy requires a hash-bound full verifier launch/grading record before clearance.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL"
+}

@@ -1,0 +1,38 @@
+{
+  "number": 23,
+  "id": "verifier_and_instruction_agree_on_the_runtime_contract",
+  "reviewer": "row-reviewer-23",
+  "input_sha256": "74f3c8aabb287552a2a6045a07212a40f8d2bd5574f78227a868fc40f9c7f265",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r8/rules/WebDev Rubrics QC.xlsx (Quality Checks row 23 and Internal Quality Checks row 23 with Mukesh annotation on login; related rows 4, 19, 21, 22, 49; Deterministic Checks check-runtime-contract-strings.py, check-runtime-deps-in-both-images.py, check-verifier-contract.py) read via openpyxl read_only in memory",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/rules/harbor-webdev-rubric-qc/references/quality-checks.md (section 23 and neighbours)",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/rules/projects/webdev-task-template (structure listed; template test.sh layout compared by tree)",
+    "qc/REVIEW_POLICY.md",
+    "task/tests/test.sh",
+    "task/instruction.md",
+    "task/environment/instructions/integration.md",
+    "task/environment/instructions/hireops_rules.md (grep for clock/time)",
+    "task/environment/Dockerfile",
+    "task/tests/Dockerfile",
+    "task/task.toml",
+    "task/solution/solve.sh",
+    "task/tests/app_context.md",
+    "task/tests/scored/functional/judge.toml (head)",
+    "task/solution/app/src/{bootstrap,db,index}.js (env/path usage)",
+    "qc/runs/hireops-workspace-2026-10-03-r8/raw-evidence-index.json (hashes recomputed)",
+    "qc/repairs/hireops-2026-10-03-workspace/workspace.cjs, results/workspace.json, results/server.log"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Source-level mapping of every launch assumption in task/tests/test.sh to the public brief (instruction.md + /instructions/integration.md):\n1. Entry file: test.sh:68 `if [[ ! -f /app/server.js ]]; then exit 0` and :97/:111 `node \"$APP_ENTRY\"` -> instruction.md:13 'It must start with node /app/server.js'; integration.md:5 'The process starts from /app/server.js'. AGREES.\n2. Port: test.sh:108 PORT=\"3000\", probes 127.0.0.1:3000 (:48) -> instruction.md:13 'listen on port 3000 (honour PORT if it's set)'; integration.md:5-6 'listens on port 3000 on 0.0.0.0'. Binding 0.0.0.0 satisfies the 127.0.0.1 probe and the judge URL http://localhost:3000 (app_context.md:4, all five prompt.md line 1). AGREES.\n3. Liveness probe: test.sh:48 tries /api/health then /, any HTTP answer incl. HTTPError counts as ready (:51-52), 120 x 0.25s = 30s -> instruction.md:13 'expose GET /api/health as a check that never touches the database'; integration.md:9-10 'GET /api/health answers before database work can block startup'. Probe is more lenient than the brief. AGREES.\n4. DB path: test.sh:98/:109 DB_PATH=/app/app.db (or /tmp/submission/app.db on the read-only fallback :99-102) -> instruction.md:13 'keep its durable data in /app/app.db, honouring DB_PATH when that is set'; integration.md:7-8. Fallback is only reachable if honouring DB_PATH, which the brief requires. AGREES.\n5. Dependencies / env: test.sh:104-106 `env -i PATH=... NODE_PATH=/usr/local/lib/node_modules HOME=$APP_COPY` -> instruction.md:13 'Server dependencies are already available, so don't install packages'; integration.md:3-4 'Express and better-sqlite3 already available through NODE_PATH; use only those packages and Node built-ins'. Verifier image tests/Dockerfile:16-22 installs express@5.1.0 and better-sqlite3@12.4.1 globally with NODE_PATH=/usr/local/lib/node_modules (:9), identical to agent image environment/Dockerfile:3,9-12; both Node 22 (node:22-bookworm-slim). AGREES.\n6. Seed: test.sh supplies no seed and no /assets path to the app -> instruction.md:15 'Copy what you need into /app; /assets and /instructions are unavailable at runtime. Load the supplied people ... once, start with no shipped database'. test.sh does not delete a shipped /app/app.db; the brief explicitly forbids shipping one. AGREES (task.toml artifacts includes /assets, so the runtime is if anything more permissive than the brief).\n7. Symlinks: test.sh:72-83 zero-rewards any symlink outside /app/node_modules or resolving outside it -> integration.md:16-19 states exactly that rule. AGREES.\n8. Persistence/restart: functional judge.toml:15-18 restart server via APP_RESTART_HELPER (test.sh:127-193 relaunches with the same entry/DB) -> instruction.md:15 'keep new work across restarts'; integration.md:8-9. AGREES.\n9. Accounts/password used by judges (app_context.md:6-19) match instruction.md:17 verbatim (10 emails, Hireops!2026). AGREES.\n10. No fixed clock or TZ is injected by test.sh, so none needs stating. Network public: no same-origin constraint applied (per workbook row 23 text and skill delivery profile).\nNot stated in the brief: the app runs as uid 65534 under env -i with HOME=/tmp/submission and cwd inherited. These are generic sandboxing details; test.sh:87 chowns /app to 65534, so writing /app/app.db works, and a conforming app (relative __dirname paths or absolute /app paths, DB under DB_PATH) is unaffected. Recorded as a latent P3 observation, not a contract mismatch.\nAdversarial attempts: (a) conforming alternative that could fail - app reading /assets/seed_data.json at runtime would still work (artifact + chmod a+rX /assets test.sh:88); app hardcoding /app paths works even on the copy fallback because /app is still readable; app binding 0.0.0.0 with health returning non-200 still passes the probe; app with no package.json/node_modules works via NODE_PATH. Only an app that violates a stated rule (symlink outside node_modules, entry not at /app/server.js, ignores PORT/DB_PATH while DB dir unwritable, installs native deps for a different libc) fails at launch. (b) broken app that could pass launch - a static shell answering / passes liveness, but that is the render/constraints gates' job (rows 21/29), not a contract disagreement.\nRuntime evidence (hashes verified against raw-evidence-index.json, all 6 entries match and matching_source_files equal frozen task bytes): qc/repairs/hireops-2026-10-03-workspace/workspace.cjs:16 launches the golden as `node /app/server.js` with a minimal env {PATH, HOME, NODE_PATH=/usr/local/lib/node_modules, PORT=3000, DB_PATH} in the verifier image as uid 65534 with a real restart; results/server.log shows '[hireops] listening on 3000' twice. This is close to, but not, the test.sh launch (DB at /tmp, cwd /tmp, no setpriv/env -i via test.sh). A real test.sh/rewardkit launch remains unmeasured; that gap belongs to the full-verifier-launch runtime record (rows 21/22) and does not affect this source agreement verdict.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL"
+}

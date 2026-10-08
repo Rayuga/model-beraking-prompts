@@ -1,0 +1,29 @@
+{
+  "number": 22,
+  "id": "verifier_image_can_launch_and_grade",
+  "reviewer": "row-reviewer-22",
+  "input_sha256": "622c7c3d5aa7f77beae16575e8006f426f50f3a84b0bead9f50ac5b0b1c70804",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r10/rules/WebDev Rubrics QC.xlsx (Quality Checks row 22; Internal Quality Checks row 22; Deterministic Checks rows for check-runtime-deps-in-both-images.py, check-dockerfile-platform.sh, check-pip-pinning.sh, check-verifier-tooling-baked.sh) read in memory via openpyxl read_only",
+    ".qc-cache/hireops-workspace-2026-10-03-r10/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r10/rules/harbor-webdev-rubric-qc/references/quality-checks.md (### 22)",
+    ".qc-cache/hireops-workspace-2026-10-03-r10/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r10/rules/projects/webdev-task-template/tests/Dockerfile and environment/Dockerfile (diffed against task)",
+    "qc/REVIEW_POLICY.md",
+    "task/tests/Dockerfile, task/tests/.dockerignore, task/tests/test.sh, task/tests/tools/restart_mcp.py and score.py imports, all five task/tests/*/*/judge.toml MCP command/args, task/environment/Dockerfile, task/solution/app/package.json, task/solution/app require() calls, task/solution/solve.sh, task/environment/instructions/integration.md",
+    "qc/runs/hireops-workspace-2026-10-03-r10/raw-evidence-index.json (hashes verified), qc/repairs/hireops-2026-10-03-workspace/workspace.cjs and results/server.log",
+    "qc/repairs/hireops-2026-10-01-transaction-hardening/post-r3-permission-repair/validation.json, validate.py, local-attempt1/build-verifier.log, local-attempt1/configured-inspection.log, inspect-configured.py"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "Static: frozen task/tests/Dockerfile (sha256 72998ab8ef0e4225e63b88fccdb754943c54022e25da355035efe7f759a55fdd) is byte-identical to the frozen template rules/projects/webdev-task-template/tests/Dockerfile (diff empty), so it is template-controlled. It ships: Node 22 runtime via 'FROM node:22-bookworm-slim AS node-runtime' + 'COPY --from=node-runtime /usr/local /usr/local' (L1,L4) on python:3.12-slim (python3 at /usr/local/bin/python3 for restart_mcp.py, score.py, probe_ready heredocs; those scripts import only stdlib incl. tomllib); util-linux/procps (L13) for setpriv/setsid/kill used by test.sh L99-111,L160-167; judge CLI '@anthropic-ai/claude-code@2.1.281' and '@playwright/mcp@0.0.79' (L17,L19; playwright-mcp is the command in all five judge.toml files L11); app runtime deps 'express@5.1.0' and 'better-sqlite3@12.4.1' (L20-21) with NODE_PATH=/usr/local/lib/node_modules (L9), matching solution/app/package.json dependencies (express 5.1.0, better-sqlite3 12.4.1), the agent image environment/Dockerfile L9-11, and environment/instructions/integration.md L3-4 ('Node 22 process with Express and better-sqlite3 already available through NODE_PATH; use only those packages'); 'harbor-rewardkit==0.1.7' pinned (L31); Chromium installed by the Playwright CLI bundled inside the pinned @playwright/mcp and symlinked to /usr/local/bin/chromium (L33-38), which is the --executable-path in every judge.toml L12. The golden app requires only express, better-sqlite3 and node builtins (fs, path, crypto, http, worker_threads). Runtime (hashes verified by me): qc/repairs/hireops-2026-10-01-transaction-hardening/post-r3-permission-repair/validation.json records image hireops-verifier:20261002-permission-repair (image sha256:e32bece...) built with 'docker build' from the task tests/ dir, with tests/Dockerfile sha256 72998ab8... equal to the frozen bytes; build log local-attempt1/build-verifier.log (sha256 b4875d25... verified) shows exit 0 with all toolchain layers CACHED. configured-inspection.log in that attempt records in-image 'claude --version' -> '2.1.281 (Claude Code)', 'playwright-mcp --version' -> 'Version 0.0.79', 'node --version' -> 'v22.23.2', plus RewardKit discover/build_prompt import and configured CLI argument launch exit 0 (NO provider grade). raw-evidence-index.json entries (all 6 artifact hashes and all 12 matching frozen solution hashes verified equal) show qc/repairs/hireops-2026-10-03-workspace/workspace.cjs launching the frozen golden as uid 65534 in that same image, using the shipped playwright from /usr/local/lib/node_modules/@playwright/mcp/node_modules/playwright with executablePath /usr/local/bin/chromium (workspace.cjs L6,L283); server.log shows '[hireops] listening on 3000' twice (start + real restart). Adversarial: a conforming alternative that uses another npm package would not start in the verifier, but integration.md L3-4 explicitly limits the agent to Express/better-sqlite3 via NODE_PATH, so that is not a false fail; a broken app cannot exploit the image. Residual risk (why risk=true): (1) no full configured test.sh/rewardkit grading run exists for this candidate (raw-evidence-index scope says full configured grading is absent), so 'can grade' end-to-end with the claude-code judge actually driving playwright-mcp is NOT EXERCISED; (2) the image evidence comes from a cached build; base images python:3.12-slim and node:22-bookworm-slim are tag- not digest-pinned and Chromium is pinned only transitively through @playwright/mcp@0.0.79, so a fresh uncached build is unmeasured. These are template-controlled and not task defects; do not edit the Dockerfile.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL"
+}

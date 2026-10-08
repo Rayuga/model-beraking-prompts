@@ -1,0 +1,39 @@
+{
+  "number": 37,
+  "id": "later_dimensions_tolerate_earlier_mutations",
+  "reviewer": "row-reviewer-37",
+  "input_sha256": "88507720804547eb54db2aa2f2467f055d623a9ce90fcb32f9da1d62b6e5d67a",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r7/rules/WebDev Rubrics QC.xlsx (openpyxl read_only, in memory): 'Quality Checks' row 37 and 'Internal Quality Checks' row 37 (later_dimensions_tolerate_earlier_mutations: \"A later dimension doesn't assume a pristine seed after an earlier dimension mutated the shared running app.\"; no internal annotation on row 37); neighbouring row 36 for context",
+    ".qc-cache/hireops-workspace-2026-10-03-r7/rules/harbor-webdev-rubric-qc/SKILL.md (full)",
+    ".qc-cache/hireops-workspace-2026-10-03-r7/rules/harbor-webdev-rubric-qc/references/quality-checks.md (intro and section 37: 'look for state-relative wording')",
+    ".qc-cache/hireops-workspace-2026-10-03-r7/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (full; test.sh ordered contract: gates suite then scored suite on one running app)",
+    ".qc-cache/hireops-workspace-2026-10-03-r7/rules/projects/webdev-task-template (tree listing; staged layout compared)",
+    "qc/REVIEW_POLICY.md (full)",
+    "qc/runs/hireops-workspace-2026-10-03-r7/per-row-review/prompts/37.md",
+    "qc/runs/hireops-workspace-2026-10-03-r7/raw-evidence-index.json (scope and entries)",
+    "task/tests/test.sh (full)",
+    "task/tests/scoring.toml",
+    "task/tests/app_context.md (full)",
+    "task/tests/gates/render/{prompt.md,judge.toml}",
+    "task/tests/gates/constraints/{prompt.md,judge.toml}",
+    "task/tests/scored/functional/{prompt.md,judge.toml} (full)",
+    "task/tests/scored/polish/{prompt.md,judge.toml} (full)",
+    "task/tests/scored/visual/{prompt.md,judge.toml} (full)",
+    "task/instruction.md line 7 (drafts), task/environment/instructions/hireops_rules.md drafts/unread/seen/starting-data sections (lines ~144-175, 204-209)",
+    "task/environment/assets/seed_data.json (structure: 3 jobs, 16 applications, 127 messages, 3 notes, 6 reads)",
+    "task/solution/app/public/js/app.js:38-42 and threads.js draft handling (localStorage keepsakes)"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": "P3",
+  "evidence": "Shared-state model: tests/test.sh:104-113 starts ONE app process over one DB; run_suite gates (line 213) then run_suite scored (line 224) with --max-concurrent-agent 1, never reseeding; only functional may call restart_app (over the same DB). So render, constraints, then functional/polish/visual (internal order of the scored suite not fixed by the task and unmeasured) all see accumulated mutations. The task is written state-relative throughout: (1) app_context.md:27-31 tells every dimension 'Other reviews may have added jobs, cards and messages; never rely on a starting count' and that every review can create its own job and cards. (2) Every board-mutating dimension uses its own suffixed jobs/cards: constraints judge.toml:23 (new job with unique title, unique candidate email), functional prompt.md:11,15 ('Use your own new jobs and cards for every board protocol ... never move another review's records, and never rely on starting counts'), polish prompt.md:11,14 ('Use your own new job and cards ... never rely on another review's records'), visual prompt.md:14 (read-only after the gate: 'Do not move cards or send messages'). (3) The only absolute seeded expectations live in functional Z/hro_unread_counts/hro_restart (Lena's 1 unread on Product Designer; Platform Engineer Applied Greta/Ade/Marco, Screen Priya/Samuel; Noor's seeded note), read 'before anything else' in functional. Every other dimension is barred from touching those: render prompt.md:9 ('Do not create, move or send anything, and do not open any conversation'), constraints prompt.md:9 ('Do not move, reject or message anything here'), polish prompt.md:16 ('Never use Lena Fischer's conversation'), visual prompt.md:14 (seeded board read-only, no sends; Noor candidate view only). Lena's per-person count can only change by Lena opening it or someone posting in it, both excluded. (4) Seeded-conversation readings are relative: functional T falls back to Tomas's seeded Data Analyst conversation 'with counts read relative to their values before you act' (prompt.md:39); hro_thread_latest/hro_thread_earlier grade 'most recent 30' and the remaining count shown, not 120 (app_context says '120 messages at the start' but forbids relying on it); hro_unread_counts grades 'rises by exactly two', Mei's count 'computed from the observed sequence'; polish hro_pol_earlier_place is relative to the top message observed. (5) Cross-dimension draft residue: polish prompt.md:14 says 'If a message or note box already holds text from an earlier review, record it and clear it before typing your own', covering a functional-first order. (6) Activity: hro_activity is scoped to J1/J2 with a per-job filter and hro_activity_refusals to 'refused attempts in this review', so other dimensions' lines on their own jobs do not break it. (7) T: 'if that address is already on J2, open a new job J3' handles a pre-existing Tomas application. Plausible broken app passing: none found that would earn credit from an earlier dimension's mutations (each scored prompt re-runs its own create-and-independent-readback gate on its own records). Conforming alternative that could fail: considered an app that keeps drafts server-side (rules: 'Where drafts are kept is yours'); if polish runs before functional and leaves Rafael's unsent reply in Noor's or another seeded conversation, functional T's 'type a different unsent reply in another conversation' lacks polish's clear-first sentence, so a judge that types by appending could see '<polish draft><own text>'. Bounded: functional's own draft legs primarily use the brand-new J2 conversation, playwright-mcp browser_type fills (replaces) by default, the draft is still 'its own' per conversation, and hro_msg_compose/hro_drafts are graded on behaviour not exact pre-state; I do not consider it a demonstrated defect. Golden stores drafts in localStorage (app.js:38-42) and each judge uses a fresh --isolated browser, so golden is unaffected. Risk=true because no full configured sequential gates+scored judge run exists (raw-evidence-index scope: 'Full configured grading/workload ... absent'), the internal execution order of functional/polish/visual is unmeasured, and the absolute Lena/Platform-Engineer readings depend on earlier judges obeying their prohibitions, which only a real run can confirm.",
+  "counterexample": null,
+  "suggested_fix": "Optional hardening (not a blocker): add polish's sentence 'If a message or note box already holds text from an earlier review, record it and clear it before typing your own' to the functional prompt's T protocol, and confirm the scored-suite execution order and Z readings in a full configured run.",
+  "run_verdict": "NOT EXERCISED"
+}

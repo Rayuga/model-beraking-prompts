@@ -1,0 +1,29 @@
+{
+  "number": 10,
+  "id": "verifier_is_isolated_pinned_and_credentialed",
+  "reviewer": "row-reviewer-10",
+  "input_sha256": "f3019705d6c93cd3614b12ba2579b06da00436576e2d71dd57ed4d4e28173657",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-lessons-2026-10-08-r1/rules/WebDev Rubrics QC.xlsx (sha256 6d44970b...; read in memory via zipfile): 'Quality Checks' row 11 (#10 verifier_is_isolated_pinned_and_credentialed), 'Internal Quality Checks' row 11 (older wording 'pinned image + allowlist, with the judge model and API key fully wired'; no annotation in cols E-H), 'Deterministic Checks' rows 2 (check-allowlist-matches-provider.py), 7 (check-canonical-shared-files.py), 11 (check-dockerfiles.py), 29 (check-rubric-schema.py), 43 (check-pip-pinning.sh)",
+    ".qc-cache/hireops-lessons-2026-10-08-r1/rules/harbor-webdev-rubric-qc/SKILL.md (full, 90 lines; Delivery profile lines 26-27)",
+    ".qc-cache/hireops-lessons-2026-10-08-r1/rules/harbor-webdev-rubric-qc/references/quality-checks.md lines 1-59 (#10 at line 47-48)",
+    ".qc-cache/hireops-lessons-2026-10-08-r1/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md [verifier.env] frozen block lines 63-75 and cross-file table lines 175-181",
+    "qc/REVIEW_POLICY.md (full)",
+    "handoffs/LESSONS_FROM_COLDERWATER_2026-10-08.md (full)",
+    ".qc-cache/hireops-lessons-2026-10-08-r1/rules/projects/webdev-task-template/task.toml and tests/{Dockerfile,test.sh,.dockerignore,tools/*,scoring.toml}, all five tests/**/judge.toml headers, environment/Dockerfile",
+    ".qc-cache/hireops-lessons-2026-10-08-r1/task/task.toml (full), tests/Dockerfile (full), tests/.dockerignore, tests/test.sh lines 55-75 and 195-215 plus grep for model/REWARDKIT/ANTHROPIC, all five tests/{gates,scored}/*/judge.toml [judge]/MCP headers plus grep for model/reasoning/temperature, environment/Dockerfile (full)",
+    "qc/runs/hireops-lessons-2026-10-08-r1/raw-evidence-index.json (scope statement and first entries)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Isolation: task/task.toml:27-28 '[verifier] timeout_sec = 13200.0 / environment_mode = \"separate\"'; tests/Dockerfile:43-44 'COPY . /tests' + 'chmod -R go-rwx /tests' builds its own grading image, and environment/Dockerfile (agent image) copies only instructions/ and assets/ (lines 14-15), no tests or solution. Credential block: task/task.toml:30-35 is exactly REWARDKIT_JUDGE=\"claude-code\", REWARDKIT_MODEL=\"z-ai/glm-5.3-flashx\", ANTHROPIC_BASE_URL=\"https://openrouter.ai/api\", ANTHROPIC_AUTH_TOKEN=\"${OPENROUTER_API_KEY}\", ANTHROPIC_API_KEY=\"\"; [verifier.environment] network_mode=\"public\" (37-38). Byte comparison in Python: task.toml from '[verifier]' to EOF == frozen template task.toml from '[verifier]' to EOF (True), the staged-task-contract.md frozen block (comment stripped) is a byte substring of task.toml (True), 0 CR bytes. No literal key; secret is a ${VAR} template. Judge files: all five judge.toml (gates/constraints, gates/render, scored/functional, scored/polish, scored/visual) carry 'judge = \"claude-code\"' at line 2 (matches REWARDKIT_JUDGE), and their header up to [scoring] is byte-identical to the template's; grep for 'model *=|reasoning|temperature' across tests/**/*.toml returns nothing, so no judge.toml names a model. test.sh is byte-identical to the template, refuses (zero reward, line 63-65) when REWARDKIT_JUDGE/MODEL are unset, and invokes rewardkit (line 207) with no model override, so the model comes only from [verifier.env]. Pinned image: tests/Dockerfile (byte-identical to template) uses tagged bases node:22-bookworm-slim and python:3.12-slim, npm @anthropic-ai/claude-code@2.1.281, @openai/codex@0.151.0, @playwright/mcp@0.0.79, express@5.1.0, better-sqlite3@12.4.1, pip harbor-rewardkit==0.1.7, Chromium installed from the pinned Playwright MCP's bundled playwright; apt unpinned (NOTE-only per check-dockerfiles.py). Base images are tag-pinned, not digest-pinned; this is the template-controlled shared image and meets the workbook/skill wording ('pinned bases'), so not a task defect. No allowlist is declared, correct under the public-network profile (Quality Checks #10 text; SKILL.md line 26). Counterexamples tried: (a) a broken app cannot change the judge, model or key, since [verifier.env] is set by the harness and /tests is baked into the separate image with go-rwx; (b) a conforming app cannot be failed by this wiring because nothing app-specific is in it. Colderwater lessons: #11 (judge infra crashes such as unrecognized_model) is the only one that bears on this row. The model string is the frozen shared value, unchanged, and no task file overrides it. #13 (public addresses in judge prompts) does not apply: openrouter.ai sits in verifier env, not in a judge prompt. Limits: static wiring only. raw-evidence-index.json states full configured grading is absent, so live OpenRouter authentication with this block has not been run for this candidate. That runtime evidence belongs to the verifier-launch/grading rows, and this row's requirement (the unchanged shared block) is met by the bytes.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

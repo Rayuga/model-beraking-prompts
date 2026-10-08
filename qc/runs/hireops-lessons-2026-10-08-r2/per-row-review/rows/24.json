@@ -1,0 +1,33 @@
+{
+  "number": 24,
+  "id": "grading_wiring_is_structurally_correct",
+  "reviewer": "row-reviewer-24",
+  "input_sha256": "ccf245cd03b12e6e1b34d59f7941e6193ce9e283b5dee63d31a857f2bf99bd45",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-lessons-2026-10-08-r2/rules/WebDev Rubrics QC.xlsx: 'Quality Checks' row 24 (sheet1 r25: 'scoring.toml (gates/weights/floors) and all five judge.toml files are structurally complete: fixed dimensions in the right suite, a browser MCP server (plus the functional verifier restart server wired to the helper test.sh exports), well-typed criteria (gates binary), prompts that resolve.'); 'Internal Quality Checks' row 24 (older reward.toml wording: pinned judge, browser MCP, typed weighted criteria, valid aggregate); 'Deterministic Checks' rows check-rubric-schema.py, check-scoring-policy.py, check-verifier-contract.py (read via zipfile in memory; no cell comments/threaded comments exist in the package)",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/rules/harbor-webdev-rubric-qc/SKILL.md (delivery profile, known false positives incl. likert in visual)",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/rules/harbor-webdev-rubric-qc/references/quality-checks.md section '24 · grading_wiring_is_structurally_correct'",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (scoring.toml, test.sh, judge.toml, restart server, prompt sections)",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (rubric-schema, scoring-policy, verifier-contract procedures)",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/rules/projects/webdev-task-template/tests/{test.sh,scoring.toml,Dockerfile,tools/*,gates/*/judge.toml,scored/*/judge.toml}",
+    "qc/REVIEW_POLICY.md",
+    "handoffs/LESSONS_FROM_COLDERWATER_2026-10-08.md",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/task/tests/{scoring.toml,test.sh,Dockerfile,.dockerignore,app_context.md,tools/score.py,tools/restart_mcp.py}",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/task/tests/gates/{render,constraints}/{judge.toml,prompt.md}",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/task/tests/scored/{functional,polish,visual}/{judge.toml,prompt.md}",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/task/task.toml (verifier timeout)",
+    "qc/runs/hireops-lessons-2026-10-08-r2/raw-evidence-index.json (scope header)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Parsed every file with tomllib (python -I -B, no cache written). (1) tests/scoring.toml:1-11 is byte-identical to the template: [gates] render=0.0, constraints=0.0; [weights] functional 0.6/polish 0.2/visual 0.2 (sum 1.0); [floors] functional=0.05 (a weighted dimension). Directories tests/gates/{render,constraints} and tests/scored/{functional,polish,visual} exist, nothing else under gates/ or scored/. (2) All five judge.toml [judge] blocks: judge='claude-code' (matches REWARDKIT_JUDGE fallback), mode='batched', isolated=false, prompt_template='prompt.md'; timeouts render 600, constraints 600, functional 9000, polish 900, visual 900; no model/reasoning_effort/temperature/weight key. Lines 1-16 of both gate judge.tomls diff-identical to the template. (3) Every file declares [[judge.mcp_servers]] name='playwright', command='playwright-mcp', args ['--headless','--isolated','--executable-path=/usr/local/bin/chromium','--no-sandbox']; tests/Dockerfile (identical to template) installs @playwright/mcp@0.0.79 and symlinks /usr/local/bin/chromium. Only scored/functional/judge.toml:14-18 declares name='verifier', command='/usr/local/bin/python3', args ['/tests/tools/restart_mcp.py','$APP_RESTART_HELPER'] — identical to the template functional block; test.sh:127-193 (byte-identical to template) generates the helper, chmod 755 and `export APP_RESTART_HELPER=\"$LOG_DIR/app-restart.sh\"` before run_suite; restart_mcp.py and score.py are identical to the template and expose single-use tool 'restart_app' (restart_mcp.py:14,31), which is exactly what functional prompt.md lines 1 and 59 call ('Use restart_app only once, at the end of protocol D'), used by criterion hro_restart only. (4) Criteria: gates have 1 binary criterion each (hro_gate_render, hro_gate_shared) under aggregation='all_pass'; functional 44 binary, polish 5 binary, visual 5 likert points=5 with 5..1 anchors in each description (allowed per SKILL known false positives); all scored use 'weighted_mean'; ids unique per file, all weights positive (1/1.5/2 scheme, documented by a comment in each judge.toml), no empty descriptions, only keys id/name/type/weight/description(/points). (5) Prompts resolve: each prompt.md exists, contains exactly one {criteria} and one {app_context} and no other {placeholder}; test.sh:195-201 substitutes {app_context} from /tests/app_context.md; every functional criterion's protocol prefix (Z,S,M,L,C,B,N,T,U,K,R,V,A,D and compounds) is defined under '## Protocols' in scored/functional/prompt.md. Each prompt opens http://localhost:3000; no non-local URL appears (Colderwater lesson 13). Checker-not-fixer 'Never repair' paragraph is present in all five prompts (lesson 6). Assembled size (prompt + app_context + criterion text) is ~4.2/4.9/44.9/12.9/7.4 KB, under the 128 KB limit (lesson 10). (6) Budgets nest: gates 600+600=1200 < 1500 suite budget; scored run with --max-concurrent-agent 1 so 9000+900+900=10800 < 11100; 1500+11100=12600 < task.toml [verifier].timeout_sec 13200. Gates run before scored and score.py runs after each suite (test.sh:212-227). Counterexample attempts: a broken app gains nothing from this wiring (gates are binary all_pass and the floor applies); a conforming app cannot lose restart credit to wiring, since the verifier server, export and tool name match the shared template build. Limit: this is a source/structure review; raw-evidence-index.json states no full configured judge/verifier run exists for this candidate, so RewardKit's actual MCP spawn and $APP_RESTART_HELPER expansion in this candidate are not measured here (that runtime gap belongs to the runtime rows and is not waived by this Pass).",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

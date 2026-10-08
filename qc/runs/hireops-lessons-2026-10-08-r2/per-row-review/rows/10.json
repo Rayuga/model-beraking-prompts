@@ -1,0 +1,30 @@
+{
+  "number": 10,
+  "id": "verifier_is_isolated_pinned_and_credentialed",
+  "reviewer": "row-reviewer-10",
+  "input_sha256": "ccf245cd03b12e6e1b34d59f7941e6193ce9e283b5dee63d31a857f2bf99bd45",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-lessons-2026-10-08-r2/rules/WebDev Rubrics QC.xlsx (read in memory via zipfile; openpyxl not installed in available Python): 'Quality Checks' row 11 (#10 verifier_is_isolated_pinned_and_credentialed), 'Internal Quality Checks' row 11 (older wording: 'pinned image + allowlist, with the judge model and API key fully wired'; superseded by the public-network profile, no extra annotation column for row 10), 'Deterministic Checks' rows 2 (check-allowlist-matches-provider.py), 7 (check-canonical-shared-files.py), 11 (check-dockerfiles.py), 19 (check-no-literal-secrets.py)",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/rules/harbor-webdev-rubric-qc/SKILL.md (full; Delivery profile lines 26-27)",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/rules/harbor-webdev-rubric-qc/references/quality-checks.md (section '### 10', lines 47-48)",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (lines 1-75 task.toml frozen block; line 178 judge/model ownership)",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (lines 22-60: canonical-shared-files, rubric-schema, dockerfiles, allowlist)",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/rules/projects/webdev-task-template/task.toml, tests/Dockerfile, tests/.dockerignore, tests/test.sh, tests/tools/*, tests/scoring.toml, environment/Dockerfile, all five tests/*/*/judge.toml headers (diffed against task)",
+    "qc/REVIEW_POLICY.md (full)",
+    "handoffs/LESSONS_FROM_COLDERWATER_2026-10-08.md (full)",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/task/task.toml, tests/Dockerfile, tests/.dockerignore, tests/test.sh (lines 1-80, 207-209), environment/Dockerfile, tests/gates/{render,constraints}/judge.toml, tests/scored/{functional,polish,visual}/judge.toml",
+    "qc/runs/hireops-lessons-2026-10-08-r2/raw-evidence-index.json (scope header and first entry)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Isolation: task/task.toml:26-28 '[verifier] timeout_sec = 13200.0 / environment_mode = \"separate\"'; verifier image is its own tests/Dockerfile which COPYs only '.' (the tests dir) to /tests (tests/Dockerfile:43) with .dockerignore excluding Dockerfile/.dockerignore/__pycache__; the agent image (environment/Dockerfile) copies only instructions/ and assets/, never tests/ or solution/. Pinned image: tests/Dockerfile:1-2 'FROM node:22-bookworm-slim AS node-runtime' / 'FROM python:3.12-slim' (tag-pinned, no digest), npm globals pinned '@anthropic-ai/claude-code@2.1.281', '@openai/codex@0.151.0', '@playwright/mcp@0.0.79', 'express@5.1.0', 'better-sqlite3@12.4.1' (lines 16-22), 'harbor-rewardkit==0.1.7' (line 31); Chromium comes from the pinned @playwright/mcp's bundled playwright CLI (lines 33-39); apt packages unpinned (NOTE-only per check-dockerfiles). tests/Dockerfile is byte-identical to the frozen template (both sha256 72998ab8ef0e4225e63b88fccdb754943c54022e25da355035efe7f759a55fdd), so nothing task-specific weakens pinning. Credentials/block: task/task.toml:30-35 is exactly 'REWARDKIT_JUDGE = \"claude-code\"', 'REWARDKIT_MODEL = \"z-ai/glm-5.3-flashx\"', 'ANTHROPIC_BASE_URL = \"https://openrouter.ai/api\"', 'ANTHROPIC_AUTH_TOKEN = \"${OPENROUTER_API_KEY}\"', 'ANTHROPIC_API_KEY = \"\"'; diff of task.toml lines 17-38 ([agent] through [verifier.environment]) against rules/projects/webdev-task-template/task.toml lines 17-38 shows no difference, and it matches staged-task-contract.md lines 66-74. The token is a ${VAR} template, no literal key (grep for sk-or/sk-ant across task found none). test.sh:63-66 refuses to grade (zero reward) if REWARDKIT_JUDGE/REWARDKIT_MODEL are unset, and invokes rewardkit at test.sh:207 which consumes that env. Judge files: all five judge.toml carry '[judge] judge = \"claude-code\"' (line 2) with mode/timeout/isolated/prompt_template only; a grep for model|reasoning_effort|temperature over every *.toml/*.sh/Dockerfile in the task found model only in task.toml:32. The [judge]/[[judge.mcp_servers]] header of each judge.toml (up to [scoring]) is identical to the template's. The only other hit, tests/Dockerfile:26 'model_reasoning_effort = \"max\"', is the template's codex config (identical to template), not a judge.toml model setting. Network: [environment] and [verifier.environment] network_mode = \"public\" (task.toml:22, 38); no allowed_hosts, docker_image or allow_internet anywhere — correct per the public profile. Lessons check: Colderwater lesson 11 (judge infra crashes such as unrecognized_model) bears on this row; the model id and base URL match the shared template exactly, so any such crash would be infrastructure, not a task wiring defect. No other lesson pattern (public URLs in prompts, timing races, etc.) applies to row 10. Counterexample search: a broken app cannot exploit this row (it is harness wiring, not app grading); a conforming app could only be failed here if the judge were mis-wired, which the byte-equal block rules out at source level. Limitation (not a defect for this row): raw-evidence-index.json states full configured grading is absent, so the live OpenRouter-authenticated judge call has not been exercised for this candidate; that runtime question is owned by the full-verifier-launch evidence record, and the template-identical config leaves no task-specific wiring risk.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

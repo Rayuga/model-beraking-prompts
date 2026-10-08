@@ -1,0 +1,32 @@
+{
+  "number": 19,
+  "id": "solution_honors_the_runtime_contract_and_is_self_contained",
+  "reviewer": "row-reviewer-19",
+  "input_sha256": "62b67c0517689833807fe690bec0bb6d251f744264d2ef6e0ae6f181ae9f7826",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r2/rules/WebDev Rubrics QC.xlsx :: 'Quality Checks' row 20 (#19): 'solve.sh installs to the expected paths and the reference runs under the stated contract. (Network is public - fetching or installing at start is not a defect.)'",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/rules/WebDev Rubrics QC.xlsx :: 'Internal Quality Checks' row 20 (#19): '... with no network / no run-time install.' (older offline wording; superseded by the public-network profile in the client sheet and SKILL.md 'Delivery profile'; no cell comments on either row)",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/rules/WebDev Rubrics QC.xlsx :: 'Deterministic Checks' check-solve-contract.py, check-runtime-contract-strings.py, check-nproc.sh, check-pip-pinning.sh",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/rules/harbor-webdev-rubric-qc/SKILL.md (full)",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/rules/harbor-webdev-rubric-qc/references/quality-checks.md ### 19 (lines 83-85)",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (full; cross-file table lines 166-181)",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (check-solve-contract.py line 62, check-runtime-contract-strings.py line 50)",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/rules/projects/webdev-task-template/solution/solve.sh",
+    "qc/REVIEW_POLICY.md (full)",
+    "task/solution/solve.sh, task/solution/app/{package.json,server.js}, task/solution/app/src/{bootstrap.js,db.js,index.js (lines 1-45, 410-425)}",
+    "task/environment/Dockerfile, task/tests/Dockerfile, task/tests/test.sh (lines 1-200), task/task.toml, task/instruction.md line 13-15, task/environment/instructions/integration.md, task/environment/instructions/hireops_rules.md section 8",
+    "qc/runs/hireops-workspace-2026-10-03-r2/raw-evidence-index.json (all 6 artifact hashes re-verified: match) and qc/repairs/hireops-2026-10-03-workspace/{workspace.cjs, results/workspace.json, results/server.log}"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "Static contract (quality-checks.md #19 list), all satisfied on frozen bytes: (1) solution/solve.sh line 1 '#!/bin/bash', `bash -n` OK, `file` reports ASCII with 0 CR bytes (LF). (2) It writes only to /app: 'mkdir -p /app' and 'cp -a \"$(dirname \"$0\")/app/.\" /app/' then removes only the DB triplet; it refuses a DB_PATH outside /app ('case ... /app/*) ;; *) ... exit 1'). No write to /tests, /logs/verifier or /solution; grep for pkill|NODE_ENV|npm|curl|wget|/tests|/logs|/solution over solve.sh, server.js and src/*.js returns nothing. Superset of the template solve.sh (template is just mkdir + cp -a). (3) Entry: solution/app/server.js = \"require('./src/index.js')\"; package.json main server.js, start 'node server.js'; matches instruction.md:13 'start with node /app/server.js' and test.sh:97/111 'node \"$APP_ENTRY\"'. (4) DB_PATH honoured: db.js:9 'const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', 'app.db')'; bootstrap.js:45 passes '{...process.env, PORT: '0'}' to the worker so DB_PATH reaches it. test.sh:98-109 injects DB_PATH=/app/app.db (or /tmp/submission/app.db copy). (5) Idempotent seeding: db.js:61-62 'seedIfEmpty ... if (SELECT COUNT(*) FROM users) > 0 return' inside one transaction; CREATE TABLE IF NOT EXISTS. (6) Self-contained: seed read from beside the module (db.js:10, __dirname), byte-identical to environment/assets/seed_data.json (both sha256 a1c65c80...7740), satisfying instruction.md:15 '/assets and /instructions are unavailable at runtime' and hireops_rules.md section 8 (resolve files relative to module, not cwd); static UI via path.join(__dirname,'..','public') (index.js:42-43, 414). No node_modules shipped and no install: express 5.1.0 / better-sqlite3 12.4.1 come from NODE_PATH, installed in both environment/Dockerfile and tests/Dockerfile; instruction.md:13 'don't install packages'. 'Start with no shipped database': solve.sh deletes $database_path(-wal,-shm) after copy. (7) Port/health: bootstrap.js:43 listens on PORT||3000 on 0.0.0.0, and answers /api/health before the DB-opening worker is ready (bootstrap.js:20-25), matching integration.md 'GET /api/health answers before database work can block startup' and test.sh probe_ready. Restart: test.sh kills the process group (setsid); the worker thread lives in the same process, so no orphan holds the DB. Runtime evidence (hashes re-verified): workspace.cjs:16 launches 'node /app/server.js' with cwd '/tmp' and a minimal env {PATH, HOME, NODE_PATH, PORT, DB_PATH} as uid 65534 (per index scope), and workspace.cjs:378-386 SIGTERM-restarts over the same DB and asserts applications/activity/jobs unchanged (no reseed); results/workspace.json records that group 'passed': true; server.log shows two '[hireops] listening on 3000'. Adversarial probes: a broken reference that read /assets/seed_data.json at runtime or resolved files from cwd would fail the cwd=/tmp launch -- the golden does neither. A conforming agent alternative (own seed copy, different layout under /app, DB at DB_PATH) is not constrained by solve.sh and stays gradable, since test.sh only requires /app/server.js. Gaps keeping risk=true: solve.sh itself was never executed in recorded evidence (the scripted run populated /app by an unrecorded method; no Oracle/harbor run exists per raw-evidence-index scope 'Oracle/target scores are absent'), and the full test.sh launch path (setpriv + env -i + chown of /app) is not covered by a recorded configured verifier run for these bytes. Latent P3 observation only (not a defect): solve.sh's /proc fd scan throws on any readdir error other than ENOENT/ESRCH (e.g. EACCES if run non-root) but only when a DB already exists; a fresh Oracle container has none, so the scan exits 0 at its first check.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL - reference start under cwd=/tmp, minimal env, DB_PATH and restart persistence CONFIRMED by hash-verified scripted golden run; solve.sh installation and the configured test.sh/Oracle launch NOT EXERCISED"
+}

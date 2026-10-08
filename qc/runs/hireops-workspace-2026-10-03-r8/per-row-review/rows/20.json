@@ -1,0 +1,28 @@
+{
+  "number": 20,
+  "id": "solution_is_frozen_and_deterministic",
+  "reviewer": "row-reviewer-20",
+  "input_sha256": "74f3c8aabb287552a2a6045a07212a40f8d2bd5574f78227a868fc40f9c7f265",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r8/rules/WebDev Rubrics QC.xlsx :: 'Quality Checks' row #20 (D - solution/ (reference coverage) | solution_is_frozen_and_deterministic | 'The reference is a committed, static baseline - not regenerated, fetched, or nondeterministic on any pinned value.'); 'Internal Quality Checks' row #20 (same wording, no extra annotation column value); also scanned all sheets for frozen/determinis rows (row 47 is the verifier counterpart, not this row). Read with openpyxl read_only in memory.",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/rules/harbor-webdev-rubric-qc/SKILL.md (full, 90 lines)",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/rules/harbor-webdev-rubric-qc/references/quality-checks.md lines 1-90 (check 20 at lines 87-88: seeding same rows every run; no random ids, no wall-clock-derived values, no boot-time fetch moving a graded figure; fixed clock only time source graded rules use)",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (full; cross-file 'fixed clock' agreement row)",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/rules/projects/webdev-task-template/solution/solve.sh and solution/app/server.js (template: plain cp -a of committed app)",
+    "qc/REVIEW_POLICY.md (full)",
+    "task/solution/solve.sh, task/solution/app/server.js, package.json, src/index.js (full), src/db.js (full), src/bootstrap.js (full), src/seed_data.json (sha compared), public/index.html, public/js/*.js (grepped for randomness/time/fetch/sort), environment/Dockerfile, environment/assets/seed_data.json, instruction.md, environment/instructions/*.md (grep), tests/app_context.md, tests/*/*/judge.toml (grep for time/order criteria; read hro_candidate_linked, hro_persist text)",
+    "qc/runs/hireops-workspace-2026-10-03-r8/raw-evidence-index.json (all 6 artifact hashes and all matching_source_files hashes re-verified against current bytes: all match) and qc/repairs/hireops-2026-10-03-workspace/results/workspace.json (seeded-order and restart-without-reseeding groups passed:true)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Committed static baseline: task/solution/solve.sh only copies the committed solution/app tree into /app (`cp -a \"$(dirname \"$0\")/app/.\" /app/`) and deletes a stale DB at the DB_PATH under /app; it runs no generator, npm install, curl/wget or network fetch. package.json pins express 5.1.0 / better-sqlite3 12.4.1, which the agent image installs globally at those exact versions (environment/Dockerfile npm install -g express@5.1.0 better-sqlite3@12.4.1); the golden ships no node_modules and installs nothing. index.html loads only same-origin /styles.css and /js/*.js; styles.css has no @import/url(); no CDN or boot-time fetch. Seed: src/seed_data.json is byte-identical to environment/assets/seed_data.json (sha256 a1c65c80...7740 both) and is read from beside the module (db.js `path.join(__dirname,'seed_data.json')`). seedIfEmpty (db.js) seeds only when users is empty, inserts users/jobs/applications with their fixed seed ids, applications with constant created_at '2026-06-15T09:00:00Z', messages/notes in seed array order with seed-provided created_at, and read markers mapped deterministically via read_count to the autoincrement message ids, so every fresh run produces identical rows. No Math.random/randomUUID/Date.now in seeding. Wall-clock and randomness exist only for runtime-created rows: index.js:59 `now = () => new Date().toISOString()` and index.js:60 `uid = (p) => `${p}-${crypto.randomBytes(3)...}`` for new jobs/applications, plus session tokens (index.js:88). None of these is a pinned or graded value: the brief/notes state no fixed clock and no criterion grades a date, duration or generated id (grep of all judge.toml for clock/date/UTC/2026/time returned only timeouts and '15 seconds' liveness windows). Graded orderings use deterministic keys, not time or random ids: board columns by position (board.js:163, index.js:199), Activity 'newest first' by autoincrement id DESC (index.js:189), messages by autoincrement id (index.js:407-416), stale-move attribution by latest activity id (index.js:242). Random-id tie-breaks only affect ungraded orders (jobs with identical titles; conversation-list threads with no messages; candidate applications created within the same ms). Raw evidence (hash-verified against current frozen bytes) records 'seeded card order and internal notes are loaded' and 'restart keeps jobs, cards, order, messages and activity without reseeding' as passed:true, consistent with deterministic idempotent seeding. Weak-app probe: a golden that regenerated seed figures or ordered Activity by wall-clock created_at could produce run-to-run variance; this golden does neither. Conforming-alternative probe: a model app using real clock timestamps or UUIDs is not penalised because no criterion pins those values. Limits: this is a source review plus scripted-golden evidence; no full configured judge run, Oracle score or repeated-run reward variance measurement exists for this candidate, which is a separate runtime-evidence gap owned by other rows, not a defect in the reference's determinism.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL"
+}

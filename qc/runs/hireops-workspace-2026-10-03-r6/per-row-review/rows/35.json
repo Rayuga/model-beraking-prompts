@@ -1,0 +1,35 @@
+{
+ "number": 35,
+ "id": "core_behavior_is_graded_and_state_is_proven_durable_where_it_must_be",
+ "reviewer": "row-reviewer-35",
+ "input_sha256": "cefa38a90e730105bedd5082c7d28c322a25773d30a55777d75037f5036618d6",
+ "read_sources": {
+  "workbook": true,
+  "skill": true,
+  "template": true
+ },
+ "sources_read": [
+  ".qc-cache/hireops-workspace-2026-10-03-r6/rules/WebDev Rubrics QC.xlsx (read in memory with openpyxl read_only): Quality Checks row 36 (#35 core_behavior_is_graded_and_state_is_proven_durable_where_it_must_be, 'Server-backed != same-origin - network is public'); Internal Quality Checks row 36 (same check, internal wording)",
+  ".qc-cache/hireops-workspace-2026-10-03-r6/rules/harbor-webdev-rubric-qc/SKILL.md (full)",
+  ".qc-cache/hireops-workspace-2026-10-03-r6/rules/harbor-webdev-rubric-qc/references/quality-checks.md:145-147 (#35 verify/note)",
+  ".qc-cache/hireops-workspace-2026-10-03-r6/rules/projects/webdev-task-template/tests/test.sh and tests/tools/restart_mcp.py (diffed: byte-identical to task copies)",
+  "qc/REVIEW_POLICY.md (full)",
+  "qc/runs/hireops-workspace-2026-10-03-r6/per-row-review/prompts/35.md and rows/35.template.json",
+  "task/instruction.md:1-17",
+  "task/environment/instructions/hireops_rules.md:59,100-106,150-176,192-207",
+  "task/environment/instructions/integration.md:1-19",
+  "task/tests/scored/functional/prompt.md:1-55 and judge.toml (all 43 criteria)",
+  "task/tests/scored/polish/judge.toml (5 criteria, esp. hro_pol_failed_send, hro_pol_session_resume)",
+  "task/tests/gates/constraints/judge.toml:17-24 (hro_gate_shared); gates/render/judge.toml:23",
+  "task/tests/app_context.md; task/tests/scoring.toml; task/tests/test.sh:90-193; task/tests/tools/restart_mcp.py",
+  "task/solution/app/src/db.js:7-53, public/js/threads.js (draft storage) - hashes match raw evidence index",
+  "qc/runs/hireops-workspace-2026-10-03-r6/raw-evidence-index.json; qc/repairs/hireops-2026-10-03-workspace/results/workspace.json (sha256 c73fa342... verified), workspace.cjs (8c362561... verified), server.log (6752f461... verified)"
+ ],
+ "verdict": "Pass",
+ "risk": true,
+ "severity": "P2",
+ "evidence": "Defining behaviour graded: multi-user pipeline board and conversations are graded by many functional rows (hro_move_one_stage w1.5, hro_stale_refused w2.5, hro_bulk_all_or_none w2, hro_undo_restores/conflict w2, hro_live_board w2.5, hro_msg_exchange, hro_unread_counts, hro_drafts, hro_candidate_private), matching instruction.md:1-9. Server-backed (not just same-origin): constraints gate hro_gate_shared (gates/constraints/judge.toml:23) and the functional global gate (functional/prompt.md:11) create a job+candidate as Rafael and require the Observer in a NEW independent browser context (browser.newContext, explicitly 'a reload or a second tab of the same context is not independent'; 'a browser-only save fails') to see it - this excludes localStorage/same-origin-only apps. Shared state is re-read cross-account in hro_reorder (Mei independent context), hro_add_candidate, hro_job_open, hro_notes (Aud reads notes). Durability across process restart: hro_restart (functional judge.toml:401-408, protocol D prompt.md:51) records jobs, per-stage order, notes, messages, activity and the seeded Platform Engineer order/note, calls restart_app (template-identical restart_mcp.py relaunches node on the same DB_PATH, test.sh:127-193), signs in again and compares, and detects reseeding/duplication ('starting data is not loaded again'). Reload/re-auth durability where the brief requires it (instruction.md:7, hireops_rules.md:105-106,168-175): hro_drafts (reload, per-conversation), hro_pol_failed_send (unsaved note draft survives reload), hro_pol_session_resume (ended session -> sign-in prompt -> same reply resumes and sends; Mei on same browser sees no drafts; Rafael's drafts back after re-sign-in). Drafts are allowed to be browser-local ('Where drafts are kept is yours'), so the rubric correctly does not demand server storage there. Golden: SQLite at DB_PATH with tables for jobs/applications/messages/reads/notes/activity/actions (db.js:9-53); scripted golden observations (workspace.json groups 14,16,18,20, all passed: draft survives reload, session-ended resume, restart keeps jobs/cards/order/messages/activity without reseeding) - source hashes verified against the frozen bytes. Weak-app probes: (a) localStorage-only app -> fails both gates (independent context sees nothing) -> reward 0; (b) static seed JSON -> gate requires the newly created job to appear -> fails; (c) in-memory server store -> passes gates but hro_restart = 0. Conforming alternatives: server-stored drafts, websocket vs polling, any routes - no criterion forbids them (hro_drafts/hro_pol_session_resume grade outcomes only). Risks kept true: (1) No full configured judge run exists (raw-evidence-index scope: 'Full configured grading/workload, reward discrimination/ranking and Oracle/target scores are absent'); restart_app is only called at the very END of a very long protocol (Z..D, judge timeout 9000 s), so on budget exhaustion hro_restart becomes 'NOT EXERCISED' 0 for the golden too - the durability measurement is unmeasured in the configured setting. (2) Weight: an app that keeps everything in memory (violating 'keep new work across restarts', instruction.md:15, integration.md:8-9) loses only hro_restart 1.5/58.5 functional = ~2.6% functional, ~1.5% of total reward; durability is graded but lightly. (3) Gap: hro_restart's comparison list omits per-person read markers/unread counts and seen state (golden persists them in the 'reads' table); an app keeping read markers in memory would reset unread counts on restart without any criterion noticing. Bounded, not a blocker for this row.",
+ "counterexample": "Not a Fail. Residual weak app: a server that keeps read markers (unread/seen) in process memory while persisting everything else in SQLite; after restart_app every person's unread counts reset, yet hro_restart (which compares jobs, order, notes, messages, activity only) still passes. Also an all-in-memory server loses only ~1.5% of total reward.",
+ "suggested_fix": "Optional: add 'and Rafael's per-conversation unread count/total' to the D record-and-compare list in hro_restart; consider whether 1.5 weight is adequate for restart durability; obtain a full configured judge run confirming protocol D (restart_app) is reached within the 9000 s budget.",
+ "run_verdict": "PARTIAL - scripted golden observations (workspace.json groups 14,16,18,20) CONFIRM the golden survives reload, re-auth and real restart; full configured judge execution of hro_restart/hro_drafts/hro_pol_session_resume NOT EXERCISED."
+}

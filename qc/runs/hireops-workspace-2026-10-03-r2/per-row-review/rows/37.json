@@ -1,0 +1,38 @@
+{
+  "number": 37,
+  "id": "later_dimensions_tolerate_earlier_mutations",
+  "reviewer": "row-reviewer-37",
+  "input_sha256": "62b67c0517689833807fe690bec0bb6d251f744264d2ef6e0ae6f181ae9f7826",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r2/rules/WebDev Rubrics QC.xlsx: 'Quality Checks' row #37 (E - tests/, later_dimensions_tolerate_earlier_mutations, 'A later dimension doesn't assume a pristine seed after an earlier dimension mutated the shared running app.'); 'Internal Quality Checks' sheet row 38 (#37) carries the same text and no extra annotation columns filled",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/rules/harbor-webdev-rubric-qc/SKILL.md (full)",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/rules/harbor-webdev-rubric-qc/references/quality-checks.md:153-154 (### 37 verify procedure: state-relative wording, grade against what was observed)",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/rules/projects/webdev-task-template/ (file list; template test.sh structure compared for run order/no-reset)",
+    "qc/REVIEW_POLICY.md (full)",
+    "qc/runs/hireops-workspace-2026-10-03-r2/per-row-review/prompts/37.md",
+    "task/tests/test.sh (full)",
+    "task/tests/scoring.toml",
+    "task/tests/app_context.md (full)",
+    "task/tests/gates/render/{prompt.md,judge.toml}",
+    "task/tests/gates/constraints/{prompt.md,judge.toml}",
+    "task/tests/scored/functional/{prompt.md,judge.toml} (full)",
+    "task/tests/scored/polish/{prompt.md,judge.toml} (full)",
+    "task/tests/scored/visual/{prompt.md,judge.toml} (full)",
+    "task/environment/assets/seed_data.json (messages/reads/applications parsed; byte-identical to solution/app/src/seed_data.json)",
+    "task/instruction.md (draft and unread paragraphs)",
+    "task/solution/app/public/js/threads.js:112-196 and app.js:38,187 (draft storage)",
+    "qc/runs/hireops-workspace-2026-10-03-r2/raw-evidence-index.json (sha256 2bdb6cf27b8518e55fc2aab1eb69abdc21af99b7c46fc7bcfac13b594482639b at review time; scope field)"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": "P3",
+  "evidence": "Shared state: test.sh:104-113 starts one app process and DB; test.sh:212-227 runs gates then scored with no reseed/reset, so each later dimension sees prior mutations (gates create a job+card; functional creates J1/J2/J3, moves, rejections, messages, a restart; polish creates a job, sends messages in Noor's conversation). Each Playwright MCP is launched --isolated (all judge.toml), so browser-local state does not carry over, but server state does. Wording is state-relative throughout: app_context.md:27-31 'Other reviews may have added jobs, cards and messages; never rely on a starting count'; functional prompt.md:15 'Use your own new jobs and cards for every board protocol (suffix every title and name for this review), never move another review's records, and never rely on starting counts'; polish prompt.md:14 'Use your own new job and cards ... never rely on another review's records'; visual prompt.md:14 is read-only after its gate and 'a seeded job is fine' (no dimension mutates seeded jobs). Gate setups use unique titles/emails (constraints judge.toml:23), so they cannot collide with functional's A/J2 duplicate-email or ordering checks. Criteria grade deltas, not absolutes: hro_unread_counts 'rises by exactly two and his total by two' (functional judge.toml:335), hro_unread_scrolled_up 'told there is one new message' (:344), hro_thread_latest 'most recent 30' and hro_thread_earlier 'remaining count' without a fixed total (:317,:326), hro_restart compares against the judge's own recorded state (:407, prompt.md:51), hro_activity filters to the review's own job (:263). The only absolute seed dependency is Lena's 1 unread (prompt.md:25, judge.toml:335); seed confirms APP-301 has 3 messages and USR-CAN3 read_count 2 (=1 unread), and no gate, polish or visual step signs in as Lena or messages APP-301, so it survives any dimension order. Noor's 120 seeded messages (APP-101: 120) may grow if polish ran earlier, but the criteria do not hard-code 120 and app_context forbids relying on it. Adversarial: a broken app that resets/reseeds on each start would not be shielded by this design (hro_restart catches reseeding); a conforming app that stores drafts server-side per user (allowed by instruction.md 'when I sign back in it is still there') could carry functional T's deliberately unsent second draft (prompt.md:39 never sends it) into polish hro_pol_live_thread/hro_pol_session_resume, prefilling the box; polish requires 'still reads exactly what was typed', which a careful judge compares before/after, so this is a latent P3 ambiguity, not a demonstrated misgrade. Risk=true because no full configured sequential verifier run exists: raw-evidence-index scope says 'Full configured grading/workload ... are absent' and rewardkit's actual dimension order within /tests/scored was not observed, so cross-dimension tolerance is source-reviewed only.",
+  "counterexample": null,
+  "suggested_fix": "Optional hardening (P3): in functional protocol T, send or clear the second unsent draft before leaving T, or in polish tell the judge to clear any pre-existing draft text in a conversation box and record its value before typing.",
+  "run_verdict": "NOT EXERCISED"
+}

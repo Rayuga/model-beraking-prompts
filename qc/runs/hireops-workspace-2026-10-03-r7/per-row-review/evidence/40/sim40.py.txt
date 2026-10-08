@@ -1,0 +1,32 @@
+import tomllib, pathlib, sys
+T=pathlib.Path("F:/Documents/turing-workspace/model-beraking-prompts/.qc-cache/hireops-workspace-2026-10-03-r7/task/tests")
+def crit(d): return {c['id']:(c['weight'],c['type'],c.get('points')) for c in tomllib.loads((T/d/'judge.toml').read_text(encoding='utf-8'))['criterion']}
+F=crit('scored/functional'); P=crit('scored/polish'); V=crit('scored/visual')
+print('functional',len(F),sum(w for w,_,_ in F.values())); print('polish',len(P),sum(w for w,_,_ in P.values())); print('visual',len(V),sum(w for w,_,_ in V.values()))
+def dim(C,passed,lik=None):
+  tot=sum(w for w,_,_ in C.values()); s=0
+  for k,(w,t,p) in C.items():
+    if t=='binary': s+=w*(1 if k in passed else 0)
+    else: s+=w*((lik-1)/(p-1))
+  return s/tot
+def reward(f,p,v): 
+  ws=0.6*f+0.2*p+0.2*v
+  return round(ws,4) if f>0.05 else 0.0
+allF=set(F); allP=set(P)
+live={'hro_live_board','hro_msg_exchange','hro_unread_counts','hro_unread_scrolled_up','hro_seen'}
+bulk={'hro_bulk_move','hro_bulk_all_or_none','hro_bulk_places','hro_undo_restores','hro_undo_once','hro_undo_conflict'}
+undo={'hro_undo_full','hro_reopen'}
+conv={'hro_msg_exchange','hro_msg_compose','hro_thread_latest','hro_thread_earlier','hro_unread_counts','hro_unread_scrolled_up','hro_seen','hro_thread_access','hro_drafts'}
+profiles={
+ 'golden-like':(allF,allP,5),
+ 'no-live-updates (polling on reload only)':(allF-live,{'hro_pol_earlier_place','hro_pol_failed_send','hro_pol_session_resume'},4),
+ 'no-bulk/no-undo':(allF-bulk-undo,allP,4),
+ 'no-live,no-bulk,no-undo,no-stale-check':(allF-live-bulk-undo-{'hro_stale_refused','hro_refused_put_back','hro_activity'},{'hro_pol_earlier_place'},3),
+ 'board-only, no conversations':(allF-conv-{'hro_candidate_view','hro_candidate_private','hro_candidate_linked'},{'hro_pol_live_board'},3),
+ 'CRUD+roles only, ugly':({'hro_job_open','hro_add_candidate','hro_move_one_stage','hro_reject_reason','hro_observer_readonly','hro_anonymous','hro_restart','hro_notes'},set(),2),
+ 'gate-pass minimal':({'hro_job_open','hro_add_candidate'},set(),2),
+ 'gate-pass minimal ugly':({'hro_job_open'},set(),1),
+}
+for n,(f,p,l) in profiles.items():
+  fd,pd,vd=dim(F,f),dim(P,p),dim(V,None,l)
+  print(f"{n:45s} F={fd:.3f} P={pd:.3f} V={vd:.3f} reward={reward(fd,pd,vd)}")

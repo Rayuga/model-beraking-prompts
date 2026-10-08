@@ -1,0 +1,28 @@
+{
+  "number": 21,
+  "id": "verifier_entrypoint_is_safe_and_always_scores",
+  "reviewer": "row-reviewer-21",
+  "input_sha256": "cefa38a90e730105bedd5082c7d28c322a25773d30a55777d75037f5036618d6",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r6/rules/WebDev Rubrics QC.xlsx (openpyxl read_only, in memory): Quality Checks row 21 and Internal Quality Checks row 21 (no extra internal annotation on row 21); Deterministic Checks rows check-verifier-contract.py, check-scoring-policy.py",
+    ".qc-cache/hireops-workspace-2026-10-03-r6/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r6/rules/harbor-webdev-rubric-qc/references/quality-checks.md section 21",
+    ".qc-cache/hireops-workspace-2026-10-03-r6/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md section tests/test.sh (ordered contract 1-8, budget nesting)",
+    ".qc-cache/hireops-workspace-2026-10-03-r6/rules/projects/webdev-task-template/tests/{test.sh,tools/score.py,tools/restart_mcp.py,scoring.toml,Dockerfile,.dockerignore}, task.toml",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/hireops-workspace-2026-10-03-r6/raw-evidence-index.json (scope statement)",
+    ".qc-cache/hireops-workspace-2026-10-03-r6/task/tests/test.sh, tests/tools/score.py, tests/scoring.toml, tests/*/*/judge.toml timeouts, task.toml, instruction.md line 13, environment/instructions/integration.md lines 5-9, solution/app/src/bootstrap.js lines 20,43, solution/app/src/index.js lines 24,435"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "task/tests/test.sh (sha256 bd68259276ca4b034654efc8a1723a4e702ed62dbe590af6201565f43eabe5aa) is byte-identical (cmp) to the frozen template tests/test.sh; score.py, restart_mcp.py, scoring.toml, tests/Dockerfile, .dockerignore also byte-identical; task.toml differs from template only in [task]/[metadata] identity fields. Contract walk vs staged-task-contract.md: (1) write_zero_reward at test.sh:60 before any grading, trap cleanup EXIT at :61 calls ensure_reward (:20-23, :39); no exec; zero record (:8) carries reward, five dimensions, gates_passed, floors_passed, weighted_score, graded, no_op. (2) missing /app/server.js exits 0 with zero (:68-70); symlinks outside /app/node_modules refused (:72-83). (3) /app copied aside (:90-95), app launched via setsid env -i with PATH/NODE_PATH/HOME/PORT/DB_PATH under setpriv --reuid=65534 (:104-111); process group killed in cleanup (:36). (4) probe_ready on /api/health then / before RewardKit, 120x0.25s, unready -> exit 0 with zero (:115-125). (5) restart helper heredoc+sed, chmod 755, APP_RESTART_HELPER exported (:127-193). (6) {app_context} substitution (:195-201). (7) gates suite (1500s) then score.py; exit 0 continue, 1 stop with detailed record, else write_zero_reward (:212-222); rm -rf scored first prevents stale scored data. (8) scored suite (11100s) then score.py, failure -> write_zero_reward (:224-227); scored-suite failure exits with the gates-step record whose reward is 0. Budgets nest: gate judges 600+600=1200<1500; scored judges run sequentially (--max-concurrent-agent 1) 9000+900+900=10800<11100; 1500+11100=12600<13200 verifier timeout_sec. Executed score.py (python -B, scratchpad copy of frozen score.py+scoring.toml, fake suite outputs): gates pass/no scored -> exit0 reward 0.0000; gate fail -> exit1 0.0000; full 0.5/1/0.8 -> exit0 0.6600; functional at floor 0.05 -> 0.0000; non-numeric gate, missing gates reward.json, out-of-range scored -> exit2 (test.sh then writes plain zero). Every path ends with a reward file. Runtime contract holds for golden: instruction.md:13 and integration.md:5-9 state /app/server.js, port 3000/PORT, GET /api/health, DB_PATH; bootstrap.js:43 listens on 0.0.0.0 so the 127.0.0.1 probe reaches it. Adversarial: a broken app that answers every URL with HTTP 500 passes liveness (HTTPError counts as ready, :50-52) but is then judged by the render/constraints gates, so liveness alone earns nothing; a conforming app binding only to ::1 via listen(PORT,'localhost') would miss the 127.0.0.1 probe, but integration.md:5-6 tells it to listen on 0.0.0.0, so that is not an unfair failure. Risk=true only because no executed test.sh / full configured verifier run on this candidate exists: raw-evidence-index.json scope states 'Full configured grading/workload, reward discrimination/ranking and Oracle/target scores are absent'; the actual exit paths (rewardkit exit codes, trap under harbor timeout, app.pid group kill) are verified by source reading and score.py simulation, not by a measured verifier run.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

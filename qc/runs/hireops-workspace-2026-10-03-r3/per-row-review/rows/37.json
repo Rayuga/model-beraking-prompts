@@ -1,0 +1,40 @@
+{
+  "number": 37,
+  "id": "later_dimensions_tolerate_earlier_mutations",
+  "reviewer": "row-reviewer-37",
+  "input_sha256": "f53d9ed60d12f2a653d497dc98fac56a662e0d84393cdc5ff130c8a915d956db",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    "qc/runs/hireops-workspace-2026-10-03-r3/per-row-review/prompts/37.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r3/rules/WebDev Rubrics QC.xlsx: 'Quality Checks' row 38 (#37 later_dimensions_tolerate_earlier_mutations) and 'Internal Quality Checks' row 38 (no extra annotation columns or cell comments on that row)",
+    ".qc-cache/hireops-workspace-2026-10-03-r3/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r3/rules/harbor-webdev-rubric-qc/references/quality-checks.md section '37 . later_dimensions_tolerate_earlier_mutations'",
+    ".qc-cache/hireops-workspace-2026-10-03-r3/rules/projects/webdev-task-template/ (file list; tests/test.sh run_suite pattern compared)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r3/task/tests/test.sh",
+    ".qc-cache/hireops-workspace-2026-10-03-r3/task/tests/scoring.toml",
+    ".qc-cache/hireops-workspace-2026-10-03-r3/task/tests/app_context.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r3/task/tests/gates/render/{judge.toml,prompt.md}",
+    ".qc-cache/hireops-workspace-2026-10-03-r3/task/tests/gates/constraints/{judge.toml,prompt.md}",
+    ".qc-cache/hireops-workspace-2026-10-03-r3/task/tests/scored/functional/{judge.toml,prompt.md}",
+    ".qc-cache/hireops-workspace-2026-10-03-r3/task/tests/scored/polish/{judge.toml,prompt.md}",
+    ".qc-cache/hireops-workspace-2026-10-03-r3/task/tests/scored/visual/{judge.toml,prompt.md}",
+    ".qc-cache/hireops-workspace-2026-10-03-r3/task/tests/Dockerfile (harbor-rewardkit==0.1.7 pin)",
+    ".qc-cache/hireops-workspace-2026-10-03-r3/task/environment/assets/seed_data.json (reads, Lena/Noor messages; identical to solution/app/src/seed_data.json)",
+    ".qc-cache/hireops-workspace-2026-10-03-r3/task/environment/instructions/hireops_rules.md sections Unread and 9",
+    ".qc-cache/hireops-workspace-2026-10-03-r3/task/instruction.md (grep for read markers/starting data)",
+    "deliverables/colderwater-playground-devtools/final-cross-check-2026-09-27/harness/rewardkit-0.1.7-source/{runner.py,reward.py} (dimension discovery order and agent semaphore)",
+    "qc/runs/hireops-workspace-2026-10-03-r3/raw-evidence-index.json (scope: no configured judge run)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Execution order: test.sh:224 runs gates then test.sh:235 runs scored, each via `rewardkit --max-concurrent-agent 1` (test.sh:218). rewardkit 0.1.7 (pinned in tests/Dockerfile:31) discovers dimensions with `sorted(d for d in tests_path.iterdir() ...)` (runner.py:199) and creates tasks in that order behind one FIFO asyncio.Semaphore (runner.py:308-333), so the sequence is constraints -> render -> functional -> polish -> visual, all on one shared running app/DB.\n\nThe only seed-absolute expectation is Lena's starting unread (functional prompt.md:25 Z 'the starting read markers give her 1'; hro_unread_counts 'Lena Fischer starts with 1 unread'). It is verified against seed: reads USR-CAN3/APP-301 read_count 2 of 3 messages, last from Farah => 1. It survives earlier mutations because: Z is ordered 'Before anything else' in the first scored dimension; the only earlier dimensions are gates that forbid conversation activity (render/prompt.md:9 'Do not create, move or send anything, and do not open any conversation'; constraints/prompt.md:9 'Do not move, reject or message anything here') and the functional global gate only creates a job/candidate as Rafael and reads as the Observer; and Lena's count is her own read marker, unaffected by staff merely viewing.\n\nAll other later-dimension wording is state-relative: functional prompt.md:15 'Earlier reviews may have added jobs, cards and messages. Use your own new jobs and cards ... never rely on starting counts'; app_context.md:29-31 '120 messages at the start ... never rely on a starting count'; T/K fallback 'with counts read relative to their values before you act' and 'if that address is already on J2, open a new job J3'; hro_unread_counts grades Rafael's count rising 'by exactly two' (relative); hro_thread_latest/earlier grade 'most recent 30' and remaining counts relative to the live thread, not 120. Polish (runs after functional's heavy mutations incl. restart D) says 'Use your own new job and cards ... never rely on another review's records' and explicitly handles leftover state: 'If a message or note box already holds text from an earlier review, record it and clear it before typing your own' (polish/prompt.md:14) - covering functional T's deliberately unsent drafts in other conversations. Polish's Noor rows only need >30 messages (still true after additions). Visual is read-only, 'a seeded job is fine', no counts. hro_activity/hro_restart compare only the judge's own recorded jobs/lines on J1/J2.\n\nAdversarial probes: (a) broken app that could pass - an app that re-seeds on restart would show Lena 1 regardless, but functional D/hro_restart catches 'starting data is not loaded again' relative to recorded state; an app that resets per session fails the gates' independent-context readback. (b) conforming app that could fail - an app persisting drafts server-side per user/conversation: polish's clear-before-typing instruction prevents functional's leftovers from failing hro_pol_live_thread/session_resume; a conforming app where polish sends to Lena's conversation cannot disturb Z because polish runs after functional. No conforming alternative found that a later dimension penalizes for an earlier dimension's mutation.\n\nResidual (P3, not a defect): correctness of the Lena=1 absolute relies on rewardkit 0.1.7's sorted discovery + FIFO semaphore ordering and on gate judges obeying 'do not open any conversation'; an unpinned rewardkit reorder placing polish before functional could let polish's Rafael sends (failed_send/session_resume 'a conversation') land in Lena's conversation. The version is pinned, so no current impact. No configured full judge run exists (raw-evidence-index scope: 'Full configured grading/workload ... absent'), so ordering behaviour is source-verified only; this row is a prompt-design judgement and the source evidence is sufficient for it.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

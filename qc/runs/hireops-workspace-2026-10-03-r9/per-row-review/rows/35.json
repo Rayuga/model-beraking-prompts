@@ -1,0 +1,34 @@
+{
+  "number": 35,
+  "id": "core_behavior_is_graded_and_state_is_proven_durable_where_it_must_be",
+  "reviewer": "row-reviewer-35",
+  "input_sha256": "c5cd697aaa5daabac57bf7269873a877973f00326c7dcba6c4df9ac69303cb6c",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r9/rules/WebDev Rubrics QC.xlsx (read in memory with openpyxl read_only): 'Quality Checks' row 35 and 'Internal Quality Checks' row 35 (annotation column empty); header rows of all sheets",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/rules/harbor-webdev-rubric-qc/SKILL.md (full)",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/rules/harbor-webdev-rubric-qc/references/quality-checks.md section '35 · core_behavior_is_graded_and_state_is_proven_durable_where_it_must_be' (and neighbouring 36-41)",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/rules/projects/webdev-task-template/tests/scored/functional/judge.toml and prompt.md (template persistence criterion); template tests/tools/restart_mcp.py and tests/test.sh diffed byte-identical to the task copies",
+    "qc/REVIEW_POLICY.md (full)",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/task/instruction.md (full)",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/task/environment/instructions/hireops_rules.md (order 55-59, notes 102-106, live updates 115-121, drafts 168-175, runtime 195-209)",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/task/environment/instructions/integration.md (full)",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/task/tests/gates/constraints/judge.toml (hro_gate_shared) and prompt.md:9",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/task/tests/scored/functional/prompt.md (full) and judge.toml (all criteria)",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/task/tests/scored/polish/judge.toml (hro_pol_live_board, reply-draft row, failed-send row, hro_pol_session_resume) and prompt.md:11-14",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/task/tests/app_context.md, tests/tools/restart_mcp.py, tests/test.sh:90-193",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/task/solution/app/src/db.js:3-20, public/js/app.js:38-42,187, public/js/threads.js:3-4,112-196 (golden storage choices only)",
+    "qc/runs/hireops-workspace-2026-10-03-r9/raw-evidence-index.json; qc/repairs/hireops-2026-10-03-workspace/results/workspace.json (sha256 49ff6246... matches index; frozen db.js/index.js/threads.js hashes match index)"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "Core behaviour is graded heavily and server-backed state is proven with independent contexts, re-auth and a real process restart. (1) Defining behaviour: functional/judge.toml grades one-stage moves (hro_move_one_stage w1.5), interview places (hro_interview_full w1.5), stale-move refusal naming the actor (hro_stale_refused w2.5), all-or-none bulk moves (hro_bulk_all_or_none w2), undo/undo conflict (hro_undo_restores, hro_undo_conflict w2), live board within 15 s (hro_live_board w2.5), message exchange, unread/seen, paging, candidate privacy. (2) Server-backed, not same-origin: zero-weight gate gates/constraints/judge.toml hro_gate_shared requires a UI-created job and candidate to be found by the Observer in 'a new independent empty browser context' and states 'a browser-only save ... does not satisfy the gate'; the same check is repeated as the global gate in functional/prompt.md:11 ('A reload or a second tab of the same context is not independent'). hro_reorder, hro_add_candidate and hro_job_open require another person's independent context to see the same order/records; hro_stale_refused and hro_undo_conflict need cross-session server state. (3) Re-auth: hro_reorder reads order as Mei Lin after a fresh sign-in (rules:59 'Order survives a reload, a fresh sign-in and a restart'); drafts, which the brief deliberately makes browser/person-scoped ('Where drafts are kept is yours', rules:174-175), are graded across view changes and reload in hro_drafts and across ended session, re-sign-in and another user on the same browser in polish hro_pol_session_resume (w2.5) - matching instruction.md:7 'when I sign back in it is still there, and nobody else who signs in on that browser sees it' and rules:105-106 for note drafts. (4) Restart: hro_restart (w1.5) requires the seeded order/note read in Z, then after restart_app and fresh sign-in that jobs, per-stage order, notes, messages and activity are unchanged and starting data not reloaded; restart_mcp.py relaunches node on the same DB_PATH (test.sh:127-193), byte-identical to the template; only the functional dimension wires the single-use verifier MCP, so the marker cannot be consumed elsewhere. This matches instruction.md:13-15 (durable data in /app/app.db, keep new work across restarts) and integration.md. Counterexample probes: an in-memory Express app passes the gate and most rows but loses hro_restart; a reseed-on-boot app loses hro_restart (seeded order/note and 'not loaded again'); a localStorage-only board fails the independent-context gate and zeroes every binary row; a conforming app keeping drafts server-side per user still passes hro_drafts/hro_pol_session_resume because storage location is not prescribed. No hidden durability requirement found. Measured evidence: scripted golden run (workspace.json, hash verified, frozen solution hashes match) reports 'restart keeps jobs, cards, order, messages and activity without reseeding; live updates resume': passed, and 'session ended mid-draft ... another person sees no draft': passed. Risk=true because no full configured functional judge run exists (raw-evidence-index scope: 'Full configured grading/workload ... absent'): hro_restart is protocol D, the last step of a very long 9000 s functional protocol, and the prompt maps budget exhaustion to 'NOT EXERCISED' binary 0, so whether a conforming app's durability is actually observed within budget is unmeasured. This is a workload/evidence gap, not a demonstrated coverage defect for this row.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL - scripted golden run confirms restart persistence and re-auth draft behaviour; configured judge execution of hro_gate_shared/hro_restart/hro_pol_session_resume NOT EXERCISED"
+}

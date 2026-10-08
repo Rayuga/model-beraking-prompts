@@ -1,0 +1,38 @@
+{
+  "number": 23,
+  "id": "verifier_and_instruction_agree_on_the_runtime_contract",
+  "reviewer": "row-reviewer-23",
+  "input_sha256": "2996e34d07dbcb26256f6917534f6e3769fa42f00ec330fd154ac876b7eff46e",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r12/rules/WebDev Rubrics QC.xlsx (openpyxl read_only): Quality Checks row 24 (#23 verifier_and_instruction_agree_on_the_runtime_contract), Internal Quality Checks row 24 incl. Mukesh annotation on sign-in, related rows #4/#19/#21/#49, Deterministic Checks check-runtime-contract-strings.py, check-verifier-contract.py",
+    ".qc-cache/hireops-workspace-2026-10-03-r12/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r12/rules/harbor-webdev-rubric-qc/references/quality-checks.md (#23 and neighbours)",
+    ".qc-cache/hireops-workspace-2026-10-03-r12/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (test.sh contract, cross-file agreements)",
+    ".qc-cache/hireops-workspace-2026-10-03-r12/rules/projects/webdev-task-template (tests/test.sh, tests/Dockerfile, environment/Dockerfile, integration.md, task.toml, instruction.md diffed against task)",
+    "qc/REVIEW_POLICY.md",
+    "task/tests/test.sh (all 227 lines)",
+    "task/instruction.md",
+    "task/environment/instructions/integration.md",
+    "task/environment/instructions/hireops_rules.md sections 8-9 (lines 196-209) and ordering/seed lines",
+    "task/environment/Dockerfile, task/tests/Dockerfile, task/tests/.dockerignore",
+    "task/task.toml",
+    "task/tests/app_context.md, all five prompt.md files and judge.toml URL/restart/seed lines",
+    "task/solution/solve.sh, solution/app/src/bootstrap.js and src/index.js listen/PORT/health lines",
+    "task/environment/assets/seed_data.json (structure, positions; byte-identical to solution/app/src/seed_data.json)",
+    "qc/runs/hireops-workspace-2026-10-03-r12/raw-evidence-index.json (all 6 artifact hashes re-verified; all matching_source_files hashes match frozen task bytes)",
+    "qc/repairs/hireops-2026-10-03-workspace/workspace.cjs launch lines 16-19, 515-526; results/workspace.json; results/server.log"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Enumerated every launch assumption in task/tests/test.sh (byte-identical to the frozen template test.sh, so template-controlled) and matched each to an agent-visible statement. (1) Entry /app/server.js required (test.sh:68,97) <- instruction.md:13 'start with node /app/server.js'; integration.md:5. (2) Symlinks allowed only inside /app/node_modules with targets there (test.sh:72-83) <- integration.md:16-19 states exactly this. (3) Unprivileged uid 65534 launch, possible writable copy at /tmp/submission, cwd not /app (test.sh:90-111; cwd is /tests from WORKDIR) <- hireops_rules.md:198-201 'runs as an unprivileged user and may launch a writable copy... never by assuming the current working directory is /app'. (4) Sanitized env -i with PATH, NODE_PATH=/usr/local/lib/node_modules, HOME, PORT=3000, DB_PATH (test.sh:104-109, restart helper 160-165) <- hireops_rules.md:201-202 lists exactly these five and says do not rely on inherited variables; instruction.md:13 honour PORT and DB_PATH; integration.md:3-4 Express and better-sqlite3 through NODE_PATH. (5) DB at /app/app.db or the copy's app.db via DB_PATH (test.sh:98-101) <- instruction.md:13 '/app/app.db, honouring DB_PATH'. (6) Liveness probe http://127.0.0.1:3000/api/health then / within ~30s (test.sh:42-58,115-125) <- instruction.md:13 port 3000 and GET /api/health that never touches the database; integration.md:5-6,9-10 0.0.0.0:3000, health answers before DB work. (7) Deps: both images pin express@5.1.0 and better-sqlite3@12.4.1 and Node 22 (environment/Dockerfile:1,9-12; tests/Dockerfile:1,16-22) <- instruction.md:13 'Server dependencies are already available, so don't install packages'; integration.md:3. (8) Seed: verifier gives no seed path at runtime; instruction.md:15 says copy what you need into /app, /assets unavailable at runtime, load once, start with no shipped DB; rules:206-209 describe the seed; seeded positions in seed_data.json support the criterion's seeded order. (9) Restart helper reuses same entry/env/DB (test.sh:127-193) <- instruction.md:15 'keep new work across restarts'; integration.md:8-9. (10) Judge URL http://localhost:3000 in all prompts and app_context.md:4 matches port; app_context.md:33-34 forbids assuming routes; UI-at-root is implied by 'serve the UI as well as the API from that one process'. Accounts in app_context.md match instruction.md:17. Sign-in is explicitly requested, so the known sign-in false positive does not even arise. No same-origin requirement in any prompt. Runtime: the scripted golden run (workspace.cjs:16 spawns node /app/server.js with cwd /tmp and env limited to PATH/HOME/NODE_PATH/PORT/DB_PATH; index scope says uid 65534 with a real restart) passed all 25 groups including restart persistence; hashes verified. That approximates, but is not, test.sh's exact setpriv/env -i launch; no full configured verifier launch was measured (owned by the runtime-evidence records, not this row).",
+  "counterexample": null,
+  "suggested_fix": null,
+  "notes": "Probes tried. Broken app that could pass: an app that reads /assets/seed_data.json at runtime would still work in the verifier because task.toml artifacts (template-controlled) copy /assets and test.sh:88 makes it readable; the brief only forbids it, so this is leniency, not an agent-facing contract mismatch (Note-level, no change recommended). A probe that accepts any HTTP status (test.sh:51-52) lets an app without /api/health pass liveness via '/'; the health route is still stated, so it is leniency only. Conforming alternative that could fail: an app writing scratch files relative to cwd would fail because cwd /tests is go-rwx, but rules section 8 explicitly forbids assuming cwd; an app needing NODE_ENV or other inherited vars would fail but section 8 forbids that too; an app binding only 127.0.0.1 still passes the 127.0.0.1 probe. The 30-second readiness window is not stated numerically, but 'health answers before database work can block startup' covers it and seed size is small. Minor residual: Node 22 minor version could drift between separately built images (both use node:22 tags); not a contract mismatch.",
+  "run_verdict": "PARTIAL"
+}

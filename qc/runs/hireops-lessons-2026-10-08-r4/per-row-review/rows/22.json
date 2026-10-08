@@ -1,0 +1,29 @@
+{
+  "number": 22,
+  "id": "verifier_image_can_launch_and_grade",
+  "reviewer": "row-reviewer-22",
+  "input_sha256": "2efc8dcc33d217e5aa005f531125764d19662c40957de60b26f4674029bc3966",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-lessons-2026-10-08-r4/rules/WebDev Rubrics QC.xlsx (sha256 6d44970b...; read via zipfile: 'Quality Checks' row 23 = #22 verifier_image_can_launch_and_grade; 'Internal Quality Checks' row 23 (same text, no extra annotation); 'Deterministic Checks' row 32 check-runtime-deps-in-both-images.py)",
+    ".qc-cache/hireops-lessons-2026-10-08-r4/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-lessons-2026-10-08-r4/rules/harbor-webdev-rubric-qc/references/quality-checks.md (### 22)",
+    ".qc-cache/hireops-lessons-2026-10-08-r4/rules/projects/webdev-task-template/tests/Dockerfile, tests/test.sh, tests/tools/*, environment/Dockerfile, five judge.toml headers",
+    "qc/REVIEW_POLICY.md",
+    "handoffs/LESSONS_FROM_COLDERWATER_2026-10-08.md",
+    "task: tests/Dockerfile, tests/.dockerignore, tests/test.sh, tests/tools/{score.py,restart_mcp.py} imports, all five judge.toml, task.toml, environment/Dockerfile, environment/instructions/integration.md, instruction.md:15, solution/app/package.json, solution/solve.sh",
+    "qc/runs/hireops-lessons-2026-10-08-r4/raw-evidence-index.json (all 8 entry hashes re-verified True), qc/repairs/hireops-2026-10-03-workspace/{via-solve.sh,workspace.cjs,results/via-solve.log}",
+    "docker image inspect/history of hireops-verifier:20261002-permission-repair (read-only; no container started)"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "Static: task tests/Dockerfile (sha256 72998ab8...) is byte-identical to the frozen template tests/Dockerfile (diff empty); test.sh and tests/tools are identical to the template too. It ships: Node 22 runtime copied from node:22-bookworm-slim (L1,L4) onto python:3.12-slim (python3 for restart_mcp.py and score.py; both import only stdlib: json, subprocess, sys, pathlib, math, tomllib); judge CLI @anthropic-ai/claude-code@2.1.281 (L17); @playwright/mcp@0.0.79 (L19) whose bundled playwright installs Chromium with deps into /opt/playwright-browsers and symlinks /usr/local/bin/chromium (L33-39), the path every judge.toml passes as --executable-path; harbor-rewardkit==0.1.7 pinned (L31); procps/util-linux for setpriv/kill used by test.sh (L13); app runtime express@5.1.0 + better-sqlite3@12.4.1 (L20-21) via NODE_PATH (L9). These match exactly the agent image (environment/Dockerfile L9-12) and solution/app/package.json dependencies (better-sqlite3 12.4.1, express 5.1.0), and the brief forbids other packages (instruction.md:15 'Server dependencies are already available, so don't install packages'; integration.md L3-4 'use only those packages and Node built-ins'), so a conforming app needs nothing the verifier lacks. Runtime (PARTIAL): image hireops-verifier:20261002-permission-repair (id e32becea..., built 2026-10-01) has layer history matching every current Dockerfile RUN line; raw-evidence-index entries (hashes verified) show solve.sh installing the frozen golden there and workspace.cjs launching node /app/server.js as uid 65534 with NODE_PATH, a real restart, and Chromium via /usr/local/lib/node_modules/@playwright/mcp/node_modules/playwright with executablePath /usr/local/bin/chromium (workspace.cjs:6,299); via-solve.log all PASS. That confirms browser, bundled Playwright, Node, express and better-sqlite3 work in the verifier image. NOT measured: a full configured test.sh/rewardkit run in this image, i.e. that the 'playwright-mcp' command named in all judge.toml files resolves from the @playwright/mcp@0.0.79 global bin, that the claude CLI starts with the [verifier.env] OpenRouter wiring, and that rewardkit's patched agents.py runs. raw-evidence-index scope states 'Full configured grading/workload ... are absent'. These are template-controlled and unchanged, so not a task defect, but per policy missing runtime evidence keeps risk=true. Counterexample probes: (a) conforming alternative that could fail: an app using only express/better-sqlite3/built-ins starts identically in both images (same pinned versions, each image compiles better-sqlite3 for its own Node); one vendoring a native module into /app/node_modules built on the agent image could hit ABI drift if the unpinned node:22-bookworm-slim tag moves between builds, but the brief forbids installing packages, so this is not a fair-task failure. (b) broken app passing: image contents cannot make a broken app pass; gating is outside this row. Base images (node:22-bookworm-slim, python:3.12-slim) are tag-pinned not digest-pinned - template-controlled, P3 latent only. Colderwater lessons checked for this row: #11 (judge infra crashes zero a dimension) and #19 (scripted golden Docker harness) apply - the harness exists and passed, but no configured judge launch is recorded; other lessons do not bear on the verifier image.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL"
+}

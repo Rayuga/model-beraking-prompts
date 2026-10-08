@@ -1,0 +1,34 @@
+{
+  "number": 44,
+  "id": "dimension_and_criterion_weights_are_honest",
+  "reviewer": "row-reviewer-44",
+  "input_sha256": "4bd1eea4300538bac22f9b8dcda9da2275fa78d20f45231f132076233ce1bf9f",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r11/rules/WebDev Rubrics QC.xlsx (Quality Checks row 45 = check 44; Internal Quality Checks row 45 with Mukesh annotation; Deterministic Checks check-scoring-policy.py, check-rubric-schema.py; read in memory with openpyxl read_only; sha256 6d44970b...)",
+    ".qc-cache/hireops-workspace-2026-10-03-r11/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r11/rules/harbor-webdev-rubric-qc/references/quality-checks.md (#41-#44)",
+    ".qc-cache/hireops-workspace-2026-10-03-r11/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (weights sections)",
+    ".qc-cache/hireops-workspace-2026-10-03-r11/rules/projects/webdev-task-template/tests/scoring.toml, tests/tools/score.py, tests/*/*/judge.toml weights",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/hireops-workspace-2026-10-03-r11/per-row-review/prompts/44.md and rows/44.template.json",
+    "qc/runs/hireops-workspace-2026-10-03-r11/raw-evidence-index.json (scope statement)",
+    ".qc-cache/hireops-workspace-2026-10-03-r11/task/instruction.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r11/task/tests/scoring.toml",
+    ".qc-cache/hireops-workspace-2026-10-03-r11/task/tests/gates/render/judge.toml, gates/constraints/judge.toml",
+    ".qc-cache/hireops-workspace-2026-10-03-r11/task/tests/scored/functional/judge.toml, scored/polish/judge.toml, scored/visual/judge.toml",
+    ".qc-cache/hireops-workspace-2026-10-03-r11/task/tests/scored/*/prompt.md (grep for weight/score handling)",
+    ".qc-cache/hireops-workspace-2026-10-03-r11/task/tests/tools/score.py (template copy logic)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Static weight analysis of frozen bytes (no runtime reward measurement exists for this row; raw-evidence-index.json scope states reward discrimination/ranking and Oracle/target scores are absent - not needed to judge weight honesty statically, but no measured reward ordering is claimed here).\n(1) Dimension weights: task/tests/scoring.toml:1-11 gates render=0.0, constraints=0.0; [weights] functional=0.6, polish=0.2, visual=0.2; [floors] functional=0.05. sha256 95f70d6e... identical to rules/projects/webdev-task-template/tests/scoring.toml (template-controlled, matches skill delivery profile 'functional 0.6 / polish 0.2 / visual 0.2' and Internal Quality Checks row 45 annotation 'Functionality has 60 percent ... in functionality we define own verifier weightage'). Functionality carries 60% vs 20% style.\n(2) Functional per-criterion weights (tests/scored/functional/judge.toml, 44 binary criteria, total 59.5, weighted_mean): highest are the behaviours instruction.md:1-9 names as the hard part - hro_stale_refused 2.5 (L209 'tell me who'), hro_live_board 2.5 (L299, instruction L5), hro_candidate_private 2.5 (L397, instruction L9 'must never see'); then 2.0 for hro_bulk_all_or_none, hro_undo_restores, hro_undo_conflict, hro_refused_put_back, hro_thread_earlier, hro_unread_counts, hro_unread_scrolled_up, hro_drafts - each an explicit instruction.md promise (L3, L7). Basic CRUD already proven by the constraints gate (gates/constraints/judge.toml:23 job+candidate+independent readback) carries low incremental weight: hro_job_open 0.5, hro_add_candidate 0.5; minor edge rows hro_reject_hired 0.5, hro_undo_full 0.5, hro_activity_refusals 0.5, hro_candidate_linked 0.5. Max single-row share 0.042 of functional, so no row dominates; no row is structural/style.\n(3) Polish (tests/scored/polish/judge.toml, total 12): hro_pol_live_board 3 and hro_pol_live_thread 3 (instruction L5, L7 'never touch my draft or my cursor') > session_resume 2.5 > earlier_place 2 > failed_send 1.5. Every polish row depends on working functionality (live update must arrive or row is 0, L23/L32; real send, sign-out/sign-in) so polish cannot be farmed by a non-working shell.\n(4) Visual (tests/scored/visual/judge.toml): 5 likert rows, equal weight 1.2 each (total 6) - style uniformly weighted, and capped at 0.2 of reward.\n(5) Max non-functional contribution sanity check (quality-checks.md #44): polish+visual <= 0.4; visual alone (pure style) <= 0.2. Weak app counterexample tried: gate-passing, beautiful, with only basic board moves (e.g. job_open+add_candidate+email_rules+move_one_stage+reorder = 5/59.5 functional = 0.084 > floor 0.05) and no concurrency/live/conversation features: polish ~0 (live rows 0 without updates), visual ~1 -> reward ~0.6*0.084+0.2 = 0.25, versus golden ~1.0; a functionally complete but plain app (functional 1, polish 1, visual 0.5) -> ~0.9. Ranking follows functionality. The ~0.2 visual credit available to a barely-floor-passing app is a template-level floor/weight policy (frozen scoring.toml, shared score.py), not a task-specific dishonest weight, and is owned by rows 42/43.\n(6) Conforming alternative that could fail: weights cannot make a conforming app fail; they only redistribute mass. Note-level observations, not defects: hro_activity (L272, a large conjunctive row for an explicitly requested Activity view) at 1.0 is modest relative to hro_drafts 2.0, and live-update arrival effectively also gates polish live rows (3+3 of 12), so missing realtime costs more in polish (0.05 per row) than in functional hro_live_board (0.025) - consistent with the instruction calling concurrency 'the hard part' and direction-preserving (worse app loses more), so not dishonest. No [judge] weight keys; gates' criteria weight 1.0 under all_pass with 0.0 dimension mass (no reward mass).",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

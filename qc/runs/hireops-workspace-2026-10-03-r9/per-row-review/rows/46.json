@@ -1,0 +1,29 @@
+{
+  "number": 46,
+  "id": "tests_and_key_are_out_of_agent_reach",
+  "reviewer": "row-reviewer-46",
+  "input_sha256": "c5cd697aaa5daabac57bf7269873a877973f00326c7dcba6c4df9ac69303cb6c",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r9/rules/WebDev Rubrics QC.xlsx (openpyxl read_only, in memory): Quality Checks row 46 and Internal Quality Checks row 46 (no extra annotation column value); Deterministic Checks rows check-dockerfiles.py, check-dockerfile-references.sh, check-instruction-hygiene.py, check-solve-contract.py",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/rules/harbor-webdev-rubric-qc/references/quality-checks.md (### 46, also 10, 45 context, C block)",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (artifacts, environment_mode, test.sh launch contract)",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (dockerfile checks)",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/rules/projects/webdev-task-template (environment/Dockerfile, tests/Dockerfile, tests/test.sh diffed against task)",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/hireops-workspace-2026-10-03-r9/raw-evidence-index.json (sha256 167f3302...; scope only)",
+    "task: environment/Dockerfile, environment/instructions/{integration.md,hireops_rules.md}, environment/assets/seed_data.json (grep), instruction.md, task.toml, solution/solve.sh, tests/Dockerfile, tests/.dockerignore, tests/test.sh, tests/tools/restart_mcp.py, tests/*/*/judge.toml (criterion ids/descriptions)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Agent image (task/environment/Dockerfile:1-26, byte-identical to template environment/Dockerfile by diff) installs only express@5.1.0/better-sqlite3@12.4.1 and COPYs only instructions/ and assets/ (lines 14-15); no tests/, no solution/, no rewardkit, no claude-code/codex/playwright judge client. Environment tree holds only Dockerfile, assets/seed_data.json, instructions/{hireops_rules.md,integration.md}. grep for 'hro_', 'criteri', 'rubric', 'judge', 'grader', 'score', 'reward', 'verifier', 'playwright', 'untrusted', 'full credit' over instruction.md, environment/ and solution/ returns no hits. Longest verbatim word-run shared by any of the 55 criterion descriptions with instruction.md+/instructions notes is 10 words (hro_bulk_move), i.e. paraphrase of the public requirement, not rubric text. Grading isolated: task.toml:28 environment_mode = \"separate\"; only artifacts /app and /assets cross over (task.toml:2). tests/Dockerfile (template-identical) installs rewardkit 0.1.7 and judge CLIs only in the verifier image, COPY . /tests then chmod -R go-rwx /tests (line 44); test.sh (template-identical) repeats chmod go-rwx /tests (l.12), sets umask 077 and chmod 700 on LOG_DIR (l.3,11), writes a zero reward before anything else (l.60) and on every exit via trap ensure_reward (l.20-23,61). Influence on reward: submitted code runs only as uid/gid 65534 via setpriv --clear-groups under env -i with PATH/NODE_PATH/HOME/PORT/DB_PATH only (l.104-111, restart helper l.160-167), so it cannot read /tests criteria, read the judge token, write $LOG_DIR/reward.* (root-owned 700), or modify the root-owned app-restart.sh; /app symlinks escaping /app/node_modules cause a zero-reward exit (l.72-83); restart_mcp.py runs the helper with env {PATH} only and a single-use marker in the 700 LOG_DIR. Final reward is computed by root python /tests/tools/score.py from rewardkit outputs (l.217,227). Agent-modified /assets cannot affect grading: nothing in tests/ reads /assets except a chmod (test.sh:88); criteria facts come from /tests/app_context.md. Weak-app attempt: an app that writes /logs/verifier/reward.txt or reads /tests/scored/*/judge.toml at startup fails with EACCES as uid 65534 (static analysis; not exercised in a run). Conforming alternative that could fail: none found - isolation imposes nothing on an honest app beyond plain files under /app. Residuals outside this row: the app can still serve text that tries to steer the browsing judge (prompt-injection, row 45); the shipped agent workspace workbook asset hash differs from the root workbook copy (rules/harbor-webdev-rubric-qc/assets d7b5d607... vs rules/WebDev Rubrics QC.xlsx 6d44970b...) - row 46 text identical in the root workbook I read. Not exercised: no full verifier run in the raw evidence index demonstrates a tamper attempt; this verdict rests on static review of frozen bytes, which is the evidence this structural row requires.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

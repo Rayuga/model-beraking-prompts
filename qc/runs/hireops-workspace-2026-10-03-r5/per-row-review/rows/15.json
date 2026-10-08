@@ -1,0 +1,37 @@
+{
+  "number": 15,
+  "id": "dockerfile_builds_the_declared_world",
+  "reviewer": "row-reviewer-15",
+  "input_sha256": "8e9a1732929dada061b7ec8f471be452416cb15fa3c35c0af552efa55321e9c6",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    "qc/runs/hireops-workspace-2026-10-03-r5/per-row-review/prompts/15.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/rules/WebDev Rubrics QC.xlsx :: 'Quality Checks' row 16 (#15 dockerfile_builds_the_declared_world, 'Agent image is pinned, pre-installs every runtime dependency (no run-time install), and stages the assets.'); 'Internal Quality Checks' row 16 (same text, columns E-Z empty, no cell comments on the row); 'Deterministic Checks' row 23 check-package-manifest-deps-preinstalled.py (FAIL under no-network, NOTE under public)",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/rules/harbor-webdev-rubric-qc/SKILL.md (full: delivery profile public network, verdict/severity, evidence standard, known false positives)",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/rules/harbor-webdev-rubric-qc/references/quality-checks.md ### 15 (and neighbouring 12, 13, 16, 22 for scope boundaries)",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (check-dockerfiles.py / check-dockerfile-references.sh / check-runtime-deps-in-both-images.py paragraph; check-dockerfile-sanity.sh override)",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (layout; docker_image/allow_internet rule)",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/rules/projects/webdev-task-template/environment/Dockerfile",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/task/environment/Dockerfile",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/task/environment/instructions/integration.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/task/environment/assets/ (listing + sha256)",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/task/task.toml",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/task/instruction.md (runtime paragraph, line 13)",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/task/solution/app/package.json, solution/solve.sh, all require() calls under solution/app, public/index.html script/link tags",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/task/tests/Dockerfile lines 1-30 and tests/.dockerignore (runtime parity only)",
+    "qc/runs/hireops-workspace-2026-10-03-r5/raw-evidence-index.json (6 entries; none concerns the agent image)",
+    "local docker image metadata only (docker images / image history / image inspect; no container started)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "task/environment/Dockerfile is byte-identical to the frozen template rules/projects/webdev-task-template/environment/Dockerfile (both sha256 0a75419e9598ded9317b26bbf0d2b12de0b9b11185fb4c9fed1ca7f3e52467d1), so it is template-controlled and unedited. Per quality-checks.md #15: (1) base 'FROM node:22-bookworm-slim' (Dockerfile:1) - the template's pinned major/distro tag, no digest; tag-level floating (local images resolve NODE_VERSION=22.23.2) is template policy, not a task defect, and the deterministic dockerfile checkers own pin policy. (2) Runtime deps: 'ENV NODE_PATH=/usr/local/lib/node_modules' (Dockerfile:3) and 'npm install -g --no-audit --no-fund express@5.1.0 better-sqlite3@12.4.1' (Dockerfile:9-12) exactly match solution/app/package.json dependencies {better-sqlite3: 12.4.1, express: 5.1.0}; the only non-relative, non-builtin require()s in the golden are 'express' (src/index.js:18) and 'better-sqlite3' (src/db.js:7); the rest are node:http, node:worker_threads, fs, path, crypto and local modules. index.html loads only same-origin /styles.css and /js/*.js, so no browser dependency needs install. solve.sh only copies app files and removes the DB - no npm/apt install at solve time. The brief (instruction.md:13: 'Server dependencies are already available, so don't install packages') and integration.md ('Express and better-sqlite3 already available through NODE_PATH; use only those packages and Node built-ins'; 'Use NODE_PATH for the preinstalled packages') agree with the image. Verifier parity: tests/Dockerfile sets the same NODE_PATH and installs express@5.1.0 better-sqlite3@12.4.1 on the same node:22-bookworm-slim runtime. (3) Assets staged: 'COPY instructions/ /instructions/' and 'COPY assets/ /assets/' then 'chmod -R a+rX /instructions /assets' (Dockerfile:14-16); environment/ holds assets/seed_data.json (sha256 a1c65c80..., identical to solution/app/src/seed_data.json) and instructions/{hireops_rules.md,integration.md}. (4) /app created, git-initialised with only .gitkeep committed (Dockerfile:17-22), WORKDIR /app, CMD sleep infinity. (5) No COPY of solution/ or tests/; build context is environment/ so it cannot reach them. task.toml has no [environment].docker_image and no allow_internet; network_mode = 'public', build_timeout_sec = 600. Build evidence: local images hireops-agent:20261001-hard-r3-uncached (created 2026-10-01T18:13Z) and others carry the identical layer history including the 'Initialize task workspace' commit step and NODE_PATH env, i.e. this exact Dockerfile has built uncached. Residual (not a defect): no agent image was rebuilt from the current r5 bytes and raw-evidence-index.json contains no agent-image build record; the only inputs that changed since are the copied seed_data.json/hireops_rules.md data files, which cannot change build outcome. Adversarial probes: a broken app requiring an extra package (e.g. ws, sqlite3) would crash at launch - correctly the submission's fault because the brief forbids installs and names the available packages; a conforming app using node:sqlite or plain http built-ins is allowed by integration.md and needs nothing from the image; an app that npm-installs into /app/node_modules would still work on the public network and is not penalised by the image. No conforming alternative found that the image would make fail.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL"
+}

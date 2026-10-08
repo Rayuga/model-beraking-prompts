@@ -1,0 +1,37 @@
+{
+  "number": 15,
+  "id": "dockerfile_builds_the_declared_world",
+  "reviewer": "row-reviewer-15",
+  "input_sha256": "6ca9ee7368c7aef18033c68fdd278d965bcb75bc20d710f6c60c557dfb8953eb",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/WebDev Rubrics QC.xlsx :: Quality Checks row 15 ('C - environment/ (assets & agent image)', dockerfile_builds_the_declared_world, 'Agent image is pinned, pre-installs every runtime dependency (no run-time install), and stages the assets.'); Internal Quality Checks row 15 (same text, no extra annotation columns or cell comments populated); Deterministic Checks rows check-dockerfiles.py, check-dockerfile-references.sh, check-fixtures.py, check-runtime-deps-in-both-images.py, check-dockerfile-sanity.sh, check-dockerfile-platform.sh, check-nproc.sh, check-pip-pinning.sh (for interpretation only)",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/harbor-webdev-rubric-qc/references/quality-checks.md:66-68 (### 15 verify/defect recipe)",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/projects/webdev-task-template/environment/Dockerfile",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/task/environment/Dockerfile",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/task/environment/instructions/integration.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/task/environment/assets/seed_data.json (parsed)",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/task/instruction.md:13-15",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/task/task.toml ([environment], artifacts)",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/task/solution/solve.sh",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/task/solution/app/package.json and require() calls in solution/app/server.js, src/*.js",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/task/tests/Dockerfile (dependency parity)",
+    "qc/runs/hireops-workspace-2026-10-03-r1/raw-evidence-index.json (hashes of workspace.cjs and results/workspace.json re-verified)",
+    "docker history hireops-agent:20261001-hard-r3-uncached (read-only image metadata; no container started)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Agent Dockerfile (task/environment/Dockerfile, sha256 0a75419e...67d1) is byte-identical to the frozen template rules/projects/webdev-task-template/environment/Dockerfile (same sha256), so it is template-controlled and unmodified. Against the skill recipe (quality-checks.md:66-68): (1) pinned base: line 1 'FROM node:22-bookworm-slim' (tag pin, no --platform); (2) every runtime dependency pre-installed at build: lines 9-12 'npm install -g ... express@5.1.0 better-sqlite3@12.4.1' with matching line 3 'ENV NODE_PATH=/usr/local/lib/node_modules'; apt packages ca-certificates git procps sqlite3 (unpinned apt is a NOTE per check-dockerfiles.py). The golden's only non-builtin requires are 'express' (src/index.js:18) and 'better-sqlite3' (src/db.js:7); solution/app/package.json pins exactly express 5.1.0 / better-sqlite3 12.4.1; solve.sh performs no npm/apt install (only a node /proc scan, cp -a into /app, and DB file removal), so nothing is installed at run time. tests/Dockerfile installs the same two pins, giving parity. (3) assets staged: line 14 'COPY instructions/ /instructions/', line 15 'COPY assets/ /assets/', line 16 'chmod -R a+rX /instructions /assets'; both source dirs exist (environment/assets/seed_data.json parses as JSON with keys users/jobs/applications/messages/notes/reads etc., sha256 22df2a00... identical to solution/app/src/seed_data.json; environment/instructions/{hireops_rules.md,integration.md}). (4) /app created, git-initialised with only .gitkeep committed (lines 17-23). Defect conditions absent: no COPY/ADD of solution/ or tests/ (only lines 14-15 copy anything); no network-dependent step at grade time. Brief agrees with the image: instruction.md:13 'Server dependencies are already available, so don't install packages'; integration.md:3-4 'Express and better-sqlite3 already available through NODE_PATH'; instruction.md:15 tells the agent to copy what it needs because /assets is unavailable at runtime, which the golden does (seed bundled at solution/app/src/seed_data.json). Runtime support: local image hireops-agent:20261001-hard-r3-uncached's docker history shows these exact RUN/COPY steps built uncached on 2026-10-01; the dependency layers are unchanged since then. The golden's dependency sufficiency was exercised in hireops-verifier:20261002-permission-repair (raw-evidence-index entries, hashes of workspace.cjs 773cc339... and results/workspace.json a848d40d... re-verified; matching package.json/solve.sh hashes equal the frozen bytes) with the identical express/better-sqlite3 pins. Adversarial probes: a broken app that needs an extra npm package would fail to start in both images (correctly attributable to the submission, since the brief forbids installs); a conforming app using only express+better-sqlite3+builtins via NODE_PATH has everything it needs in both images. Note (not a defect, template-controlled): the base is tag-pinned rather than digest-pinned, so node 22 minor/patch can drift between builds, but both images use the same major and better-sqlite3 12.4.1 ships Node 22 prebuilds; apt packages are unpinned (NOTE per workbook). Limitation: the agent image was not rebuilt against the current 2026-10-03 asset/instruction bytes in this round; only COPY inputs changed, the sources exist and parse, so this is not judged a required missing measurement for this row.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL"
+}

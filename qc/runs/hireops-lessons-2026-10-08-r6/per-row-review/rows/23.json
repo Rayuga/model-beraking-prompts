@@ -1,0 +1,40 @@
+{
+  "number": 23,
+  "id": "verifier_and_instruction_agree_on_the_runtime_contract",
+  "reviewer": "row-reviewer-23",
+  "input_sha256": "de71097d0218ad0e37f5b027c877965607d108243cfd5da9ba6f7e8288f74a59",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    "qc/runs/hireops-lessons-2026-10-08-r6/per-row-review/prompts/23.md",
+    "handoffs/LESSONS_FROM_COLDERWATER_2026-10-08.md",
+    ".qc-cache/hireops-lessons-2026-10-08-r6/rules/WebDev Rubrics QC.xlsx (read in memory via zipfile): 'Quality Checks' sheet row 24 (# 23 verifier_and_instruction_agree_on_the_runtime_contract), rows 5/20/50 (checks 4, 19, 49) for boundaries; 'Internal Quality Checks' row 24 incl. Mukesh annotation (login is house convention, FP); 'Deterministic Checks' row 31 check-runtime-contract-strings.py",
+    ".qc-cache/hireops-lessons-2026-10-08-r6/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-lessons-2026-10-08-r6/rules/harbor-webdev-rubric-qc/references/quality-checks.md (sections 4, 19, 21-29, 49-52; section 23)",
+    ".qc-cache/hireops-lessons-2026-10-08-r6/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (test.sh contract, cross-file agreements)",
+    ".qc-cache/hireops-lessons-2026-10-08-r6/rules/projects/webdev-task-template/tests/test.sh (diffed), environment/instructions/integration.md (diffed), instruction.md",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/hireops-lessons-2026-10-08-r6/task/tests/test.sh",
+    ".qc-cache/hireops-lessons-2026-10-08-r6/task/instruction.md",
+    ".qc-cache/hireops-lessons-2026-10-08-r6/task/environment/instructions/integration.md",
+    ".qc-cache/hireops-lessons-2026-10-08-r6/task/environment/instructions/hireops_rules.md (sections 8-9, lines ~205-218; grep for clock/time/restart)",
+    ".qc-cache/hireops-lessons-2026-10-08-r6/task/task.toml",
+    ".qc-cache/hireops-lessons-2026-10-08-r6/task/environment/Dockerfile",
+    ".qc-cache/hireops-lessons-2026-10-08-r6/task/tests/Dockerfile",
+    ".qc-cache/hireops-lessons-2026-10-08-r6/task/tests/.dockerignore",
+    ".qc-cache/hireops-lessons-2026-10-08-r6/task/tests/app_context.md",
+    ".qc-cache/hireops-lessons-2026-10-08-r6/task/tests/*/*/prompt.md and judge.toml (grep for URLs, restart, ports, paths)",
+    ".qc-cache/hireops-lessons-2026-10-08-r6/task/solution/solve.sh, solution/app/server.js, src/bootstrap.js, src/db.js, src/index.js (grep for PORT/DB_PATH/health/listen/__dirname)",
+    "qc/runs/hireops-lessons-2026-10-08-r6/raw-evidence-index.json (all 8 artifact hashes re-verified True; all matching_source_files hashes match frozen task) and qc/repairs/hireops-2026-10-03-workspace/workspace.cjs line 16, results/workspace.json"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Frozen tests/test.sh is byte-identical to the template test.sh (diff empty), so every launch assumption is template policy; each one is told to the agent. (1) Entry: test.sh:68 refuses without /app/server.js and test.sh:111 runs `node \"$APP_ENTRY\"` -> instruction.md:15 'It must start with node /app/server.js'; integration.md:5. (2) Port/probe URL: test.sh:48,136 probe http://127.0.0.1:3000/api/health then / -> instruction.md:15 'listen on port 3000 (honour PORT if it's set), expose GET /api/health as a check that never touches the database'; integration.md:4-5 'listens on port 3000 on 0.0.0.0'; integration.md:9-10 'GET /api/health answers before database work can block startup' (covers the ~30 s readiness loop test.sh:116-125). (3) Env vars: test.sh:104-109 env -i with PATH, NODE_PATH, HOME, PORT=3000, DB_PATH -> hireops_rules.md section 8 'The only settings you can count on are PATH, HOME, NODE_PATH, PORT and DB_PATH; anything else from a shell won't be there'; PORT/DB_PATH also in instruction.md:15, NODE_PATH in integration.md:4. (4) DB path: DB_PATH=/app/app.db (or /tmp/submission/app.db copy) -> instruction.md:15 'keep its durable data in /app/app.db, honouring DB_PATH when that is set'; integration.md:7-8; instruction.md:17 'start with no shipped database'. (5) Locked-down account and different cwd / copy: test.sh:90-102,110 setpriv uid 65534, launch from a copy when /app not writable -> integration.md:21-23 'We start it as node /app/server.js from a different working directory under a locked-down account, so find your files relative to the app itself and write only under /app or wherever DB_PATH points'; hireops_rules.md section 8 'sometimes on a writable copy of the folder'. (6) Symlink refusal test.sh:72-83 -> integration.md:16-19. (7) Seed: test.sh does not pass the seed; artifacts=['/app','/assets'] -> instruction.md:15,17 'using the seed data at /assets/seed_data.json ... Copy what you need into /app; /assets and /instructions are unavailable at runtime' (stricter than reality, safe); golden reads src/seed_data.json via __dirname (db.js:10). (8) Deps: tests/Dockerfile installs express@5.1.0 and better-sqlite3@12.4.1 globally under NODE_PATH, same pins as environment/Dockerfile:9-12, node from node:22-bookworm-slim in both -> instruction.md:15 'Server dependencies are already available, so don't install packages'; integration.md:3-5. (9) Restart helper test.sh:127-193 relaunches the same command/env over the same DB -> instruction.md:17 'keep new work across restarts'; integration.md:8-9. No fixed clock is assumed anywhere (grep clean), so none needs stating. Judge prompts and app_context use only http://localhost:3000 (Colderwater lesson 13 checked: no public address in any prompt/criterion); no same-origin demand. Sign-in surface is in the brief (instruction.md:19) so the house-convention FP does not even arise. Deterministic check-runtime-contract-strings.py applied by hand: port 3000 agrees across test.sh/prompts/app_context/instruction; entry named in brief and created by solve.sh (cp app/. /app/); non-'/' liveness path /api/health stated; all five injected env vars named; brief points to /instructions notes (instruction.md:11). Golden honours the contract: bootstrap.js:20,43 serves /api/health before DB work and listens on PORT||3000 on 0.0.0.0; db.js:9 honours DB_PATH. Runtime corroboration: raw-evidence-index hashes verified; workspace.cjs:16 launches node /app/server.js with cwd /tmp and only PATH/HOME/NODE_PATH/PORT/DB_PATH, as uid 65534 per index scope, with a real restart, and results/workspace.json records passes. Adversarial attempts: broken-but-passing (probe accepts any HTTP status incl. 500 or 404 on /) is not a row-23 issue because the gates require sign-in and server-backed readback; conforming-but-failing candidates (binding 'localhost'/::1, static path from process.cwd(), reading /assets at runtime, requiring an extra env var like SESSION_SECRET, seeding before listen, installing packages) are each explicitly warned against in the brief/notes. Residual notes (not defects): (a) a self-tested app.db left in /app would be used as-is because DB_PATH=/app/app.db; the brief says 'start with no shipped database', so this is told. (b) The restart helper sends SIGTERM to the process group and relaunches after 5 s; an app with a graceful SIGTERM handler that waits on open SSE streams would hit EADDRINUSE and lose hro_intake_restart (4.5/61 legs). The brief only says 'keep new work across restarts'; exiting on SIGTERM is Node's default and a professional norm, so P3 latent at most. Limit: the actual frozen test.sh launch inside the configured verifier image was not executed in this review or in the indexed evidence (scripted harness only); that is row 21/22/full-run evidence, not required to decide this static agreement row.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

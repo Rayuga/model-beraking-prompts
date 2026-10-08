@@ -1,0 +1,29 @@
+{
+ "number": 11,
+ "id": "timeouts_fit_the_work",
+ "reviewer": "row-reviewer-11",
+ "input_sha256": "f53d9ed60d12f2a653d497dc98fac56a662e0d84393cdc5ff130c8a915d956db",
+ "read_sources": {
+  "workbook": true,
+  "skill": true,
+  "template": true
+ },
+ "sources_read": [
+  ".qc-cache/hireops-workspace-2026-10-03-r3/rules/WebDev Rubrics QC.xlsx :: Quality Checks row 11 and Internal Quality Checks row 11 ('nest properly (inner < outer, sum of judges < verifier)'); Deterministic Checks row check-scoring-policy.py (judge timeouts nest inside suite budgets and verifier timeout)",
+  ".qc-cache/hireops-workspace-2026-10-03-r3/rules/harbor-webdev-rubric-qc/assets/WebDev_Rubrics_QC.xlsx :: row 11 text identical in both sheets (file hash differs from top-level workbook; row 11 content compared and equal)",
+  ".qc-cache/hireops-workspace-2026-10-03-r3/rules/harbor-webdev-rubric-qc/SKILL.md (verdicts, evidence standard: never upgrade unmeasured claim to Pass)",
+  ".qc-cache/hireops-workspace-2026-10-03-r3/rules/harbor-webdev-rubric-qc/references/quality-checks.md:50-51 (### 11 verify procedure)",
+  ".qc-cache/hireops-workspace-2026-10-03-r3/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md:54-75,111,119,163 (canonical task.toml timeouts, nesting rule, reference budgets 1500/11100/13200, restart helper 55 s)",
+  ".qc-cache/hireops-workspace-2026-10-03-r3/rules/projects/webdev-task-template/task.toml, tests/test.sh, tests/scoring.toml, tests/*/*/judge.toml timeouts",
+  "qc/REVIEW_POLICY.md ('Workload is measured, not inferred from a timeout number')",
+  ".qc-cache/hireops-workspace-2026-10-03-r3/task/task.toml, tests/test.sh, tests/scoring.toml, tests/gates/{render,constraints}/judge.toml, tests/scored/{functional,polish,visual}/judge.toml, tests/tools/restart_mcp.py, prompt word counts",
+  "qc/runs/hireops-workspace-2026-10-03-r3/raw-evidence-index.json and manifest.json (hashes of task.toml ac664d0e..., test.sh bd682592..., functional judge.toml 1560651e... re-derived and matching; workspace.json 7addcbf5... matching)"
+ ],
+ "verdict": "Not exercised",
+ "risk": true,
+ "severity": "P2",
+ "evidence": "Arithmetic (verified, all values byte-identical to template; test.sh identical to template by diff; restart_mcp.py identical by cmp): task.toml [agent] timeout_sec=7200.0, [environment] build_timeout_sec=600.0, [verifier] timeout_sec=13200.0. test.sh:207 runs each suite with `timeout \"$budget_sec\" rewardkit --max-concurrent-agent 1` (judges serial); test.sh:213 `run_suite gates 1500`; test.sh:224 `run_suite scored 11100`. Gate judges: render timeout=600, constraints timeout=600 -> each 600<1500 and serial sum 1200<1500 (300 s margin). Scored judges: functional timeout=9000, polish 900, visual 900 -> each < 11100 and serial sum 10800<11100 (300 s margin). Budgets: 1500+11100=12600<13200 (600 s margin). Liveness: test.sh:116-122 readiness 120x0.25 s (~30 s nominal; pathological hanging-accept worst case 120x(2x2 s probe+0.25)=510 s, 12600+510=13110<13200 still nests). Restart helper readiness 30 s + <=5 s kill wait < restart_mcp HELPER_TIMEOUT 55 s. Nesting row therefore holds by arithmetic. 'Long enough' is NOT measured: raw-evidence-index.json scope states 'Full configured grading/workload ... are absent' and every entry says 'Not a configured judge run ... or judge-duration measurement'. Functional is one batched judge for 43 criteria with a 2420-word prompt requiring many independent browser contexts, repeated 15-second live waits (U, V, T, Z groups), a restart and replays; whether it fits 9000 s with z-ai/glm-5.3-flashx is unknown. Agent 7200 s adequacy for this hard brief and 600 s cold build are also unmeasured here (Dockerfile hash equals template 0a75419e..., so build fit inherits template, not task-measured). Per SKILL.md, an unmeasured claim is not upgraded to Pass; per REVIEW_POLICY no timeout increase is recommended without a measurement.",
+ "counterexample": "Conforming alternative that could be graded wrongly: a correct app on which the single batched functional judge (43 rows, multi-context, many 15 s waits) does not finish within 9000 s or the scored suite exceeds 11100 s; test.sh:224 then hits `exit 0` with the pre-written zero reward (test.sh:60), so a fully correct submission scores 0.0 and gate success is discarded. Broken app that could pass: none attributable to timeouts; nesting bounds a hanging app (probe 2 s, readiness loop exits 0).",
+ "suggested_fix": "Do not change budgets; run one full configured verifier on the golden and record per-suite wall time (gates, functional, polish, visual) versus 1500/9000/11100; only if it measurably approaches the limits, trim functional browser work or obtain authorized justified change below five hours.",
+ "run_verdict": "NOT EXERCISED"
+}

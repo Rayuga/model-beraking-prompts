@@ -1,0 +1,30 @@
+{
+  "number": 12,
+  "id": "no_prebuilt_image_shadows_the_agent_dockerfile",
+  "reviewer": "row-reviewer-12",
+  "input_sha256": "6ca9ee7368c7aef18033c68fdd278d965bcb75bc20d710f6c60c557dfb8953eb",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/WebDev Rubrics QC.xlsx (sha256 6d44970b...fd7f): 'Quality Checks' row #12 (B - task.toml & run wiring, no_prebuilt_image_shadows_the_agent_dockerfile); 'Internal Quality Checks' row #12 (same text, no extra annotation columns populated); 'Deterministic Checks' Dockerfile/image-related rows (check-dockerfiles.py, check-fixtures.py, check-dockerfile-references.sh etc.) for context",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/harbor-webdev-rubric-qc/references/quality-checks.md section '12 · no_prebuilt_image_shadows_the_agent_dockerfile' (lines 53-54) and section 9 (line 44)",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md line 78",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/projects/webdev-task-template/task.toml",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/projects/webdev-task-template/environment/Dockerfile",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/task/task.toml",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/task/environment/Dockerfile",
+    "qc/runs/hireops-workspace-2026-10-03-r1/raw-evidence-index.json (checked; contains no evidence bearing on this static config row)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Workbook row 12 / quality-checks.md:54 / staged-task-contract.md:78 require that [environment].docker_image is not set while the agent Dockerfile has active build steps. Frozen task/task.toml lines 20-24 [environment] contain only build_timeout_sec = 600.0, network_mode = \"public\", cpus = 2, memory_mb = 4096; parsing with tomllib gives environment keys ['build_timeout_sec','cpus','memory_mb','network_mode'] and a recursive walk finds no key containing 'image' anywhere in task.toml ([verifier.environment] holds only network_mode = \"public\"). The agent Dockerfile task/environment/Dockerfile has active build steps (FROM node:22-bookworm-slim, apt-get install line 5, npm install -g express@5.1.0 better-sqlite3@12.4.1 line 9, COPY instructions/ and assets/ lines 14-15, git init of /app lines 16-23), so it is the image actually built and it is not shadowed. task/environment/ contains only Dockerfile, assets/, instructions/ (no docker-compose file that could substitute an image). Template comparison: frozen template task.toml [environment] is byte-identical in this section (template also has no docker_image); task Dockerfile sha256 0a75419e...67d1 equals the template environment/Dockerfile sha256, and the live projects/ task.toml (ac664d0e...8f26) and Dockerfile match the frozen snapshot bytes. Adversarial consideration: a broken variant would add docker_image = \"some/prebuilt:tag\" so harbor skips the Dockerfile and /assets,/instructions or pinned express/better-sqlite3 silently differ; that is absent here. A conforming alternative (docker_image set with Dockerfile reduced to no build steps) is not relevant since no image is set. This is a static configuration row; no runtime measurement is required to decide it, and no Docker build was run in this review.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

@@ -1,0 +1,36 @@
+{
+  "number": 13,
+  "id": "assets_match_the_task",
+  "reviewer": "row-reviewer-13",
+  "input_sha256": "d2912713cc20e12d1c3605e76373f75f766ca522cce13fdf91e93082f6570a7a",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r4/rules/WebDev Rubrics QC.xlsx: Quality Checks row 14 (#13 assets_match_the_task, block C), Internal Quality Checks row 14 (same text, 'match what the prompt, solution, and judges assume'; no extra annotation or cell comment on that row), Deterministic Checks C4 (check-assets-referenced.py) and C12 (fixtures/COPY/parse)",
+    ".qc-cache/hireops-workspace-2026-10-03-r4/rules/harbor-webdev-rubric-qc/SKILL.md (full)",
+    ".qc-cache/hireops-workspace-2026-10-03-r4/rules/harbor-webdev-rubric-qc/references/quality-checks.md section C, check 13 (and neighbours 14-16 for scope boundaries)",
+    ".qc-cache/hireops-workspace-2026-10-03-r4/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (full; cross-file row 'seed at /assets/seed_data.json')",
+    ".qc-cache/hireops-workspace-2026-10-03-r4/rules/projects/webdev-task-template/environment/Dockerfile (diffed against task Dockerfile: identical)",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/hireops-workspace-2026-10-03-r4/per-row-review/prompts/13.md",
+    "task/instruction.md (full)",
+    "task/environment/Dockerfile",
+    "task/environment/instructions/hireops_rules.md (full)",
+    "task/environment/instructions/integration.md (full)",
+    "task/environment/assets/seed_data.json (parsed in full)",
+    "task/solution/solve.sh, task/solution/app/src/seed_data.json, task/solution/app/src/db.js:55-90, task/solution/app/src/index.js:132-150",
+    "task/tests/app_context.md, task/tests/test.sh:195-230, all five tests/*/*/judge.toml criteria, tests/scored/functional/prompt.md, tests/scored/visual/prompt.md",
+    "task/task.toml (artifacts line)",
+    "qc/runs/hireops-workspace-2026-10-03-r4/raw-evidence-index.json (all 6 entry hashes recomputed: all match) and manifest.json"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "PATHS: The brief names /assets/seed_data.json (instruction.md:13), /instructions/hireops_rules.md and /instructions/integration.md (instruction.md:11). All three exist under task/environment/ and environment/Dockerfile:14-16 has 'COPY instructions/ /instructions/', 'COPY assets/ /assets/' and 'chmod -R a+rX /instructions /assets'. The Dockerfile is byte-identical to the frozen template Dockerfile. task.toml:2 declares artifacts = [\"/app\", \"/assets\"]. No other shipped input (images, CSV etc.) is named anywhere. CONTENT vs BRIEF/RULES: seed_data.json (28,549 bytes) parses with keys stages, candidate_status_labels, thread_page_size, users, jobs, applications, messages, notes, reads. It has 10 users whose names, emails and roles match instruction.md:17 and app_context.md:10-19 exactly (3 recruiters, 3 hiring_manager, 1 observer, 3 candidates). It has no password field, which matches the shared password in the brief. hireops_rules.md:205-208 claims 'three jobs with their cards in order', 'one conversation is long', 'a few internal notes and read markers', read marker = 'how many messages ... counted from its first', 'candidate wording and the page size of 30 are in the same file'. All hold: 3 jobs (JOB-PLAT/JOB-DATA/JOB-DSGN), 16 applications with contiguous 1-based positions per stage, messages APP-101=120 (chronologically ordered), APP-201=3, APP-301=3, APP-302=1, 3 notes, 6 read markers with read_count, thread_page_size=30, candidate_status_labels equal to the table at hireops_rules.md:182-189. Seeded Interview occupancy is within each job's interview_limit (PLAT 2/3, DATA 1/2, DSGN 1/3). All message sender_ids resolve to users. The seed's rejected card APP-301 carries rejected_from=SCREEN and reject_reason, consistent with rules section 3. CONTENT vs JUDGES: app_context.md:29-30 says 'three jobs; Noor Haddad's Platform Engineer conversation is long (120 messages at the start)'. Seed: APP-101 is Noor's on JOB-PLAT 'Platform Engineer' with 120 messages. functional prompt Z (line 25) and criterion hro_unread_counts assert 'Lena Fischer starts with 1 unread on her Product Designer conversation'. Seed: APP-301 is on JOB-DSGN 'Product Designer' with 3 messages (REC3, CAN3, REC3); Lena's read_count=2, so the only unread message is the third, a staff message. Count = 1, correct. Protocol T fallback to Tomas's 'seeded Data Analyst conversation' matches APP-201 on JOB-DATA 'Data Analyst'. hro_candidate_view wording list matches the seed labels. Visual and polish name only Noor's long Platform Engineer conversation, which exists. Ordering risk on the Lena=1 assumption: test.sh:207 runs rewardkit with --max-concurrent-agent 1; gates never use Lena; polish and visual never sign in as Lena (visual uses the candidate view as Noor and does not send). So no earlier judge consumes her unread state. CONTENT vs SOLUTION: solution/app/src/seed_data.json is byte-identical to environment/assets/seed_data.json (sha256 a1c65c80...7f83740, which matches the raw-evidence-index matching_source_files entry). db.js:61-86 loads every section once (users-empty guard), maps candidate_email to candidate accounts, converts read_count to last_read_id via ids[app][read_count-1], and carries rejected_from/reject_reason. index.js:133 counts unread as id>last_read and sender<>user, which yields Lena=1 and Rafael=0 on APP-101 (read_count 120). Copying the seed into /app is consistent with instruction.md:15 ('/assets and /instructions are unavailable at runtime'). COUNTEREXAMPLE ATTEMPTS: (a) Broken app that might pass: an app that ignores read markers would show Lena 3 unread and correctly lose hro_unread_counts, because the rules (section 9) publicly define the markers. An app that hardcodes the seed fails the gates' create-and-readback. No asset mismatch lets a broken app score. (b) Conforming alternative that might fail: a 0- versus 1-based reading of 'position' does not change order. 'counted from its first' is unambiguous because each conversation's JSON order equals created_at order. Uppercase stage ids map one-to-one to the display names and the label keys. I found no reading of the asset that a careful implementer could follow and still be graded wrong by an asset-dependent claim. Raw-evidence-index artifacts were re-hashed and all match. The scripted golden run reports passing unread/paging groups, though it does not record Lena's starting count explicitly. That count is established here statically from the seed and golden code. It is not a configured judge measurement, and none is needed for this content-consistency row.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

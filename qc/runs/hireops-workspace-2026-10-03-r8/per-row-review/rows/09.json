@@ -1,0 +1,34 @@
+{
+  "number": 9,
+  "id": "agent_environment_and_network_posture_are_correct",
+  "reviewer": "row-reviewer-09",
+  "input_sha256": "74f3c8aabb287552a2a6045a07212a40f8d2bd5574f78227a868fc40f9c7f265",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r8/rules/WebDev Rubrics QC.xlsx (read in memory via openpyxl read_only; sha256 6d44970b2ff67fefad1e2327e743fc226fcd4c50ff55baf899f41069a9b3fd7f): 'Quality Checks' sheet row 9 'agent_environment_and_network_posture_are_correct' = 'Agent image has sane CPU/memory and no secret literals. Network is public here, so network_mode = \"public\" is correct - do not flag it.'; 'Internal Quality Checks' sheet row 9 = 'Agent image is no-network with sane CPU/memory, no secret literals, and nothing that secretly needs an install.' (no extra annotation column for row 9); also scanned Deterministic Checks rows check-no-literal-secrets.py, check-allowlist-matches-provider.py, check-dockerfile-platform.sh, check-nproc.sh and Internal rows 15/52 credential annotations",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/rules/harbor-webdev-rubric-qc/assets/WebDev_Rubrics_QC.xlsx (sha256 d7b5d607...; differs in bytes from the rules copy, but row 9 text in both Quality and Internal sheets is identical)",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/rules/harbor-webdev-rubric-qc/SKILL.md (Delivery profile: network public in both phases, never report it; Known false positives: ${VAR} templates and brief demo passwords intentional)",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/rules/harbor-webdev-rubric-qc/references/quality-checks.md:43-45 (check 9 verify procedure)",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md:34-78 (task.toml contract, [environment] block, docker_image/allow_internet rule)",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/rules/projects/webdev-task-template/task.toml",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/rules/projects/webdev-task-template/environment/Dockerfile",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/task/task.toml (sha256 ac664d0e...)",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/task/environment/Dockerfile (sha256 0a75419e...)",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/task/environment/instructions/hireops_rules.md (secret-pattern grep)",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/task/environment/assets/seed_data.json (secret-pattern grep)",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/task/instruction.md:17 (demo password)",
+    "qc/runs/hireops-workspace-2026-10-03-r8/raw-evidence-index.json (scope and entries; no agent-image build entry)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Frozen task/task.toml:20-24 reads `[environment]` build_timeout_sec = 600.0, network_mode = \"public\", cpus = 2, memory_mb = 4096 -- exactly the staged-task-contract.md:56-60 block and the frozen template task.toml:20-24. `diff` of template vs task task.toml shows changes only in [task] name/description/keywords and [metadata] fields (lines 5-15); [agent], [environment], [verifier], [verifier.env], [verifier.environment] are byte-identical to the template. No `docker_image` key and no `allow_internet` key anywhere in task.toml (quality-checks.md:44 requirement). No secret literal under [environment]; the only credential-shaped value in task.toml is task.toml:34 `ANTHROPIC_AUTH_TOKEN = \"${OPENROUTER_API_KEY}\"` (a ${VAR} template in the frozen verifier block, explicitly allowed by SKILL.md Known false positives) and task.toml:35 `ANTHROPIC_API_KEY = \"\"`. Agent image task/environment/Dockerfile is byte-identical to the template Dockerfile (`diff` returned no output): pinned `FROM node:22-bookworm-slim`, no --platform pin, no bare nproc, globally pre-installs express@5.1.0 and better-sqlite3@12.4.1 with NODE_PATH set, copies /instructions and /assets, initialises empty /app; no ENV/ARG carrying a secret. Case-insensitive grep of task/environment/** for api_key|secret|token|password|sk-|PRIVATE KEY|AKIA|ghp_|xox|bearer found only hireops_rules.md:11 demo password `Hireops!2026`, which the brief also publishes (instruction.md:17) and SKILL.md lists as an intentional demo credential (not a live secret). cpus=2 / memory_mb=4096 is sane for a Node 22 + Express + better-sqlite3 single-process app plus agent tooling; better-sqlite3 is pre-installed so no native compile is needed at run time. Network posture public is correct per workbook row text and the SKILL delivery profile; not flagged. Counterexample attempts: (a) a weak/broken app cannot exploit this row -- it is static wiring independent of the submission; (b) a conforming alternative could fail only if 2 CPU/4 GB starved a normal build or if an install required network the agent lacked; network is public and dependencies are pre-installed, so neither applies. Conflict recorded, not a defect: the Internal Quality Checks annotation of row 9 says 'Agent image is no-network', contradicting the client-facing row text and the SKILL delivery profile; current profile (public network) governs. Its other clause 'nothing that secretly needs an install' is satisfied because the Dockerfile pre-installs the runtime dependencies and network is public anyway. Measurement note: raw-evidence-index.json contains no agent-image build or agent-resource measurement entry (its entries are scripted golden verifier-image observations); this row is a static configuration check whose subject bytes are identical to the template, so no runtime measurement is required to judge it, and no build/Oracle/model result is claimed here.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

@@ -1,0 +1,31 @@
+{
+  "number": 19,
+  "id": "solution_honors_the_runtime_contract_and_is_self_contained",
+  "reviewer": "row-reviewer-19",
+  "input_sha256": "d622da81e9b07dcadf86ec7430f70ae35a57d0ff2275e3a0cf1bd6eaa7572278",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-lessons-2026-10-08-r3/rules/WebDev Rubrics QC.xlsx (sha256 6d44970b...; parsed in memory via zipfile): Quality Checks row 20 (#19) 'solve.sh installs to the expected paths and the reference runs under the stated contract. (Network is public - fetching or installing at start is not a defect.)'; Internal Quality Checks row 20 (#19) '... with no network / no run-time install' (superseded by the public-network profile, and satisfied anyway because solve.sh installs nothing); Deterministic Checks row 34 check-solve-contract.py, row 42 check-nproc.sh, row 43 check-pip-pinning.sh",
+    ".qc-cache/hireops-lessons-2026-10-08-r3/rules/harbor-webdev-rubric-qc/assets/WebDev_Rubrics_QC.xlsx (sha256 d7b5d607...; same row 19 / check-solve-contract text)",
+    ".qc-cache/hireops-lessons-2026-10-08-r3/rules/harbor-webdev-rubric-qc/SKILL.md (delivery profile: public network)",
+    ".qc-cache/hireops-lessons-2026-10-08-r3/rules/harbor-webdev-rubric-qc/references/quality-checks.md section 19, 23, 49",
+    ".qc-cache/hireops-lessons-2026-10-08-r3/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (closed file list, cross-file agreements: entry /app/server.js, seed /assets/seed_data.json, DB_PATH)",
+    ".qc-cache/hireops-lessons-2026-10-08-r3/rules/projects/webdev-task-template/solution/solve.sh, tests/test.sh, tests/Dockerfile, environment/Dockerfile (task copies of test.sh and both Dockerfiles diff identical to template)",
+    "qc/REVIEW_POLICY.md",
+    "handoffs/LESSONS_FROM_COLDERWATER_2026-10-08.md",
+    "task/solution/solve.sh, task/solution/app/{package.json,server.js,src/bootstrap.js,src/db.js,src/index.js (lines 1-60, 420-450 grep),src/seed_data.json}",
+    "task/instruction.md, task/environment/instructions/integration.md, task/environment/Dockerfile, task/tests/test.sh, task/tests/Dockerfile, task/task.toml",
+    "qc/runs/hireops-lessons-2026-10-08-r3/raw-evidence-index.json; qc/repairs/hireops-2026-10-03-workspace/{via-solve.sh, results/via-solve.log, results/server.log, workspace.cjs lines 1-30} (all sha256 match the index)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Static: task/solution/solve.sh is ASCII bash with '#!/bin/bash' shebang, 0 CR bytes, 'bash -n' OK. It runs 'mkdir -p /app', resolves DB_PATH (default /app/app.db) and refuses one outside /app, refuses install only if the DB or its -wal/-shm is held open by a live process (skips the /proc scan when no DB exists, i.e. the oracle's fresh case), then 'cp -a \"$(dirname \"$0\")/app/.\" /app/' and 'rm -f' the DB files, matching the brief's 'start with no shipped database'. No write to /tests, /logs/verifier or /solution; no pkill, NODE_ENV, nproc, pip, npm, curl or wget (grep empty). Solution tree has no node_modules, symlinks or *.db, so test.sh's symlink refusal (test.sh:72-83) is not triggered. Entry: app/server.js -> src/index.js -> bootstrap.start: a main-thread http listener on PORT||3000 at 0.0.0.0 answers GET/HEAD /api/health and /health without DB, and proxies everything else to an Express worker (worker env copies process.env so NODE_PATH and DB_PATH propagate). db.js uses process.env.DB_PATH || path.join(__dirname,'..','app.db') (=/app/app.db), reads seed from beside the module (src/seed_data.json, byte-identical to environment/assets/seed_data.json, sha a1c65c80...), so it needs no /assets at runtime as integration.md/instruction.md require; static files resolved from __dirname, not cwd. Seeding is idempotent: seedIfEmpty returns when users count > 0, insertion in one transaction. Only express@5.1.0 and better-sqlite3@12.4.1 (package.json) are used, both preinstalled globally via NODE_PATH in both environment/Dockerfile and tests/Dockerfile (both identical to template). test.sh launches 'setsid env -i ... NODE_PATH=/usr/local/lib/node_modules PORT=3000 DB_PATH=$APP_DB setpriv --reuid=65534 ... node /app/server.js' after chown -R 65534 /app, which the reference satisfies. Runtime (scripted, not judge): results/via-solve.log (sha 803088be..., index-bound to the frozen solve.sh 1df2ed04... and all solution file hashes, which I re-hashed and confirmed) shows via-solve.sh ran the task solve.sh into an empty /app ('solve.sh installed: 11 files'), chowned to 65534, then the driver launched 'node /app/server.js' as uid 65534 from cwd /tmp with a cleared env, including a real restart: 26 groups PASS, including 'restart keeps ... without reseeding', no page errors; server.log shows '[hireops] listening on 3000' twice. Colderwater lessons check: lesson 19 (scripted golden harness: install with solve.sh, launch like test.sh, real restart) is followed; lesson 9/13 network: public posture consistent, solve.sh fetches nothing. Weak-app probe: a solve.sh that shipped node_modules symlinks outside /app, a prebuilt app.db, or relied on /assets at runtime would be caught or contradicted by the brief; this reference does none. Conforming alternative probe: an agent that installs its own deps or reads /assets at runtime is governed by other rows (brief contract), not by the reference's runtime honoring. Residual (not a defect, P3-level, noted honestly): the driver used DB_PATH=/tmp/hireops-workspace.db, not test.sh's DB_PATH=/app/app.db under setsid env -i, and ran in the verifier image rather than the agent image; source review shows /app is chowned to 65534 so WAL files are writable there, and the agent image carries the same node:22 runtime and global packages. No full configured verifier/judge run or Oracle score exists (raw-evidence-index scope says so); this row makes no Oracle claim. The solve.sh /proc scan would throw EACCES if run as non-root while a DB file already exists; irrelevant to the fresh oracle install.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "CONFIRMED"
+}

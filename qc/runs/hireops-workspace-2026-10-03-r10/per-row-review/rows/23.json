@@ -1,0 +1,33 @@
+{
+  "number": 23,
+  "id": "verifier_and_instruction_agree_on_the_runtime_contract",
+  "reviewer": "row-reviewer-23",
+  "input_sha256": "622c7c3d5aa7f77beae16575e8006f426f50f3a84b0bead9f50ac5b0b1c70804",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r10/rules/WebDev Rubrics QC.xlsx (openpyxl read_only, in memory): Quality Checks row 23 'verifier_and_instruction_agree_on_the_runtime_contract' and Internal Quality Checks row 23 incl. annotation (Mukesh: login defaulting is house convention; Conc: review, bypass if FP); also rows 4, 19, 49 for boundaries",
+    ".qc-cache/hireops-workspace-2026-10-03-r10/rules/harbor-webdev-rubric-qc/SKILL.md (full; known false positive: sign-in not in brief, checks 23/27)",
+    ".qc-cache/hireops-workspace-2026-10-03-r10/rules/harbor-webdev-rubric-qc/references/quality-checks.md section 23 (and 4, 19, 21, 49)",
+    ".qc-cache/hireops-workspace-2026-10-03-r10/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (full, test.sh contract and cross-file table)",
+    ".qc-cache/hireops-workspace-2026-10-03-r10/rules/projects/webdev-task-template (frozen template tree listed; template contract as captured in staged-task-contract.md)",
+    "qc/REVIEW_POLICY.md (full)",
+    "task/tests/test.sh (full, 228 lines)",
+    "task/instruction.md (full)",
+    "task/environment/instructions/integration.md (full)",
+    "task/environment/instructions/hireops_rules.md (full, esp. section 8 'Runtime file paths')",
+    "task/environment/Dockerfile, task/tests/Dockerfile, task/task.toml, task/tests/app_context.md",
+    "task/solution/solve.sh, solution/app/server.js, package.json; grep of solution/app/src/{bootstrap,db,index}.js for PORT/DB_PATH/listen/__dirname/seed",
+    "qc/runs/hireops-workspace-2026-10-03-r10/raw-evidence-index.json (sha256 18394e24...cce4); verified results/workspace.json sha a424b50f... and frozen bootstrap.js/db.js hashes match the index"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Every launch assumption in task/tests/test.sh is stated to the agent. (1) Entry: test.sh:68 refuses grading without /app/server.js and launches `node \"$APP_ENTRY\"` (test.sh:97,111) -> instruction.md:13 'It must start with node /app/server.js'; integration.md:4. (2) Port/probe: probe_ready hits http://127.0.0.1:3000/api/health then / (test.sh:48) -> instruction.md:13 'listen on port 3000 (honour PORT if it's set), expose GET /api/health as a check that never touches the database'; integration.md:5 'listens on port 3000 on 0.0.0.0' (so a 127.0.0.1 probe reaches it); PORT=3000 injected test.sh:108. (3) DB: DB_PATH=/app/app.db or $APP_COPY/app.db (test.sh:98-101,109) -> instruction.md:13 'keep its durable data in /app/app.db, honouring DB_PATH when that is set'; integration.md:7-8. (4) Environment: `env -i` with only PATH, NODE_PATH, HOME, PORT, DB_PATH (test.sh:104-109) -> hireops_rules.md:201-202 'The launch environment contains PATH, HOME, NODE_PATH, PORT and DB_PATH; do not rely on inherited shell variables.' (5) Unprivileged uid 65534, possible writable copy at /tmp/submission, cwd not /app (test.sh:87-102,110) -> hireops_rules.md:198-201 'runs as an unprivileged user and may launch a writable copy... Resolve bundled UI and seed files relative to the entry or module directory, never by assuming the current working directory is /app.' (6) Deps: NODE_PATH=/usr/local/lib/node_modules (test.sh:106); verifier image installs express@5.1.0 and better-sqlite3@12.4.1 globally (tests/Dockerfile:16-22), identical to agent image (environment/Dockerfile:3,9-12) -> integration.md:3-4 'Express and better-sqlite3 already available through NODE_PATH; use only those packages and Node built-ins'; instruction.md:13 'don't install packages'. (7) Symlinks: test.sh:72-83 exits unscored on any symlink outside /app/node_modules or resolving outside it -> integration.md:16-19 states exactly this rule. (8) Seed: test.sh does not read /assets at launch (only a best-effort chmod at :88); instruction.md:15 'Copy what you need into /app; /assets and /instructions are unavailable at runtime', 'start with no shipped database'. (9) Restart: helper relaunches over the same APP_DB with same env (test.sh:160-167) -> instruction.md:15 'keep new work across restarts'; integration.md:8-9. (10) No fixed clock is assumed by test.sh (no TZ/clock var injected; seed has no clock key), so none needs stating. (11) Judge URL http://localhost:3000 (app_context.md:4) matches port. Sign-in in criteria is the documented house-convention false positive and is anyway fully stated (instruction.md:17, accounts). Golden honours the same contract: bootstrap.js:43 listens on process.env.PORT||3000 at 0.0.0.0; db.js:9-10 DB_PATH fallback and seed resolved via __dirname. Adversarial tries: (a) broken app that could pass the probe: one with no /api/health still passes probe via '/' or any HTTPError (test.sh:51-52) — this is leniency, not an unstated assumption, and the health route is graded elsewhere if at all; (b) conforming alternative that could fail: an app reading /assets/seed_data.json at runtime, assuming cwd=/app, needing extra env vars, binding only ::1/'localhost', vendoring symlinks to global modules, or importing deps via ESM bare specifiers (NODE_PATH ignored) — each is either explicitly forbidden/warned in the brief/notes (assets unavailable, cwd, env list, 0.0.0.0, symlink rule) or fails identically in the agent environment where NODE_PATH is the same, so it is not a verifier-only hidden assumption. No contract mismatch found.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL — raw-evidence-index entry qc/repairs/hireops-2026-10-03-workspace/results/workspace.json (hash verified) records the frozen golden running as uid 65534 with a real restart in the verifier image, matching the launch shape; the frozen test.sh launch/probe itself was not executed in any run I verified (full configured verifier launch remains unmeasured, which is owned by the runtime-record requirement, not this source-agreement row)."
+}

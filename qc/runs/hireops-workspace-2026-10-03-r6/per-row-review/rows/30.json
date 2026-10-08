@@ -1,0 +1,34 @@
+{
+  "number": 30,
+  "id": "negative_checks_have_positive_controls",
+  "reviewer": "row-reviewer-30",
+  "input_sha256": "cefa38a90e730105bedd5082c7d28c322a25773d30a55777d75037f5036618d6",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r6/rules/WebDev Rubrics QC.xlsx: Quality Checks row 31 (#30) and Internal Quality Checks row 31 (#30), read in memory with openpyxl read_only; no comment parts in the zip",
+    ".qc-cache/hireops-workspace-2026-10-03-r6/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r6/rules/harbor-webdev-rubric-qc/references/quality-checks.md:127-129 (### 30)",
+    ".qc-cache/hireops-workspace-2026-10-03-r6/rules/projects/webdev-task-template (file tree for the staged layout)",
+    "qc/REVIEW_POLICY.md (esp. line 19 'A negative needs a successful control')",
+    "qc/runs/hireops-workspace-2026-10-03-r6/raw-evidence-index.json (scope only)",
+    "task/tests/scored/functional/prompt.md and judge.toml (all 46 criteria)",
+    "task/tests/scored/polish/prompt.md and judge.toml",
+    "task/tests/scored/visual/prompt.md and judge.toml",
+    "task/tests/gates/render/*, task/tests/gates/constraints/*",
+    "task/tests/app_context.md",
+    "task/tests/scoring.toml",
+    "task/instruction.md:3",
+    "task/environment/instructions/hireops_rules.md:94-100 (Undo)"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "Most negative legs are properly paired. Functional prompt.md:13 says 'Every refusal row needs its own positive control: a successful action of the same kind, observed in this review', and a blank/static shell or a failed backend gate zeroes every binary row. Examples of correct pairing in functional/judge.toml: hro_job_open (refusals plus a successful opening), hro_add_email_rules (other-job address accepted), hro_move_one_stage, hro_reject_reason, hro_reject_hired (non-hired rejection), hro_reopen, hro_interview_full (two cards entered), hro_mgr_early_refused (late-stage moves), hro_mgr_other_job, hro_observer_readonly and hro_candidate_no_staff (Rafael's identical requests), hro_anonymous (signed-in success), hro_stale_refused (original move), hro_bulk_all_or_none and hro_bulk_places (successful sets), hro_activity_refusals (successful lines), hro_notes, hro_msg_compose, hro_thread_access, hro_candidate_private (own data loads; a page with none of its own data is 0), hro_unread_counts and hro_seen (the 'does not rise' and 'not seen' legs pair with the rise and seen legs), and hro_restart. The render gate requires a valid sign-in after the invalid one (render/prompt.md:9). Polish failed-send and session-resume both require a successful resend. The gap is in the undo refusals. hro_undo_conflict (weight 2, judge.toml:240-246) uses 'A successful undo earlier is the control', and hro_undo_full (weight 0.5, :122-129) uses 'the other successful undos in this review are the control'. hireops_rules.md:98-99 limits undo refusal to cases where 'any of those cards has been moved, re-ordered, rejected or reopened since, by anyone' or where Interview would overfill. instruction.md:3 says the same: 'as long as nobody has touched those cards since'. Every successful undo in the protocol (B steps 1, 5 and 12) happens with no intervening action by another person. Every undo that follows another person's action is expected to be refused: L, where Mei moves A and then E's undo is refused; B10-11; and B14. No undo anywhere returns a card into Interview. So the successful undos are a control of the same kind, but not the matching success case that quality-checks.md:128 requires for the scoped negative. They do not show that the refusal is scoped to 'those cards' or to the capacity condition.",
+  "counterexample": "A plausible non-conforming app keeps one version counter per job and refuses undo whenever anyone else has changed any card on that job since the move. It does not count notes, so B12 still goes ahead. It also refuses every undo that would return a card into Interview, whatever the capacity. Following the protocol: B1, B5 and B12 succeed, so hro_undo_restores passes and the 'successful undo' controls are met. L's E-undo is refused after Mei's unrelated move of A, so hro_undo_full passes. B11 and B14 are refused, so hro_undo_conflict passes. The app breaks the public rule 'as long as nobody has touched those cards since' because it refuses undos after unrelated changes, yet it earns 2.5 weight. A conforming app and this broken one score the same.",
+  "suggested_fix": "Add a matching success control. For example, in B have Mei move or re-order an unrelated card of the same job between one of Rafael's moves and its undo, and require that undo to go ahead as the control in hro_undo_conflict. Also add, or name, an undo that returns a card into Interview while it has room as the control for hro_undo_full.",
+  "run_verdict": "NOT EXERCISED"
+}

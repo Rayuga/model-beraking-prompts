@@ -1,0 +1,31 @@
+{
+  "number": 12,
+  "id": "no_prebuilt_image_shadows_the_agent_dockerfile",
+  "reviewer": "row-reviewer-12",
+  "input_sha256": "12bf37abe5ba3152b1255fb9b9531665c432b86e0b0d86562adc7c802940d224",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r13/rules/WebDev Rubrics QC.xlsx (sha256 6d44970b...; read in memory with openpyxl read_only): 'Quality Checks' row 13 (#12, block 'B - task.toml & run wiring', no_prebuilt_image_shadows_the_agent_dockerfile) and 'Internal Quality Checks' row 13 (same check, annotation: 'which would skip it entirely')",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/rules/harbor-webdev-rubric-qc/SKILL.md (full)",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/rules/harbor-webdev-rubric-qc/references/quality-checks.md section '12 · no_prebuilt_image_shadows_the_agent_dockerfile' (lines 53-54) and adjacent check 9 (line 44)",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md task.toml section (lines 40-78, incl. line 78 docker_image rule)",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (grep for image/Dockerfile checker line 60)",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/rules/projects/webdev-task-template/task.toml and environment/Dockerfile (diffed against task)",
+    "qc/REVIEW_POLICY.md (full)",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/task/task.toml (full; parsed with tomllib)",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/task/environment/Dockerfile (full)",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/task/tests/Dockerfile and tests/.dockerignore (full)",
+    "qc/runs/hireops-workspace-2026-10-03-r13/manifest.json (hash lines for task.toml and environment/Dockerfile)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "task/task.toml [environment] (lines 21-25) contains only build_timeout_sec = 600.0, network_mode = \"public\", cpus = 2, memory_mb = 4096; tomllib parse of the whole file finds no key containing 'image' at any nesting level (including [verifier.environment], which has only network_mode), and no allow_internet. Hence the agent image is built from task/environment/Dockerfile, whose active steps are all live: FROM node:22-bookworm-slim (l1), apt-get install of ca-certificates/git/procps/sqlite3 (l5-7), pinned global npm install express@5.1.0 + better-sqlite3@12.4.1 (l9-12), COPY instructions/ and assets/ (l14-15), /app git init (l16-23), WORKDIR /app, CMD sleep infinity. No compose/yaml override files exist in the task tree. The environment/Dockerfile is byte-identical to the frozen template's (both sha256 0a75419e...; diff empty), and task.toml differs from the template only in [task]/[metadata] identity text, so the template's no-docker_image posture is preserved. Frozen hashes match manifest.json (task.toml ac664d0e..., environment/Dockerfile 0a75419e...). Adversarial consideration: a broken variant that set [environment].docker_image to a stale prebuilt image would silently drop the /assets and /instructions COPYs and the pinned better-sqlite3 install, making the brief's referenced files absent; this task is not that variant. A conforming alternative (docker_image set with a fully commented-out Dockerfile) would also pass the row, so the row does not over-constrain. This is a static-config check; no runtime measurement is required for it, so no missing evidence applies to this row. This verdict says nothing about other rows, Oracle, model or portal scores.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

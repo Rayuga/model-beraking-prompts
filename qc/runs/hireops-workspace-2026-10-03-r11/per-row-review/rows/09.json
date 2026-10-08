@@ -1,0 +1,29 @@
+{
+  "number": 9,
+  "id": "agent_environment_and_network_posture_are_correct",
+  "reviewer": "row-reviewer-09",
+  "input_sha256": "4bd1eea4300538bac22f9b8dcda9da2275fa78d20f45231f132076233ce1bf9f",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r11/rules/WebDev Rubrics QC.xlsx (sha256 6d44970b...; openpyxl read_only) Quality Checks row 10 (#9) and Internal Quality Checks row 10 (#9); also Quality/Internal #52 for secret-profile context",
+    ".qc-cache/hireops-workspace-2026-10-03-r11/rules/harbor-webdev-rubric-qc/assets/WebDev_Rubrics_QC.xlsx (sha256 d7b5d607...; differs in bytes from root workbook but #9 text identical in both sheets)",
+    ".qc-cache/hireops-workspace-2026-10-03-r11/rules/harbor-webdev-rubric-qc/SKILL.md (Delivery profile: public network never reported; Known false positives: demo passwords and ${VAR} templates)",
+    ".qc-cache/hireops-workspace-2026-10-03-r11/rules/harbor-webdev-rubric-qc/references/quality-checks.md section '9 · agent_environment_and_network_posture_are_correct' (lines 43-45), plus #12 and #15",
+    ".qc-cache/hireops-workspace-2026-10-03-r11/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md task.toml block (lines ~56-78)",
+    ".qc-cache/hireops-workspace-2026-10-03-r11/rules/projects/webdev-task-template/task.toml, environment/Dockerfile, tests/Dockerfile",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r11/task/task.toml, task/environment/Dockerfile, task/environment/instructions/integration.md, task/environment/instructions/hireops_rules.md (grep), task/environment/assets/seed_data.json (grep), task/instruction.md (grep), task/solution/solve.sh, task/solution/app/package.json, task/tests/Dockerfile",
+    "qc/runs/hireops-workspace-2026-10-03-r11/raw-evidence-index.json (6 entries; all artifact hashes re-verified OK)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "task/task.toml [environment]: build_timeout_sec = 600.0, network_mode = \"public\", cpus = 2, memory_mb = 4096 -- byte-identical in values to the frozen template task.toml and to the staged-task-contract block; no docker_image key and no allow_internet key anywhere in task.toml (contract line 78 / quality-checks #9 satisfied). No secret literal under [environment]; the only credential-shaped lines are in [verifier.env]: ANTHROPIC_AUTH_TOKEN = \"${OPENROUTER_API_KEY}\" (template variable) and ANTHROPIC_API_KEY = \"\" (empty), both the frozen expected block. task/environment/Dockerfile is identical in content to the template agent Dockerfile: FROM node:22-bookworm-slim, apt ca-certificates git procps sqlite3, npm -g express@5.1.0 better-sqlite3@12.4.1 (pinned), NODE_PATH=/usr/local/lib/node_modules, COPY instructions/ and assets/ only, chmod a+rX, empty git-initialised /app, CMD sleep infinity; no ENV/ARG secrets, no COPY of solution/ or tests/. tests/Dockerfile: Compare-Object against template produced no differences. Secret scan (grep for api_key|secret|token|password|sk-|private key) over task/environment and task.toml: only hit is the documented demo password 'Hireops!2026' in environment/instructions/hireops_rules.md:11, which SKILL.md lists as an expected-by-profile credential (known false positive); seed_data.json had 0 matches. 'Nothing secretly needs an install' (Internal sheet): instruction.md says 'Server dependencies are already available, so don't install packages' and integration.md restricts to Express/better-sqlite3 via NODE_PATH plus Node built-ins; golden package.json depends only on express 5.1.0 and better-sqlite3 12.4.1, matching the preinstalled pinned versions; solve.sh only copies files and resets the DB, no npm install. 2 CPU / 4096 MB is sane for a single Node 22 + SQLite process with no build step. Internal Quality Checks text still says 'Agent image is no-network'; this is superseded by the client Quality Checks text and SKILL.md delivery profile (public in both phases) -- not flagged. Adversarial check: a broken app cannot exploit this row (it is config-only); a conforming app is not penalised since public network only widens what it may load (CDN allowed by brief). Not measured: no agent-image build log is in the raw evidence index (it covers only scripted golden observations in a verifier image); because the Dockerfile is byte-identical to the template, this does not create a row-specific risk.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

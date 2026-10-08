@@ -1,0 +1,37 @@
+{
+  "number": 14,
+  "id": "seed_data_is_internally_consistent_and_clean",
+  "reviewer": "row-reviewer-14",
+  "input_sha256": "de71097d0218ad0e37f5b027c877965607d108243cfd5da9ba6f7e8288f74a59",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-lessons-2026-10-08-r6/rules/WebDev Rubrics QC.xlsx (read via zipfile in memory: 'Quality Checks' row A15 id 14 and 'Internal Quality Checks' row 15 annotations E15/F15/G15: names/DOB-type PII acceptable, flag credentials inside task data; also rows 36/45/52 and Deterministic Checks check-fixtures.py / check-probe-not-in-seed.py for context)",
+    ".qc-cache/hireops-lessons-2026-10-08-r6/rules/harbor-webdev-rubric-qc/SKILL.md (delivery profile, known false positives: demo credentials in brief expected; flag real secrets/PII in seed)",
+    ".qc-cache/hireops-lessons-2026-10-08-r6/rules/harbor-webdev-rubric-qc/references/quality-checks.md section '14 · seed_data_is_internally_consistent_and_clean'",
+    ".qc-cache/hireops-lessons-2026-10-08-r6/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (seed path/clock lines 14,175-176)",
+    ".qc-cache/hireops-lessons-2026-10-08-r6/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (seed-related checkers)",
+    ".qc-cache/hireops-lessons-2026-10-08-r6/rules/projects/webdev-task-template/environment/assets/seed_data.json and environment/Dockerfile (template)",
+    "qc/REVIEW_POLICY.md",
+    "handoffs/LESSONS_FROM_COLDERWATER_2026-10-08.md",
+    "qc/runs/hireops-lessons-2026-10-08-r6/manifest.json (seed hashes) and raw-evidence-index.json",
+    "task/environment/assets/seed_data.json (full)",
+    "task/solution/app/src/seed_data.json (byte-identical copy)",
+    "task/solution/app/src/db.js lines 55-90 (seedIfEmpty)",
+    "task/environment/instructions/hireops_rules.md (full)",
+    "task/environment/instructions/integration.md (full)",
+    "task/instruction.md (full)",
+    "task/environment/Dockerfile, task/task.toml",
+    "task/tests/app_context.md (full); seeded-fact quotations in tests/scored/*/judge.toml and tests/gates/*/judge.toml"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Only shipped data file is environment/assets/seed_data.json (sha256 a1c65c80...3740, matches manifest); solution/app/src/seed_data.json is byte-identical (cmp), so the reference loads exactly the shipped data. It parses as JSON (top-level keys generated_note, stages, candidate_status_labels, thread_page_size, users, jobs, applications, messages, notes, reads). A scripted integrity pass (python -I in a temp dir outside the workspace) found: no duplicate user/job/application ids or user emails; every job.recruiter_id resolves to a role=recruiter user and every manager_id to a role=hiring_manager user; interview_limit integers 3/2/3 within the 1-50 rule (hireops_rules.md:28-29); every application.job_id resolves, every stage is in 'stages', candidate_status_labels covers all six stages and matches the table at hireops_rules.md:191-198; positions are contiguous 1..n per (job,stage) with no gaps/duplicates; Interview occupancy 2/3, 1/2, 1/3 never exceeds limits; the only REJECTED card (APP-301) has rejected_from=SCREEN and a non-blank reason, and no non-rejected card carries those fields; no duplicate (job,email) pair, while Noor applies to two jobs as the rules allow (hireops_rules.md:33-35); every application email matching a candidate account carries that account's exact name, and each candidate account owns at least one application (CAN1: APP-101, APP-302; CAN2: APP-201; CAN3: APP-301). All 127 messages reference existing applications and senders entitled to write there under hireops_rules.md:137-141 (REC1/CAN1 on APP-101, REC2/CAN2 on APP-201, REC3/CAN3 on APP-301, REC3 on APP-302); bodies are non-blank and timestamps strictly increase within each conversation (no ties). APP-101 has exactly 120 messages, matching app_context.md:29-30. All 3 notes have authors entitled to write them (recruiter, or the job's own hiring manager). All 6 read markers reference participants of that conversation with 1 <= read_count <= message count, so db.js:82-83 (ids[app][read_count-1]) always resolves. Seeded facts quoted by criteria agree with the data: Platform Engineer Applied order Greta Lindqvist, Ade Bello, Marco Rossi and Screen Priya Nair, Samuel Ortiz (positions 1..3/1..2); Noor's APP-101 note text; Lena's starting unread count 1 (REC3's 3rd message after her read_count 2); Noor's statuses Interviewing/Application received and Tomas's In review with teams Infrastructure/Design/Finance Systems (tests/scored/functional/judge.toml hro_intake_restart, hro_unread_seen, hro_candidate). Synthetic/clean: all addresses use the RFC 2606 reserved '.example' TLD (hireops.example, candidates.example, mail.example); names are generic invented names with no phone, address, DOB or other identifiers (internal annotation F15 accepts names). A regex scan for script/HTML tags, javascript:, onerror, template braces, 'ignore previous', 'system prompt', URLs, password/api key/token/secret/sk- found nothing; message bodies are ordinary recruiting chatter with '(#NNN)' counters. The seed contains no credential (internal annotation G15); the demo password Hireops!2026 appears only in the brief/rules/app_context and as a constant in solution db.js:63, which the profile documents as expected. Lessons-file patterns checked for this row: no public internet address in the seed (lesson 13); seeded counts that criteria rely on are exact and not contradicted elsewhere (lessons 1/16); nothing in the seed pre-satisfies the judge's suffixed probes (sample '<b>plain</b>' absent). Non-blocking notes: (a) read markers for USR-CAN1 on APP-101 (119) and USR-REC3 on APP-301 (2) sit one below the sender's own later message (#120, #3), whereas the rules say sending counts as reading; this has no observable effect because own messages are never unread and the 'seen' state of the other party's last message is unchanged, so no conforming app scores differently. (b) APP-301 is rejected from Screen while its last staff message (2026-07-29) says 'We will write again once the panel has met'; rejection time is not seeded, so a later rejection is a consistent reading. Weak/alternative app consideration: a conforming app that interprets read_count as 'first N messages in file/time order' gets identical results because file order equals created_at order per conversation; an app that seeds by reading /assets at runtime would fail per instruction.md:17, not because of the data. Static-only checks; no runtime execution was needed for this row.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

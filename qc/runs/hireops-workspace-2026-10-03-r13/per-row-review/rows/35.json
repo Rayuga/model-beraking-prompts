@@ -1,0 +1,38 @@
+{
+  "number": 35,
+  "id": "core_behavior_is_graded_and_state_is_proven_durable_where_it_must_be",
+  "reviewer": "row-reviewer-35",
+  "input_sha256": "12bf37abe5ba3152b1255fb9b9531665c432b86e0b0d86562adc7c802940d224",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r13/rules/WebDev Rubrics QC.xlsx (openpyxl read_only, in memory): Quality Checks row 35 and Internal Quality Checks row 35 ('At least one criterion proves the defining behavior works, and (where stateful) state survives reload/re-auth and is server-backed where required'); zip listing shows no comment/threadedComment parts, so no further cell annotations exist",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/rules/harbor-webdev-rubric-qc/references/quality-checks.md section 35 (lines 145-147)",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/rules/projects/webdev-task-template (tree; restart_app/test.sh contract via staged-task-contract.md)",
+    "qc/REVIEW_POLICY.md",
+    "task/instruction.md",
+    "task/environment/instructions/hireops_rules.md (Drafts section lines 168-175)",
+    "task/tests/app_context.md",
+    "task/tests/gates/render/judge.toml",
+    "task/tests/gates/constraints/judge.toml",
+    "task/tests/scored/functional/judge.toml (all 46 criteria)",
+    "task/tests/scored/functional/prompt.md",
+    "task/tests/scored/polish/judge.toml (hro_pol_session_resume lines 52-59, draft rows lines 32, 50)",
+    "task/tests/test.sh (lines 90-193: app launch with DB_PATH, restart helper reusing same DB_PATH)",
+    "task/solution/app/src/db.js (lines 1-84: SQLite at DB_PATH, seedIfEmpty)",
+    "task/solution/app/public/js/threads.js and app.js draft handling (grep)",
+    "qc/runs/hireops-workspace-2026-10-03-r13/raw-evidence-index.json; qc/repairs/hireops-2026-10-03-workspace/results/workspace.json (sha256 47c2e8ef...f38 matches index) and workspace.cjs (805eb274...a90 matches); frozen solution db.js/threads.js/app.js/server.js hashes match the index's matching_source_files"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "Defining behaviour is graded heavily and server-proven: the constraints gate (tests/gates/constraints/judge.toml:18-24, hro_gate_shared) requires a job+candidate created by a Recruiter to be found by the Observer in a NEW independent browser context and explicitly rejects 'a static seed response, a no-op success message, a browser-only save'; functional repeats this as the global browser gate (scored/functional/prompt.md:11-13). Core pipeline/conversation behaviour has many criteria with independent-context readback by another account (hro_arrive_bottom, hro_reorder, hro_bulk_move, hro_undo_restores read by Mei Lin; hro_msg_exchange Rafael<->Tomas; hro_stale_refused cross-user conflict; hro_live_board; hro_unread_counts per person). Since another account in another context sees the data, it must be server-backed (not merely same-origin storage). Durability across process restart: hro_restart (functional/judge.toml:410-417, weight 1.5) requires restart_app then fresh sign-in with jobs, card order per stage, notes, messages, unread counts, activity lines and the seeded Platform Engineer order/note unchanged and starting data not reloaded; protocol D (prompt.md:51) makes a restart_app error score 0 and says 'A reload is not a restart'. test.sh:97-111 and 127-193 relaunch the same entry with the same DB_PATH, so the restart genuinely tests on-disk persistence. Reload/re-auth of per-person drafts (instruction.md:7; hireops_rules.md:168-175): hro_drafts (functional:374-381) covers switching conversation/Board and reload; hro_pol_session_resume (polish/judge.toml:52-59, weight 2.5) covers ended session -> sign-in prompt, same person resumes and sends, Mei Lin signing in on the same browser sees neither draft, Rafael's drafts survive. Broken apps tried: (1) in-memory server state -> passes gate but fails hro_restart; (2) localStorage-only board -> fails gate (Observer independent context); (3) reseed-on-start -> fails hro_restart ('not loaded again', review records lost); (4) drafts cleared at sign-out or shared across users on one browser -> fails hro_pol_session_resume. Conforming alternatives tried: server-side drafts (allowed, 'Where drafts are kept is yours') pass the polish row since Mei is a different user; sessions lost on restart are tolerated (hro_restart demands a fresh sign-in). Golden: db.js:9-21,57-84 stores in SQLite at DB_PATH and seeds only when empty. Scripted golden run (workspace.json, hashes verified) reports passed groups 'restart keeps jobs, cards, order, messages, unread counts and activity without reseeding; live updates resume' and 'session ended mid-draft: sign-in prompt, nothing sent, same person resumes and sends; another person sees no draft'. Risk=true only because no full configured judge run exists (raw-evidence-index scope: 'Full configured grading/workload ... are absent'): whether the judge reaches protocol D and successfully calls restart_app within the 9000 s functional budget after the long protocol sequence is unmeasured; if budget is exhausted, hro_restart becomes NOT EXERCISED and durability would be unproven in practice. Minor observation (not a defect): restart durability carries 1.5 of 59.5 functional weight, so an in-memory server loses little; weighting is the concern of other rows.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL"
+}

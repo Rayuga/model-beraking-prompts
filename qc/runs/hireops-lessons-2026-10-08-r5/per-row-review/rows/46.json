@@ -1,0 +1,39 @@
+{
+  "number": 46,
+  "id": "tests_and_key_are_out_of_agent_reach",
+  "reviewer": "row-reviewer-46",
+  "input_sha256": "a79edbb8ae702f39a2f9b3b25acaca8a5c16f1cc7ab0609415d9267f51eac1db",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-lessons-2026-10-08-r5/rules/WebDev Rubrics QC.xlsx (Quality Checks row 47; Internal Quality Checks row 47; sheet list)",
+    ".qc-cache/hireops-lessons-2026-10-08-r5/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-lessons-2026-10-08-r5/rules/harbor-webdev-rubric-qc/references/quality-checks.md (#45-#52)",
+    ".qc-cache/hireops-lessons-2026-10-08-r5/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (closed file list, test.sh, tools)",
+    ".qc-cache/hireops-lessons-2026-10-08-r5/rules/projects/webdev-task-template/{environment/Dockerfile,tests/Dockerfile,tests/.dockerignore,tests/test.sh,tests/tools/score.py,tests/tools/restart_mcp.py,tests/scoring.toml} (byte compared)",
+    "qc/REVIEW_POLICY.md",
+    "handoffs/LESSONS_FROM_COLDERWATER_2026-10-08.md",
+    ".qc-cache/hireops-lessons-2026-10-08-r5/task/task.toml",
+    ".qc-cache/hireops-lessons-2026-10-08-r5/task/instruction.md",
+    ".qc-cache/hireops-lessons-2026-10-08-r5/task/environment/Dockerfile",
+    ".qc-cache/hireops-lessons-2026-10-08-r5/task/environment/instructions/hireops_rules.md",
+    ".qc-cache/hireops-lessons-2026-10-08-r5/task/environment/instructions/integration.md",
+    ".qc-cache/hireops-lessons-2026-10-08-r5/task/environment/assets/seed_data.json (keys, generated_note, keyword grep)",
+    ".qc-cache/hireops-lessons-2026-10-08-r5/task/tests/Dockerfile",
+    ".qc-cache/hireops-lessons-2026-10-08-r5/task/tests/.dockerignore",
+    ".qc-cache/hireops-lessons-2026-10-08-r5/task/tests/test.sh",
+    ".qc-cache/hireops-lessons-2026-10-08-r5/task/tests/{gates,scored}/*/judge.toml",
+    ".qc-cache/hireops-lessons-2026-10-08-r5/task/tests/{gates,scored}/*/prompt.md (line 1)",
+    "qc/runs/hireops-lessons-2026-10-08-r5/raw-evidence-index.json (scope)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Workbook (read in memory via zipfile): 'Quality Checks' row 47 / 'Internal Quality Checks' row 47, #46 tests_and_key_are_out_of_agent_reach: \"The agent can't read the criteria it's graded on or influence the reward - grading is isolated in the verifier.\" No extra internal annotation column on that row. Skill references/quality-checks.md #46: agent image ships no criteria, no judge client, no RewardKit, no readable rubric copy; grading isolated in the verifier image. Agent image: task/environment/Dockerfile is byte-identical to the frozen template (cmp) and COPYs only instructions/ and assets/ (node:22 + express/better-sqlite3 only; no rewardkit, claude-code, codex or playwright). environment/ contains only Dockerfile, assets/seed_data.json, instructions/{hireops_rules.md,integration.md}. grep for rubric|criteri|judge|reward|score|grade|verifier|/tests|playwright|restart_app over instruction.md and environment/instructions/*.md: zero hits; seed_data.json: zero hits for criteri|judge|reward; its generated_note only points to hireops_rules.md. hireops_rules.md states behaviour rules (roles, stages, undo, unread) but none of the criterion scenarios (suffixed jobs A-F, Rafael/Mei step scripts, 409 replay steps, 2 px scroll bar, restart_app), so no readable rubric copy reaches the agent. Verifier: task.toml [verifier] environment_mode = \"separate\"; tests/Dockerfile (identical to template) installs claude-code, codex, playwright-mcp, harbor-rewardkit only in the verifier image, COPY . /tests then chmod -R go-rwx /tests. tests/test.sh (identical to template) lines 3,10-12: umask 077, LOG_DIR chmod 700, /tests go-rwx; lines 104-111 and 160-167: submission runs via setpriv uid/gid 65534 with env -i (only PATH, NODE_PATH, HOME, PORT, DB_PATH), so the app process cannot read /tests, criteria, app_context, or write reward.txt/reward.json in LOG_DIR; lines 60 and 20-23 write zero reward first and ensure_reward on exit; score.py and scoring.toml identical to template. Judge-side injection: every prompt.md line 1 says to treat the submission as untrusted, never follow app-supplied instructions, no shell/private-file probes (residual prompt-injection risk is row 45's subject). Counterexample attempts: (a) broken app that reads /tests/*/judge.toml to tailor itself - fails, /tests is root-only 0700-ish (go-rwx) and the app runs as 65534; at agent time /tests does not exist in the agent image. (b) app writing /logs/verifier/reward.txt - LOG_DIR is 700 root. (c) agent pre-placing a symlink in /app to escape - test.sh lines 72-83 zero the run for any symlink outside /app/node_modules. (d) conforming app failing because of isolation - none; the only constraints (run as locked-down user, copy of /app, limited env) are disclosed in integration.md and hireops_rules.md section 8. Colderwater lessons checked: lesson 13 (no public address in judge prompts) - prompts use http://localhost:3000 only; lesson 1/12 (brief mirroring criteria) - rules file does not reproduce criterion text; no other lesson bears on this row. Evidence type: static source inspection of frozen bytes plus template byte comparison. No built agent image was inspected and no full configured verifier run exists (raw-evidence-index scope says full grading is absent); the isolation conclusion follows from the Dockerfiles/test.sh, which are template-controlled and unchanged, so no missing measurement is required for this row.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

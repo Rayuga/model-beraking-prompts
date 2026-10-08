@@ -1,0 +1,34 @@
+{
+  "number": 43,
+  "id": "gates_apply_before_shaping_and_carry_no_reward_mass",
+  "reviewer": "row-reviewer-43",
+  "input_sha256": "ccf245cd03b12e6e1b34d59f7941e6193ce9e283b5dee63d31a857f2bf99bd45",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-lessons-2026-10-08-r2/rules/WebDev Rubrics QC.xlsx (Quality Checks row 44 = check 43; Internal Quality Checks row 44 annotation; read via zipfile in memory)",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/rules/harbor-webdev-rubric-qc/references/quality-checks.md (### 43, also 39/42/44 context)",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (scoring.toml, test.sh sections)",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/rules/projects/webdev-task-template/tests/{scoring.toml,tools/score.py,test.sh,scored/visual/prompt.md}",
+    "qc/REVIEW_POLICY.md",
+    "handoffs/LESSONS_FROM_COLDERWATER_2026-10-08.md",
+    "qc/runs/hireops-lessons-2026-10-08-r2/raw-evidence-index.json",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/task/tests/scoring.toml",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/task/tests/tools/score.py",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/task/tests/test.sh",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/task/tests/gates/{render,constraints}/judge.toml and prompt.md",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/task/tests/scored/{functional,polish,visual}/judge.toml and prompt.md (gate sections, criterion weights)",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/task/task.toml (verifier timeout_sec 13200)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Static + executed. (1) tests/scoring.toml lines 1-11: [gates] render = 0.0, constraints = 0.0; [weights] functional 0.6 / polish 0.2 / visual 0.2; [floors] functional = 0.05. Byte-identical to frozen template rules/projects/webdev-task-template/tests/scoring.toml (sha256 95f70d6e...bbba both); tests/tools/score.py (13de2b38...c04e) and tests/test.sh (bd682592...5aa) also byte-identical to the template, so no shared harness/reward policy was altered (lesson 2 satisfied: weights untouched). (2) Gates zero reward and skip scored suite: score.py:40-48 computes gates_passed = all(score > 0.0); scored dims forced to 0.0 unless gates_passed; reward = 0.0 unless gates_passed and floors_passed; returns exit 1 on gate failure (score.py:83). test.sh:212-222 removes any old scored dir, runs gates suite (budget 1500), runs score.py; exit 1 -> 'exit 0' before run_suite scored (line 224), so the scored suite never runs; exit >=2 -> write_zero_reward; gates suite crash/timeout -> exit 0 with the pre-written zero record (test.sh:60, trap ensure_reward). (3) Gates carry no weight: weighted sum (score.py:46) iterates only [weights]; gate scores appear in reward.json only as diagnostics. (4) Floor: score.py:47 floors_passed requires functional > 0.05 strictly. (5) Executed the frozen score.py (python -I -B, no workspace writes; synthetic RewardKit outputs in scratchpad): render=0 + perfect scored -> exit 1, reward 0.0, scored dims 0.0; constraints=0, no scored file -> exit 1, reward 0.0; gates pass but scored missing -> reward 0.0; functional 0.0492 (3/61) with polish=visual=1 -> reward 0.0 (weighted_score 0.4295 not paid); functional exactly 0.05 -> reward 0.0; functional 0.0574 (3.5/61), polish 0, visual 0.8 -> reward 0.1944; all-ones -> 1.0; gates pass, scored all 0 -> 0.0. (6) Gate dimensions: gates/render/judge.toml and gates/constraints/judge.toml each have aggregation='all_pass', one binary criterion, weight 1, no [judge] weight/model keys. Scored dims use weighted_mean (functional 44 criteria, total weight 61; polish 5/9.5; visual 5 likert/5). (7) 'Passing only the cheap gates earns little' (Internal Quality Checks sheet row 44): an app that passes both gates but nothing else can at most pass hro_add_candidate (weight 1/61 = 0.016 < 0.05) -> reward 0; polish/visual cannot be farmed. The in-dimension gate in scored/polish/prompt.md:11-12 and scored/visual/prompt.md:11-12 (visual: minimum raw Likert 1 -> normalized 0) repeats the server-backed check so a static shell scores 0 even if a gate judge erred. Lessons file check: lesson 4 (gates simple: load, reload, server-backed) holds - render gate = wrong/right password sign-in to a usable workspace; constraints gate = UI add candidate, reload, independent Observer readback; all other strictness is in scored criteria. Lesson 2 (no weight steering) holds. Lesson 11 (judge infra crash zeroes a dimension): a gate-suite crash yields reward 0 by template design (test.sh:213-214) - template behaviour, not a task defect. Raw evidence index (qc/runs/hireops-lessons-2026-10-08-r2/raw-evidence-index.json) states full configured grading and reward discrimination/ranking runs are absent; this row's mechanics were exercised directly via score.py, but no full configured verifier run exercised the test.sh gate-fail branch end to end.\n\nNOTE: Observation, not a defect: the template floor (0.05, template-controlled) lets a partially working app that clears both gates plus ~3.5/61 functional weight (e.g. add_candidate 1 + add_email_rules 1 + anonymous 1.5) collect visual/polish mass, e.g. reward 0.1944 with visual 0.8. Such an app is genuinely server-backed and partially functional, so this is the designed shaping, not a non-working app farming polish/visual; ranking monotonicity is row 42's concern. Tried counterexamples: (a) static/seed-copy shell - fails constraints gate (needs UI add + independent context readback) and in-dimension gates -> 0; (b) app passing only gates - functional 1/61 < floor -> 0; (c) conforming app whose gate judge crashes - zero by template design, would be an evaluator failure to report, not a rubric defect.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL - frozen score.py executed on synthetic suite outputs (all gate/floor branches confirmed); test.sh gate-fail skip branch verified by reading only, not by a full configured verifier run."
+}

@@ -1,0 +1,31 @@
+{
+  "number": 22,
+  "id": "verifier_image_can_launch_and_grade",
+  "reviewer": "row-reviewer-22",
+  "input_sha256": "cefa38a90e730105bedd5082c7d28c322a25773d30a55777d75037f5036618d6",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r6/rules/WebDev Rubrics QC.xlsx (openpyxl read_only, in memory): Quality Checks row 22 'verifier_image_can_launch_and_grade'; Internal Quality Checks row 22 (same intent: 'pinned browser, Playwright, judge CLI, rewardkit, and the runtime to start the app'); Deterministic Checks check-dockerfiles.py, check-runtime-deps-in-both-images.py, check-verifier-tooling-baked.sh; no comments/notes parts in the xlsx zip",
+    ".qc-cache/hireops-workspace-2026-10-03-r6/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r6/rules/harbor-webdev-rubric-qc/references/quality-checks.md section '22 · verifier_image_can_launch_and_grade'",
+    ".qc-cache/hireops-workspace-2026-10-03-r6/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (overrides table; check-dockerfiles / runtime-deps paragraph)",
+    ".qc-cache/hireops-workspace-2026-10-03-r6/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (file tree, environment rules)",
+    ".qc-cache/hireops-workspace-2026-10-03-r6/rules/projects/webdev-task-template/{tests/Dockerfile,tests/.dockerignore,tests/test.sh,tests/tools/*,environment/Dockerfile,task.toml,tests/*/*/judge.toml headers}",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r6/task/tests/Dockerfile, tests/.dockerignore, tests/test.sh, tests/tools/score.py, tests/tools/restart_mcp.py (diffed), tests/*/*/judge.toml headers, task.toml, environment/Dockerfile, environment/instructions/integration.md, instruction.md line 13, solution/app/package.json, solution/app/server.js and src/*.js require lines, solution/solve.sh",
+    "qc/runs/hireops-workspace-2026-10-03-r6/raw-evidence-index.json (all 6 artifact hashes re-verified; matching_source_files hashes re-verified against frozen task)",
+    "qc/repairs/hireops-2026-10-03-workspace/workspace.cjs, results/workspace.json, results/server.log (heads)",
+    "docker image inspect/history (read-only, no container started) of hireops-verifier:20261002-permission-repair"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": "P3",
+  "evidence": "Frozen task/tests/Dockerfile is byte-identical to the frozen template tests/Dockerfile (diff empty; .dockerignore, test.sh, score.py, restart_mcp.py, environment/Dockerfile also identical; all five judge.toml [judge]/MCP headers identical to template). It ships: node runtime via 'FROM node:22-bookworm-slim AS node-runtime' + 'COPY --from=node-runtime /usr/local /usr/local' (lines 1-4) on python:3.12-slim (python3 for restart_mcp.py and score.py and test.sh probe); judge CLI '@anthropic-ai/claude-code@2.1.281' (line 17, matches REWARDKIT_JUDGE=claude-code in task.toml [verifier.env]); '@playwright/mcp@0.0.79' (line 19, provides the 'playwright-mcp' command used by every judge.toml); app runtime 'express@5.1.0' and 'better-sqlite3@12.4.1' (lines 20-21) with NODE_PATH=/usr/local/lib/node_modules (line 9), matching environment/Dockerfile lines 9-12 and solution/app/package.json dependencies exactly; 'harbor-rewardkit==0.1.7' (line 31); Chromium installed by the pinned Playwright bundled inside @playwright/mcp@0.0.79 into /opt/playwright-browsers and symlinked to /usr/local/bin/chromium (lines 33-39), which every judge.toml passes as '--executable-path=/usr/local/bin/chromium'; procps/util-linux (setpriv, setsid used by test.sh lines 99-111) and fonts (line 13). The golden only requires node builtins, express and better-sqlite3 (src/index.js:16-19, src/db.js:5-7, src/bootstrap.js:3-4); instruction.md:13 says 'Server dependencies are already available, so don't install packages' and integration.md:3-4 limits to Express/better-sqlite3/Node. Runtime observation: local image hireops-verifier:20261002-permission-repair has layer history matching every frozen tests/Dockerfile instruction (docker image history), and the hash-verified raw evidence (results/workspace.json, server.log '[hireops] listening on 3000' twice) shows the frozen golden started as uid 65534 in that image, was driven by chromium.launch({executablePath:'/usr/local/bin/chromium'}) from the image's @playwright/mcp-bundled playwright (workspace.cjs:6,234) and restarted. Timeout nesting: gates 1500 + scored 11100 = 12600 < verifier timeout_sec 13200 (template value, unchanged). Counterexample probes: (a) a broken app needing an extra npm package would fail to start and score 0 — correct, since the brief forbids installs; an app vendoring pure-JS modules under /app/node_modules survives because test.sh copies /app and permits in-tree node_modules symlinks; (b) a conforming app using only builtins/express/better-sqlite3 has every dependency present, so no conforming alternative is blocked by the image. Residual risks (why risk=true): base images are tag-pinned, not digest-pinned, and apt packages are unpinned (template-controlled, NOTE-level; the python:3.12-slim base in the inspected image appears to be a newer Debian than node:22-bookworm-slim given 'apt-get dist-clean', yet better-sqlite3 was installed inside the final image and the golden ran, so no observed ABI break); the 'grade' half — rewardkit actually invoking the claude-code CLI with z-ai/glm-5.3-flashx through OpenRouter and the playwright-mcp/restart MCP servers end to end — has no full configured verifier run in the evidence index (its scope states 'Full configured grading/workload ... are absent'), so judge-CLI launch and grading remain unmeasured.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL: image contents and app launch + Chromium/Playwright CONFIRMED by docker image history and the hash-verified scripted golden run in hireops-verifier:20261002-permission-repair; rewardkit + claude-code judge grading end to end NOT EXERCISED (no full configured verifier run recorded)."
+}

@@ -1,0 +1,37 @@
+{
+  "number": 25,
+  "id": "judge_prompts_drive_the_browser",
+  "reviewer": "row-reviewer-25",
+  "input_sha256": "6ca9ee7368c7aef18033c68fdd278d965bcb75bc20d710f6c60c557dfb8953eb",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    "qc/runs/hireops-workspace-2026-10-03-r1/per-row-review/prompts/25.md",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/WebDev Rubrics QC.xlsx :: 'Quality Checks' row #25 (judge_prompts_drive_the_browser, block E) and 'Internal Quality Checks' row #25 (same text, no extra annotation columns filled); 'Deterministic Checks' check-rubric-schema.py row (Playwright MCP server requirement)",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/harbor-webdev-rubric-qc/references/quality-checks.md :: section '### 25 · judge_prompts_drive_the_browser' (lines 108-110)",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md :: judge.toml block and '## prompt.md and app_context.md' (line 156)",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/projects/webdev-task-template/tests/gates/{render,constraints}/{prompt.md,judge.toml}, tests/app_context.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/task/tests/gates/render/prompt.md + judge.toml",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/task/tests/gates/constraints/prompt.md + judge.toml",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/task/tests/scored/functional/prompt.md + judge.toml (header and grep of criteria)",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/task/tests/scored/polish/prompt.md + judge.toml",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/task/tests/scored/visual/prompt.md + judge.toml (header and first criterion)",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/task/tests/app_context.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/task/tests/Dockerfile (pins @playwright/mcp@0.0.79)",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/task/tests/test.sh lines 185-200 ({app_context} substitution into tests/*/*/prompt.md)",
+    "qc/runs/hireops-workspace-2026-10-03-r1/raw-evidence-index.json (scope header and first entries)",
+    "deliverables/colderwater-playground-devtools/coverage-fix-2026-09-27/golden/MCP_RECIPE_COMPATIBILITY.json (sha256 311a2b2d...; different task; tool-existence evidence only)"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": "P3",
+  "evidence": "Static verification per quality-checks.md #25 ('every prompt opens http://localhost:3000 and directs the judge to the Playwright MCP tool'; defect = 'any prompt that could be satisfied by reading source, memory, or a first paint'). (1) All five prompts begin with the identical line 1: 'Open http://localhost:3000 using Playwright. ... Use rendered UI and ordinary browser-observed product data only. Never inspect app source, bundles, filesystem, database files or implementation code. No shell or private-file probes. Discover routes and controls by intent, not assumed names.' (task/tests/gates/render/prompt.md:1, gates/constraints/prompt.md:1, scored/functional/prompt.md:1 [adds 'No shell. Use restart_app only once, at the end of protocol D.'], scored/polish/prompt.md:1, scored/visual/prompt.md:1). This is stricter than the template wording ('Evaluate the live application at http://localhost:3000 using Playwright MCP. Use browser-visible behavior...'), and explicitly closes the source/shell route that a claude-code judge would otherwise have. (2) All five judge.toml files declare [[judge.mcp_servers]] name='playwright', command='playwright-mcp', args ['--headless','--isolated','--executable-path=/usr/local/bin/chromium','--no-sandbox'] (lines 8-12); functional additionally declares the verifier restart server only. tests/Dockerfile:19 installs @playwright/mcp@0.0.79; all prompts contain {app_context} and {criteria} (10 matches) and test.sh:198-200 substitutes app_context (URL http://localhost:3000) into every tests/*/*/prompt.md. (3) No prompt or criterion is satisfiable from source, memory or first paint: render gate criterion (gates/render/judge.toml hro_gate_render) requires a rejected wrong password, then a correct sign-in to a usable workspace; constraints gate (hro_gate_shared) and the restated in-dimension gate in functional:11, polish:11, visual:11 require creating a job and a candidate through ordinary UI then reading them back as the Observer in an independent browser context ('A static page, a no-op save or a browser-only save fails'); functional protocols S-D are all interactive multi-actor browser procedures ending with restart_app and re-sign-in; polish rows require live updates within 15 s, document.activeElement and scroll reads via page.evaluate; visual is read-only but traverses Board, card details, Conversations (Noor's long thread), Activity and the candidate view in an independent context, after the server-backed gate. Network capture/replay (functional:17, protocol K, polish failed-send row) is browser-observed evidence obtained through Playwright, consistent with the template's 'browser network evidence' allowance, not source reading. (4) Tool feasibility of the prescribed independent-context recipe: prompts name browser_run_code_unsafe with an alternative 'A supported separate-context tool is an alternative'; MCP_RECIPE_COMPATIBILITY.json (different task, same pinned @playwright/mcp 'Version 0.0.79') records actual installed MCP dispatch of browser_run_code_unsafe passing, so the named tool exists in this version (not re-run here). Counterexample attempts: (a) Plausible broken app that could pass: a static mock / first-paint-only shell or seeded-JSON app -> fails render (needs real credential refusal + sign-in) and the server-backed independent-context gate, which every scored prompt restates as zeroing; a judge reading /app source instead of the browser is forbidden by line 1 of every prompt. No passing broken app found for this row. (b) Conforming app that could fail: an app with different routes/labels -> prompts say 'Discover routes and controls by intent, not assumed names' and app_context.md tells the judge never to assume reference routes; an app that sends no observable request for some 'try' step -> functional:23 allows recording that the UI does not offer it and replaying the closest observed request. No conforming-app failure attributable to browser-driving wording found. Risk flag reason: raw-evidence-index.json scope states 'Full configured grading/workload, reward discrimination/ranking and Oracle/target scores are absent'; there is no configured judge transcript showing the frozen claude-code/GLM judge actually used the Playwright tools (rather than e.g. shell reads) on these exact prompts, so the behavioural half of this row is unmeasured. The prompt-wording defect the row targets is absent.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

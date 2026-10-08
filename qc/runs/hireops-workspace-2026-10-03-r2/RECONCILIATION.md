@@ -1,0 +1,16 @@
+# Recruiting workspace, round 2 reconciliation
+
+**BLOCKED.** 54 of 54 valid reports on input `62b67c05…`. Quality rows: Fail on 6, 26, 27, 28, 30, 31, 32, 48 and 49; Note on 33 and 50; Not exercised on 11 and 40; Pass on the rest, with P3 notes on 17, 35 and 37. Deterministic: 47 Pass, 1 Note (the duplicate seed_data.json, a documented checker false positive). No reviewer found a criterion the golden cannot pass. Fixed in the next candidate:
+
+- Rows 6, 27: unread counts are now read on the Conversations view, where the per-conversation and total counts are public. Before, they were read on the Board, which needed a board-card badge that no public text asks for. The brief now says plainly that a message arriving at the newest message is shown, and that the draft and cursor are never touched. hro_refused_put_back accepts focus inside the card or its open details.
+- Row 26: Tomas now replays the staff board and Activity reads as well. They must be refused, or answered with only his own data. Ingrid also tries Interview→Screen and rejecting a Screen card, both graded in hro_mgr_early_refused. A mixed-stage multi-card move (A2 from Applied, V from Interview, to Screen) is graded in hro_bulk_move. The on-screen part of the stale-move naming is refuted rather than added. A conforming app may catch up instantly, so the judge cannot reliably put the page into a stale state. The rules require the refusal itself to name who changed the card, and that is graded through the replay.
+- Row 28: the T/U/K legs fall back to Tomas's seeded Data Analyst conversation when the new J2 card does not reach him. The link is owned only by hro_candidate_linked. The functional prompt's "a refused action may add a generic log line" now matches hro_activity_refusals: a refused action adds no line.
+- Row 30: the "earlier move no longer undoable" leg now has a clean control. Z's single move is undoable, then A2 is moved and that move is undone. A further undo is refused and Z stays in Screen. Before, the refusal could come from Mei's conflicting change instead.
+- Row 31: hro_activity checks every action performed, not each kind of action. Each card of every multi-card move, every undo and Ingrid's moves need a line.
+- Row 32: the arrival probes now differ from creation order. In M, A returns to Screen below B. In B, Y is moved up two places before the three-card move, so the cards arrive as Y, W, X. The mixed-stage pair arrives as A2, V.
+- Rows 33, 48, 49: protocol R replays open-job as the Observer and as the candidate. The "Fails if" lists of hro_refused_put_back and hro_bulk_places now match their pass sentences.
+- Row 17 (P3 golden fidelity): a hiring manager can no longer re-order cards inside Rejected, on either the server or the UI.
+- Row 35 (P3): a restart_app error or a missing restart_app call makes hro_restart 0.
+- Row 37 (P3): polish clears any draft left by an earlier review before typing.
+
+The scripted golden driver (`qc/repairs/hireops-2026-10-03-workspace`) now has two new checks covering these rules, and it passes all 20. The public grader-term and criterion-id checks pass. Rows 11 and 40, and the rows flagged as risks, remain open because no configured judge run exists. That is not evidence of a portal pass or of any model score.

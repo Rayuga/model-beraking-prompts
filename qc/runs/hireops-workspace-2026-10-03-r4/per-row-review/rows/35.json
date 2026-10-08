@@ -1,0 +1,36 @@
+{
+  "number": 35,
+  "id": "core_behavior_is_graded_and_state_is_proven_durable_where_it_must_be",
+  "reviewer": "row-reviewer-35",
+  "input_sha256": "d2912713cc20e12d1c3605e76373f75f766ca522cce13fdf91e93082f6570a7a",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r4/rules/WebDev Rubrics QC.xlsx :: Quality Checks row 36 (#35 core_behavior_is_graded_and_state_is_proven_durable_where_it_must_be, D36); Internal Quality Checks row 36 (no annotation in columns E+ for #35; all internal annotations E15..G53 read, none bear on #35)",
+    ".qc-cache/hireops-workspace-2026-10-03-r4/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r4/rules/harbor-webdev-rubric-qc/references/quality-checks.md (#35 and neighbours)",
+    ".qc-cache/hireops-workspace-2026-10-03-r4/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r4/rules/projects/webdev-task-template/tests/scored/functional/{prompt.md,judge.toml} (persistence criterion + Restart evidence section), tests/gates/constraints/judge.toml",
+    "qc/REVIEW_POLICY.md",
+    "task/instruction.md",
+    "task/environment/instructions/hireops_rules.md (lines 50-207)",
+    "task/tests/app_context.md",
+    "task/tests/gates/constraints/judge.toml, task/tests/gates/render/judge.toml",
+    "task/tests/scored/functional/{prompt.md,judge.toml}",
+    "task/tests/scored/polish/{prompt.md,judge.toml}",
+    "task/tests/test.sh lines 90-199 (launch + restart helper)",
+    "task/tests/scoring.toml",
+    "qc/runs/hireops-workspace-2026-10-03-r4/raw-evidence-index.json",
+    "qc/repairs/hireops-2026-10-03-workspace/results/workspace.json (sha256 8d72fd13... verified) and workspace.cjs lines 410-443 (sha256 7bbf898f... verified); frozen solution file hashes server.js/db.js/index.js/bootstrap.js/app.js/threads.js recomputed and equal the index"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "CORE BEHAVIOUR GRADED: the brief's defining behaviours (one-stage moves, shared order, interview places, stale-move refusal naming who, all-or-none bulk moves, undo, live board within 15 s, conversations/unread/seen/drafts, candidate privacy) each have browser-decidable criteria in tests/scored/functional/judge.toml: hro_move_one_stage (1.5), hro_reorder (1.5), hro_interview_full (1.5), hro_stale_refused (2.5), hro_bulk_all_or_none (2), hro_undo_restores (2), hro_live_board (2.5), hro_msg_exchange (1.5), hro_unread_counts (2), hro_drafts (2), hro_candidate_private (2.5) etc.; 43 criteria, total weight 58.5. SERVER-BACKED (not same-origin): gates/constraints/judge.toml hro_gate_shared requires a Recruiter's new job+candidate to be found 'in a new independent empty browser context' signed in as the Observer and states 'a browser-only save ... does not satisfy the gate'; every scored prompt restates this gate (functional prompt.md:11, polish prompt.md:11) and says 'A reload or a second tab of the same context is not independent'. Cross-person server state is also proven in hro_job_open/hro_add_candidate/hro_reorder (independent context of Mei Lin sees same order), hro_unread_counts (per-person counts 'shared between people' fails). No prompt requires same-origin; CDN use is allowed by instruction.md:13. RELOAD / RE-AUTH: hireops_rules.md:59 'Order survives a reload, a fresh sign-in and a restart' -> hro_reorder (fresh sign-in of Mei in independent context) + hro_restart (card order per stage). Drafts: instruction.md:7 'stays ... when I look at another one, reload, or get signed out; when I sign back in it is still there, and nobody else who signs in on that browser sees it' -> hro_drafts (switch + reload, functional judge.toml:366-372) and polish hro_pol_session_resume (ended session -> sign-in prompt, nothing sent, same person resumes and sends; Mei on same browser sees neither draft; Rafael's drafts back after Mei's visit, polish judge.toml:53-60). Unsaved note draft across reload: hro_pol_failed_send. PROCESS RESTART: hro_restart (functional judge.toml:401-408) 'after restart_app and a fresh sign-in your jobs, card order per stage, notes, messages and activity lines are unchanged and the starting data is not loaded again'; protocol D (prompt.md:51) makes restart_app the last single-use step, 'A reload is not a restart; if restart_app reports an error or cannot be called, hro_restart is 0'. judge.toml:14-18 wires the verifier MCP server with $APP_RESTART_HELPER; test.sh:127-193 builds the helper that kills the process group and relaunches the same entry with the same DB_PATH (APP_DB) unprivileged, matching the template's restart contract. GOLDEN MEASUREMENT (scripted, not judge): workspace.json records passed for 'restart keeps jobs, cards, order, messages and activity without reseeding; live updates resume' (workspace.cjs:427-434 compares applications/activity deep-equal and job count before/after a SIGTERM relaunch) and 'session ended mid-draft: sign-in prompt, nothing sent, same person resumes and sends; another person sees no draft'. ADVERSARIAL: (a) in-memory-only server: passes gate (independent context sees it) but fails hro_restart -> graded, though only 1.5/58.5*0.6 ~= 1.5% of reward (weight honesty is row 44's call; Note). (b) localStorage-only board: fails hro_gate_shared -> zero. (c) drafts stored per browser not per user: fails hro_pol_session_resume via Mei. (d) conforming app that keeps drafts on the server or in localStorage: both allowed ('Where drafts are kept is yours', hireops_rules.md:174-175), no criterion forces one location. (e) conforming app with in-memory sessions: protocol D says 'sign in again', so lost sessions after restart are tolerated. RESIDUAL GAPS (Note/P3, not blocking): (1) hro_restart's comparison list omits per-person read markers/unread counts and seen state, and rejection reasons/rejected-from stage are only implicitly covered by 'card order per stage'; an app keeping read markers in memory would not lose hro_restart. (2) Template persistence leg 4 'no seeded record appears twice' is carried as 'the starting data is not loaded again ... duplicated', but protocol D's record step lists only the reviewer's own jobs/cards/notes/last messages/activity, not the seeded job or message counts, so detecting a non-idempotent reseed depends on the judge noticing six seeded jobs or doubled seeded messages. RISK: no full configured judge run exists (raw-evidence-index scope: 'Full configured grading/workload, reward discrimination/ranking and Oracle/target scores are absent'). Whether the functional judge (timeout 9000 s, protocol D placed last after ~14 heavy protocols) actually reaches and executes restart_app is unmeasured; the functional prompt, unlike polish prompt.md:18, has no NOT-EXERCISED instruction for budget exhaustion. Durability is designed and golden-scripted, not judge-measured.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL — golden scripted restart and session-resume observations CONFIRMED (workspace.json, hashes match frozen solution); configured judge execution of hro_restart / hro_pol_session_resume NOT EXERCISED"
+}

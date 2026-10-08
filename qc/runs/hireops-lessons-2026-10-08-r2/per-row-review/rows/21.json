@@ -1,0 +1,35 @@
+{
+  "number": 21,
+  "id": "verifier_entrypoint_is_safe_and_always_scores",
+  "reviewer": "row-reviewer-21",
+  "input_sha256": "ccf245cd03b12e6e1b34d59f7941e6193ce9e283b5dee63d31a857f2bf99bd45",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-lessons-2026-10-08-r2/rules/WebDev Rubrics QC.xlsx (openpyxl read_only, in memory): Quality Checks row 22 (#21 verifier_entrypoint_is_safe_and_always_scores); Internal Quality Checks row 22 (#21, no annotation column text); Deterministic Checks rows check-verifier-contract.py, check-scoring-policy.py, check-trial-network-fetch.sh, check-nproc.sh, check-pip-pinning.sh",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/rules/harbor-webdev-rubric-qc/references/quality-checks.md (section 21)",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (tests/test.sh ordered contract, task.toml, tools, cross-file agreements)",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/rules/projects/webdev-task-template/tests/{test.sh,tools/score.py,Dockerfile} (diffed)",
+    "qc/REVIEW_POLICY.md",
+    "handoffs/LESSONS_FROM_COLDERWATER_2026-10-08.md",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/task/tests/test.sh (all 227 lines)",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/task/tests/tools/score.py",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/task/tests/scoring.toml",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/task/task.toml",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/task/environment/instructions/integration.md",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/task/instruction.md (runtime paragraph lines 15-17)",
+    "qc/runs/hireops-lessons-2026-10-08-r2/raw-evidence-index.json (all 8 entry hashes verified matching)",
+    "qc/repairs/hireops-2026-10-03-workspace/via-solve.sh and results/via-solve.log"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "Frozen task/tests/test.sh (sha256 bd682592...e5aa) and tests/tools/score.py (13de2b38...e04e) and tests/Dockerfile are byte-identical to the frozen template (diff empty); live projects/ test.sh has the same hash. Against the staged-task-contract ordered list: (1) write_zero_reward at test.sh:60 runs before any grading work (only mkdir/chmod of LOG_DIR and chmod /tests precede it, lines 10-12), writes reward.txt 0.0 plus reward.json with reward, all five dimensions, gates_passed, floors_passed, weighted_score, graded, no_op (line 8) and a ctrf.json; trap cleanup EXIT (line 61) calls ensure_reward (lines 20-23, 33-40); no exec anywhere. (2) missing /app/server.js -> exit 0 (68-70); symlink outside /app/node_modules or escaping it -> exit 0 (72-83). Integration note lines 16-19 discloses the symlink rule, so a conforming builder is told. (3) /app copied to /tmp/submission (90-95); app launched by setsid env -i with only PATH, NODE_PATH, HOME, PORT=3000, DB_PATH under setpriv --reuid/--regid=65534 --clear-groups (104-111); LOG_DIR chmod 700 + umask 077 and /tests go-rwx (3,11,12) so the unprivileged app cannot write the reward or read rubrics. (4) liveness: up to 120 x 0.25 s probes of /api/health then / (42-58,115-125); not ready -> exit 0 with the zero reward, before any RewardKit call. (5) restart helper heredoc + sed + chmod 755 + export APP_RESTART_HELPER (127-193). (6) {app_context} substitution (195-201). (7) gates suite (budget 1500) then score.py; exit 0 continue, 1 stop keeping detailed gate-fail record, other -> write_zero_reward (212-222); rewardkit failure/timeout -> exit 0 with zero reward. (8) scored suite (11100) then score.py; failure -> write_zero_reward (224-227); rewardkit failure after passed gates leaves score.py's gate-phase record whose reward is 0 because floors_passed requires scored_ran (score.py:42-48). Budgets 1500+11100=12600 < verifier timeout_sec 13200 (task.toml:27). Executed in scratchpad (not in Docker): score.py on synthetic logs -> pass case exit 0 reward 0.6600; gate fail exit 1 reward 0.0000; missing gates json exit 2 (test.sh then writes plain zero); non-numeric dimension exit 2; functional 0.0 below floor exit 0 reward 0.0000; gates-only exit 0 reward 0.0000. Path-substituted copy of test.sh: missing REWARDKIT_* -> exit 0, reward.txt 0.0, zero reward.json; env set but no /app/server.js -> exit 0, zero reward. Bash with set -euo pipefail and an EXIT trap ran the trap when SIGTERMed (exit 143), so an outer kill still reaches ensure_reward (and the zero record already exists from line 60). Lessons file check: lesson 11 (judge infra crashes zero a dimension) is handled consistently - a crashed suite yields reward 0 not an unscored rollout; lesson 19 (golden harness launching like test.sh): the only runtime evidence (via-solve.sh/via-solve.log) runs solve.sh, chown 65534 and setpriv but invokes its own driver, not test.sh, rewardkit or score.py. Lessons 13 (no public address) - test.sh probes only 127.0.0.1. No other lesson bears on this row. Adversarial: a broken app returning 404 on every path passes liveness (HTTPError counted as alive, lines 50-52) - intended liveness-only behaviour; dead apps are excluded by the gate judges, not this row. Conforming alternative that could fail: an app that needs >30 s before answering HTTP would be zeroed, but integration.md:9-10 and instruction.md:15 require /api/health to answer before database work, so this is disclosed. Risk=true only because required runtime evidence is missing: no full configured test.sh run (Docker, rewardkit, score.py writing /logs/verifier) on this candidate is in raw-evidence-index.json; the source-level and scratchpad execution checks above do not substitute for it.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

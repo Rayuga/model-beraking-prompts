@@ -1,0 +1,37 @@
+{
+  "number": 47,
+  "id": "verifier_is_deterministic_and_offline_pinned",
+  "reviewer": "row-reviewer-47",
+  "input_sha256": "62b67c0517689833807fe690bec0bb6d251f744264d2ef6e0ae6f181ae9f7826",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    "qc/runs/hireops-workspace-2026-10-03-r2/per-row-review/prompts/47.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/rules/WebDev Rubrics QC.xlsx :: 'Quality Checks'!A48:D48 (#47 verifier_is_deterministic_and_offline_pinned: 'Shared pinned judge agent + model, pinned judge CLIs and browser, graded time rules on a fixed clock. Temperature and prompt-version markers are not required. Network is public here...'), plus related rows 11 and 23",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/rules/WebDev Rubrics QC.xlsx :: 'Internal Quality Checks'!D48 ('Pinned model, temperature 0, versioned prompt, pinned browser, and no unpinned network in the scoring path') - older internal annotation; superseded by the visible row and SKILL delivery profile, which explicitly drop temperature/prompt-version and the network requirement",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/rules/WebDev Rubrics QC.xlsx :: 'Deterministic Checks' C11/C43 (pinning rules; unpinned apt is a NOTE)",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/rules/harbor-webdev-rubric-qc/SKILL.md (delivery profile, verdicts, evidence standard)",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/rules/harbor-webdev-rubric-qc/references/quality-checks.md ### 47",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (frozen [verifier.env], judge.toml schema, tools/ shared builds)",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/rules/projects/webdev-task-template/ (tests/Dockerfile, test.sh, tools/score.py, tools/restart_mcp.py, scoring.toml, all five judge.toml [judge] blocks)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/task/task.toml",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/task/tests/Dockerfile",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/task/tests/{gates,scored}/*/judge.toml",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/task/instruction.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/task/environment/instructions/hireops_rules.md and integration.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/task/environment/assets/seed_data.json (timestamp fields)",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/task/solution/app/src/index.js:59",
+    "qc/runs/hireops-workspace-2026-10-03-r2/raw-evidence-index.json"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "(1) Shared pinned judge agent + model: task/task.toml:30-35 is byte-identical to the frozen block in staged-task-contract.md: REWARDKIT_JUDGE = \"claude-code\", REWARDKIT_MODEL = \"z-ai/glm-5.3-flashx\", ANTHROPIC_BASE_URL = \"https://openrouter.ai/api\", ANTHROPIC_AUTH_TOKEN = \"${OPENROUTER_API_KEY}\", ANTHROPIC_API_KEY = \"\". All five judge.toml [judge] blocks (gates/render, gates/constraints, scored/functional, scored/polish, scored/visual) carry only judge = \"claude-code\" fallback, mode, timeout, isolated, prompt_template; grep for model|temperature|reasoning in task/tests/*/*/judge.toml returned nothing. The [judge]..[scoring] sections diff-identical to the template for all five dimensions (functional timeout 9000, polish/visual 900, gates 600 match template). (2) Pinned judge CLIs and browser: task/tests/Dockerfile is diff-identical to rules/projects/webdev-task-template/tests/Dockerfile: node:22-bookworm-slim + python:3.12-slim bases; npm -g @anthropic-ai/claude-code@2.1.281, @openai/codex@0.151.0, @playwright/mcp@0.0.79, express@5.1.0, better-sqlite3@12.4.1 (lines 16-22); pip harbor-rewardkit==0.1.7 (line 31); Chromium installed through the pinned @playwright/mcp's bundled playwright CLI into /opt/playwright-browsers and symlinked to /usr/local/bin/chromium (lines 33-39), which every judge.toml passes via --executable-path=/usr/local/bin/chromium. Only apt packages (ca-certificates, procps, fonts...) are unpinned, which the Deterministic Checks sheet C11 classifies as NOTE, and they are template-controlled. (3) Shared tools: tests/test.sh, tests/tools/score.py, tests/tools/restart_mcp.py and tests/scoring.toml are byte-identical (diff -q) to the template, so check-canonical-shared-files.py's code comparison would trivially hold. (4) Graded time rules on a fixed clock: the brief/rules contain no calendar-dependent graded rule (no ages, SLAs, overdue, 'today', relative 'x ago' displays); grep of all judge.toml/prompt.md/app_context.md for ago|today|yesterday|date|20xx-|overdue|SLA found none. The only graded durations are the relative 15-second live-update windows (hireops_rules.md:117; functional judge.toml:290,299,335,344,353; polish judge.toml:23,32; functional prompt.md:41,47; polish prompt.md:14), which are measured from the judge's own action and do not depend on the run date. Activity 'newest first' (hireops_rules.md:112, functional judge.toml:263) and conversation recency (hireops_rules.md:144-165) are relative orderings; seed timestamps are fixed and all in the past (2026-07-01..2026-07-29Z) so new run-time events (golden uses new Date().toISOString(), src/index.js:59) sort after seeded ones regardless of run day. Because there is no date-dependent rule, no fixed clock is needed for grading to be stable across run dates; the absence of a stated fixed clock is consistent with this row (whether the brief must state one is row 4's concern, not this one). (5) Network: [verifier.environment] network_mode = \"public\" (task.toml:37-38) - explicitly not a defect per workbook D48 and SKILL delivery profile. Adversarial probes: a broken app cannot exploit the verifier config (no task-local judge/model override, judge selection lives only in [verifier.env]); a conforming alternative that uses sequence IDs or its own clock for ordering still satisfies every time-related criterion because none grades absolute times. Residual latent item (P3-equivalent, template-controlled, not a task defect): base images are tag-pinned rather than digest-pinned, and the Chromium build is pinned transitively through @playwright/mcp@0.0.79 rather than by a separate version string; this is identical in the frozen template. Runtime: raw-evidence-index.json lists only scripted golden observations in image hireops-verifier:20261002-permission-repair, explicitly 'Not a configured judge run'; no full configured judge run exists, so that the claude-code CLI actually invoked GLM through OpenRouter in this image is NOT EXERCISED. This row is a static configuration/pinning check fully decidable from the bytes, so that gap does not change the verdict, but it remains an open item for the verifier-launch rows.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

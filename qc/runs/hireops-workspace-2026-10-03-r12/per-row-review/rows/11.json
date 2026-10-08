@@ -1,0 +1,28 @@
+{
+  "number": 11,
+  "id": "timeouts_fit_the_work",
+  "reviewer": "row-reviewer-11",
+  "input_sha256": "2996e34d07dbcb26256f6917534f6e3769fa42f00ec330fd154ac876b7eff46e",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r12/rules/WebDev Rubrics QC.xlsx (openpyxl read_only, in memory): Quality Checks row 11 timeouts_fit_the_work; Internal Quality Checks row 11 ('inner < outer, sum of judges < verifier'); Deterministic Checks check-scoring-policy.py and check-rubric-schema.py rows",
+    ".qc-cache/hireops-workspace-2026-10-03-r12/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r12/rules/harbor-webdev-rubric-qc/references/quality-checks.md (section 11)",
+    ".qc-cache/hireops-workspace-2026-10-03-r12/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (task.toml block, budget nesting line 111, judge.toml, restart_mcp)",
+    ".qc-cache/hireops-workspace-2026-10-03-r12/rules/projects/webdev-task-template/task.toml, tests/test.sh, tests/*/*/judge.toml timeouts, tests/tools/restart_mcp.py (diffed against task)",
+    "qc/REVIEW_POLICY.md",
+    "task/task.toml, task/tests/test.sh, task/tests/scoring.toml, task/tests/gates/{render,constraints}/judge.toml, task/tests/scored/{functional,polish,visual}/judge.toml, task/tests/scored/functional/prompt.md, task/tests/scored/polish/prompt.md (timing waits), task/tests/tools/restart_mcp.py, task/environment/Dockerfile, task/tests/Dockerfile, task/solution/solve.sh (head), task/solution/app/package.json, task/instruction.md",
+    "qc/runs/hireops-workspace-2026-10-03-r12/raw-evidence-index.json"
+  ],
+  "verdict": "Not exercised",
+  "risk": true,
+  "severity": null,
+  "evidence": "STATIC ARITHMETIC (verified against frozen bytes; all values byte-equal to frozen template rules/projects/webdev-task-template): task/task.toml [agent].timeout_sec = 7200.0, [environment].build_timeout_sec = 600.0, [verifier].timeout_sec = 13200.0 (diff vs template shows only identity/metadata lines differ). task/tests/test.sh is identical to the template test.sh (diff empty): run_suite uses `timeout \"$budget_sec\" rewardkit --max-concurrent-agent 1`, `run_suite gates 1500`, `run_suite scored 11100`. Judge timeouts: tests/gates/render/judge.toml timeout = 600; tests/gates/constraints/judge.toml timeout = 600; tests/scored/functional/judge.toml timeout = 9000; tests/scored/polish/judge.toml timeout = 900; tests/scored/visual/judge.toml timeout = 900 (all equal to template). Nesting: each gate judge 600 < 1500 and, since --max-concurrent-agent 1 serialises judges, sum 600+600 = 1200 < 1500 (300 s slack). Each scored judge < 11100 and sum 9000+900+900 = 10800 < 11100 (300 s slack). Budgets 1500+11100 = 12600 < 13200 (600 s slack); sum of all judges 12000 < 13200 (satisfies the Internal Quality Checks annotation 'sum of judges < verifier'). Liveness: startup probe 120 x 0.25 s (~30 s when connections refuse fast; worst case with 2 s urlopen timeouts on two URLs ~510 s, still 12600+510 = 13110 < 13200); restart helper ready loop 30 s inside tests/tools/restart_mcp.py HELPER_TIMEOUT_SEC = 55 (line 11), which runs inside the functional judge's 9000 s. Agent 7200 s for a from-empty Node/Express/SQLite build of a ~2740-word brief+rules; build_timeout 600 s for an image with one apt layer and two pinned global npm packages (environment/Dockerfile) - plausible. The template-controlled budgets are unchanged, as REVIEW_POLICY requires absent a measured reason.\nUNMEASURED ('long enough'): qc/runs/hireops-workspace-2026-10-03-r12/raw-evidence-index.json scope states 'Full configured grading/workload, reward discrimination/ranking and Oracle/target scores are absent'; its only entries are a scripted golden Playwright driver and its outputs, each scoped 'Not a configured judge run ... or judge-duration measurement'. The functional suite is one batched claude-code (GLM flash) session that must execute 44 criteria across protocols Z,S,M,L,C,B,N,T,U,K,R,V,A,D (tests/scored/functional/prompt.md lines 25-51, 19 KB prompt + 25 KB criteria), with ~17 independent browser contexts, multiple sign-ins per role, several 15-second no-reload waits (U and V), and one restart. Whether that fits in 9000 s, and polish (5 criteria, multi-context live-update waits) in 900 s, has not been measured; scripted golden duration is not judge duration. A judge timeout in functional would zero the whole suite via test.sh (`if ! run_suite scored 11100; then exit 0`), and since polish/visual run in the same scored suite budget, an overrun costs the full reward. Per SKILL 'Never upgrade an unmeasured claim to Pass' and REVIEW_POLICY 'Workload is measured, not inferred from a timeout number', the nesting half passes but adequacy remains Not exercised.\nCounterexample probes: (broken app passing) a timeout cannot make a broken app pass here - timeouts produce zero reward, not credit; (conforming app failing) a correct but slower-to-drive app, or a correct app driven by a slow GLM judge, could exhaust the 9000 s functional judge or 900 s polish judge and be zeroed - plausible but unmeasured, so not asserted as a Fail. No timeout change is recommended without a measured full configured run; any change would need recorded reason and authorization under the five-hour limit.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

@@ -1,0 +1,33 @@
+{
+  "number": 21,
+  "id": "verifier_entrypoint_is_safe_and_always_scores",
+  "reviewer": "row-reviewer-21",
+  "input_sha256": "cf784fd80eb2bbde1fc76bc223bc4dd9b75279121566847079f982e09473ca01",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-2026-10-01-transaction-hardening-r3/rules/WebDev Rubrics QC.xlsx: Quality Checks A22:D22 (row 21), Internal Quality Checks A22:D22, complete Quality Checks and Deterministic Checks inventory; frozen list_checks.py enumerated 53/48",
+    ".qc-cache/hireops-2026-10-01-transaction-hardening-r3/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-2026-10-01-transaction-hardening-r3/rules/harbor-webdev-rubric-qc/references/quality-checks.md:92-94",
+    ".qc-cache/hireops-2026-10-01-transaction-hardening-r3/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md: tests/test.sh and tests/tools contracts",
+    ".qc-cache/hireops-2026-10-01-transaction-hardening-r3/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md:38-50",
+    "qc/README.md; qc/REVIEW_POLICY.md",
+    ".qc-cache/hireops-2026-10-01-transaction-hardening-r3/rules/projects/webdev-task-template/tests/test.sh",
+    ".qc-cache/hireops-2026-10-01-transaction-hardening-r3/task/tests/test.sh:1-227",
+    ".qc-cache/hireops-2026-10-01-transaction-hardening-r3/task/tests/tools/score.py:1-91; tests/tools/restart_mcp.py:1-100",
+    ".qc-cache/hireops-2026-10-01-transaction-hardening-r3/task/instruction.md:3,9-11; environment/instructions/integration.md",
+    ".qc-cache/hireops-2026-10-01-transaction-hardening-r3/task/tests/scored/functional/prompt.md:3,P10; tests/scored/functional/judge.toml:924-930,1149-1154",
+    "qc/runs/hireops-2026-10-01-transaction-hardening-r3/raw-evidence-index.json: indexed raw /evidence/21/ artifacts only, hashes verified",
+    "qc/runs/hireops-2026-10-01-transaction-hardening-r2/per-row-review/evidence/21/probe.py; probe-v2.py; run-manifest.json; controlled-recheck/run-manifest.json; controlled-recheck/results.json; missing-entry/observation.json; escaping-symlink/observation.json; cli-failure/observation.json; normal-gates-then-scored/observation.json"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P1",
+  "evidence": "Positive controls: frozen tests/test.sh writes the full zero record at lines 14-18/60, installs cleanup EXIT at 61, rejects missing entry and escaping symlinks at 68-83, uses env -i and UID/GID 65534 at 104-111, checks HTTP before RewardKit at 115-125, and runs gates then scored with score.py at 213-227. Raw missing-entry and escaping-symlink observations retained zero rewards without suites; cli-failure retained zero with only gates; normal-gates-then-scored recorded that order. The controlled normal restart changed responding PID 24 to 52 with UID 65534 and only DB_PATH, HOME, NODE_PATH, PATH, PORT. However, the generated restart helper at tests/test.sh:152-178 sends SIGTERM, waits only 50 x 0.1 s, then launches and overwrites app.pid without ensuring the old process is gone or the new process remains alive. Its generic HTTP probe can therefore be answered by the old process. Indexed controlled-recheck/results.json confirms restart-retains-old-process answered PID 189 both before and after, new PID 266 logged EADDRINUSE, yet helper returncode was 0 and ready=1. The slow-shutdown control similarly retained PID 82, new PID 159 failed EADDRINUSE, and returned 0. tests/tools/restart_mcp.py:45-47 converts that exit into a claim that restart completed. This undermines the real restart relied on by hro_restart and hro_change_retry_restart. Separately, cleanup at test.sh:33-39 waits without a bound after SIGTERM; cli-failure-ignores-signal remained running at the fixture external 8.003 s bound, although its zero reward already existed. Do not describe that observation as missing reward. Raw fixtures deliberately stub RewardKit and replace the product: their numeric rewards establish neither an app grade nor Oracle/model performance. Verified all 132 indexed /evidence/21/ artifact hashes and all their current-source bindings, recorded in per-row-review/evidence/21/hash-verification.json. Current test.sh SHA256 bd68259276ca4b034654efc8a1723a4e702ed62dbe590af6201565f43eabe5aa is byte-identical to the frozen template and fixture source; score.py 13de2b3885967e22aa13ded3bf33c354e3e741e85be871612c04e996eef5c04e also matches. Controlled fixture driver SHA256 5b674556e7ad9efbffe16675cc738c93f61ac281d96dbb23cfa5008b9af31714, run-manifest 7b5a55799d8ef646888692005f12083e49e5c26478452c063ec4256756a185c1 and results 6d5e7f7c2b6af2ae64342c4583e4fc3ae4b505d6d53cf36860e38e4589738e0c match the current index. No new Docker or provider run was needed; full configured grading remains absent and is not claimed.",
+  "counterexample": "Broken alternative: an otherwise usable app keeps freshly written records only in memory and ignores SIGTERM; the old process keeps serving those records while the helper falsely reports a completed restart, allowing the restart persistence observations to appear satisfied. The raw ignore fixture proves same-PID false success, not an actual configured criterion score. Conforming alternative: a SQLite-backed app honors all stated runtime requirements but performs a 30-second graceful SIGTERM shutdown (no public shutdown limit is specified). The measured slow fixture proves the replacement collides with the still-running old process and the helper falsely succeeds; when the old process later exits, subsequent reads can fail despite correct persistence. That later product-grade outcome is an inference, not a measured model grade. An app that ignores SIGTERM can additionally leave the EXIT cleanup waiting indefinitely after a grading failure even though reward files were prewritten.",
+  "suggested_fix": "Escalate this byte-identical shared-template defect for an authorized upstream lifecycle correction: bound shutdown, terminate and confirm the old process group is gone before relaunch, verify the new process survives and owns readiness, and keep cleanup bounded with reward assurance; then freeze and review a new candidate rather than patching this task or altering reward policy.",
+  "run_verdict": "CONFIRMED"
+}

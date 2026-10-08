@@ -1,0 +1,40 @@
+{
+  "number": 23,
+  "id": "verifier_and_instruction_agree_on_the_runtime_contract",
+  "reviewer": "row-reviewer-23",
+  "input_sha256": "adb13696bfe3e6c71690adc5c6af2002d5f107a10751c348ba8bc0f5401600b1",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-2026-10-01-handoff-audit/rules/WebDev Rubrics QC.xlsx: Quality Checks row 24 (check 23), Internal Quality Checks row 24 including E24/H24 annotations",
+    ".qc-cache/hireops-2026-10-01-handoff-audit/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-2026-10-01-handoff-audit/rules/harbor-webdev-rubric-qc/references/quality-checks.md:100-102",
+    ".qc-cache/hireops-2026-10-01-handoff-audit/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md:98-111,166-180",
+    "qc/README.md; qc/REVIEW_POLICY.md",
+    ".qc-cache/hireops-2026-10-01-handoff-audit/rules/projects/webdev-task-template/instruction.md; environment/instructions/integration.md; tests/test.sh; tests/Dockerfile; solution/solve.sh; solution/app/server.js",
+    ".qc-cache/hireops-2026-10-01-handoff-audit/task/instruction.md",
+    ".qc-cache/hireops-2026-10-01-handoff-audit/task/environment/instructions/integration.md",
+    ".qc-cache/hireops-2026-10-01-handoff-audit/task/environment/instructions/hireops_rules.md:1-100,310-431",
+    ".qc-cache/hireops-2026-10-01-handoff-audit/task/environment/Dockerfile",
+    ".qc-cache/hireops-2026-10-01-handoff-audit/task/tests/test.sh",
+    ".qc-cache/hireops-2026-10-01-handoff-audit/task/tests/Dockerfile",
+    ".qc-cache/hireops-2026-10-01-handoff-audit/task/task.toml",
+    ".qc-cache/hireops-2026-10-01-handoff-audit/task/tests/app_context.md",
+    ".qc-cache/hireops-2026-10-01-handoff-audit/task/tests/gates/render/judge.toml; tests/gates/render/prompt.md; tests/gates/constraints/judge.toml; tests/gates/constraints/prompt.md",
+    ".qc-cache/hireops-2026-10-01-handoff-audit/task/solution/solve.sh; solution/app/server.js; solution/app/package.json; solution/app/src/bootstrap.js",
+    "qc/runs/hireops-2026-10-01-handoff-audit/manifest.json; raw-evidence-index.json",
+    "qc/runs/hireops-2026-10-01-handoff-audit/local/input-binding.json",
+    "qc/runs/hireops-2026-10-01-handoff-audit/local/install-lifecycle/results.json",
+    "qc/runs/hireops-2026-10-01-handoff-audit/local/shared-harness/results.json"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P1",
+  "evidence": "Inherited template contract omission: task/environment/Dockerfile:25 makes the authoring cwd /app, but task/tests/Dockerfile:45 makes the verifier cwd /tests; task/tests/test.sh:104-111 and 160-167 launch node with no cd. Public task/instruction.md:9 and task/environment/instructions/integration.md:3-19 specify the entry, port, DB_PATH, dependencies, paths and symlink policy, but never disclose the different cwd or require cwd-independent asset/seed paths. This can make a permitted ordinary /app file layout work during authoring and fail during grading. The template tests/test.sh is byte-identical (SHA256 bd68259276ca4b034654efc8a1723a4e702ed62dbe590af6201565f43eabe5aa); the frozen template integration note also omits cwd, so this is inherited, not task-specific harness drift. Remaining named launch facts align: port/health/entry/DB_PATH in instruction.md:9 match test.sh:48,68,97-111; integration.md:3-10 matches both Dockerfiles' Node/Express/better-sqlite3 and NODE_PATH; instruction.md:13 requires copying seed assets and first-start seeding; integration.md:16-19 matches test.sh:72-83 symlink handling. Public network/CDNs are permitted. All frozen task/rule hashes were independently checked against manifest.json with no mismatches. Existing install-lifecycle/results.json hash 613da9cf8e275402f708957981b3cefe2236d55803f7b9efaaee7618e1ff15a8 matches the index and records a golden launch from /tests, but only proves that reference implementation handles it. Read-only Node v24.19.0 local probe read public/index.html from frozen solution/app (2450 bytes), then the identical relative read from frozen tests returned ENOENT. This is a path-semantics probe, not execution of the alternative app in the configured Node 22 verifier, and no configured judge/Oracle/model result is claimed.",
+  "counterexample": "Conforming alternative: an otherwise correct Express/SQLite app honors PORT and DB_PATH, copies seed data into /app, exposes database-independent /api/health, and loads its bundled seed/UI with fs.readFileSync('seed_data.json') or express.static('public'). It works when node /app/server.js is invoked in the supplied /app working directory, yet the unchanged verifier's /tests cwd makes those relative lookups fail. The undisclosed cwd, rather than missing requested product behavior, can cause zero render credit. Broken-app challenge: a health-only or HTTP-500 server passes test.sh's permissive readiness probe (48-55), but render/judge.toml:23 requires a successful authenticated populated workspace and constraints/judge.toml:23-25 requires real creation plus independent readback, so readiness alone is not an overall-pass loophole and is not reported as a separate defect.",
+  "suggested_fix": "Preserve the canonical harness; add the actual launch conditions to the task's public integration note, including that cwd is not /app and bundled assets must resolve from the entry/module directory or explicit absolute paths, then freeze and review the changed candidate.",
+  "run_verdict": "PARTIAL"
+}

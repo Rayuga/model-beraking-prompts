@@ -1,0 +1,33 @@
+{
+  "number": 38,
+  "id": "batched_criteria_are_scored_independently",
+  "reviewer": "row-reviewer-38",
+  "input_sha256": "d622da81e9b07dcadf86ec7430f70ae35a57d0ff2275e3a0cf1bd6eaa7572278",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-lessons-2026-10-08-r3/rules/WebDev Rubrics QC.xlsx (sha256 6d44970b...fd7f, read in memory via zipfile): Quality Checks row 39 (check 38 batched_criteria_are_scored_independently), Internal Quality Checks row 39 (no extra annotation beyond 'Batched dimension prompts ... one miss can't zero the rest'), Deterministic Checks row 5 check-batched-independence-wording.py",
+    ".qc-cache/hireops-lessons-2026-10-08-r3/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-lessons-2026-10-08-r3/rules/harbor-webdev-rubric-qc/references/quality-checks.md section 38",
+    ".qc-cache/hireops-lessons-2026-10-08-r3/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (check-batched-independence-wording.py, check-rubric-prompt.py)",
+    ".qc-cache/hireops-lessons-2026-10-08-r3/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (judge.toml / aggregation section)",
+    ".qc-cache/hireops-lessons-2026-10-08-r3/rules/projects/webdev-task-template/tests/scored/{functional,polish,visual}/prompt.md (independence wording)",
+    "qc/REVIEW_POLICY.md",
+    "handoffs/LESSONS_FROM_COLDERWATER_2026-10-08.md",
+    "task/tests/scored/functional/prompt.md, polish/prompt.md, visual/prompt.md (full)",
+    "task/tests/gates/render/prompt.md, gates/constraints/prompt.md (full)",
+    "task/tests/scored/*/judge.toml and gates/*/judge.toml (mode, aggregation, criterion types/weights; criteria text grepped for cross-row dependencies)",
+    "task/tests/scoring.toml, task/tests/app_context.md, task/environment/instructions/hireops_rules.md sec 1-2, task/environment/assets/seed_data.json jobs",
+    "qc/runs/hireops-lessons-2026-10-08-r3/raw-evidence-index.json (scope: no configured judge run)"
+  ],
+  "verdict": "Note",
+  "risk": true,
+  "severity": "P3",
+  "evidence": "Wording requirement met in all three scored prompts (hashes match manifest): functional/prompt.md:13 'Once it succeeds, score EACH criterion independently, continue after failures and keep successful observations. A failed sibling verdict is not evidence against another row. Shared protocols reduce setup; they are not conjunctive bundles.'; polish/prompt.md:12 'Otherwise judge each criterion independently and continue after failures.'; visual/prompt.md:12 'Otherwise grade every criterion independently with its five anchors and continue after failures.' All three also carry the per-criterion checker-not-fixer line (line 7: 'give that criterion its lowest score ... and move on'), 'Never deduct one observed defect in more than one row' (functional:31, polish:24, visual:14) and a NOT EXERCISED rule that preserves completed observations (functional:61, polish:26, visual:20). No stop-at-first-failure / abort wording anywhere in scored prompts, app_context.md or scored judge.toml criteria (grep for stop|abort|halt|first fail). The only all-zero clauses are the in-dimension browser gate (functional:13, polish:12, visual:12), which check-rubric-prompt.py requires scored prompts to restate. Gate dimensions render/constraints use aggregation='all_pass' and are exempt. Scored dims use weighted_mean (functional 39 binary, polish 5 binary, visual 5 likert points=5). Functional:13 adds a setup-fallback rule and T has an explicit seeded-conversation fallback; several criteria say 'graded only in X' to avoid sibling cascades. Residual (why risk=true, latent P3): (1) Setup cascade with no fallback: every board protocol needs the judge's own new job ('Use your own new jobs and cards for every board protocol', functional:15) and the fallback is limited to 'a new job of your own if that is possible without the broken feature' (functional:13). If opening a job is itself broken, there is no allowed fallback even though seeded jobs exist (seed_data.json JOB-DATA interview_limit 2, used by the gate), so one miss (hro_job_open, weight 1) leaves most functional rows unobservable and scored 0 (report-every-step rule functional:25 fails skipped steps). Polish row hro_pol_live_board likewise needs 'your job' (polish:14). (2) Cross-dimension dependency: polish hro_pol_live_board/hro_pol_live_thread state 'If no update arrives within 15 seconds ... this row is 0' while live delivery is graded in functional hro_live_board/hro_msg_exchange; one missing live feature zeroes 4 of 9.5 polish weight plus functional rows. That is row 28/lesson-16 territory, recorded here only for the owner. (3) No configured judge run exists (raw-evidence-index scope: 'Full configured grading ... absent'), so whether the judge actually continues after failures is unmeasured; the private check-batched-independence-wording.py was not executed by this reviewer (manual application only). Lessons file checked for this row: lesson 6 (checker-not-fixer line present in every prompt), 9 (report-every-step present in all three scored prompts), 16 (double penalty: item 2 above). Template comparison: template scored prompts also say 'return a verdict for all of them'; task prompts lack that phrase but 'score EACH criterion independently, continue after failures' carries the same instruction. Broken app tried: an app with no working job creation passes both gates (gate uses the seeded Data Analyst job) and then loses nearly all board rows. Conforming alternative tried: an app that refuses one skip move still earns other rows under functional:13; no wording would zero it.",
+  "counterexample": "App whose 'open job' action fails (e.g. hiring-manager picker empty or POST 500) but whose board, moves, undo, bulk moves, notes and roles all work on seeded jobs: it passes render/constraints (gate uses seeded Data Analyst), then S cannot create J1/J2, the prompt forbids using non-own jobs and offers no fallback, so ~40+ functional weight scores 0 from that single miss, and the 0.05 functional floor may zero the reward.",
+  "suggested_fix": "In functional/prompt.md (and polish), add: 'If no job can be opened, record hro_job_open 0 and run the board protocols on the seeded Data Analyst job (2 places) with your own suffixed cards, reading results relative to its state before you act'; optionally make the polish live rows say 'scored elsewhere' instead of 0 when live delivery is absent.",
+  "run_verdict": "NOT EXERCISED"
+}

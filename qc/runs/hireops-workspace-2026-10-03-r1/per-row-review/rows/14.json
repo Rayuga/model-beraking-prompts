@@ -1,0 +1,36 @@
+{
+  "number": 14,
+  "id": "seed_data_is_internally_consistent_and_clean",
+  "reviewer": "row-reviewer-14",
+  "input_sha256": "6ca9ee7368c7aef18033c68fdd278d965bcb75bc20d710f6c60c557dfb8953eb",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/WebDev Rubrics QC.xlsx :: 'Quality Checks' row #14 (C - environment/, seed_data_is_internally_consistent_and_clean, 'Shipped data is self-consistent, synthetic (no real PII), and free of orphan references or injection payloads.')",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/WebDev Rubrics QC.xlsx :: 'Internal Quality Checks' row #14 annotations ('PII we use to define in the prompts ... we usually define the credentials and real informations'; 'block for api, we can go for dob, name, age, we can leave'; 'If task data itself contain credential flag it. Only in toml we allow.')",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/WebDev Rubrics QC.xlsx :: 'Deterministic Checks' check-fixtures.py and check-probe-not-in-seed.py rows (related mechanical halves)",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/harbor-webdev-rubric-qc/SKILL.md (full; Known false positives: credentials the profile expects / flag credentials inside seed)",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/harbor-webdev-rubric-qc/references/quality-checks.md :: '### 14 · seed_data_is_internally_consistent_and_clean' (lines 62-64) and related checks 3, 36, 51, 52",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md :: seed rows (line 14 'assets/seed_data.json mounted at /assets/seed_data.json'; line 175-176 cross-file seed/clock rows)",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/projects/webdev-task-template/environment/assets/seed_data.json (template placeholder: \"CHANGE_ME\")",
+    "qc/REVIEW_POLICY.md (full)",
+    "qc/runs/hireops-workspace-2026-10-03-r1/per-row-review/prompts/14.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/task/environment/assets/seed_data.json (full, 1067 lines)",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/task/solution/app/src/seed_data.json (byte-identical copy)",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/task/environment/instructions/hireops_rules.md (full)",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/task/instruction.md (full)",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/task/tests/app_context.md (full)",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/task/tests/scored/{functional,polish,visual}/prompt.md (grep for seed-dependent figures)",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/task/solution/app/src/db.js (seedIfEmpty, lines 61-84)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Shipped data files: task/environment/assets/seed_data.json and task/solution/app/src/seed_data.json, both SHA256 22df2a00a3b78511adc4848cd5948417be24904e9bfa3c41e7fead6df82660bd (cmp: identical); the only other JSON is solution/app/package.json (not data). No CSV/TSV shipped. Parsed with Python json and ran a scratch integrity script (scratchpad chk14.py, not saved in the repo) giving ISSUES [] on: counts stages 6, users 10, jobs 3, applications 16, messages 126, notes 3, reads 6. (1) Referential integrity: every jobs[].recruiter_id resolves to a role=recruiter user and manager_id to a role=hiring_manager user; every applications[].job_id resolves; every messages[].application_id/sender_id, notes[].application_id/author_id and reads[].user_id/application_id resolves. No orphans. Unique ids and unique user emails. (2) Rule consistency against hireops_rules.md: stages match candidate_status_labels keys and the wording table in section 7; positions are contiguous 1..n per (job, stage); Interview occupancy is within the limit (JOB-PLAT 2/3, JOB-DATA 1/2, JOB-DSGN 1/3); interview_limit is an integer from 1 to 50; the only REJECTED card (APP-301) has a non-blank reject_reason and rejected_from SCREEN, and no non-rejected card carries reject fields; no duplicate (job, lower(email)); Noor Haddad on JOB-PLAT and JOB-DSGN is allowed ('the same person may apply to different jobs'); candidate-account emails match the account names. Every message sender may take part in that conversation (recruiters anywhere; candidates USR-CAN1/2/3 only in their own APP-101/302, APP-201, APP-301). Note authors may write there (MGR1 on JOB-PLAT, which they manage; MGR3 on JOB-DSGN, which they manage; REC1). Read markers come only from participants and are <= message count. Message timestamps strictly increase per conversation. (3) Cross-file figures agree: app_context.md:29-30 says Noor's Platform Engineer conversation has '120 messages at the start' (seed APP-101 has 120); functional prompt.md:39 says 'the starting read markers give her [Mei Lin] 2' on Tomas's Data Analyst conversation. Seed: USR-REC2 read_count 1 on APP-201, then messages #2 and #3 from USR-CAN2, so 2 is correct. 'Three jobs' (app_context.md:29, rules section 9) matches. thread_page_size 30 matches rules section 6. The golden db.js:82-83 maps read_count to the last read message id, matching rules section 9 ('how many messages ... counted from its first'). (4) Synthetic / no PII: all emails use RFC 2606 reserved domains (hireops.example, candidates.example, mail.example), and a regex for any other @domain found none. Names are generic and there is no DOB, phone, address or government id. Free-text bodies are bland recruiting chatter with '(#NNN)' sequence tags. (5) Injection and secret scan: regex for <script, javascript:, on*=, {{, ${, 'ignore previous/all', DROP TABLE, ' OR , sk-, password, api_key and token found zero hits. The seed has no credential; the demo password Hireops!2026 appears only in the brief and rules, which the profile expects. generated_note is descriptive, not directive. Tried a plausible broken app that could pass this row: seed cleanliness does not depend on the app, so no seed-induced false pass found. Tried a conforming alternative that could fail: an app that strictly applies 'sending counts as having read' while reading USR-CAN1's marker of 119 (CAN1 authored #120) still computes Noor's unread as 0 and REC1's #119 as seen, the same as the literal reading, so no conforming app is penalised. Positions are 1-based but contiguous, so 0-based or relative ordering implementations produce the same order. Two minor observations, neither a defect: USR-CAN1's marker of 119 on APP-101 sits below their own last message #120, and USR-REC3 has no marker on APP-302 although they sent its only message. Under 'own messages are never unread' both leave every derived unread or seen value unambiguous. The template seed is the placeholder \"CHANGE_ME\", so the task-specific seed replacing it is expected. raw-evidence-index.json was not needed for this source-only row. No runtime claim is made.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

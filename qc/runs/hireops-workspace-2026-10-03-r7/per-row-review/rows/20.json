@@ -1,0 +1,30 @@
+{
+  "number": 20,
+  "id": "solution_is_frozen_and_deterministic",
+  "reviewer": "row-reviewer-20",
+  "input_sha256": "88507720804547eb54db2aa2f2467f055d623a9ce90fcb32f9da1d62b6e5d67a",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r7/rules/WebDev Rubrics QC.xlsx (Quality Checks row 21 / #20; Internal Quality Checks row 21 / #20; read via openpyxl read_only)",
+    ".qc-cache/hireops-workspace-2026-10-03-r7/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r7/rules/harbor-webdev-rubric-qc/references/quality-checks.md (#20)",
+    ".qc-cache/hireops-workspace-2026-10-03-r7/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (layout, cross-file facts)",
+    ".qc-cache/hireops-workspace-2026-10-03-r7/rules/projects/webdev-task-template (file list, solution/solve.sh layout)",
+    "qc/REVIEW_POLICY.md",
+    "task/solution/solve.sh, solution/app/package.json, server.js, src/bootstrap.js, src/db.js, src/index.js (grep), public/index.html, public/js/app.js (grep), src/seed_data.json",
+    "task/environment/Dockerfile, environment/assets/seed_data.json, environment/instructions/hireops_rules.md, integration.md",
+    "task/instruction.md, task/task.toml, tests/app_context.md, tests/scored/*/prompt.md and tests/gates/*/prompt.md (grep)",
+    "qc/runs/hireops-workspace-2026-10-03-r7/raw-evidence-index.json (hashes re-verified)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Pass. Reference is a static committed baseline in the frozen snapshot (.qc-cache/hireops-workspace-2026-10-03-r7/task), byte-identical to projects/hireops-recruiting-operations/hireops-recruiting-operations/solution (diff -rq clean); seed copy solution/app/src/seed_data.json == environment/assets/seed_data.json (sha256 a1c65c80...3740).\n(1) Not regenerated/fetched: solution/solve.sh only checks DB inactivity via /proc, runs `cp -a \"$(dirname \"$0\")/app/.\" /app/` and removes the DB/WAL/SHM; no npm install, no curl/wget, no build or code generation. package.json pins exact better-sqlite3 12.4.1 / express 5.1.0, matching environment/Dockerfile's `npm install -g express@5.1.0 better-sqlite3@12.4.1` via NODE_PATH. index.html loads only /styles.css and /js/{board,threads,app}.js (no CDN or off-origin fetch); app.js fetch() targets same-origin API paths only.\n(2) Deterministic seeding: src/db.js:10 reads seed_data.json beside the module (not cwd, not /assets); seedIfEmpty (db.js:61-86) runs only when users is empty, inserts users/jobs/applications with seed ids, positions and a constant created_at '2026-06-15T09:00:00Z' (db.js:75); messages inserted in seed order with AUTOINCREMENT ids and seed created_at (130 fixed timestamps in seed); read markers resolved deterministically as ids[app][read_count-1]; notes use seed timestamps; password is the public brief credential. No Math.random/Date.now in seeding. Same seed -> same rows/ids every fresh install.\n(3) Time: the brief and rules state no fixed clock and no graded time rule (grep of instruction.md, hireops_rules.md, integration.md, app_context.md and all judge prompts for clock/today/ago found none); new runtime records take now() (src/index.js:59) which is not a pinned value. Display formatting is pinned to UTC/en-GB (public/js/app.js:21). Orderings that are graded (board column order: position,id; Activity newest-first: ORDER BY a.id DESC index.js:189; messages by id) use monotonic integers/positions, not wall clock.\n(4) Randomness only in runtime-created identifiers: uid() = crypto.randomBytes(3) for new JOB-/APP- ids (index.js:60,208,226) and session tokens (index.js:88); these are not pinned values, are never named by criteria (judges create their own jobs/cards), and 24-bit collision would only matter at negligible probability.\nMinor P3 observation (not a defect for this row): candidate application list orders by created_at, id (index.js:173); two runtime-created applications for one candidate in the same millisecond would tie-break on a random id, but created_at is ISO ms precision and no criterion grades that order.\nRuntime corroboration: raw-evidence-index.json (input_sha256 matches) artifact hashes re-verified True for all 6 entries; qc/repairs/hireops-2026-10-03-workspace/results/workspace.json records 'restart keeps jobs, cards, order, messages and activity without reseeding'. I did not run two fresh seeds and diff them; code reading is sufficient for this static-determinism row and no required measurement for it is missing.\nAdversarial: a broken golden that fetched seed from network or reseeded each boot would be caught here (it does neither); a conforming alternative using random ids for runtime records would not be penalised by this row or by criteria, which use names not ids.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

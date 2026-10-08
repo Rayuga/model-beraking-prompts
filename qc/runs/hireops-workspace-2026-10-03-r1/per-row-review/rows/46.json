@@ -1,0 +1,31 @@
+{
+  "number": 46,
+  "id": "tests_and_key_are_out_of_agent_reach",
+  "reviewer": "row-reviewer-46",
+  "input_sha256": "6ca9ee7368c7aef18033c68fdd278d965bcb75bc20d710f6c60c557dfb8953eb",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/WebDev Rubrics QC.xlsx :: 'Quality Checks' row 47 (#46, block E, tests_and_key_are_out_of_agent_reach) and header; 'Internal Quality Checks' row 47 (same wording, no extra annotation/comment on the row); 'Deterministic Checks' related rows check-dockerfile-references.sh, check-dockerfiles.py, check-solve-contract.py, check-required-files.py; 'ChangeLogs Sheet Link'",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/harbor-webdev-rubric-qc/references/quality-checks.md (header, block E incl. ### 46, 42-52)",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (full)",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (Dockerfile / solve-contract / grep sections)",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/projects/webdev-task-template/{task.toml, environment/Dockerfile, tests/Dockerfile, tests/test.sh, tests/.dockerignore, tests/tools/score.py, tests/tools/restart_mcp.py} (diffed against task)",
+    "qc/REVIEW_POLICY.md",
+    "task/instruction.md, task/task.toml, task/environment/Dockerfile, task/environment/instructions/hireops_rules.md, task/environment/instructions/integration.md, task/environment/assets/seed_data.json (keys + header), task/solution/solve.sh",
+    "task/tests/Dockerfile, task/tests/.dockerignore, task/tests/test.sh, task/tests/tools/score.py, task/tests/tools/restart_mcp.py, task/tests/gates/render/prompt.md, all five tests/*/*/judge.toml (criterion ids/descriptions scanned)",
+    "qc/runs/hireops-workspace-2026-10-03-r1/raw-evidence-index.json (all 6 artifact hashes and matching_source_files re-verified OK)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Agent reach (no criteria/key): task/environment/Dockerfile (byte-identical to template) only COPYs instructions/ -> /instructions (line 14) and assets/ -> /assets (line 15); no COPY of tests/ or solution/, and installs only express@5.1.0 + better-sqlite3@12.4.1 (lines 9-12) -- no judge client, no RewardKit, no claude-code/codex/playwright. The grading stack (claude-code@2.1.281, @playwright/mcp, harbor-rewardkit==0.1.7) and the criteria (COPY . /tests) live only in task/tests/Dockerfile (lines 16-22, 31, 43); task.toml:28 environment_mode = \"separate\". Agent-readable text (instruction.md, environment/instructions/*.md, seed_data.json) contains none of the 55 criterion ids, no grader vocabulary (grep judge|rubric|criteri|dimension|reward|score.py|playwright|glm|claude|/tests|sentinel|GATE-PROBE|rewardkit|openrouter -> none), and no criterion description shares a 12-word verbatim run with the public brief/notes (scripted shingle scan: 0). The brief restates public product requirements, which is expected, not a rubric copy. solve.sh only writes /app (line 35) and never touches /tests. Influence on reward at grade time: test.sh (byte-identical to template) writes a zero reward first (line 60) with trap ensure_reward (61); umask 077 (3), LOG_DIR chmod 700 (11), /tests chmod -R go-rwx (12, and tests/Dockerfile:44); the submission runs as uid/gid 65534 via setpriv with env -i (104-111, restart helper 160-167), so the app cannot read criteria/prompts or write reward.txt/reward.json/gates|scored reward.json; score.py (identical to template) recomputes the final reward from RewardKit output in LOG_DIR and clamps each dimension to [0,1] (score.py:13-20). Symlinks outside /app/node_modules abort grading at zero (test.sh:72-83). The artifact /assets is agent-writable but no prompt/criterion/test.sh step consumes /assets as ground truth (grep of tests/ for /assets|seed_data|/instructions in prompts/judge.toml: none; expected seed values are embedded verifier-side). Prompts forbid source/filesystem/shell probes (render/prompt.md line 1). Restart tool is single-use, helper lives in root-only LOG_DIR (restart_mcp.py:29-32; test.sh:127-193). Raw evidence (hash-verified) shows the golden ran in the verifier image as uid 65534, consistent with the unprivileged launch, but it is not a configured judge run. Counterexamples tried: (a) broken app that writes 1.0 into /logs/verifier/reward.txt or rewrites /tests/*/prompt.md criteria -> blocked by uid 65534 + 700/go-rwx perms, and score.py overwrites reward anyway; (b) agent edits /assets/seed_data.json to shift expected figures -> no grading path reads /assets; (c) agent symlinks /app/x -> /tests -> grading aborts with zero. Conforming alternative that could fail: none attributable to this row (e.g. cwd-relative file loading is disclosed in hireops_rules.md section 8).",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED",
+  "notes": "Residual, template-controlled and not task-fixable: RewardKit 0.1.7 source (judge working directory, whether claude-code would auto-load agent-authored /app/CLAUDE.md or .claude/ settings) is not in the frozen inputs, so that vector was assessed only via the prompts' ban on source/filesystem inspection; judge-side prompt injection via UI is row 45's scope. No configured verifier/judge run exists in raw-evidence-index (its own scope says full grading is absent), so isolation is source-verified, not runtime-observed; this row's verify procedure is structural and needs no such run."
+}

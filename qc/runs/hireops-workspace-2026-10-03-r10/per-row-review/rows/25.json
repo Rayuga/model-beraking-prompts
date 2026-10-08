@@ -1,0 +1,29 @@
+{
+  "number": 25,
+  "id": "judge_prompts_drive_the_browser",
+  "reviewer": "row-reviewer-25",
+  "input_sha256": "622c7c3d5aa7f77beae16575e8006f426f50f3a84b0bead9f50ac5b0b1c70804",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r10/rules/WebDev Rubrics QC.xlsx (openpyxl read_only, in memory): 'Quality Checks' row 26 (#25 judge_prompts_drive_the_browser: 'Every dimension prompt sends the judge into the live app via the browser tool - not scoring from source, memory, or a first-paint guess.'); 'Internal Quality Checks' row 26 (same wording, 'first paint'); neighbouring rows 24/29/32; 'Deterministic Checks' check-rubric-prompt.py row; no comment/thread parts in the zip",
+    ".qc-cache/hireops-workspace-2026-10-03-r10/rules/harbor-webdev-rubric-qc/SKILL.md (full)",
+    ".qc-cache/hireops-workspace-2026-10-03-r10/rules/harbor-webdev-rubric-qc/references/quality-checks.md (header + section 25 at lines 108-110, and adjacent 24/26/29)",
+    ".qc-cache/hireops-workspace-2026-10-03-r10/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (judge.toml / prompt.md / app_context sections, lines ~107-180)",
+    "qc/REVIEW_POLICY.md (full)",
+    ".qc-cache/hireops-workspace-2026-10-03-r10/rules/projects/webdev-task-template/tests/{gates/render,scored/functional,scored/visual}/prompt.md and scored/functional/judge.toml mcp_servers",
+    ".qc-cache/hireops-workspace-2026-10-03-r10/task/tests/{gates/render,gates/constraints,scored/functional,scored/polish,scored/visual}/prompt.md (full) and judge.toml (render, constraints, polish, visual full; functional header + first criteria, 43 criteria counted)",
+    ".qc-cache/hireops-workspace-2026-10-03-r10/task/tests/app_context.md, test.sh lines 1-150 and 198-200, Dockerfile (playwright/chromium/claude-code lines)",
+    "qc/runs/hireops-workspace-2026-10-03-r10/raw-evidence-index.json (6 entries; all sha256 re-verified as matching current bytes)"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "Static check per quality-checks.md s25 ('every prompt opens http://localhost:3000 and directs the judge to the Playwright MCP tool') holds for all five dimensions. Each prompt.md line 1 reads 'Open http://localhost:3000 using Playwright. ... Use rendered UI and ordinary browser-observed product data only. Never inspect app source, bundles, filesystem, database files or implementation code. No shell or private-file probes. Discover routes and controls by intent, not assumed names.' (tests/gates/render/prompt.md:1, gates/constraints/prompt.md:1, scored/functional/prompt.md:1 [adds 'No shell. Use restart_app only once, at the end of protocol D.'], scored/polish/prompt.md:1, scored/visual/prompt.md:1). Every judge.toml wires [[judge.mcp_servers]] name='playwright', command='playwright-mcp', args --headless --isolated --executable-path=/usr/local/bin/chromium (render/constraints/polish/visual judge.toml:8-12; functional:8-12 plus verifier restart server 14-18); tests/Dockerfile:19 installs @playwright/mcp@0.0.79 and links chromium (33-38). app_context.md:4 'URL: http://localhost:3000', substituted into every */*/prompt.md by test.sh:198-200. Not satisfiable from source, memory or first paint: render gate requires an incorrect then correct sign-in and a usable workspace ('A static picture or only a health response is insufficient', gates/render/judge.toml:23); constraints gate requires a UI-created job+candidate read back in a new independent browser context (judge.toml:23); functional/polish/visual prompts restate the same write-then-independent-context-readback gate (functional:11-13, polish:11-12, visual:11-12) and zero/Likert-1 on failure; functional protocols S..D are interaction sequences with request capture/replay and a real restart_app; polish rows require live cross-context updates with document.activeElement/scroll reads; visual requires a multi-surface read-only tour (Board, card details, Conversations with Noor's long thread, Activity, candidate view in independent context; visual/prompt.md:14), not a first paint. Missing observation is scored 0/Likert-1 'NOT EXERCISED' rather than guessed (each prompt's penultimate paragraph). Compared with the template prompts ('Evaluate the live application at http://localhost:3000 using Playwright MCP. Use only rendered browser behavior.'), the task keeps the same direction and strengthens the source prohibition. Adversarial probes: (a) broken app that could pass - a static shell or localStorage-only app cannot pass any gate, because each requires a server write observed from a fresh browser context; a judge reading /app source instead of browsing is prohibited textually. (b) conforming alternative that could fail - an app with different routes/labels is protected by 'Discover routes and controls by intent, not assumed names' and app_context.md:33-34. Residual risk (why risk=true): no configured claude-code judge run exists for this candidate (raw-evidence-index scope: 'Full configured grading/workload ... are absent'; the indexed workspace.cjs is a scripted Playwright driver, not a judge transcript), so it is unmeasured whether the judge actually drives the browser rather than reading /app (test.sh:85-86 makes /app world-readable and claude-code retains file tools; only the prompt text forbids it) or echoing the expected seeded facts the functional prompt itself states (functional/prompt.md:25 gives the Platform Engineer order and Noor's note text, which a non-browsing judge could restate). These are evidence gaps, not demonstrated defects of the prompt text.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

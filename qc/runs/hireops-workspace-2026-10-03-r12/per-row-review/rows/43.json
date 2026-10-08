@@ -1,0 +1,32 @@
+{
+  "number": 43,
+  "id": "gates_apply_before_shaping_and_carry_no_reward_mass",
+  "reviewer": "row-reviewer-43",
+  "input_sha256": "2996e34d07dbcb26256f6917534f6e3769fa42f00ec330fd154ac876b7eff46e",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r12/rules/WebDev Rubrics QC.xlsx: Quality Checks row 43 ('scoring.toml gates zero the reward and skip the scored suite, gates carry no weight, and the functional floor stops a non-working app farming polish/visual.'); Internal Quality Checks row 43 ('Gate/constraint failures hard-zero the quality terms, and passing only the cheap gates earns little.'); Deterministic Checks check-scoring-policy.py; related quality rows 39/42 read for context",
+    ".qc-cache/hireops-workspace-2026-10-03-r12/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r12/rules/harbor-webdev-rubric-qc/references/quality-checks.md (### 43)",
+    ".qc-cache/hireops-workspace-2026-10-03-r12/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (scoring.toml, test.sh sections)",
+    ".qc-cache/hireops-workspace-2026-10-03-r12/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (check-scoring-policy, check-canonical-shared-files)",
+    ".qc-cache/hireops-workspace-2026-10-03-r12/rules/projects/webdev-task-template/tests/{scoring.toml,test.sh,tools/score.py} (diffed)",
+    "qc/REVIEW_POLICY.md",
+    "task/tests/scoring.toml, task/tests/test.sh, task/tests/tools/score.py",
+    "task/tests/gates/{render,constraints}/judge.toml, task/tests/scored/{functional,polish,visual}/judge.toml (criteria/weights/aggregation)",
+    "task/tests/scored/{visual,polish}/prompt.md (global browser gate)",
+    "task/task.toml ([verifier] timeout_sec)",
+    "qc/runs/hireops-workspace-2026-10-03-r12/raw-evidence-index.json (scope)"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "Frozen task .qc-cache/hireops-workspace-2026-10-03-r12/task. (1) tests/scoring.toml:1-11 (sha256 95f70d6e...) = [gates] render=0.0, constraints=0.0; [weights] functional=0.6, polish=0.2, visual=0.2; [floors] functional=0.05 -- byte-identical to rules/projects/webdev-task-template/tests/scoring.toml; tests/tools/score.py (13de2b38...) and tests/test.sh (bd682592...) diff-identical to the template copies. (2) Gates carry no reward mass: score.py:40-48 reads gate dims only for the pass test (scores[k] > 0.0), weighted = sum over [weights] only; gates are absent from [weights]. Gate judges are all_pass with one binary criterion each (gates/render/judge.toml:15-21 hro_gate_render, gates/constraints/judge.toml:15-23 hro_gate_shared). (3) Gates apply before shaping and skip scored: test.sh:212 removes stale $LOG_DIR/scored, :213 runs gates suite (failure/timeout -> exit 0 with the zero record written at :60 and trap ensure_reward), :217-222 runs score.py: exit 1 (gate failed) -> exit 0 before the scored suite at :224; other non-zero -> write_zero_reward. score.py:42 scored_ran requires gates_passed; :48 reward=0.0 unless gates_passed and floors_passed; :83 returns 1 on gate failure. (4) Functional floor: score.py:47 floors_passed requires functional > 0.05. Functional total criterion weight = 59.5 across 44 criteria; the gate-equivalent outcomes hro_job_open+hro_add_candidate (0.5+0.5) give 0.0168 < 0.05, so a gates-only app with perfect polish/visual still gets 0; clearing the floor needs >2.975 weight of extra working behaviour. In addition every scored prompt restates the in-dimension global browser gate that hard-zeros static/no-op/browser-only apps (scored/visual/prompt.md:9-12 -> Likert 1 normalized 0; scored/polish/prompt.md:9-11), and polish criteria themselves require live concurrent behaviour. (5) Actual execution (local, scratchpad only, python -B, frozen score.py against synthetic reward.json): render=0 with perfect scored -> exit 1 reward 0.0000 gates_passed 0; constraints=0 -> exit 1 reward 0.0000; gates pass, no scored file -> exit 0 reward 0.0000 floors_passed 0; functional 0.0168 polish=visual=1 -> reward 0.0000 (weighted 0.4101 withheld); functional exactly 0.05 -> reward 0.0000 (strict >); functional 0.059 -> reward 0.4354; all 1 -> 1.0000; missing gate dimension or missing scored dimension -> exit 2 (test.sh:221/227 then writes plain zero). Broken-app attempt: a styled shell or seed copy fails the gates (and the in-dimension gate) -> 0; a gates-only app -> 0 via floor. Conforming alternative: a correct app with different labels/layout is not penalised by this mechanism; a real app failing a gate gets 0 by design, which is the intended gate behaviour. Note (not a row-43 defect, belongs to rows 42/44): an app clearing the floor with ~3-4 weight of functional work (~5-7%) can still collect up to 0.4 from polish/visual; polish criteria require live functionality, so the farmable mass is mainly visual (0.2). Risk: no end-to-end verifier run in this round exercised the gate-fail/floor paths through RewardKit (raw-evidence-index.json scope says full configured grading and reward discrimination/ranking are absent), so the reward.json key naming produced by RewardKit and the real gate-fail exit path are unmeasured here; logic was verified only by source reading and local score.py execution.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

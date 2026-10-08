@@ -1,0 +1,35 @@
+{
+  "number": 15,
+  "id": "dockerfile_builds_the_declared_world",
+  "reviewer": "row-reviewer-15",
+  "input_sha256": "74f3c8aabb287552a2a6045a07212a40f8d2bd5574f78227a868fc40f9c7f265",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r8/rules/WebDev Rubrics QC.xlsx (openpyxl read_only, in memory): 'Quality Checks' row #15 dockerfile_builds_the_declared_world (col E annotation empty); 'Internal Quality Checks' row #15 (identical text, no internal annotation); 'Deterministic Checks' rows check-dockerfiles.py, check-fixtures.py, check-dockerfile-references.sh, check-dockerfile-sanity.sh, check-runtime-deps-in-both-images.py, check-dockerfile-platform.sh, check-nproc.sh, check-pip-pinning.sh for context",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/rules/harbor-webdev-rubric-qc/references/quality-checks.md section '15 - dockerfile_builds_the_declared_world' (lines 66-68)",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (layout, [environment] rules line 78, test.sh launch contract line 104)",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/rules/projects/webdev-task-template/environment/Dockerfile",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/task/environment/Dockerfile",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/task/environment/instructions/integration.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/task/environment/assets/seed_data.json (parse + hash)",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/task/instruction.md lines 11-15",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/task/task.toml",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/task/solution/solve.sh",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/task/solution/app/package.json and all require() calls under solution/app",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/task/tests/Dockerfile (runtime-dep parity only)",
+    "qc/runs/hireops-workspace-2026-10-03-r8/raw-evidence-index.json and manifest.json (hash lookup only)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "1) Pinned base: task/environment/Dockerfile:1 'FROM node:22-bookworm-slim' - same tag as the template; no --platform. 2) Runtime deps pre-installed at build time: lines 9-12 'npm install -g --no-audit --no-fund express@5.1.0 better-sqlite3@12.4.1' with line 3 'ENV NODE_PATH=/usr/local/lib/node_modules', exactly the versions the skill reference requires. The golden's only third-party require() calls are require('express') and require('better-sqlite3'); everything else is node: built-ins or local files. solution/app/package.json declares exactly better-sqlite3 12.4.1 and express 5.1.0. solve.sh does no npm/pip/apt install (it copies app/ to /app and removes the database). Apt (ca-certificates git procps sqlite3) is version-unpinned, which the workbook's check-dockerfiles.py treats as a NOTE, not a fail. 3) No run-time install is needed or invited: instruction.md:13 'Server dependencies are already available, so don't install packages'; integration.md 'Express and better-sqlite3 already available through NODE_PATH; use only those packages and Node built-ins'. 4) Assets staged: lines 14-16 'COPY instructions/ /instructions/', 'COPY assets/ /assets/', 'chmod -R a+rX /instructions /assets'; both source dirs exist (instructions/hireops_rules.md, instructions/integration.md, assets/seed_data.json, which parses as JSON and is byte-identical to solution/app/src/seed_data.json, sha256 a1c65c80...). 5) /app is created, git-initialised and committed with only .gitkeep (lines 17-23); WORKDIR /app; no COPY of solution/ or tests/. 6) task.toml [environment] has no docker_image, so the Dockerfile is not shadowed. 7) Verifier image installs the same express@5.1.0 and better-sqlite3@12.4.1 with the same NODE_PATH, so an app built against the agent image can start when graded. 8) task/environment/Dockerfile is byte-identical to the frozen template Dockerfile (cmp IDENTICAL; sha256 0a75419e... matches manifest.json entries for both task and template), so it is template-controlled and unedited. Adversarial checks: (a) A broken app that could pass: an agent that adds a dependency (e.g. ws) and runs npm install into /app/node_modules while network is public. That is a submission choice the brief forbids, not an image defect; the image supplies everything the brief permits. (b) A conforming alternative that could fail: an app that shells out to the sqlite3 CLI or git, which exist in the agent image but not in the verifier image (tests/Dockerfile apt list has no sqlite3 or git). The brief tells builders to use only Express, better-sqlite3 and Node built-ins, so a CLI dependency is outside the declared world. This is a template-level latent asymmetry (P3, Note-level) and not a defect for this row. Runtime: this round's raw-evidence-index lists no agent-image docker build log. The row is a static image-composition check, and the Dockerfile is the unmodified template, so the build is not exercised here but no required measurement for this row is missing.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

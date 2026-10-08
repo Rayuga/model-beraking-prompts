@@ -1,0 +1,36 @@
+{
+  "number": 21,
+  "id": "verifier_entrypoint_is_safe_and_always_scores",
+  "reviewer": "row-reviewer-21",
+  "input_sha256": "12bf37abe5ba3152b1255fb9b9531665c432b86e0b0d86562adc7c802940d224",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r13/rules/WebDev Rubrics QC.xlsx :: Quality Checks row 21 (verifier_entrypoint_is_safe_and_always_scores); Internal Quality Checks row 21 (no annotation; older wording without the gates/scored clause); Deterministic Checks rows check-verifier-contract.py, check-scoring-policy.py, check-canonical-shared-files.py (read via openpyxl read_only in memory; zip has no comment parts)",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/rules/harbor-webdev-rubric-qc/references/quality-checks.md :: section 21",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md :: tests/test.sh ordered contract (lines 98-111), tools section, cross-file agreements",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/rules/projects/webdev-task-template/tests/{test.sh,tools/score.py,tools/restart_mcp.py,scoring.toml,Dockerfile,.dockerignore} (byte-diffed against task)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/task/tests/test.sh",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/task/tests/tools/score.py",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/task/tests/scoring.toml",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/task/task.toml",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/task/tests/gates/*/judge.toml and tests/scored/*/judge.toml (timeout lines)",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/task/instruction.md line 13",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/task/environment/instructions/integration.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/task/environment/Dockerfile",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/task/solution/solve.sh",
+    "qc/runs/hireops-workspace-2026-10-03-r13/raw-evidence-index.json (all 6 entry hashes re-verified: match)"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "Source-level Pass; no full verifier execution measured. (1) Template fidelity: task tests/test.sh, tools/score.py, tools/restart_mcp.py, scoring.toml, tests/Dockerfile, .dockerignore are byte-identical to the frozen template (diff empty; test.sh sha256 bd68259276ca4b034654efc8a1723a4e702ed62dbe590af6201565f43eabe5aa in both). (2) Always scores: tests/test.sh:60 `write_zero_reward` runs before any check (writes reward.txt 0.0, full zero reward.json with reward, 5 dimensions, gates_passed, floors_passed, weighted_score, graded, no_op, plus ctrf.json); :61 `trap cleanup EXIT` and cleanup->ensure_reward (:20-23,:33-40) refills missing/empty reward files on any exit including set -e aborts; no `exec` anywhere. Every early exit (:65 missing REWARDKIT env, :69 missing /app/server.js, :78/:81 symlink escape, :124 not live, :214 gates rewardkit failure/timeout, :220 gate fail exit 1 keeps detailed record, :221 score.py error -> write_zero_reward, :225 scored rewardkit failure/timeout, :227 final score.py error -> write_zero_reward) leaves a reward. Traced: scored suite failure after gates pass leaves the gates-stage score.py record whose reward is 0.0 because score.py:47 floors_passed requires scored_ran (scored dir was rm -rf'd at :205/:212), so a crash never inherits a stale positive reward. score.py:86-91 converts any exception into exit 2. (3) Safe launch: :12 /tests made go-rwx; :72-83 refuses any symlink whose real path is outside /app/node_modules; :90-102 copies /app aside and falls back to the copy when uid 65534 cannot write /app; :104-111 `setsid env -i` with only PATH, NODE_PATH, HOME, PORT=3000, DB_PATH, under `setpriv --reuid=65534 --regid=65534 --clear-groups`; cleanup kills the process group from app.pid (also tracks restart-helper PIDs). (4) Liveness gate: :115-125 probes /api/health then / for up to 120x0.25s before RewardKit; not ready -> exit 0 with zero reward. (5) Order: :213 gates suite, :217 score.py, :224 scored suite, :227 score.py; restart helper generated and APP_RESTART_HELPER exported (:127-193) and {app_context} substituted (:195-201) before suites. Budgets nest: gate judges 600+600 (max-concurrent 1) < 1500; scored 9000+900+900=10800 < 11100; 1500+11100=12600 < verifier 13200 (task.toml). task.toml [verifier.env] supplies REWARDKIT_JUDGE/MODEL so :63 does not zero conforming runs. (6) Contract agreement for launch: instruction.md:13 states /app/server.js, port 3000, GET /api/health, DB_PATH, /app/app.db, no package installs - matches what test.sh assumes. Adversarial tries: broken app that crashes after liveness -> judges see failures, gates/score.py zero it; app answering only HTTP 500 counts as live (:51-52 treat HTTPError as reachable) but that only admits it to the browser gates, which must still pass, so no reward leak from this row's mechanism. Conforming alternative that could fail: a submission containing any symlink outside /app/node_modules (even one pointing inside /app) is refused with zero (:81) and the brief does not mention this; this is template-mandated behaviour per staged-task-contract step 2 and uncommon for an Express app, so recorded as a latent note, not a task defect. Risk=true because the raw evidence index contains only scripted golden browser/API observations (its own scope says full configured grading is absent); no actual test.sh/RewardKit verifier run on these bytes was measured, so end-to-end reward writing on the real image is NOT EXERCISED, and REVIEW_POLICY requires a hash-bound full verifier launch/grading record before clearance.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

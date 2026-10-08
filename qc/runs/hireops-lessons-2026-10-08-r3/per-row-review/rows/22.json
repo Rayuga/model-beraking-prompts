@@ -1,0 +1,33 @@
+{
+  "number": 22,
+  "id": "verifier_image_can_launch_and_grade",
+  "reviewer": "row-reviewer-22",
+  "input_sha256": "d622da81e9b07dcadf86ec7430f70ae35a57d0ff2275e3a0cf1bd6eaa7572278",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-lessons-2026-10-08-r3/rules/WebDev Rubrics QC.xlsx (zipfile in memory): 'Quality Checks' row 23 (#22, Block E, verifier_image_can_launch_and_grade) and 'Internal Quality Checks' row 23 (same check, 'runtime to start the app'); Deterministic Checks sheet header and list scanned",
+    ".qc-cache/hireops-lessons-2026-10-08-r3/rules/harbor-webdev-rubric-qc/SKILL.md (full)",
+    ".qc-cache/hireops-lessons-2026-10-08-r3/rules/harbor-webdev-rubric-qc/references/quality-checks.md section 22 (lines 96-98) and neighbours",
+    ".qc-cache/hireops-lessons-2026-10-08-r3/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (full)",
+    ".qc-cache/hireops-lessons-2026-10-08-r3/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md line 60 (check-dockerfiles.py / check-runtime-deps-in-both-images.py)",
+    ".qc-cache/hireops-lessons-2026-10-08-r3/rules/projects/webdev-task-template/tests/{Dockerfile,.dockerignore,test.sh,tools/*} and environment/Dockerfile (diffed against task)",
+    "qc/REVIEW_POLICY.md (full)",
+    "handoffs/LESSONS_FROM_COLDERWATER_2026-10-08.md (full)",
+    "task: tests/Dockerfile, tests/.dockerignore, tests/test.sh, tests/*/*/judge.toml headers (MCP servers), tests/scoring.toml, task.toml, environment/Dockerfile, solution/solve.sh, solution/app/package.json, server.js, src/*.js require() lines, instruction.md line 15, environment/instructions/integration.md lines 3-23, hireops_rules.md lines 206-209",
+    "qc/runs/hireops-lessons-2026-10-08-r3/raw-evidence-index.json (all 8 entry hashes re-verified: match; all matching_source_files hashes match frozen solution bytes)",
+    "qc/repairs/hireops-2026-10-03-workspace/via-solve.sh, results/via-solve.log, results/workspace.json, results/server.log",
+    "Local image hireops-verifier:20261002-permission-repair: docker history (read-only) and docker save streamed in memory to list file entries; no container started"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "Static: task tests/Dockerfile is byte-identical to the frozen template (diff, sha256 72998ab8...), as are .dockerignore, test.sh, tools/score.py, tools/restart_mcp.py and environment/Dockerfile. It ships: node 22 runtime copied from node:22-bookworm-slim (l.1,4) into python:3.12-slim (l.2; /usr/local/bin/python3 for the functional 'verifier' MCP command); pinned judge CLI @anthropic-ai/claude-code@2.1.281 matching REWARDKIT_JUDGE=claude-code (task.toml l.31); @playwright/mcp@0.0.79 (l.19) whose bundled playwright CLI installs chromium into PLAYWRIGHT_BROWSERS_PATH and symlinks /usr/local/bin/chromium (l.33-39), matching every judge.toml arg '--executable-path=/usr/local/bin/chromium'; harbor-rewardkit==0.1.7 (l.31) providing the 'rewardkit' CLI test.sh l.207 calls; express@5.1.0 and better-sqlite3@12.4.1 via NODE_PATH (l.9,20-21), exactly the golden's package.json deps and exactly the packages the brief allows (instruction.md l.15 'Server dependencies are already available, so don't install packages'; integration.md l.3-4 'Express and better-sqlite3 ... use only those packages and Node built-ins'); util-linux/procps for setpriv/setsid/kill used by test.sh l.99-111. Golden server requires only express, better-sqlite3 and node built-ins. Built image: docker history of hireops-verifier:20261002-permission-repair shows the same RUN steps; streaming docker save in memory showed /usr/local/bin/playwright-mcp -> @playwright/mcp/cli.js (package 0.0.79, bin 'playwright-mcp', exact playwright/playwright-core 1.63.0-alpha-2026-08-05), /usr/local/bin/chromium -> /opt/playwright-browsers/chromium-1237/chrome-linux64/chrome, /usr/local/bin/claude (claude-code 2.1.281), /usr/local/bin/rewardkit (harbor_rewardkit 0.1.7, console_scripts rewardkit), node, python3, setpriv, setsid, timeout, express 5.1.0, better-sqlite3 12.4.1 with build/Release/better_sqlite3.node. Launch exercised: raw-evidence-index entries (hashes verified) record the scripted golden run on 8 Oct in that image: via-solve.sh installs with solve.sh, chowns /app to 65534, runs node as uid 65534 with NODE_PATH; via-solve.log shows all groups PASS including a real restart; server.log shows '[hireops] listening on 3000' twice. Grade NOT exercised: the index scope states full configured grading/workload, reward discrimination and Oracle are absent, so rewardkit -> claude-code -> OpenRouter -> playwright-mcp/chromium and the restart_mcp server have not been run end-to-end on these bytes. The image's /tests layer was built 2026-10-01 from older tests bytes (irrelevant to tooling, but the image is not a build of the current candidate). Counterexample attempts: (a) a conforming app using another npm package would fail to start, but the brief explicitly forbids that, so not a fair-alternative failure; a vendored /app/node_modules package is allowed by test.sh l.72-83 and integration.md l.17-19. (b) Agent and verifier node both come from the floating node:22-bookworm-slim tag (same major/ABI, glibc bookworm), so a native module built in the agent image loads in the verifier; base-image tags are not digest-pinned (template-controlled, P3 at most). (c) A broken app cannot exploit the image: missing /app/server.js or failed health probe yields reward 0. Lessons file: no listed pattern bears directly on row 22; lesson 11 (judge infra crashes zero a dimension) and lesson 19 (scripted Docker golden harness) are relevant context - the harness exists, the infra path is unmeasured.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL",
+  "notes": "PARTIAL: launch half CONFIRMED (scripted golden in the built verifier image as uid 65534 with restart); grading half NOT EXERCISED (no configured rewardkit/judge run on current bytes). risk=true because the required full verifier launch/grading runtime record is missing; this cannot be waived by the static Pass. Template-controlled Dockerfile must not be edited for this row."
+}

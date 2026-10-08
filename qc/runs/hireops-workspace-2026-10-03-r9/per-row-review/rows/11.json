@@ -1,0 +1,35 @@
+{
+  "number": 11,
+  "id": "timeouts_fit_the_work",
+  "reviewer": "row-reviewer-11",
+  "input_sha256": "c5cd697aaa5daabac57bf7269873a877973f00326c7dcba6c4df9ac69303cb6c",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r9/rules/WebDev Rubrics QC.xlsx (openpyxl in memory): Quality Checks row 11 'timeouts_fit_the_work' ('Agent, verifier, liveness, and judge timeouts are long enough and nest: gate judges < gates budget, scored judges < scored budget, both budgets < verifier timeout.'); Internal Quality Checks row 11 ('... nest properly (inner < outer, sum of judges < verifier)'); Deterministic Checks check-scoring-policy.py and check-rubric-schema.py rows; no cell comments on row 11",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/rules/harbor-webdev-rubric-qc/assets/WebDev_Rubrics_QC.xlsx (row 11 identical text on both sheets; file hash differs from the top-level workbook but row 11 wording matches)",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/rules/harbor-webdev-rubric-qc/SKILL.md (full)",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/rules/harbor-webdev-rubric-qc/references/quality-checks.md section '11 · timeouts_fit_the_work'",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md lines ~50-125 (frozen task.toml, test.sh ordered contract, budget nesting line 111, restart_mcp 55 s)",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (check-scoring-policy / check-rubric-schema entries)",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/rules/projects/webdev-task-template/task.toml, tests/test.sh, tests/tools/*, tests/*/*/judge.toml timeouts, environment/Dockerfile, tests/Dockerfile",
+    "qc/REVIEW_POLICY.md (full)",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/task/task.toml (full)",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/task/tests/test.sh (full)",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/task/tests/{gates/render,gates/constraints,scored/functional,scored/polish,scored/visual}/judge.toml [judge] headers and criterion counts",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/task/tests/tools/restart_mcp.py (HELPER_TIMEOUT_SEC)",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/task/tests/scoring.toml",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/task/environment/Dockerfile",
+    "qc/runs/hireops-workspace-2026-10-03-r9/raw-evidence-index.json (all 6 artifact hashes re-verified as matching)"
+  ],
+  "verdict": "Not exercised",
+  "risk": true,
+  "severity": null,
+  "evidence": "NESTING (verified arithmetic, all values template-identical). task/task.toml:18 [agent] timeout_sec = 7200.0; :21 build_timeout_sec = 600.0; :27 [verifier] timeout_sec = 13200.0. task/tests/test.sh:203-209 run_suite wraps `timeout \"$budget_sec\" rewardkit --max-concurrent-agent 1`, so judges in a suite run sequentially and their timeouts add. :213 gates budget 1500; :224 scored budget 11100. Gate judges: render 600 + constraints 600 = 1200 < 1500 (300 s slack). Scored judges: functional 9000 + polish 900 + visual 900 = 10800 < 11100 (300 s slack). Gates + scored = 12600 < 13200 verifier (600 s left for copy, app start, prompt substitution, score.py). Liveness: test.sh:116-121 and :171-176 poll 120 x 0.25 s (~30 s plus 2 s urllib timeouts) before grading/after restart; restart_mcp.py HELPER_TIMEOUT_SEC = 55 exceeds the helper's ~5 s kill wait + ~30 s readiness poll, and is far below the 9000 s functional judge. Agent 7200 s and build_timeout 600 s match the frozen contract (staged-task-contract.md lines 54/57/63/111) and the agent Dockerfile (apt + two pinned global npm packages, identical to template) is a small cold build. Diff of task.toml vs template differs only in identity/metadata fields; test.sh, tests/tools, both Dockerfiles and all five judge timeouts are byte/value-identical to the template, so no unauthorised timeout change exists. The nesting half of the row passes; check-scoring-policy's mechanical nesting would be satisfied. LONG ENOUGH (unmeasured). The functional judge is a single batched claude-code (z-ai/glm-5.3-flashx) session that must grade 43 criteria (23.6 KB judge.toml + 18.1 KB prompt.md) involving multiple independent browser contexts, concurrent/stale moves, bulk undo, paged history, drafts across reloads/ended sessions, live updates and a real app restart, all within 9000 s. raw-evidence-index.json scope states explicitly: 'Full configured grading/workload, reward discrimination/ranking and Oracle/target scores are absent'; every indexed artifact (workspace.cjs, results/workspace.json, server.log, three PNGs; hashes verified) is labelled 'Not a configured judge run, Oracle grade, model score or judge-duration measurement', and results/workspace.json carries no duration field. Scripted Playwright duration would not be LLM judge duration anyway (REVIEW_POLICY.md). Therefore whether 9000 s (and 600 s per gate judge with two browser contexts in the shared gate) suffices for this judge workload is not measured. Per SKILL.md ('Never upgrade an unmeasured claim to Pass') and the assignment ('Note cannot waive missing measurements'), the row cannot Pass. Plausible failure if unmeasured: a conforming golden app whose functional session times out at 9000 s would make rewardkit/run_suite fail and test.sh:224 exits with the zero reward already written, i.e. a correct app scored 0 because of harness budget - a harness-attributed failure. No such timeout has been observed, so this is not a demonstrated Fail. Broken-app angle: timeouts cannot make a broken app pass (a timeout yields zero). Not raising budgets is correct absent measurement (policy: no automatic increase; any change <5 h needs a recorded reason and authorization).",
+  "counterexample": null,
+  "suggested_fix": "No config change; obtain a full configured verifier run (gates + scored with claude-code/glm-5.3-flashx) on the golden and record per-suite and per-judge wall-clock vs 600/9000/900/900 s budgets; only if it measurably approaches a limit, propose a justified, authorized change below five hours.",
+  "run_verdict": "NOT EXERCISED"
+}

@@ -1,0 +1,31 @@
+{
+  "number": 12,
+  "id": "no_prebuilt_image_shadows_the_agent_dockerfile",
+  "reviewer": "row-reviewer-12",
+  "input_sha256": "2996e34d07dbcb26256f6917534f6e3769fa42f00ec330fd154ac876b7eff46e",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r12/rules/WebDev Rubrics QC.xlsx :: 'Quality Checks' row 13 (#12, block 'B - task.toml & run wiring': \"[environment].docker_image isn't set while the agent Dockerfile still has active build steps (which would skip the Dockerfile entirely).\") and 'Internal Quality Checks' row 13 (same check, same meaning; column E empty, no extra annotation). Read in memory with openpyxl read_only; zip listing shows no comments/threadedComments parts.",
+    ".qc-cache/hireops-workspace-2026-10-03-r12/rules/harbor-webdev-rubric-qc/SKILL.md (full)",
+    ".qc-cache/hireops-workspace-2026-10-03-r12/rules/harbor-webdev-rubric-qc/references/quality-checks.md:53-54 (check 12 procedure) and :43-44 (check 9 also requires docker_image absent)",
+    ".qc-cache/hireops-workspace-2026-10-03-r12/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md:40-78 (task.toml contract; line 78 'docker_image must be absent while the Dockerfile has active build steps')",
+    ".qc-cache/hireops-workspace-2026-10-03-r12/rules/projects/webdev-task-template/task.toml and environment/Dockerfile (frozen template)",
+    "qc/REVIEW_POLICY.md (full)",
+    ".qc-cache/hireops-workspace-2026-10-03-r12/task/task.toml (full)",
+    ".qc-cache/hireops-workspace-2026-10-03-r12/task/environment/Dockerfile (full)",
+    ".qc-cache/hireops-workspace-2026-10-03-r12/task/tests/Dockerfile (full)",
+    "qc/runs/hireops-workspace-2026-10-03-r12/manifest.json (hash entries for task.toml, environment/Dockerfile, tests/Dockerfile)",
+    "qc/runs/hireops-workspace-2026-10-03-r12/raw-evidence-index.json (header/scope; no entry bears on this static wiring row)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Frozen task/task.toml [environment] section (lines 20-24) contains only build_timeout_sec = 600.0, network_mode = \"public\", cpus = 2, memory_mb = 4096; no docker_image key. Recursive grep for 'docker_image' over the frozen task and template returns nothing (rc=1), and grep -i 'image' over task.toml returns nothing, so no prebuilt image is declared under [environment], [verifier.environment] or elsewhere. The agent Dockerfile (task/environment/Dockerfile:1-26) has active build steps that matter to the task: FROM node:22-bookworm-slim, apt install of sqlite3/git, pinned global npm install of express@5.1.0 and better-sqlite3@12.4.1, COPY instructions/ /instructions/ and COPY assets/ /assets/ (the brief's referenced files), and /app git init. Because docker_image is absent, Harbor builds this Dockerfile, so these steps are live, not dead code. Hashes: task.toml ac664d0e...8f26, environment/Dockerfile 0a75419e...67d1, tests/Dockerfile 72998ab8...5fdd computed on the frozen bytes match manifest.json lines 10, 26, 29; the agent Dockerfile is byte-identical to the frozen template Dockerfile (same hash, manifest line 56; diff empty). The task.toml [environment]/[verifier.environment] blocks equal the template's (template differs only in CHANGE_ME identity fields). Adversarial check: the failure mode this row targets would be e.g. docker_image = \"node:22-bookworm-slim\" added under [environment]; the agent would then start without /instructions, /assets, express/better-sqlite3, and an initialized /app repo, while the Dockerfile silently looks correct. No such key exists, so that counterexample does not apply. Conversely, no conforming alternative is penalized: the row is a static config property independent of the submitted app. This is a static source check; I did not build the image (Docker build success belongs to row 15 / runtime evidence, not to this row).",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

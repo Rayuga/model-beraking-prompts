@@ -1,0 +1,28 @@
+{
+  "number": 46,
+  "id": "tests_and_key_are_out_of_agent_reach",
+  "reviewer": "row-reviewer-46",
+  "input_sha256": "4bd1eea4300538bac22f9b8dcda9da2275fa78d20f45231f132076233ce1bf9f",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r11/rules/WebDev Rubrics QC.xlsx: 'Quality Checks' row #46 and 'Internal Quality Checks' row #46 (read in memory with openpyxl read_only); both say: The agent can't read the criteria it's graded on or influence the reward - grading is isolated in the verifier. No extra internal annotation column for row 46.",
+    ".qc-cache/hireops-workspace-2026-10-03-r11/rules/harbor-webdev-rubric-qc/SKILL.md (delivery profile, severity, evidence standard)",
+    ".qc-cache/hireops-workspace-2026-10-03-r11/rules/harbor-webdev-rubric-qc/references/quality-checks.md section '### 46 · tests_and_key_are_out_of_agent_reach' (Verify: agent image ships no criteria, no judge client, no RewardKit, no readable rubric copy; grading isolated in verifier image)",
+    ".qc-cache/hireops-workspace-2026-10-03-r11/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (closed file list, task.toml, test.sh contract)",
+    ".qc-cache/hireops-workspace-2026-10-03-r11/rules/projects/webdev-task-template/ (environment/Dockerfile, tests/Dockerfile, tests/.dockerignore, tests/test.sh, tests/tools/score.py, tests/tools/restart_mcp.py, task.toml) diffed against the task",
+    "qc/REVIEW_POLICY.md",
+    "task/task.toml, task/environment/Dockerfile, task/environment/instructions/{hireops_rules.md,integration.md} (keyword scan), task/environment/assets/seed_data.json (keyword scan), task/instruction.md (keyword scan), task/tests/Dockerfile, task/tests/.dockerignore, task/tests/test.sh, task/solution/solve.sh",
+    "qc/runs/hireops-workspace-2026-10-03-r11/raw-evidence-index.json (scope statement only; no run bears directly on this row)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Agent image: task/environment/Dockerfile (byte-identical to template per diff) builds from the environment/ context only and copies just instructions/ (L14) and assets/ (L15); it installs node 22, git, sqlite3, express, better-sqlite3 (L5-12) - no claude-code/codex judge CLI, no playwright-mcp, no harbor-rewardkit, no tests/ or criteria. The environment/ tree holds only Dockerfile, assets/seed_data.json, instructions/hireops_rules.md, instructions/integration.md. A case-insensitive scan of instruction.md, both instruction notes and seed_data.json for criteri|rubric|judge|reward|/tests returned 0 matches in each file, so no rubric copy or grading key is shipped to the agent. solution/ is outside the agent build context. Verifier isolation: task.toml L26-28 '[verifier] ... environment_mode = \"separate\"'; tests/Dockerfile (template-identical) is the only image with @anthropic-ai/claude-code@2.1.281, @playwright/mcp, harbor-rewardkit==0.1.7 (L16-31) and 'COPY . /tests' then 'chmod -R go-rwx /tests' (L43-44). Reward cannot be influenced by the submission except through app behaviour: test.sh (template-identical) sets umask 077 (L3), chmod 700 on LOG_DIR (L11), re-applies 'chmod -R go-rwx /tests' (L12), writes the zero reward first with an EXIT trap (L60-61), refuses symlinks outside /app/node_modules (L72-83), and launches the app as uid/gid 65534 with 'env -i' and a sanitized env (L104-111). So the running submission cannot read /tests prompts/criteria (root-only 0700) nor write $LOG_DIR/reward.txt/reward.json or the restart helper; reward is computed by /tests/tools/score.py from RewardKit output only. Attempted broken-app counterexamples: (1) app reading /tests/*/*/prompt.md to tailor output - denied by go-rwx as uid 65534; (2) app or agent planting reward.txt/reward.json - test.sh never reads anything from /app except server.js and the app cannot write the root-only LOG_DIR; (3) symlink /app/x -> /tests or /logs - test.sh exits with the zero reward (L81). Conforming alternative that could fail on this row's axis: none found; the symlink refusal could zero an app with an exotic out-of-node_modules symlink, but that is shared template policy not graded by this row. Residual injection via served UI text belongs to row 45. All shared harness files are byte-identical to the frozen template, so nothing task-specific weakens isolation. Evidence is source/structure only; no hosted run exercised a hostile app attempting to read /tests, which this structural row does not require.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

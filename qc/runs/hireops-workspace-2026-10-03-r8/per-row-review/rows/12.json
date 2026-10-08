@@ -1,0 +1,30 @@
+{
+  "number": 12,
+  "id": "no_prebuilt_image_shadows_the_agent_dockerfile",
+  "reviewer": "row-reviewer-12",
+  "input_sha256": "74f3c8aabb287552a2a6045a07212a40f8d2bd5574f78227a868fc40f9c7f265",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r8/rules/WebDev Rubrics QC.xlsx (sha256 6d44970b2ff67fefad1e2327e743fc226fcd4c50ff55baf899f41069a9b3fd7f, read in memory with openpyxl read_only): 'Quality Checks' row 13 (#12, block 'B - task.toml & run wiring', no_prebuilt_image_shadows_the_agent_dockerfile: \"[environment].docker_image isn't set while the agent Dockerfile still has active build steps (which would skip the Dockerfile entirely).\"); 'Internal Quality Checks' row 13 (same check, wording 'which would skip it entirely'; no extra annotation column populated)",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/rules/harbor-webdev-rubric-qc/SKILL.md (full)",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/rules/harbor-webdev-rubric-qc/references/quality-checks.md section B (checks 8-12, esp. '### 12 · no_prebuilt_image_shadows_the_agent_dockerfile' and check 9 '[environment].docker_image absent')",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md task.toml section (line 78: docker_image must be absent while the Dockerfile has active build steps)",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/rules/projects/webdev-task-template/task.toml and environment/Dockerfile",
+    "qc/REVIEW_POLICY.md (full)",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/task/task.toml (full)",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/task/environment/Dockerfile (full) and environment/ file listing",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/task/tests/Dockerfile (full)",
+    "Recursive search of the whole frozen cache (rules + task) for 'docker_image' and for any compose/yaml files"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Frozen task/task.toml [environment] (lines 20-24) contains only build_timeout_sec = 600.0, network_mode = \"public\", cpus = 2, memory_mb = 4096; no docker_image key. The only TOML sections are [task] l4, [metadata] l9, [agent] l17, [environment] l20, [verifier] l26, [verifier.env] l30, [verifier.environment] l37 - none sets an image. A recursive search for 'docker_image' across the frozen cache matches only the skill references (quality-checks.md:44, :54; staged-task-contract.md:78), never the task. No docker-compose/yaml file exists under the task, so no alternate image override path. The agent Dockerfile (task/environment/Dockerfile) has active build steps (FROM node:22-bookworm-slim; apt-get install; pinned npm -g express@5.1.0 better-sqlite3@12.4.1; COPY instructions/ and assets/; git init of /app), and those steps are load-bearing: they are the only way /instructions and /assets reach the agent image. Since docker_image is absent, Harbor must build this Dockerfile, so it is not dead code. The task [environment] block and environment/Dockerfile are byte-identical to the frozen template (Dockerfile SHA256 0A75419E...52467D1 for both; template task.toml [environment] block identical), so template-controlled settings are preserved. Broken-variant probe: if someone added [environment].docker_image = \"node:22-bookworm-slim\" (or any prebuilt image), the COPY of /instructions and /assets would be skipped and the agent would lack hireops_rules.md, integration.md and seed_data.json; this candidate does not do that. Conforming-alternative probe: a task with a prebuilt image and a FROM-only/empty Dockerfile would also be acceptable under the row; not applicable here. Verifier side is separate (environment_mode = \"separate\", tests/Dockerfile built from source, [verifier.environment] sets only network_mode) and is likewise not shadowed. This is a static-config row; the finding is decisive from the frozen bytes without runtime evidence. No agent-image build was run by this reviewer (no Docker per assignment), so run_verdict is NOT EXERCISED, but no runtime measurement is required to establish the absence of the key.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

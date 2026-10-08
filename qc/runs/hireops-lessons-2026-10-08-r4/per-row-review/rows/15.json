@@ -1,0 +1,38 @@
+{
+  "number": 15,
+  "id": "dockerfile_builds_the_declared_world",
+  "reviewer": "row-reviewer-15",
+  "input_sha256": "2efc8dcc33d217e5aa005f531125764d19662c40957de60b26f4674029bc3966",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-lessons-2026-10-08-r4/rules/WebDev Rubrics QC.xlsx (read in memory via zipfile: 'Quality Checks' row 16 = #15 'C - environment/ (assets & agent image)' dockerfile_builds_the_declared_world 'Agent image is pinned, pre-installs every runtime dependency (no run-time install), and stages the assets.'; 'Internal Quality Checks' row 16 identical text; 'Deterministic Checks' rows for check-dockerfiles.py, check-dockerfile-references.sh, check-dockerfile-sanity.sh, check-fixtures.py, check-runtime-deps-in-both-images.py, check-dockerfile-platform.sh, check-nproc.sh, check-pip-pinning.sh; no threaded comments/notes in the workbook, drawings empty)",
+    ".qc-cache/hireops-lessons-2026-10-08-r4/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-lessons-2026-10-08-r4/rules/harbor-webdev-rubric-qc/references/quality-checks.md (section '### 15 · dockerfile_builds_the_declared_world', lines 66-68)",
+    ".qc-cache/hireops-lessons-2026-10-08-r4/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md",
+    ".qc-cache/hireops-lessons-2026-10-08-r4/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (Dockerfile-related entries)",
+    ".qc-cache/hireops-lessons-2026-10-08-r4/rules/projects/webdev-task-template/environment/Dockerfile",
+    "qc/REVIEW_POLICY.md",
+    "handoffs/LESSONS_FROM_COLDERWATER_2026-10-08.md",
+    ".qc-cache/hireops-lessons-2026-10-08-r4/task/environment/Dockerfile",
+    ".qc-cache/hireops-lessons-2026-10-08-r4/task/environment/instructions/integration.md",
+    ".qc-cache/hireops-lessons-2026-10-08-r4/task/environment/assets/seed_data.json (parse check)",
+    ".qc-cache/hireops-lessons-2026-10-08-r4/task/instruction.md (lines 11, 15, 17)",
+    ".qc-cache/hireops-lessons-2026-10-08-r4/task/environment/instructions/hireops_rules.md (grep for seed/install terms; line 214)",
+    ".qc-cache/hireops-lessons-2026-10-08-r4/task/task.toml (artifacts, [environment], network_mode; no docker_image)",
+    ".qc-cache/hireops-lessons-2026-10-08-r4/task/solution/solve.sh",
+    ".qc-cache/hireops-lessons-2026-10-08-r4/task/solution/app/package.json and all require() calls under solution/app",
+    ".qc-cache/hireops-lessons-2026-10-08-r4/task/tests/Dockerfile (npm runtime lines only, for dependency parity)",
+    "qc/runs/hireops-lessons-2026-10-08-r4/raw-evidence-index.json (artifact hashes re-verified)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "task/environment/Dockerfile is byte-identical to the frozen template rules/projects/webdev-task-template/environment/Dockerfile (both sha256 0a75419e9598ded9317b26bbf0d2b12de0b9b11185fb4c9fed1ca7f3e52467d1; diff empty), so no template-controlled setting was altered. Against the skill's verify list for check 15: base 'FROM node:22-bookworm-slim' (line 1, tag-pinned as in the template, no --platform); 'ENV NODE_PATH=/usr/local/lib/node_modules' (line 3); 'npm install -g --no-audit --no-fund express@5.1.0 better-sqlite3@12.4.1' (lines 9-12, exact versions, build time); apt line 5-7 unversioned, which the workbook marks NOTE-only (check-dockerfile-sanity override / check-dockerfiles.py 'unpinned apt is a NOTE'); 'COPY instructions/ /instructions/' and 'COPY assets/ /assets/' (lines 14-15) both sources exist (environment/instructions/{hireops_rules.md,integration.md}, environment/assets/seed_data.json which parses as JSON); 'chmod -R a+rX /instructions /assets' (line 16); /app created, git-initialised with only .gitkeep committed (lines 17-23); WORKDIR /app, CMD sleep infinity. No COPY/ADD of solution/ or tests/. task.toml declares no [environment].docker_image, so the Dockerfile is not shadowed. Runtime-dependency completeness: the golden's only non-built-in requires are 'express' and 'better-sqlite3' (other requires: crypto, fs, path, node:http, node:worker_threads, local files); solution/app/package.json pins exactly express 5.1.0 and better-sqlite3 12.4.1, matching the image. Front end loads only same-origin /styles.css and /js/*.js. solve.sh performs no npm install or network fetch (copies solution/app into /app and removes a stale DB). The public contract matches the image: instruction.md:15 'Server dependencies are already available, so don't install packages'; integration.md:3-4 'Express and better-sqlite3 already available through NODE_PATH; use only those packages and Node built-ins'; instruction.md:17 says /assets and /instructions are unavailable at runtime and to copy what is needed, which is consistent with the solution embedding src/seed_data.json (byte-identical to environment/assets/seed_data.json). tests/Dockerfile also installs express@5.1.0 and better-sqlite3@12.4.1 with the same NODE_PATH, so the declared runtime exists at grade time too. Adversarial: a builder app that needs an extra npm package (e.g. 'ws', 'sqlite3') would fail to start at grade time, but the brief and integration note explicitly forbid installing packages, so that failure is the submission's, not the harness's. A conforming alternative using only Express/better-sqlite3/built-ins, or writing its own vendored code under /app, is fully supported; no hidden dependency is required. Colderwater lessons checked for this row: none of lessons 1-21 introduces an agent-image pattern; lesson 13 (public internet) does not apply to the Dockerfile (network is public by profile, and the image fetches nothing at run time); lesson 19 (scripted golden in Docker) is relevant only as runtime evidence, see below. Runtime evidence: raw-evidence-index.json artifacts all re-hash OK and the golden ran as uid 65534 with a real restart in image hireops-verifier:20261002-permission-repair (verifier image, same npm runtime). No record shows a build of the agent image (environment/Dockerfile) for this frozen input; since that file is byte-identical to the template and the row's verify procedure is source-level, this is not treated as a required missing measurement for this row, but the agent-image build itself is NOT EXERCISED.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

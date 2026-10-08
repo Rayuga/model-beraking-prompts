@@ -1,0 +1,31 @@
+{
+  "number": 35,
+  "id": "core_behavior_is_graded_and_state_is_proven_durable_where_it_must_be",
+  "reviewer": "row-reviewer-35",
+  "input_sha256": "62b67c0517689833807fe690bec0bb6d251f744264d2ef6e0ae6f181ae9f7826",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r2/rules/WebDev Rubrics QC.xlsx: Quality Checks row 36 (#35) and Internal Quality Checks row 36 (#35; no extra annotation columns or cell comments); sheet list checked. Also the skill's assets/WebDev_Rubrics_QC.xlsx (different file hash d7b5d603... vs 6d44970b... but identical #35 text in both sheets)",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/rules/harbor-webdev-rubric-qc/SKILL.md (full)",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/rules/harbor-webdev-rubric-qc/references/quality-checks.md (full; section 35)",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/rules/projects/webdev-task-template/tests/scored/functional/prompt.md and judge.toml (Restart evidence section, persistence criterion)",
+    "qc/REVIEW_POLICY.md (full)",
+    "task/instruction.md, task/environment/instructions/hireops_rules.md, task/tests/app_context.md",
+    "task/tests/gates/render/judge.toml, task/tests/gates/constraints/judge.toml + prompt.md",
+    "task/tests/scored/functional/prompt.md + judge.toml (all 43 criteria), task/tests/scored/polish/prompt.md + judge.toml (all 5 criteria)",
+    "task/tests/tools/restart_mcp.py, task/tests/test.sh restart-helper lines 92-193 (byte-identical to template: test.sh, restart_mcp.py, score.py, scoring.toml)",
+    "qc/runs/hireops-workspace-2026-10-03-r2/raw-evidence-index.json (all 6 artifact hashes re-verified equal; all 12 matching_source_files hashes equal the frozen task bytes)",
+    "qc/repairs/hireops-2026-10-03-workspace/results/workspace.json (18 groups, all passed, page_errors []) and workspace.cjs lines 330-389 (session-resume and real process-restart groups)"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": "P3",
+  "evidence": "DEFINING BEHAVIOUR GRADED: HireOps' core is a shared pipeline board with concurrency safety plus candidate conversations (instruction.md:1-7). Functional criteria grade it directly: hro_move_one_stage, hro_reorder, hro_interview_full, hro_stale_refused (w2.5, 409 naming the other mover), hro_bulk_move/hro_bulk_all_or_none, hro_undo_*, hro_live_board (w2.5), hro_msg_exchange, hro_unread_counts, hro_seen, hro_candidate_private (functional/judge.toml). SERVER-BACKED, NOT SAME-ORIGIN: constraints gate hro_gate_shared (gates/constraints/judge.toml:17-24) requires a UI-created job+candidate to be seen by the Observer in 'a new independent empty browser context' and states 'a browser-only save ... does not satisfy the gate'; the same check is restated as the in-dimension gate in functional/prompt.md:11 and polish/prompt.md:11, with 'A reload or a second tab of the same context is not independent'. Nothing requires same-origin. Shared ordering is proven server-side by hro_reorder (independent Mei Lin context) and hro_add_candidate; per-person unread state by Mei's own session (hro_unread_counts). DURABILITY: hro_restart (functional/judge.toml:401-408) after protocol D's single restart_app + fresh sign-in requires jobs, card order per stage, notes, messages and activity unchanged and no reseeding — matching instruction.md:15 'keep new work across restarts' and rules 3 'Order survives a reload, a fresh sign-in and a restart'. restart_mcp.py + test.sh helper (template-identical) really kill and relaunch on the same DB_PATH. RELOAD/RE-AUTH where the brief demands it: drafts after reload/switch (hro_drafts), draft surviving an ended session and re-sign-in with no leak to another user on the same browser (polish hro_pol_session_resume, w2.5, positive control = resumed send), note draft after reload (hro_pol_failed_send). WEAK APPS TRIED: (a) localStorage-only board -> fails gate, binary 0 everywhere; (b) server in-memory Map with no SQLite -> passes gate but fails hro_restart (caught, though only 1.5/58.5 functional weight ~1.5% reward; weight honesty is row 44's question); (c) drafts in an unkeyed localStorage -> Mei sees Rafael's draft, fails hro_pol_session_resume; (d) drafts lost on sign-out -> fails same row. CONFORMING ALTERNATIVES: server-side per-user drafts, sessionStorage per-tab drafts, per-tab sessions (criterion allows this page's own sign-out), SSE/sockets/polling — all can pass; no hidden storage mechanism is required. RUNTIME: scripted golden (not judge) results/workspace.json records 'session ended mid-draft: sign-in prompt, nothing sent, same person resumes and sends; another person sees no draft' passed and 'restart keeps jobs, cards, order, messages and activity without reseeding' passed, with a real child SIGTERM+relaunch (workspace.cjs:380); hashes bound to frozen solution bytes. RISK=true because: no full configured functional/polish judge run exists (index scope: 'Full configured grading/workload ... Oracle/target scores are absent'), so restart_app use via the APP_RESTART_HELPER under the judge and the judge's actual handling of hro_restart/hro_pol_session_resume are unmeasured. Minor P3: the task's protocol D/hro_restart drops the template's explicit 'If the tool reports an error, the persistence criterion fails; never claim a restart the tool did not report' (template functional/prompt.md:75-86); hro_restart still says 'after restart_app', so a restart-tool error is only implicitly a fail. Read markers, rejection reason/rejected-from and undo history are not re-read after restart (not required by row 35; read markers are server-proven via independent sessions).",
+  "counterexample": null,
+  "suggested_fix": "Optional P3 hardening: add to protocol D or hro_restart 'If restart_app reports an error or is not called, hro_restart is 0; a reload or re-sign-in is not a restart.' Then obtain a full configured judge run to measure hro_restart and hro_pol_session_resume on the golden.",
+  "run_verdict": "PARTIAL — scripted golden confirms restart durability and session-resume draft behaviour on frozen solution bytes; configured judge execution of hro_restart/restart_app and hro_pol_session_resume NOT EXERCISED"
+}

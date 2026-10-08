@@ -1,0 +1,35 @@
+{
+  "number": 11,
+  "id": "timeouts_fit_the_work",
+  "reviewer": "row-reviewer-11",
+  "input_sha256": "8e9a1732929dada061b7ec8f471be452416cb15fa3c35c0af552efa55321e9c6",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r5/rules/WebDev Rubrics QC.xlsx :: 'Quality Checks' row 11 ('Agent, verifier, liveness, and judge timeouts are long enough and nest: gate judges < gates budget, scored judges < scored budget, both budgets < verifier timeout.'), 'Internal Quality Checks' row 11 ('... nest properly (inner < outer, sum of judges < verifier)'; no cell comments), 'Deterministic Checks' rows check-scoring-policy.py and check-rubric-schema.py (sha256 6d44970b...3fd7f)",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/rules/harbor-webdev-rubric-qc/SKILL.md (verdict/severity/evidence rules: 'Never upgrade an unmeasured claim to Pass')",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/rules/harbor-webdev-rubric-qc/references/quality-checks.md ### 11 (lines 50-51)",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (task.toml block lines 53-63; budgets nest line 111; restart_mcp 55s line 163)",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (check-scoring-policy.py line 42)",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/rules/projects/webdev-task-template/task.toml, tests/test.sh, tests/*/*/judge.toml headers",
+    "qc/REVIEW_POLICY.md (esp. 'Workload is measured, not inferred from a timeout number', line 25)",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/task/task.toml",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/task/tests/test.sh",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/task/tests/scoring.toml",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/task/tests/{gates/render,gates/constraints,scored/functional,scored/polish,scored/visual}/judge.toml",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/task/tests/tools/restart_mcp.py (lines 1-60)",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/task/environment/Dockerfile",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/task/solution/solve.sh (first 40 lines)",
+    "qc/runs/hireops-workspace-2026-10-03-r5/raw-evidence-index.json (hashes of workspace.cjs, results/workspace.json, results/server.log re-verified as matching)"
+  ],
+  "verdict": "Not exercised",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "STATIC NESTING (verified, arithmetic shown). All timeout values are byte-identical to the frozen template (rules/projects/webdev-task-template): task.toml [agent].timeout_sec = 7200.0, [environment].build_timeout_sec = 600.0, [verifier].timeout_sec = 13200.0 (task.toml lines 18/21/27 equivalent); test.sh line 213 `run_suite gates 1500`, line 224 `run_suite scored 11100`, each wrapped in `timeout \"$budget_sec\" rewardkit --max-concurrent-agent 1` (line 207); test.sh identical to template test.sh. Judge timeouts (judge.toml line 4 each): gates/render 600, gates/constraints 600, scored/functional 9000, scored/polish 900, scored/visual 900 - identical to template. With --max-concurrent-agent 1, worst-case serial sums: gates 600+600 = 1200 < 1500 (300 s slack); scored 9000+900+900 = 10800 < 11100 (300 s slack); each single judge < its suite budget. Budgets 1500+11100 = 12600 < 13200; plus app liveness wait max 120 x (0.25 s + <=2x2 s probes) and two score.py runs, still well under the 600 s remaining slack. LIVENESS: initial probe loop test.sh lines 115-125 (120 x 0.25 s ~ 30 s+); restart helper waits <=5 s for old pid (lines 155-158) + ~30 s readiness (lines 171-177) < restart_mcp.py HELPER_TIMEOUT_SEC = 55 (line 11), so the restart tool cannot time out before the helper reports. Matches staged-task-contract.md line 111 reference values (1500/11100/13200). AGENT/BUILD: environment/Dockerfile is node:22-bookworm-slim + apt (4 small packages) + global npm install of express@5.1.0 and better-sqlite3@12.4.1 (prebuilt binary normally available for node22/linux-x64-glibc) - a plausible cold build well under 600 s, but no build-duration measurement exists in the evidence index. 7200 s agent budget is the template value; no agent/target-model run measured. UNMEASURED 'LONG ENOUGH' HALF: the functional judge must run 43 binary criteria (grep count of [[criterion]] in scored/functional/judge.toml) involving multiple independent browser contexts, 15-second live-update waits (e.g. lines 290, 299, 344, 353), paged history, drafts across sessions and a server restart - in one batched claude-code session with z-ai/glm-5.3-flashx inside 9000 s (~209 s per criterion average). raw-evidence-index.json scope states explicitly: 'Full configured grading/workload ... are absent' and each entry is 'Not a configured judge run, Oracle grade, model score or judge-duration measurement'. Per REVIEW_POLICY line 25 and SKILL.md ('Never upgrade an unmeasured claim to Pass'), sufficiency cannot be credited from the timeout number nor from scripted Playwright duration. Nesting half: Pass on static evidence. Sufficiency half (judge workload, agent build, image build): Not exercised, required evidence missing -> risk=true. No timeout change is warranted or authorized without a measurement; I recommend none.",
+  "counterexample": "Conforming alternative that could fail: a correct app whose 43-criterion functional judge session (multi-context realtime scenarios with 15 s waits plus restart) runs past 9000 s, or whose scored suite exceeds 11100 s; `timeout` kills rewardkit, run_suite returns non-zero (test.sh lines 224-226) and the run exits with the pre-written zero reward, so a correct submission scores 0. Whether this happens is unmeasured. Broken-app-that-passes: none found via timeouts; a slow/dead app gets zero from the liveness gate (lines 123-125) as intended.",
+  "suggested_fix": "Do not change budgets now; obtain one hash-bound full configured verifier run of the golden (gates+scored with the frozen judge model) recording per-dimension judge wall time and a cold agent-image build time, and only if functional approaches 9000 s seek authorized scope reduction or a justified sub-5-hour budget change.",
+  "run_verdict": "NOT EXERCISED"
+}

@@ -1,0 +1,40 @@
+{
+  "number": 23,
+  "id": "verifier_and_instruction_agree_on_the_runtime_contract",
+  "reviewer": "row-reviewer-23",
+  "input_sha256": "d2912713cc20e12d1c3605e76373f75f766ca522cce13fdf91e93082f6570a7a",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r4/rules/WebDev Rubrics QC.xlsx :: 'Quality Checks' row 24 (#23, C24/D24: probe URL, env vars, paths, seed, deps; no same-origin requirement; signature check)",
+    ".qc-cache/hireops-workspace-2026-10-03-r4/rules/WebDev Rubrics QC.xlsx :: 'Internal Quality Checks' row 24 (D24 plus annotation E24 'we dont specifically ask for login... part of project we follow' and H24 conclusion)",
+    ".qc-cache/hireops-workspace-2026-10-03-r4/rules/WebDev Rubrics QC.xlsx :: 'Deterministic Checks' C31 (runtime contract strings) for context",
+    ".qc-cache/hireops-workspace-2026-10-03-r4/rules/harbor-webdev-rubric-qc/SKILL.md (delivery profile: public network; known false positive: sign-in, checks 23/27)",
+    ".qc-cache/hireops-workspace-2026-10-03-r4/rules/harbor-webdev-rubric-qc/references/quality-checks.md (sec. 23, plus 4, 27, 29 context)",
+    ".qc-cache/hireops-workspace-2026-10-03-r4/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (test.sh ordered contract, cross-file agreements table)",
+    ".qc-cache/hireops-workspace-2026-10-03-r4/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (check-runtime-contract-strings, check-verifier-contract, check-runtime-deps-in-both-images entries)",
+    ".qc-cache/hireops-workspace-2026-10-03-r4/rules/projects/webdev-task-template (test.sh, instruction.md, environment/instructions/integration.md)",
+    "qc/REVIEW_POLICY.md",
+    "task/tests/test.sh (all 228 lines)",
+    "task/instruction.md",
+    "task/environment/instructions/integration.md",
+    "task/environment/Dockerfile",
+    "task/tests/Dockerfile",
+    "task/task.toml",
+    "task/solution/solve.sh",
+    "task/solution/app/server.js, src/bootstrap.js, src/index.js, src/db.js (PORT/DB_PATH/health/listen lines)",
+    "task/tests/app_context.md and the first line of all five prompt.md files (URL)",
+    "qc/runs/hireops-workspace-2026-10-03-r4/raw-evidence-index.json (all 6 artifact hashes and every matching_source_files hash re-verified: all match the frozen task)",
+    "qc/repairs/hireops-2026-10-03-workspace/results/workspace.json (summary)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Frozen task/tests/test.sh is byte-identical to the template test.sh (diff -r produced no output). Every launch assumption in it is stated to the agent. (1) Entry: test.sh:68 refuses to grade without /app/server.js and runs `node \"$APP_ENTRY\"` (test.sh:97,111). instruction.md:13 says 'It must start with node /app/server.js', and integration.md says 'The process starts from /app/server.js'. (2) Port/probe: test.sh:48 probes http://127.0.0.1:3000/api/health and then '/', and injects PORT=\"3000\" (test.sh:108). instruction.md:13 says 'listen on port 3000 (honour PORT if it's set), expose GET /api/health as a check that never touches the database'. integration.md says 'listens on port 3000 on 0.0.0.0', which covers the 127.0.0.1 probe and rules out a localhost-only (::1) bind. The 30 s readiness window (120 x 0.25 s) is covered by 'GET /api/health answers before database work can block startup' (integration.md). (3) DB_PATH: test.sh:98-109 injects DB_PATH=/app/app.db, or $APP_COPY/app.db when uid 65534 cannot write /app. instruction.md:13 says 'keep its durable data in /app/app.db, honouring DB_PATH when that is set'. (4) Env: env -i passes only PATH, NODE_PATH, HOME, PORT and DB_PATH (test.sh:104-109). NODE_PATH is named in integration.md ('already available through NODE_PATH'). PORT and DB_PATH are named in the brief. PATH and HOME are ordinary process environment, and the brief promises no other variable. (5) Deps: the verifier image installs express@5.1.0 and better-sqlite3@12.4.1 globally under NODE_PATH=/usr/local/lib/node_modules (tests/Dockerfile), the same pins as environment/Dockerfile. The brief says 'Server dependencies are already available, so don't install packages', and integration.md says 'use only those packages and Node built-ins'. (6) Symlinks: test.sh:72-83 zeroes on any symlink outside /app/node_modules or resolving outside it. This task-specific integration.md paragraph discloses that exactly: 'Symbolic links are supported only inside /app/node_modules, and their resolved targets must also stay inside /app/node_modules.' The template integration.md lacks this paragraph, so the task closes that template gap. (7) Seed/paths: the verifier sees only artifacts /app and /assets (task.toml), and /instructions is not copied. instruction.md:15 says 'Copy what you need into /app; /assets and /instructions are unavailable at runtime', and that is stricter than reality, so it penalizes no conforming app. The seed path /assets/seed_data.json is stated in instruction.md:13 and integration.md. (8) Unprivileged launch: test.sh chowns /app and the copy to 65534 (test.sh:87,93), so an app that writes only under /app or to DB_PATH works. The brief keeps durable data in /app. (9) Restart helper: it reuses the identical env and entry (test.sh:160-167), consistent with 'keep new work across restarts'. (10) No same-origin requirement: test.sh has none, and the prompts only open http://localhost:3000 (app_context.md:4 and line 1 of all five prompt.md files). The REWARDKIT_* checks are verifier-side and come from the frozen [verifier.env]. They are not agent obligations. The internal annotation on sign-in (Internal sheet E24, and the skill's known false positive) does not apply as a mismatch here, because the brief states accounts and the password explicitly anyway. Golden conformance: bootstrap.js:43 binds Number(process.env.PORT||3000) on 0.0.0.0, and /api/health is answered before the DB worker (bootstrap.js:20-23). db.js:9 honours DB_PATH and reads seed from src/seed_data.json copied into /app. Runtime corroboration (partial): raw-evidence-index entries were hash-verified against the frozen solution. They record the golden booted and run in the hireops-verifier image as uid 65534 with a real restart. That run used a scripted driver, not test.sh, and is not a configured judge run.",
+  "counterexample": "Adversarial probes tried; none is a contract mismatch. (a) Plausible broken app that could pass this row's launch: health answers 500. probe_ready treats HTTPError as ready (test.sh:51-52), so launch proceeds, but grading then rests on the gates. That is lenient liveness, not an unstated assumption. (b) Conforming alternatives that might fail: an app bound to 'localhost' only (possibly ::1 under Node 22) would fail the 127.0.0.1 probe, but integration.md explicitly requires 0.0.0.0. An app that hard-codes /app/app.db and ignores DB_PATH would write to the root-owned original when /app is not writable, but honouring DB_PATH is explicitly required. An app that needs a custom env var such as SESSION_SECRET would lose it under env -i, but the brief gives only 'node /app/server.js', so relying on extra env is outside the contract. An app that reads /assets at runtime still works because /assets is a verifier artifact made world-readable (test.sh:88). npm .bin symlinks inside node_modules are allowed by test.sh and the note. A development app.db left in /app is used as-is, and the brief says 'start with no shipped database'. I found no conforming app that test.sh's launch would reject.",
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL: launch contract verified from source. The frozen golden was observed booting in the verifier image as uid 65534 with a real restart (hash-verified scripted evidence), but no full test.sh/RewardKit launch of these frozen bytes was in the evidence index. That launch record belongs to the separate full-verifier runtime requirement and is not needed to establish this row's static agreement."
+}

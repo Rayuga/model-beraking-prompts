@@ -1,0 +1,31 @@
+{
+  "number": 22,
+  "id": "verifier_image_can_launch_and_grade",
+  "reviewer": "row-reviewer-22",
+  "input_sha256": "4bd1eea4300538bac22f9b8dcda9da2275fa78d20f45231f132076233ce1bf9f",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r11/rules/WebDev Rubrics QC.xlsx (Quality Checks row 23 #22; Internal Quality Checks row 23 #22, no annotation; Deterministic Checks check-dockerfiles.py, check-runtime-deps-in-both-images.py, check-verifier-tooling-baked.sh, check-pip-pinning.sh)",
+    ".qc-cache/hireops-workspace-2026-10-03-r11/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r11/rules/harbor-webdev-rubric-qc/references/quality-checks.md (#22)",
+    ".qc-cache/hireops-workspace-2026-10-03-r11/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r11/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (Dockerfile/runtime-deps sections)",
+    ".qc-cache/hireops-workspace-2026-10-03-r11/rules/projects/webdev-task-template/ (tests/Dockerfile, .dockerignore, test.sh, tools/*, scoring.toml, environment/Dockerfile, task.toml diffed)",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/hireops-workspace-2026-10-03-r11/per-row-review/prompts/22.md",
+    "task/tests/Dockerfile, task/tests/.dockerignore, task/tests/test.sh, task/tests/*/*/judge.toml (mcp_servers), task/task.toml, task/environment/Dockerfile, task/environment/instructions/integration.md, task/instruction.md:13, task/solution/app/package.json, task/solution/app/server.js+src/*.js (requires), task/solution/solve.sh",
+    "qc/runs/hireops-workspace-2026-10-03-r11/raw-evidence-index.json and hashed artifacts under qc/repairs/hireops-2026-10-03-workspace/ (workspace.cjs, results/workspace.json, results/server.log)",
+    "docker image ls / docker history hireops-verifier:20261002-permission-repair (read-only, no container)"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "STATIC (frozen bytes, .qc-cache/hireops-workspace-2026-10-03-r11/task): tests/Dockerfile is byte-identical to the frozen template rules/projects/webdev-task-template/tests/Dockerfile (sha256 72998ab8...5fdd for both); tests/.dockerignore, test.sh, tools/score.py, tools/restart_mcp.py, scoring.toml and environment/Dockerfile also diff-identical to template. It ships everything the row (workbook Quality Checks row 23 / check #22; Internal sheet same, no annotation) and skill references/quality-checks.md#22 require: (1) app runtime: Node from node:22-bookworm-slim copied into /usr/local (line 1-4), NODE_PATH=/usr/local/lib/node_modules, global express@5.1.0 and better-sqlite3@12.4.1 (npm install -g block) — exactly the two packages solution/app/package.json declares and the only ones environment/instructions/integration.md allows ('Express and better-sqlite3 already available through NODE_PATH; use only those packages and Node built-ins'); instruction.md:13 says 'don't install packages'. Agent environment/Dockerfile installs the same two pins, so a conforming alternative cannot fail for a missing dependency. util-linux (setpriv) and procps present for test.sh:99-111 unprivileged launch via setsid/env -i/setpriv. (2) judge CLI: @anthropic-ai/claude-code@2.1.281 pinned (matches REWARDKIT_JUDGE=claude-code in task.toml [verifier.env]); codex@0.151.0 also baked. (3) Playwright MCP: @playwright/mcp@0.0.79 provides the 'playwright-mcp' command every judge.toml line 11 uses. (4) browser: chromium installed with the Playwright CLI bundled inside @playwright/mcp (so browser revision follows the pinned mcp version) into PLAYWRIGHT_BROWSERS_PATH=/opt/playwright-browsers, symlinked to /usr/local/bin/chromium, matching judge.toml args --executable-path=/usr/local/bin/chromium. (5) rewardkit: harbor-rewardkit==0.1.7 pinned; test.sh:207 calls rewardkit. (6) python3.12 base supplies /usr/local/bin/python3 used by functional judge.toml:17 restart server and test.sh score.py calls. COPY . /tests then chmod go-rwx. RUNTIME (partial): local image hireops-verifier:20261002-permission-repair exists; docker history (no container started) shows the same pinned layers (claude-code@2.1.281, codex@0.151.0, mcp@0.0.79, express@5.1.0, better-sqlite3@12.4.1, rewardkit==0.1.7), so the build including the rewardkit agents.py patch assertion succeeded. raw-evidence-index.json entries verified: workspace.cjs 6aa75874..., results/workspace.json ddfb53ec..., server.log 6752f461..., board/conversation/candidate.png all match, and their matching_source_files hashes match the frozen solution bytes. workspace.cjs:6 requires playwright from /usr/local/lib/node_modules/@playwright/mcp/node_modules/playwright and :285 launches executablePath /usr/local/bin/chromium; server.log shows '[hireops] listening on 3000' twice (start + restart) as uid 65534; workspace.json groups passed. That proves node+express+better-sqlite3+bundled Playwright+chromium work in that image. NOT MEASURED: no full configured verifier run (test.sh -> rewardkit -> claude-code judge -> playwright-mcp stdio -> restart_mcp) exists; the index scope states 'Full configured grading/workload ... absent'. So rewardkit/claude-code/playwright-mcp invocation inside this image is unexercised; also the evidence image's /tests layer predates the frozen candidate (only tooling layers were compared). Notes (template-controlled, not task defects): base images are tag-pinned (node:22-bookworm-slim, python:3.12-slim), not digest-pinned; apt packages and playwright --with-deps apt deps are unpinned (NOTE per check-dockerfiles.py). Counterexample search: broken app passing — not applicable to image tooling (image does not grade). Conforming alternative failing — an app using only Express, better-sqlite3 and Node 22 built-ins as integration.md requires starts identically in the verifier image; none found. Verdict Pass on source and partial runtime evidence; risk=true solely because the full configured launch/grading record required by REVIEW_POLICY 'Runtime and model evidence' is missing.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL"
+}

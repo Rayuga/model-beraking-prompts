@@ -1,0 +1,38 @@
+{
+  "number": 33,
+  "id": "criterion_description_is_self_consistent",
+  "reviewer": "row-reviewer-33",
+  "input_sha256": "2996e34d07dbcb26256f6917534f6e3769fa42f00ec330fd154ac876b7eff46e",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r12/rules/WebDev Rubrics QC.xlsx (openpyxl read_only, in memory): Quality Checks row 33 and Internal Quality Checks row 33 incl. annotation 'Mukesh - we usually combine the multiple verifeirs in one flow ...'; sha256 6d44970b... matches manifest.json",
+    ".qc-cache/hireops-workspace-2026-10-03-r12/rules/harbor-webdev-rubric-qc/SKILL.md (full; Known false positives: 'One criterion covering a whole flow ... (checks 26, 28, 33)')",
+    ".qc-cache/hireops-workspace-2026-10-03-r12/rules/harbor-webdev-rubric-qc/references/quality-checks.md (sections A-E through 36, incl. ### 33)",
+    ".qc-cache/hireops-workspace-2026-10-03-r12/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (judge.toml / prompt sections)",
+    ".qc-cache/hireops-workspace-2026-10-03-r12/rules/projects/webdev-task-template/tests/scored/functional/judge.toml (template criterion shape: numbered legs ending 'Pass only if all legs hold.')",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/hireops-workspace-2026-10-03-r12/per-row-review/prompts/33.md and rows/33.template.json",
+    ".qc-cache/hireops-workspace-2026-10-03-r12/task/tests/scored/functional/judge.toml (all 44 criteria, lines 23-417; sha256 22625876... matches manifest)",
+    ".qc-cache/hireops-workspace-2026-10-03-r12/task/tests/scored/polish/judge.toml (5 criteria)",
+    ".qc-cache/hireops-workspace-2026-10-03-r12/task/tests/scored/visual/judge.toml (5 likert criteria)",
+    ".qc-cache/hireops-workspace-2026-10-03-r12/task/tests/gates/render/judge.toml",
+    ".qc-cache/hireops-workspace-2026-10-03-r12/task/tests/gates/constraints/judge.toml",
+    ".qc-cache/hireops-workspace-2026-10-03-r12/task/tests/scored/{functional,polish,visual}/prompt.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r12/task/tests/gates/render/prompt.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r12/task/tests/app_context.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r12/task/instruction.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r12/task/environment/instructions/hireops_rules.md (sections 1, 2, 4, 7 and internal notes)",
+    ".qc-cache/hireops-workspace-2026-10-03-r12/task/solution/app/src/index.js (grep of candidate role handling only)"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "Scope: every [[criterion]] description in all five judge.toml files (2 gates, 44 functional, 5 polish, 5 visual likert). Positive: nearly all binary rows end with 'Fails if any condition stated above does not hold.', so explicit 'Fails if ...' lists that are narrower than the stated legs (e.g. hro_reject_hired l.92, hro_add_candidate l.38) are still one conjunctive bar; conditional fallbacks are single bars with a defined branch (hro_pol_live_board polish l.23 'only if neither can be made to scroll with twelve cards ... judge the other legs'; hro_refused_put_back l.137 'A UI that refuses before the card moves ... also passes'; hro_gate_render 'refusal message is welcome but not required'); flow bundling is the documented false positive (SKILL.md, workbook internal note). Visual likert rows each state one dimension with five anchors. DEFECT 1 (instance, P2): functional/judge.toml:398 hro_candidate_private (weight 2.5) first enumerates a blanket bar: 'no response a candidate page receives contains internal notes, a rejection reason, a rejected-from stage, board positions, other candidates or activity, including while Tomas's card is rejected', then waives it for two endpoints: 'the replayed board and Activity reads are refused or answered with only that candidate's own data'. A board read's 'own data' is the candidate's card with its stage/place; an Activity read's 'own data' is the activity lines about his card (stage moves, rejection with reason). The first clause fails such responses, the second passes them: two targets. The prompt (functional/prompt.md:43 K) adds a third phrasing, 'answered with only Tomas's own data and none of the staff data', with 'staff data' undefined. The public rule is unambiguous and stricter than the waiver: hireops_rules.md section 7 'Nothing a candidate's browser receives may contain ... a card's place on the board ... or the activity record. The board, the Activity view and every staff action are refused to candidates.' The golden refuses candidate role on staff routes (src/index.js candidate checks, e.g. l.239/330), so the golden is unaffected; the risk is mis-scoring of submissions. DEFECT 2 (instance, P3 note-level, same criterion family): functional/judge.toml:272 hro_activity includes '(notes and messages are not recorded in Activity; ...)' inside a row closed by 'Fails if any condition stated above does not hold.' It is meant as a scope exclusion, but read as a condition it demands that notes not appear in Activity, which hireops_rules.md section 4 never requires (it lists what IS recorded). Prompt A (prompt.md:49) repeats '(notes are not recorded in Activity)'. A judge has two readings for an app that also logs notes. Minor observation, not counted as a defect: hro_job_open l.29 says 'the team, manager and places are shown wherever the app shows job details or are evidenced by behaviour', but team has no behavioural evidence; team display is in any case graded in hro_candidate_view, so it creates no second bar. No runtime evidence was needed for this static wording row; judge-run behaviour on these rows is NOT EXERCISED by this review.",
+  "counterexample": "Broken app that may pass: as Tomas, the replayed Activity read returns 200 with only lines about his own card ('Rafael Costa moved Tomas Varga from Screen to Interview', 'Rafael Costa rejected Tomas Varga: <reason>'), and the replayed board read returns his card with stage and position. A judge following 'answered with only that candidate's own data' awards hro_candidate_private 1, although rules section 7 forbids the activity record and the board place reaching a candidate and requires both reads refused. A different judge applying the blanket first clause awards 0 for the same app. Conforming app that may fail (defect 2): an app that also writes 'Rafael Costa added a note to A' to Activity (not forbidden by rules section 4) can be failed under hro_activity by a judge treating '(notes and messages are not recorded in Activity)' as a stated condition.",
+  "suggested_fix": "In hro_candidate_private replace 'refused or answered with only that candidate's own data' with 'refused, or answered with no board place, rejection reason, rejected-from stage, note, activity line or other candidate (an empty answer qualifies)', and align prompt K; in hro_activity and prompt A rephrase the parenthetical as 'notes and messages need not appear in Activity'.",
+  "run_verdict": "NOT EXERCISED"
+}

@@ -1,0 +1,26 @@
+{
+  "image": "hireops-agent:20261001-hard-r2",
+  "image_id": "sha256:ff70849eebd9fcd2f91602ceb3518db6f6a1984d0e2f29f8a45019f4c24bc359",
+  "command": [
+    "docker",
+    "run",
+    "--rm",
+    "--read-only",
+    "--network",
+    "none",
+    "-i",
+    "sha256:ff70849eebd9fcd2f91602ceb3518db6f6a1984d0e2f29f8a45019f4c24bc359",
+    "node",
+    "-"
+  ],
+  "stdin": "\nconst fs = require('node:fs');\nconst crypto = require('node:crypto');\nconst cp = require('node:child_process');\nconst assert = require('node:assert/strict');\nconst express = require('express');\nconst Database = require('better-sqlite3');\nconst database = new Database(':memory:');\ndatabase.exec('CREATE TABLE smoke (value INTEGER NOT NULL); INSERT INTO smoke VALUES (42)');\nassert.equal(database.prepare('SELECT value FROM smoke').get().value, 42);\ndatabase.close();\nconst assets = {};\nfor (const path of ['/assets/seed_data.json', '/instructions/integration.md', '/instructions/hireops_rules.md']) {\n  fs.accessSync(path, fs.constants.R_OK);\n  assets[path] = {sha256: crypto.createHash('sha256').update(fs.readFileSync(path)).digest('hex'), mode: (fs.statSync(path).mode & 0o777).toString(8)};\n}\nJSON.parse(fs.readFileSync('/assets/seed_data.json', 'utf8'));\nassert.deepEqual(fs.readdirSync('/app').sort(), ['.git', '.gitkeep']);\nassert.equal(cp.execFileSync('git', ['-C', '/app', 'rev-parse', '--is-inside-work-tree'], {encoding:'utf8'}).trim(), 'true');\nassert.equal(cp.execFileSync('git', ['-C', '/app', 'ls-files'], {encoding:'utf8'}).trim(), '.gitkeep');\nassert.equal(require('express/package.json').version, '5.1.0');\nassert.equal(require('better-sqlite3/package.json').version, '12.4.1');\nassert.equal(process.env.NODE_PATH, '/usr/local/lib/node_modules');\nconsole.log(JSON.stringify({node:process.version, nodePath:process.env.NODE_PATH, cwd:process.cwd(), express:require('express/package.json').version, betterSqlite3:require('better-sqlite3/package.json').version, nativeSqlite:42, appEntries:fs.readdirSync('/app').sort(), assets, sqliteCli:cp.execFileSync('sqlite3',['--version'],{encoding:'utf8'}).trim(), git:cp.execFileSync('git',['--version'],{encoding:'utf8'}).trim()},null,2));\n",
+  "exit_code": 0,
+  "seconds": 0.7349999999860302,
+  "stdout": "{\n  \"node\": \"v22.23.2\",\n  \"nodePath\": \"/usr/local/lib/node_modules\",\n  \"cwd\": \"/app\",\n  \"express\": \"5.1.0\",\n  \"betterSqlite3\": \"12.4.1\",\n  \"nativeSqlite\": 42,\n  \"appEntries\": [\n    \".git\",\n    \".gitkeep\"\n  ],\n  \"assets\": {\n    \"/assets/seed_data.json\": {\n      \"sha256\": \"1b39015461a7a4f23b835aeea9584caffd0266c64d394778376cbd6c8a18bcf7\",\n      \"mode\": \"755\"\n    },\n    \"/instructions/integration.md\": {\n      \"sha256\": \"1adabb9e2d76cee5ff91b15b24f109e4f37047050da5c7b7a1274c6938a0aa66\",\n      \"mode\": \"755\"\n    },\n    \"/instructions/hireops_rules.md\": {\n      \"sha256\": \"813039bcf593cc43358f5ebdc855f0b7ce0747a20edaed08355ff56bebb5185e\",\n      \"mode\": \"755\"\n    }\n  },\n  \"sqliteCli\": \"3.40.1 2022-12-28 14:03:47 df5c253c0b3dd24916e4ec7cf77d3db5294cc9fd45ae7b9c5e82ad8197f3alt1\",\n  \"git\": \"git version 2.39.5\"\n}\n",
+  "stderr": "",
+  "asset_source_matches": {
+    "/assets/seed_data.json": true,
+    "/instructions/integration.md": true,
+    "/instructions/hireops_rules.md": true
+  }
+}

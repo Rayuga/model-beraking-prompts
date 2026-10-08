@@ -1,0 +1,36 @@
+{
+  "number": 23,
+  "id": "verifier_and_instruction_agree_on_the_runtime_contract",
+  "reviewer": "row-reviewer-23",
+  "input_sha256": "d622da81e9b07dcadf86ec7430f70ae35a57d0ff2275e3a0cf1bd6eaa7572278",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-lessons-2026-10-08-r3/rules/WebDev Rubrics QC.xlsx (read in memory via zipfile: 'Quality Checks' row A24/#23; 'Internal Quality Checks' row 24 incl. E24 Mukesh annotation on login default and H24 conclusion; 'Deterministic Checks' A31 check-runtime-contract-strings.py)",
+    ".qc-cache/hireops-lessons-2026-10-08-r3/rules/harbor-webdev-rubric-qc/SKILL.md (delivery profile, known false positives incl. sign-in for check 23)",
+    ".qc-cache/hireops-lessons-2026-10-08-r3/rules/harbor-webdev-rubric-qc/references/quality-checks.md section 23",
+    ".qc-cache/hireops-lessons-2026-10-08-r3/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (tests/test.sh ordered contract; cross-file agreement table)",
+    ".qc-cache/hireops-lessons-2026-10-08-r3/rules/projects/webdev-task-template (tests/test.sh, tests/Dockerfile, environment/Dockerfile, environment/instructions/integration.md compared to task)",
+    "qc/REVIEW_POLICY.md",
+    "handoffs/LESSONS_FROM_COLDERWATER_2026-10-08.md",
+    ".qc-cache/hireops-lessons-2026-10-08-r3/task/tests/test.sh (all 227 lines)",
+    ".qc-cache/hireops-lessons-2026-10-08-r3/task/instruction.md",
+    ".qc-cache/hireops-lessons-2026-10-08-r3/task/environment/instructions/integration.md",
+    ".qc-cache/hireops-lessons-2026-10-08-r3/task/environment/instructions/hireops_rules.md sections 8-9",
+    ".qc-cache/hireops-lessons-2026-10-08-r3/task/task.toml",
+    ".qc-cache/hireops-lessons-2026-10-08-r3/task/environment/Dockerfile and tests/Dockerfile, tests/.dockerignore",
+    ".qc-cache/hireops-lessons-2026-10-08-r3/task/tests/app_context.md",
+    ".qc-cache/hireops-lessons-2026-10-08-r3/task/solution/solve.sh, solution/app/server.js, src/bootstrap.js, src/db.js, src/index.js (grep of PORT/DB_PATH/listen/health/seed)",
+    "qc/runs/hireops-lessons-2026-10-08-r3/raw-evidence-index.json (hashes of workspace.cjs, results/workspace.json and solution files re-verified with sha256sum: all match)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Every launch assumption in tests/test.sh (byte-identical to the frozen template test.sh and tests/Dockerfile) is publicly told to the agent: (1) Entry: test.sh:68 requires /app/server.js and test.sh:111 runs `node $APP_ENTRY`; instruction.md:15 'It must start with node /app/server.js'; integration.md:5. (2) Port/probe: test.sh:48 probes http://127.0.0.1:3000/api/health then /, any HTTP response counts; instruction.md:15 'listen on port 3000 (honour PORT if it's set), expose GET /api/health as a check that never touches the database'; integration.md:5 'listens on port 3000 on 0.0.0.0', so an IPv4 probe reaches a conforming app; integration.md:9-10 health answers before DB work. (3) Env vars: test.sh:104-109 env -i with PATH, NODE_PATH, HOME, PORT, DB_PATH only; hireops_rules.md section 8 'The only settings you can count on are PATH, HOME, NODE_PATH, PORT and DB_PATH; anything else from a shell won't be there.' (4) DB path / writable copy: test.sh:97-102 uses /app/app.db or /tmp/submission/app.db through DB_PATH; instruction.md:15 'keep its durable data in /app/app.db, honouring DB_PATH when that is set'; rules section 8 'sometimes on a writable copy of the folder ... keep the database wherever DB_PATH says'; integration.md:23 'write only under /app or wherever DB_PATH points'. (5) Locked-down uid 65534 and foreign cwd: test.sh:110 setpriv --reuid=65534; integration.md:21-23 and rules section 8 tell the agent to resolve files relative to server.js under a locked-down account. (6) Symlink rejection: test.sh:72-83 zeroes links outside /app/node_modules or escaping it; integration.md:16-19 states exactly this rule (task-added disclosure beyond the template note). (7) Deps: test.sh sets NODE_PATH=/usr/local/lib/node_modules; tests/Dockerfile:42-48 installs express@5.1.0 and better-sqlite3@12.4.1 globally, same versions as environment/Dockerfile:9-12; instruction.md:15 'Server dependencies are already available, so don't install packages'; integration.md:3-4 'only those packages and Node built-ins'. (8) Seed: instruction.md:15-17 names /assets/seed_data.json, says /assets is unavailable at runtime and to copy what is needed into /app, load once, start with no shipped database, keep work across restarts; the restart helper (test.sh:127-193) relaunches over the same DB_PATH, matching integration.md:8-9 and instruction.md:17. (9) Single process UI+API: instruction.md:15; judge URL http://localhost:3000 in app_context.md:4 matches the port. No same-origin requirement imposed; network public in task.toml:22,38 (profile-correct, not reported). Accounts/password are stated in instruction.md:19 (and the sign-in surface is a known false positive per SKILL.md and the Internal Quality Checks E24 annotation anyway). Counterexamples tried: (a) broken app that could pass: an app that only answers /api/health statically passes the launch probe, but row 23 concerns contract disclosure; liveness is not graded as success (gates judge real behaviour), so no contract mismatch. (b) conforming app that could fail: cwd-relative paths, reading /assets at runtime, requiring an extra env var (e.g. SESSION_SECRET), binding only to ::1/localhost, writing beside cwd, or symlinking node_modules to /usr/local/lib would each fail, but each is explicitly forbidden or steered by integration.md/rules section 8, so these are disclosed, not hidden. Only undisclosed numeric limit: the 30 s readiness window (120 x 0.25 s, test.sh:116-125); integration.md:9-10 requires health to answer before DB work, and a 30 s startup budget for a small seed is a reasonable shared-template default, so not a defect (Note-level at most, P3). Lessons file: lesson 1 (no hidden requirements) checked for every runtime assumption above, none hidden; lesson 13 (no public internet address in judge prompts) app_context uses localhost only; lesson 19 golden harness: raw-evidence-index cites workspace.cjs/results/workspace.json (hashes re-verified) as a scripted golden run as uid 65534 with real restart against frozen solution bytes, consistent with this contract, but it is not a full configured test.sh/RewardKit launch. Golden conformance: solve.sh copies app into /app and removes the DB; bootstrap.js:43 listens on PORT||3000 on 0.0.0.0 and answers /api/health before the DB worker; db.js:9-10 honours DB_PATH and loads seed relative to __dirname.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL"
+}

@@ -1,0 +1,31 @@
+{
+  "number": 9,
+  "id": "agent_environment_and_network_posture_are_correct",
+  "reviewer": "row-reviewer-09",
+  "input_sha256": "622c7c3d5aa7f77beae16575e8006f426f50f3a84b0bead9f50ac5b0b1c70804",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r10/rules/WebDev Rubrics QC.xlsx (read in memory with openpyxl read_only; sha256 6d44970b2ff67fefad1e2327e743fc226fcd4c50ff55baf899f41069a9b3fd7f) - sheet 'Quality Checks' row 10 (#9 agent_environment_and_network_posture_are_correct: 'Agent image has sane CPU/memory and no secret literals. Network is public here, so network_mode = \"public\" is correct - do not flag it.'); sheet 'Internal Quality Checks' row 10 (older no-network wording: 'Agent image is no-network with sane CPU/memory, no secret literals, and nothing that secretly needs an install') and row 53 (#52 internal annotation on credentials); 'Deterministic Checks' and 'ChangeLogs Sheet Link' headers",
+    ".qc-cache/hireops-workspace-2026-10-03-r10/rules/harbor-webdev-rubric-qc/SKILL.md (Delivery profile: network public in both phases, never report it; Known false positives: demo passwords in the brief and ${VAR} templates in task.toml are intentional)",
+    ".qc-cache/hireops-workspace-2026-10-03-r10/rules/harbor-webdev-rubric-qc/references/quality-checks.md:43-45 (check 9 verify procedure)",
+    ".qc-cache/hireops-workspace-2026-10-03-r10/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (task.toml contract; docker_image absent, allow_internet omitted)",
+    ".qc-cache/hireops-workspace-2026-10-03-r10/rules/projects/webdev-task-template/task.toml and environment/Dockerfile",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/hireops-workspace-2026-10-03-r10/per-row-review/prompts/09.md",
+    "qc/runs/hireops-workspace-2026-10-03-r10/manifest.json (input_sha256 matches) and raw-evidence-index.json (scope only)",
+    ".qc-cache/hireops-workspace-2026-10-03-r10/task/task.toml (sha256 ac664d0e...9e068f26)",
+    ".qc-cache/hireops-workspace-2026-10-03-r10/task/environment/Dockerfile (sha256 0a75419e...e52467d1)",
+    ".qc-cache/hireops-workspace-2026-10-03-r10/task/environment/instructions/integration.md, hireops_rules.md, environment/assets/seed_data.json (secret scan)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Workbook row 9 (current 'Quality Checks' sheet) asks for sane CPU/memory and no secret literals, with network_mode = \"public\" explicitly correct; quality-checks.md:44 adds: cpus/memory_mb present and sane, no secret literal under [environment], network_mode = \"public\", [environment].docker_image absent, allow_internet omitted. Frozen task/task.toml:20-24 is exactly '[environment] build_timeout_sec = 600.0 / network_mode = \"public\" / cpus = 2 / memory_mb = 4096' - identical to the frozen template task.toml:20-24 and staged-task-contract.md. No docker_image and no allow_internet key anywhere in task.toml (grep). No secret literal under [environment]; the only credential-like lines are task.toml:34-35 in [verifier.env] ('ANTHROPIC_AUTH_TOKEN = \"${OPENROUTER_API_KEY}\"', 'ANTHROPIC_API_KEY = \"\"'), which are the frozen ${VAR} template, not literals, and not in the agent environment. The agent image task/environment/Dockerfile is byte-identical to the template Dockerfile (diff: no differences): FROM node:22-bookworm-slim, apt installs ca-certificates git procps sqlite3, npm -g express@5.1.0 better-sqlite3@12.4.1 (pinned), COPY instructions/ and assets/, no ENV/ARG secrets, no build-time credentials. Secret scan of environment/ (regex for api key/secret/token/password/sk-/bearer/AKIA/ghp_/xox and 32+ char token strings) finds only the brief's demo password 'Hireops!2026' at environment/instructions/hireops_rules.md:11, which the skill lists as an intentional house-convention false positive; seed_data.json contains no password/token fields or long opaque strings, and its emails use only reserved .example domains (hireops.example, candidates.example, mail.example). 'Nothing secretly needs an install' (internal sheet): integration.md:3-4 states Express and better-sqlite3 are available through NODE_PATH, matching the Dockerfile's global installs and ENV NODE_PATH. 2 CPUs / 4 GiB is the standard contract allocation and ample for one Node 22 Express+SQLite process plus an agent. Counterexample attempts: a broken app could not exploit this row (it is pure environment configuration); a conforming app is not disadvantaged since network is public and both runtime packages are preinstalled. The internal sheet's older 'no-network' wording conflicts with the current public sheet, skill delivery profile and template; per the skill and task instructions the public posture is correct and not flagged. Unmeasured: no agent-image build or resource-usage run was performed in this review (none required for this static configuration row; image pinning by digest belongs to row 15).",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

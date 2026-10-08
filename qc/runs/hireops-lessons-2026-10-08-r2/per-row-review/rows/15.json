@@ -1,0 +1,36 @@
+{
+  "number": 15,
+  "id": "dockerfile_builds_the_declared_world",
+  "reviewer": "row-reviewer-15",
+  "input_sha256": "ccf245cd03b12e6e1b34d59f7941e6193ce9e283b5dee63d31a857f2bf99bd45",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-lessons-2026-10-08-r2/rules/WebDev Rubrics QC.xlsx (Quality Checks row 15 / A16:D16; Internal Quality Checks row 15; Deterministic Checks dockerfile/fixture/runtime-deps rows)",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/rules/harbor-webdev-rubric-qc/references/quality-checks.md (### 15)",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (Dockerfile-related rows)",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/rules/projects/webdev-task-template/environment/Dockerfile, task.toml, solution/solve.sh, tests/Dockerfile, tests/test.sh",
+    "qc/REVIEW_POLICY.md",
+    "handoffs/LESSONS_FROM_COLDERWATER_2026-10-08.md",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/task/environment/Dockerfile",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/task/environment/instructions/integration.md",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/task/environment/assets/seed_data.json",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/task/instruction.md",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/task/task.toml",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/task/solution/solve.sh, solution/app/package.json, require() lines of server.js, src/*.js",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/task/tests/Dockerfile, tests/test.sh",
+    "qc/runs/hireops-lessons-2026-10-08-r2/raw-evidence-index.json (artifact hashes verified)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Source review of frozen .qc-cache/hireops-lessons-2026-10-08-r2/task (input ccf245cd...). task/environment/Dockerfile (sha256 0a75419e...) is byte-identical to the frozen template rules/projects/webdev-task-template/environment/Dockerfile (same sha256; diff empty), so no task-side drift.\nChecked against workbook Quality Checks row 15 (A16..D16: 'Agent image is pinned, pre-installs every runtime dependency (no run-time install), and stages the assets.'; Internal Quality Checks sheet row 15 identical text, no extra annotation; no comments/threaded comments in the xlsx) and skill references/quality-checks.md '### 15' verify list:\n- Pinned base: Dockerfile:1 'FROM node:22-bookworm-slim' (template tag pin; no --platform). npm pins Dockerfile:9-12 'npm install -g --no-audit --no-fund express@5.1.0 better-sqlite3@12.4.1'. apt line Dockerfile:5-7 (ca-certificates git procps sqlite3) is unpinned, which deterministic-checks.md/workbook check-dockerfiles.py treat as a NOTE only.\n- NODE_PATH: Dockerfile:3 'ENV NODE_PATH=/usr/local/lib/node_modules' matches the global install location and test.sh:106/162 'NODE_PATH=\"/usr/local/lib/node_modules\"'.\n- Every runtime dependency: the golden's only non-built-in requires are src/db.js:7 require('better-sqlite3') and src/index.js:18 require('express'); others are fs/path/crypto/node:http/node:worker_threads. solution/app/package.json:13-16 pins exactly better-sqlite3 12.4.1 and express 5.1.0. No node_modules or symlinks shipped in the task. solve.sh only copies files (cp -a, line 35) and does no install. Public contract agrees: instruction.md:15 'Server dependencies are already available, so don't install packages'; integration.md:3-4 'Express and better-sqlite3 already available through NODE_PATH; use only those packages and Node built-ins'. Verifier image tests/Dockerfile:16-22 installs the same two pins (row 22/check-runtime-deps-in-both-images agreement).\n- Stages assets: Dockerfile:14-15 'COPY instructions/ /instructions/' and 'COPY assets/ /assets/'; Dockerfile:16 'chmod -R a+rX /instructions /assets'; sources exist (environment/instructions/{hireops_rules.md,integration.md}, environment/assets/seed_data.json parses as JSON and is byte-identical to solution/app/src/seed_data.json).\n- /app: Dockerfile:17-23 mkdir, git init, commit of only .gitkeep; WORKDIR /app; no COPY/ADD of solution/ or tests/.\n- No grade-time network dependency: test.sh runs the copied /app with node directly, no npm install.\nCounter-probes: (a) a broken app needing an extra package (e.g. ws) would fail to start at grade time unless it vendored node_modules under /app; that is the builder's fault, consistent with the public 'don't install packages' line, not an image defect. (b) a conforming app using only express/better-sqlite3/built-ins via NODE_PATH resolves in both images; nothing in the brief demands a dependency the image lacks (live updates are achievable with built-in SSE as the golden does at src/index.js:103).\nLessons file (handoffs/LESSONS_FROM_COLDERWATER_2026-10-08.md) checked: items 18-19 (re-review after fixes; Docker golden harness) bear on this row; the Dockerfile is unchanged from template, so no fix-induced drift. Item 19: raw-evidence-index entries (hashes verified, all matching_source_files match the frozen bytes) ran the scripted golden in the verifier image hireops-verifier:20261002-permission-repair, which carries the same express/better-sqlite3 pins, giving indirect evidence the pinned packages install and load; no agent-image build log is indexed for this round, so the agent image build itself is NOT EXERCISED. That missing build is a template-identical image and not a required measurement for this source row; it is not upgraded into a measured claim.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

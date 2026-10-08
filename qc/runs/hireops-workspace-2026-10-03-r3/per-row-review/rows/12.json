@@ -1,0 +1,30 @@
+{
+  "number": 12,
+  "id": "no_prebuilt_image_shadows_the_agent_dockerfile",
+  "reviewer": "row-reviewer-12",
+  "input_sha256": "f53d9ed60d12f2a653d497dc98fac56a662e0d84393cdc5ff130c8a915d956db",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r3/rules/WebDev Rubrics QC.xlsx :: 'Quality Checks'!C13 (row 12, block 'B - task.toml & run wiring': \"[environment].docker_image isn't set while the agent Dockerfile still has active build steps (which would skip the Dockerfile entirely).\") and 'Internal Quality Checks'!C13 (same wording, no additional annotation or cell comment)",
+    ".qc-cache/hireops-workspace-2026-10-03-r3/rules/harbor-webdev-rubric-qc/SKILL.md (full: scope, delivery profile, verdicts/severity, evidence standard, known false positives, workflow)",
+    ".qc-cache/hireops-workspace-2026-10-03-r3/rules/harbor-webdev-rubric-qc/references/quality-checks.md:53-54 (check 12 procedure) and :44 (check 9, related docker_image-absent expectation)",
+    ".qc-cache/hireops-workspace-2026-10-03-r3/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md:78 (docker_image must be absent while Dockerfile has active build steps)",
+    ".qc-cache/hireops-workspace-2026-10-03-r3/rules/projects/webdev-task-template/task.toml (full) and environment/Dockerfile (full)",
+    "qc/REVIEW_POLICY.md (full, 37 lines)",
+    ".qc-cache/hireops-workspace-2026-10-03-r3/task/task.toml (full, sha256 ac664d0eda969418119945e4b153c18a13e26d3e8bbc0a0f6907978c9e068f26)",
+    ".qc-cache/hireops-workspace-2026-10-03-r3/task/environment/Dockerfile (full, sha256 0a75419e9598ded9317b26bbf0d2b12de0b9b11185fb4c9fed1ca7f3e52467d1)",
+    ".qc-cache/hireops-workspace-2026-10-03-r3/task/tests/Dockerfile:1-30 (verifier image, for scope contrast only)",
+    "qc/runs/hireops-workspace-2026-10-03-r3/raw-evidence-index.json (header/scope and first entry; input_sha256 matches assignment)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "task/task.toml [environment] (lines 20-24) contains exactly build_timeout_sec = 600.0, network_mode = \"public\", cpus = 2, memory_mb = 4096; there is no docker_image key. A grep for 'docker_image' or 'image =' across every *.toml under the frozen task returns no match, so neither [environment] nor [verifier.environment] (only network_mode = \"public\") names a prebuilt image. The agent Dockerfile (task/environment/Dockerfile) has active build steps: FROM node:22-bookworm-slim (L1), apt-get install ca-certificates git procps sqlite3 (L5-7), pinned global npm install express@5.1.0 better-sqlite3@12.4.1 (L9-12), COPY instructions/ and assets/ (L14-15), chmod + /app git init/commit (L16-23), WORKDIR /app, CMD sleep infinity. Because no docker_image is set, Harbor must build this Dockerfile, so the /instructions and /assets COPY steps the brief depends on are live, not dead code. Both task.toml [environment] block and environment/Dockerfile are byte-for-byte the same as the frozen template (rules/projects/webdev-task-template/task.toml L20-24 and environment/Dockerfile L1-26), i.e. the template-controlled wiring is preserved. Counterexample attempts: (a) a broken setup that could pass — setting docker_image to a stale prebuilt node image would skip the COPY of /instructions and /assets and the brief's paths would be missing; this is precluded because the key is absent. (b) a conforming alternative that could fail — a submission is unaffected by this row since it concerns only harness config, not app behaviour; no plausible conforming app is penalized. This is a static configuration row; no runtime measurement is required to establish it, and the absence of an agent-image build log in raw-evidence-index.json (which records verifier-image runs only) does not bear on whether docker_image shadows the Dockerfile. Not a portal/checker run; manual inspection of frozen bytes.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

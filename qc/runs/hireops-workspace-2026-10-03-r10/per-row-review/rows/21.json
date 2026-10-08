@@ -1,0 +1,28 @@
+{
+  "number": 21,
+  "id": "verifier_entrypoint_is_safe_and_always_scores",
+  "reviewer": "row-reviewer-21",
+  "input_sha256": "622c7c3d5aa7f77beae16575e8006f426f50f3a84b0bead9f50ac5b0b1c70804",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r10/rules/WebDev Rubrics QC.xlsx (openpyxl read_only, in memory): sheet 'Quality Checks' row 21 'verifier_entrypoint_is_safe_and_always_scores' (test.sh launches the app safely, gates on liveness, runs the gates suite before the scored suite with tools/score.py after each, and writes a reward on every code path); sheet 'Internal Quality Checks' row 21 (same minus suite ordering; no reviewer annotation on row 21)",
+    ".qc-cache/hireops-workspace-2026-10-03-r10/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r10/rules/harbor-webdev-rubric-qc/references/quality-checks.md section 21 (and 22-29 context)",
+    ".qc-cache/hireops-workspace-2026-10-03-r10/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (tests/test.sh ordered contract, budget nesting, tools/)",
+    ".qc-cache/hireops-workspace-2026-10-03-r10/rules/projects/webdev-task-template/tests/test.sh, tests/tools/score.py, */*/judge.toml timeouts",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r10/task/tests/test.sh (all 227 lines), tests/tools/score.py, tests/scoring.toml, tests/*/*/judge.toml timeouts, task.toml, instruction.md line 13, environment/instructions/integration.md",
+    "qc/runs/hireops-workspace-2026-10-03-r10/raw-evidence-index.json (hashes of workspace.json a424b50f... and server.log 6752f461... re-verified as matching)"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "Source review (static + score.py execution). task/tests/test.sh and task/tests/tools/score.py are byte-identical to the frozen template (diff empty), so the entrypoint is template-controlled. Contract walk against staged-task-contract.md: (1) write_zero_reward at test.sh:60 runs before any other grading step and `trap cleanup EXIT` at :61 calls ensure_reward (:20-23); no `exec` anywhere; ZERO_REWARD_JSON (:8) carries reward, all five dimensions, gates_passed, floors_passed, weighted_score, graded, no_op. (2) missing judge env (:63-66), missing /app/server.js (:68-70), symlink outside /app/node_modules (:72-83) and liveness failure (:123-125) all `exit 0` with the pre-written zero intact. (3) App copied aside (:90-95) and launched with `setsid env -i PATH NODE_PATH HOME PORT DB_PATH setpriv --reuid=65534 --regid=65534 --clear-groups node` (:104-111); /tests chmod go-rwx (:12) and LOG_DIR 700 under umask 077 (:3,:10-11) keep rubric and reward out of reach of the uid-65534 app. (4) Liveness probe /api/health then / with 120x0.25s retries before RewardKit (:42-58,:115-125). (5) Restart helper heredoc + sed + chmod 755 + export APP_RESTART_HELPER (:127-193). (6) {app_context} substitution (:195-201). (7) gates suite under `timeout 1500` (:213), then score.py: 0 continues, 1 exits keeping the detailed record, other writes plain zero (:216-222). (8) scored suite under `timeout 11100` (:224) then score.py, failure -> write_zero_reward (:227). Stale scored dir removed before gates (:212). Budget nesting with --max-concurrent-agent 1: gates 600+600=1200<1500; scored 9000+900+900=10800<11100; 1500+11100=12600<13200 (task.toml:27); judge timeouts equal the template. Executed score.py copy in scratchpad (python -B, Python 3.12) with synthetic RewardKit outputs: gates pass/no scored -> exit 0 reward 0.0000 (graded record); gate fail -> exit 1 reward 0.0000; all pass f=0.8,p=0.5,v=0.6 -> 0.7000; functional 0 (floor) -> 0.0000; non-numeric dimension -> exit 2 (test.sh then writes plain zero); missing gates reward.json -> exit 2. Every path ends with a reward file. Brief agrees with launch facts the entrypoint uses (instruction.md:13: node /app/server.js, port 3000, GET /api/health, DB_PATH). Adversarial probes: broken app returning HTTP 500 on /api/health passes liveness (HTTPError counts as ready, :50-52) but only reaches the judge gates, which is the template design, not a reward leak; a conforming app containing a symlink outside /app/node_modules (e.g. a public/vendor link) would be zeroed silently by :72-83, which the brief does not mention - template-mandated policy (contract item 2), recorded for row 23 rather than as a row-21 defect. Missing evidence: no full configured verifier launch of this exact test.sh in the verifier image (raw-evidence-index scope explicitly says full configured grading is absent; the scripted golden run launched the app as uid 65534 with a restart but did not run test.sh/RewardKit/score.py end to end). Source verdict Pass; runtime unmeasured, so risk stays true.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

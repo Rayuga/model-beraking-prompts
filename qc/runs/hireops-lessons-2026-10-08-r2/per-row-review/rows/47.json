@@ -1,0 +1,36 @@
+{
+  "number": 47,
+  "id": "verifier_is_deterministic_and_offline_pinned",
+  "reviewer": "row-reviewer-47",
+  "input_sha256": "ccf245cd03b12e6e1b34d59f7941e6193ce9e283b5dee63d31a857f2bf99bd45",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-lessons-2026-10-08-r2/rules/WebDev Rubrics QC.xlsx (read in memory via zipfile; openpyxl not installed in this Python): 'Quality Checks' row 48 (#47, D48 = 'Shared pinned judge agent + model, pinned judge CLIs and browser, graded time rules on a fixed clock. Temperature and prompt-version markers are not required. Network is public here, so an open verifier network / missing allowlist is NOT a defect.'), 'Internal Quality Checks' row 48 (older wording 'Pinned model, temperature 0, versioned prompt, pinned browser, and no unpinned network in the scoring path'; E48 is an empty styled cell with no annotation), related rows 10/22/24 and Deterministic Checks check-dockerfiles.py, check-pip-pinning.sh",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/rules/harbor-webdev-rubric-qc/SKILL.md (delivery profile: public network, claude-code + z-ai/glm-5.3-flashx via frozen [verifier.env]; no model/temperature/reasoning in judge.toml)",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/rules/harbor-webdev-rubric-qc/references/quality-checks.md section '47 · verifier_is_deterministic_and_offline_pinned'",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (frozen [verifier.env], judge.toml shape, shared tools, fixed-clock cross-file fact)",
+    ".qc-cache/hireops-lessons-2026-10-08-r2/rules/projects/webdev-task-template/ (task.toml, tests/Dockerfile, tests/test.sh, tests/scoring.toml, tests/.dockerignore, tests/tools/score.py, tests/tools/restart_mcp.py, every judge.toml [judge] block) - diffed against the task",
+    "qc/REVIEW_POLICY.md",
+    "handoffs/LESSONS_FROM_COLDERWATER_2026-10-08.md",
+    "task/task.toml, task/tests/Dockerfile, task/environment/Dockerfile, task/tests/test.sh (clock grep), all five task/tests/*/*/judge.toml [judge] and mcp_servers blocks, task/tests/scored/functional/prompt.md line 21 and task/tests/scored/polish/prompt.md line 18 (timed-observation protocol), URL grep over all prompts/app_context/criteria, task/instruction.md, task/environment/instructions/hireops_rules.md, task/environment/instructions/integration.md, task/tests/app_context.md, task/environment/assets/seed_data.json (timestamps), task/solution/app/src/index.js (time/ordering grep)",
+    "qc/runs/hireops-lessons-2026-10-08-r2/raw-evidence-index.json (all 8 artifact hashes recomputed: all match; all matching_source_files hashes match the frozen task bytes)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Judge agent+model pinned and shared: task/task.toml:30-35 [verifier.env] is the frozen block verbatim (REWARDKIT_JUDGE = \"claude-code\", REWARDKIT_MODEL = \"z-ai/glm-5.3-flashx\", ANTHROPIC_BASE_URL = \"https://openrouter.ai/api\", ANTHROPIC_AUTH_TOKEN = \"${OPENROUTER_API_KEY}\", ANTHROPIC_API_KEY = \"\"); diff against rules/projects/webdev-task-template/task.toml differs only in the [task]/[metadata] CHANGE_ME fields. All five judge.toml [judge] blocks (gates/render, gates/constraints, scored/functional, scored/polish, scored/visual) are byte-identical to the template's up to [scoring]: judge = \"claude-code\", mode = \"batched\", timeout = 600, no model/temperature/reasoning_effort/weight key. Judge CLIs and browser pinned: task/tests/Dockerfile is byte-identical to the template: line 17 @anthropic-ai/claude-code@2.1.281, line 18 @openai/codex@0.151.0, line 19 @playwright/mcp@0.0.79, line 31 harbor-rewardkit==0.1.7; lines 33-38 install Chromium via the Playwright CLI bundled inside the pinned @playwright/mcp@0.0.79 and symlink it to /usr/local/bin/chromium, which every playwright MCP server uses (--executable-path=/usr/local/bin/chromium, e.g. scored/functional/judge.toml:12). Shared tools: tests/tools/score.py, tests/tools/restart_mcp.py, tests/test.sh, tests/scoring.toml, tests/.dockerignore are byte-identical to the template. Fixed clock: the task has no graded calendar/run-date rule. Unread is event/count-based (hireops_rules.md:157-160; seed 'reads' carry read_count, not times), seen is event-based (hireops_rules.md:170-172), Activity is newest-first over actions performed during the review (hireops_rules.md:116), and no criterion grades a displayed timestamp, date or 'N minutes ago' (grep over all criteria/prompts for timestamp/date/created_at/clock/today found none). Seed timestamps are fixed in the past (2026-07-01 .. 2026-07-29, seed_data.json), so a conforming app stamping new records with the real clock still orders them after seed records; the golden orders by autoincrement id (solution/app/src/index.js:158,189,407-412). The only graded time rule is a relative latency ('within 15 seconds', hireops_rules.md:122); both prompts that grade it carry an identical timed-observation protocol (functional prompt.md:21 = polish prompt.md:18): single browser_run_code_unsafe action, t0 only after the trigger succeeds, 500 ms DOM polling to 15000 ms, explicit void definition, at most two repeats of void attempts, a completed met=false is final, negatives watched for the full window then reload-confirmed, unique suffixes per attempt. This addresses Colderwater lessons 7/14 for every timed step, not just one. No public internet address in any judge prompt/app_context/criterion (only http://localhost:3000; lesson 13). Network is public in both phases (task.toml:22,38), which the workbook row explicitly says is not a defect. Raw evidence index hashes all verify, but they cover scripted golden observations only and are not needed for this static pinning row.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED",
+  "notes": [
+    "Plausible broken app that could pass: none attributable to this row; pinning and clock handling do not create a pass path for a dead app (gates and criteria own that).",
+    "Conforming alternative that could fail: an app that stamps messages with Date.now() and sorts by created_at would only misorder if the verifier clock were earlier than July 2026, which is not plausible on current runs; an app polling exactly every 15 s may miss the 15000 ms window by request latency, but that app does not reliably meet the brief's 'within 15 seconds' so this is not a conformity defect.",
+    "Latent, template-controlled, not a task defect (P3 at most): base images use tags (node:22-bookworm-slim, python:3.12-slim) not digests; apt packages unpinned (check-dockerfiles.py treats this as NOTE); the Chromium build is fixed only transitively through @playwright/mcp@0.0.79's own playwright dependency, which I did not resolve against the npm registry. These files are byte-identical to the frozen template and must not be edited by the task.",
+    "LLM judge sampling is inherently non-deterministic; the workbook row explicitly does not require temperature or prompt-version markers, so this is not scored here.",
+    "No Docker build or configured judge run was performed by this reviewer; this verdict rests on source/config inspection, which is what the row's verify procedure asks for."
+  ]
+}

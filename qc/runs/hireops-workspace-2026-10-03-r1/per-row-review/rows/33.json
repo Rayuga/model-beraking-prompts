@@ -1,0 +1,34 @@
+{
+  "number": 33,
+  "id": "criterion_description_is_self_consistent",
+  "reviewer": "row-reviewer-33",
+  "input_sha256": "6ca9ee7368c7aef18033c68fdd278d965bcb75bc20d710f6c60c557dfb8953eb",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/WebDev Rubrics QC.xlsx :: 'Quality Checks' row 34 (#33 criterion_description_is_self_consistent) and 'Internal Quality Checks' row 34 (Mukesh annotation: multiple verifiers are combined in one flow)",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/harbor-webdev-rubric-qc/SKILL.md (incl. Known false positives: 'One criterion covering a whole flow' covers checks 26, 28, 33)",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/harbor-webdev-rubric-qc/references/quality-checks.md ### 33 (lines 138-140)",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/projects/webdev-task-template (tree listing; staged layout tests/gates + tests/scored matches task)",
+    "qc/REVIEW_POLICY.md",
+    "task/tests/scored/functional/judge.toml (all 43 criteria)",
+    "task/tests/scored/functional/prompt.md",
+    "task/tests/scored/polish/judge.toml",
+    "task/tests/scored/visual/judge.toml",
+    "task/tests/gates/render/judge.toml",
+    "task/tests/gates/constraints/judge.toml",
+    "task/tests/app_context.md",
+    "task/environment/instructions/hireops_rules.md",
+    "task/instruction.md (grep for offer/hidden/shown wording)"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "Every criterion in all five judge.toml files was read and compared sentence-by-sentence: the full-credit bar (the opening statement) against its 'Fails if' clause. Bundling several rules into one conjunctive flow is an accepted pattern under SKILL.md's known false positives and the internal annotation, and is NOT reported. The reported defect is different. In these criteria the bar lists a requirement, and then the Fails clause lists only some of the bar's elements, so the omitted ones are effectively waived. That gives the judge two different targets. Instances, all paths under task/tests/scored/:\n(1) functional/judge.toml:56 hro_move_one_stage (w1.5): 'a move that skips a stage (Interview to Hired) is not offered and, when tried, is refused with the card unchanged' vs 'Fails if a skip is accepted, a one-stage move is refused, or moving is only possible by dragging'. 'Not offered' is in the bar but missing from the Fails clause.\n(2) functional/judge.toml:92 hro_reject_hired (w0.5): 'the option is not offered and, when tried, is refused' vs 'Fails if a Hired card can be rejected'.\n(3) functional/judge.toml:155 hro_mgr_early_refused (w1): 'not offered and, when tried, refused' vs 'Fails if either early move is accepted'.\n(4) functional/judge.toml:164 hro_mgr_other_job (w1): 'offered no move on this job's cards, and a tried move is refused' vs 'Fails if accepted'.\n(5) functional/judge.toml:182 hro_candidate_no_staff (w1): 'a candidate is offered no board, and replays ... are refused' vs 'Fails if any is accepted'.\nContrast functional/judge.toml:173 hro_observer_readonly, which is self-consistent ('Fails if any is offered or accepted'). So are hro_reopen:101 ('not offered or is refused'), hro_notes:281 ('not offered ... or is refused') and hro_thread_access:362 ('not listed, or refused'). These show that the 'not offered' and refused wording is used inconsistently. The functional prompt (functional/prompt.md:23) adds a third reading: 'Where the UI does not offer an action that a step says to try, record that it is not offered and replay the closest observed request'. It treats 'not offered' as a path to the replay, not as a pass/fail requirement. The public rules require only refusal, not hiding: environment/instructions/hireops_rules.md:47-48 'Skipping a stage is refused', :49 rejection 'from any stage except Hired', :72 'Everything else is refused for them', :73 'An observer and a candidate move nothing', :193 'every staff action are refused to candidates'.\nSmaller instances of the same pattern:\n(6) functional/judge.toml:191 hro_anonymous (w1.5): bar 'refused with 401' vs 'Fails if any anonymous request returns workspace data or changes anything'. A 403 or 302 refusal with no data meets the Fails clause but not the bar. The rules (hireops_rules.md:21) do say 401.\n(7) polish/judge.toml:50 hro_pol_failed_send (w1.5): bar 'A visible explanation appears' vs a Fails list (lost, shown as sent, sent twice, note draft lost) that leaves out a missing explanation.\n(8) functional/judge.toml:29 hro_job_open (w0.5): bar 'it appears with those values, and an independent context sees it' vs 'Fails if a refused job is created or a valid one is not'. Wrong displayed values, or failing to share the job, are not named. This is weak: 'not created' arguably covers it.\nThe gate criteria (render, constraints), the visual Likert anchors and the remaining functional and polish criteria each state one bar, and their Fails clauses match it. Golden impact was not measured. The golden presumably hides invalid moves, so the oracle score is probably unaffected. The risk falls on conforming alternative apps and on how consistently the judge scores. No runtime evidence was needed for this source-consistency row. raw-evidence-index.json exists but was not relied on, and its hashes were not re-verified for this row.",
+  "counterexample": "Conforming alternative: a board that gives each card a single 'Move to stage' dropdown listing all stages (or a Reject button that is also on Hired cards). Choosing Interview->Hired or rejecting a Hired card returns a server 403 or 422 with a clear message, and the card stays put. This matches hireops_rules.md:47-49 ('Skipping a stage is refused'). A judge that reads the bar literally ('is not offered and, when tried, is refused') scores hro_move_one_stage, hro_reject_hired, hro_mgr_early_refused, hro_mgr_other_job and hro_candidate_no_staff 0, losing 5.0 functional weight. A judge that follows the Fails clauses scores the same app 1. In the other direction, an app answering anonymous replays with 403 and an empty body passes hro_anonymous under its Fails clause but fails the '401' bar.",
+  "suggested_fix": "Give each listed criterion one target. Either drop 'not offered' from the bar and keep 'when tried, is refused with the card unchanged' (this matches the public rules, which require refusal, not hiding), or add 'offered' to the Fails clause the way hro_observer_readonly does. Likewise add 'or is refused with a status other than 401' to hro_anonymous, 'no explanation is shown' to hro_pol_failed_send, and 'shows wrong values or is not seen by the independent context' to hro_job_open.",
+  "run_verdict": "NOT EXERCISED"
+}

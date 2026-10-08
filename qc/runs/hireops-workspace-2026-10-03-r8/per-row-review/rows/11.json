@@ -1,0 +1,36 @@
+{
+  "number": 11,
+  "id": "timeouts_fit_the_work",
+  "reviewer": "row-reviewer-11",
+  "input_sha256": "74f3c8aabb287552a2a6045a07212a40f8d2bd5574f78227a868fc40f9c7f265",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r8/rules/WebDev Rubrics QC.xlsx (openpyxl read_only, in memory): Quality Checks row 11 'timeouts_fit_the_work' ('Agent, verifier, liveness, and judge timeouts are long enough and nest: gate judges < gates budget, scored judges < scored budget, both budgets < verifier timeout.'); Internal Quality Checks row 11 ('... nest properly (inner < outer, sum of judges < verifier)'); Deterministic Checks check-scoring-policy.py ('judge timeouts nest inside suite budgets and the verifier timeout') and check-rubric-schema.py",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/rules/harbor-webdev-rubric-qc/SKILL.md (evidence standard: never upgrade an unmeasured claim to Pass)",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/rules/harbor-webdev-rubric-qc/references/quality-checks.md section '11 · timeouts_fit_the_work'",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (task.toml block lines ~53-64; budget nesting line 111; judge.toml timeout line 119; restart_mcp 55 s line 163)",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/rules/projects/webdev-task-template/task.toml, tests/test.sh, tests/scoring.toml, tests/tools/*.py, tests/*/*/judge.toml (diffed against task)",
+    "qc/REVIEW_POLICY.md ('Workload is measured, not inferred from a timeout number'; runtime evidence section)",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/task/task.toml",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/task/tests/test.sh",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/task/tests/gates/{render,constraints}/judge.toml",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/task/tests/scored/{functional,polish,visual}/judge.toml",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/task/tests/scored/functional/prompt.md (protocol outline Z,S,M,L,C,B,N,T,U,K,R,V,A,D)",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/task/tests/tools/restart_mcp.py",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/task/environment/Dockerfile",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/task/solution/solve.sh",
+    "qc/runs/hireops-workspace-2026-10-03-r8/manifest.json (all 35 task-file hashes re-verified: 0 mismatches)",
+    "qc/runs/hireops-workspace-2026-10-03-r8/raw-evidence-index.json (6 artifact hashes re-verified: all match)"
+  ],
+  "verdict": "Not exercised",
+  "risk": true,
+  "severity": "P1",
+  "evidence": "NESTING (static arithmetic, verified): task.toml differs from the frozen template only in [task]/[metadata] text; timeouts are template-canonical: [agent] timeout_sec=7200.0, [environment] build_timeout_sec=600.0, [verifier] timeout_sec=13200.0. test.sh (byte-identical to template) runs rewardkit with --max-concurrent-agent 1 (test.sh:207), so judges in a suite run sequentially: gates budget `run_suite gates 1500` (test.sh:213) vs render 600 + constraints 600 = 1200 < 1500 (each 600 < 1500). Scored budget `run_suite scored 11100` (test.sh:224) vs functional 9000 + polish 900 + visual 900 = 10800 < 11100. 1500 + 11100 = 12600 < 13200 verifier. Liveness: probe loop 120 x 0.25 s (test.sh:116-121) ~30 s plus up to 2 s urlopen per URL, and it runs before the suites (worst case ~8 min only if both probes hang, and 12600 + startup still < 13200 by 600 s; realistic Node start is seconds). Restart helper waits 30 s for readiness (app-restart.sh, test.sh:171-182) inside restart_mcp.py HELPER_TIMEOUT_SEC = 55 (restart_mcp.py:11). Agent image build is apt + two pinned global npm installs (environment/Dockerfile), plausibly far under 600 s. All nest correctly; check-scoring-policy's nesting rule is satisfied.\n\nLONG ENOUGH (unmeasured): the workload is far heavier than the template's at the same canonical budget. Functional judge.toml has 43 binary criteria (template: 2) in one batched claude-code session with timeout 9000 (~209 s per criterion), driven by an 18,004-byte prompt containing 14 multi-actor protocols (Z,S,M,L,C,B,N,T,U,K,R,V,A,D) with many independent browser contexts, captured/replayed requests, a restart, and repeated 'wait up to 15 seconds' live-update readings (U alone has roughly 8-10 such waits; V more). Polish (5 criteria, 900 s) also includes two 15 s live waits plus multi-context setup. raw-evidence-index.json scope states explicitly: 'Full configured grading/workload, reward discrimination/ranking and Oracle/target scores are absent', and each entry says 'Not a configured judge run, Oracle grade, model score or judge-duration measurement.' Scripted Playwright duration is not judge duration (REVIEW_POLICY). So there is no measured evidence that the GLM-5.3-flashx claude-code judge finishes Functional within 9000 s or Polish within 900 s. Per SKILL.md, an unmeasured claim cannot be upgraded to Pass; the nesting half passes, the 'long enough' half is Not exercised and remains a delivery risk. I do not recommend an automatic increase; current budgets are canonical and policy forbids changing them without a measured reason.",
+  "counterexample": "Conforming alternative that could fail: a correct app that delivers live updates by polling every 10-12 s (allowed by the 15 s windows) forces the judge to sit out most of each 15 s window across the U/V/polish protocols, and a slower flash judge doing ~43 criteria with many fresh contexts could exceed functional timeout=9000 (or polish 900). A timed-out judge leaves functional at 0/unscored, failing the functional floor 0.05 (scoring.toml) or tripping `if ! run_suite scored 11100; then exit 0` (test.sh:224-225) to the zero reward, so a correct submission would score 0 for a harness reason. Not demonstrated; no full configured run exists to confirm or refute it.",
+  "suggested_fix": "Run the full configured verifier (claude-code + z-ai/glm-5.3-flashx) on the golden at least once, record per-dimension judge wall time in a hash-bound workload record; if Functional approaches 9000 s or Polish 900 s, reduce redundant browser work/scope, or make a recorded, authorized timeout change kept below five hours with the checker adapted narrowly.",
+  "run_verdict": "NOT EXERCISED"
+}

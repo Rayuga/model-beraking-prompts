@@ -1,0 +1,36 @@
+{
+  "number": 28,
+  "id": "criteria_are_independent_and_noncontradictory",
+  "reviewer": "row-reviewer-28",
+  "input_sha256": "c5cd697aaa5daabac57bf7269873a877973f00326c7dcba6c4df9ac69303cb6c",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r9/rules/WebDev Rubrics QC.xlsx (Quality Checks row 28; Internal Quality Checks row 28 with annotation; Quality Checks header) read in memory via openpyxl read_only",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/rules/harbor-webdev-rubric-qc/SKILL.md (Known false positives: one criterion covering a whole flow)",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/rules/harbor-webdev-rubric-qc/references/quality-checks.md section 28 (and neighbouring 29-35 for scope)",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/rules/projects/webdev-task-template/tests/scored/functional/judge.toml and prompt.md",
+    "qc/REVIEW_POLICY.md",
+    "task/instruction.md",
+    "task/environment/instructions/hireops_rules.md",
+    "task/tests/scoring.toml",
+    "task/tests/scored/functional/judge.toml (all 43 criteria)",
+    "task/tests/scored/functional/prompt.md (all protocols Z,S,M,L,C,B,N,T,U,K,R,V,A,D)",
+    "task/tests/scored/polish/judge.toml",
+    "task/tests/scored/polish/prompt.md",
+    "task/tests/scored/visual/judge.toml",
+    "task/tests/scored/visual/prompt.md",
+    "task/tests/gates/render/judge.toml",
+    "task/tests/gates/constraints/judge.toml"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "Read all five scored/gate judge.toml files, three scored prompt.md files, instruction.md, environment/instructions/hireops_rules.md and scoring.toml in the frozen task (.qc-cache/hireops-workspace-2026-10-03-r9/task), plus workbook Quality Checks row 28 and Internal Quality Checks row 28 (Mukesh annotation: flows may combine several verifiers), SKILL.md known-false-positive 'One criterion covering a whole flow' (independence = no two criteria grade the same observable or demand incompatible products), references/quality-checks.md section 28, the template functional judge/prompt, and qc/REVIEW_POLICY.md ('Independent credit takes precedence over flow grouping').\nStrengths: functional (43 criteria, weight 58.5) is carefully partitioned with explicit ownership clauses: hro_arrive_bottom cedes multi-card arrival to hro_bulk_move; hro_interview_full cedes overfill-by-bulk to hro_bulk_places and by-undo to hro_undo_full; hro_undo_restores cedes the A2 undo to hro_undo_conflict; hro_drafts cedes clear-after-send to hro_msg_compose; hro_candidate_view cedes privacy to hro_candidate_private and linking to hro_candidate_linked; hro_activity cedes refused-line deductions to hro_activity_refusals (prompt line 19); hro_pol_failed_send cedes note drafts to hro_pol_session_resume; hro_pol_live_thread cedes scrolled-up placement to Functional. Role rows split by role/action (observer, candidate writes vs candidate reads, anonymous 401, other-job manager, own manager early stages, note rights, thread access) without the same request being graded twice. No pair demands incompatible products: focus-after-refusal (hro_refused_put_back), box empty+focused after send (hro_msg_compose), failed send keeps text (hro_pol_failed_send), stay-at-newest on arrival (hro_pol_live_thread) vs keep place when scrolled up (hro_unread_scrolled_up), per-user drafts across reload (hro_drafts) vs hidden from Mei (hro_pol_session_resume) are all jointly satisfiable and match hireops_rules.md sections 3, 5, 6.\nDEFECT (duplicate observable): tests/scored/functional/judge.toml:199-200 hro_stale_refused (weight 2.5) includes the leg 'Within 15 seconds after the refusal, without reload, Rafael's board shows F where the other recruiter put it.' In protocol C (functional/prompt.md:33) the out-of-date move is a replay sent by page.evaluate fetch, so the app's own client code never sees the 409 response; the only way Rafael's board can show F back in Applied is the app's live sync of Mei's independent-context move. That is exactly the observable hro_live_board owns (judge.toml:289-290: 'without reload or click, within 15 seconds this page shows the other recruiter's move in the new stage and place'), the public promise in instruction.md:5 / hireops_rules.md section 5 ('cards move to their new stage and place'). The two rows therefore grade the same live-board behaviour twice, on different cards; the stale-specific promise (409 that names who, nothing changes) is independent of it. The prompt's generic 'Never deduct one observed defect in more than one row' (prompt.md:23) does not resolve which row loses it, because the leg is written into the stale criterion's conjunctive bar.\nLesser overlaps judged Note, not defects: (a) hro_pol_live_board / hro_pol_live_thread zero when no update arrives, overlapping hro_live_board / hro_msg_exchange, but preservation cannot be shown without an arrival and REVIEW_POLICY forbids crediting a dead feature, so this is a necessary positive control; (b) hro_refused_put_back needs a refusal that hro_interview_full also needs (same dependency logic; UI-only refusal passes put_back, so they are separable); (c) hro_bulk_move and hro_undo_restores expected orders depend on the hro_reorder step B(3) (Y moved up); a reorder defect could cascade, mitigated only by prompt.md:23; (d) hro_move_one_stage vs hro_bulk_all_or_none both lose on an app with no skip rule anywhere, but the bulk path is a separately implemented server path and its distinct promise is atomicity; (e) visual hro_vis_typography's 5-anchor 'deliberate hierarchy' overlaps hro_vis_hierarchy, mitigated by visual prompt.md:14 'Do not deduct the same observed defect in more than one row'; (f) constraints gate and hro_add_candidate / hro_job_open share an observable, which is by-design gate vs scored overlap with zero gate weight.\nNo runtime evidence is needed to establish the duplication; this is a static rubric-design finding (run_verdict NOT EXERCISED). Impact bounded: 2.5/58.5 functional weight ~= 2.6% of total reward for an app that has correct 409/naming but no live board push.",
+  "counterexample": "An app whose server correctly refuses the out-of-date F move with 409 and 'changed by Mei Lin', changes nothing, but whose board only refreshes on reload or user action (no polling/push). It correctly fails hro_live_board (2.5) for missing live updates, and is also zeroed on hro_stale_refused (2.5) because Rafael's board does not show F back in Applied within 15 s after the replayed request, even though the replay bypasses the app's code so no 409 handling could have shown it. The same live-board defect costs two criteria.",
+  "suggested_fix": "Remove the 'Within 15 seconds after the refusal, without reload, Rafael's board shows F where the other recruiter put it' leg (and the matching 'or Rafael's board keeps showing F in the wrong place' fail clause) from hro_stale_refused, leaving board catch-up to hro_live_board; or, if a refused-move put-back is wanted, test it through the UI path in a separate distinct observable rather than after a fetch replay.",
+  "run_verdict": "NOT EXERCISED"
+}

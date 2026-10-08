@@ -1,0 +1,39 @@
+{
+  "number": 36,
+  "id": "grader_probes_are_not_pre_satisfied",
+  "reviewer": "row-reviewer-36",
+  "input_sha256": "2efc8dcc33d217e5aa005f531125764d19662c40957de60b26f4674029bc3966",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    "qc/runs/hireops-lessons-2026-10-08-r4/per-row-review/prompts/36.md",
+    "handoffs/LESSONS_FROM_COLDERWATER_2026-10-08.md",
+    ".qc-cache/hireops-lessons-2026-10-08-r4/rules/WebDev Rubrics QC.xlsx (read in memory via zipfile): 'Quality Checks' row 37 (#36 grader_probes_are_not_pre_satisfied, block E: 'Distinctive values the judge creates to prove a mutation aren't already sitting in the seed or the reference's initial state.'); 'Internal Quality Checks' row 37 (same check, no reviewer annotation in columns E-H); 'Deterministic Checks' row 24 check-probe-not-in-seed.py ('Distinctive probe values the judge prompts create (e.g. JUDGE-SKU-9001, 'Judge Lantern') must not already exist in the seed data or the reference app's markup. Skipped when no sentinels are named.')",
+    ".qc-cache/hireops-lessons-2026-10-08-r4/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-lessons-2026-10-08-r4/rules/harbor-webdev-rubric-qc/references/quality-checks.md (### 36, lines 149-151)",
+    ".qc-cache/hireops-lessons-2026-10-08-r4/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (check-probe-not-in-seed.py, line 56)",
+    ".qc-cache/hireops-lessons-2026-10-08-r4/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (relevant sections)",
+    ".qc-cache/hireops-lessons-2026-10-08-r4/rules/projects/webdev-task-template (file list, tests/app_context.md, tests/scored/functional/prompt.md guardrails)",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/hireops-lessons-2026-10-08-r4/manifest.json (input_sha256 matches) and raw-evidence-index.json (scope header only)",
+    "task/tests/scored/functional/judge.toml (all 12 criteria)",
+    "task/tests/scored/functional/prompt.md",
+    "task/tests/scored/polish/judge.toml and prompt.md",
+    "task/tests/scored/visual/judge.toml",
+    "task/tests/gates/render/judge.toml, task/tests/gates/constraints/judge.toml",
+    "task/tests/app_context.md",
+    "task/environment/assets/seed_data.json (byte-identical to task/solution/app/src/seed_data.json, cmp)",
+    "task/solution/app/public/index.html, public/js/board.js, public/js/threads.js (grep), src/db.js (seedIfEmpty), src/bootstrap.js",
+    "task/instruction.md and environment/instructions/hireops_rules.md (grep for places/limits/defaults)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Manual application of check-probe-not-in-seed.py (private checker not executed; this is a source review, not a portal checker run). (1) Every value the judge creates to prove a mutation is session-suffixed: functional prompt.md:21 'Use your own new jobs and cards for every board step (suffix every job title and candidate name for this session)'; prompt.md:29 'Give every message, note or card created inside a timed action a unique suffix for this review'; polish prompt.md:14 'Use your own new job and cards (suffix titles for this review)'; every gate/prompt's backend check adds a candidate 'with a unique name and email (add a short suffix for this review)'; hro_candidate searches candidate responses for a rejection reason 'ending in a unique suffix'; hro_readonly_roles/prompt.md:25 require 'an add-candidate with a new unique name and email, an open-job with a new unique title, a note with new text'; hro_pol_failed_send and hro_pol_session_resume use 'distinctive' replies. A suffix chosen at grading time cannot exist in the seed or reference markup. (2) Fixed literal probes grepped (case-sensitive, -F) against environment/assets/seed_data.json, solution public/index.html, public/js/*.js, src/*.js, server.js: '<b>plain</b>' (hro_messaging) - 0 hits; 'Call back' / 'Fri' (hro_pol_live_board note draft) - 0 hits; 'J1', 'J2', 'A2' labels - 0 hits ('plain' only in board.js dataTransfer 'text/plain', irrelevant). (3) Seeded values the criteria read are reads of starting facts, not mutation probes, and were checked against the seed: Platform Engineer Applied Greta/Ade/Marco, Screen Priya/Samuel (APP-105/106/108, 103/104); Noor's note 'Strong systems answers; weaker on incident follow-up.' (notes[0]); Lena's unread 1 (APP-301: 3 messages, USR-CAN3 read_count 2); Noor 120-message thread; Noor PE Interviewing, PD Application received; Tomas Data Analyst In review (APP-201 SCREEN). The mutation legs that sit beside them use judge-created values (suffixed J1 cards, suffixed message, new note), so the seed cannot pre-satisfy them. (4) Re-seed detection in hro_intake_restart ('the starting data is not loaded again (the seeded jobs appear once)') plus the suffixed J1/J2 jobs, cards, note and message: db.js seedIfEmpty seeds only an empty database; a wipe-and-reseed app loses the suffixed records and a duplicate-reseed app shows the seeded jobs twice, so neither passes (lesson 15: several distinct records re-read after a real restart_app). (5) Identity probes: hro_two_people requires the 409 to name Mei; the judge's job is opened by Rafael, so naming the job's recruiter or the mover's own account cannot match. Tomas-linking probes (hro_candidate/messaging/unread) use the suffixed new job title, distinct from seeded APP-201. (6) Interview places: reference Open-job form defaults to '3' (board.js:65), seed limits are 3/2/3; intake enters 2 for J1 and J2, which differs from the reference's initial default, so an app that silently keeps the reference default fails the 'places value matches what was entered' leg. (7) Polish prompt.md:14 handles pre-existing box text: 'If a message or note box already holds text from an earlier review, record it and clear it before typing your own.' Try-to-break: a seed-copy or static-mock app has none of the suffixed jobs/cards/messages/reasons, so every mutation probe fails; a conforming app with different labels or routes is not affected by any probe value. Notes (not row-36 defects): (a) intake uses places 2 for both J1 and J2 and hro_manager_roles enters 3 without ever filling a third Interview place, so the entered places value is only ever probed as 2; an app hard-coding 2 would not be caught here (the Data Analyst seed limit is also 2). Low plausibility; a different value for J2 (e.g. 4) would make the probe stronger. (b) Bearing on row 37 rather than 36: Functional prompt.md has no counterpart of polish's 'clear pre-existing box text' rule; a conforming app that stores reply drafts server-side could carry an hro_messaging step-3 draft (if the judge chose Noor's PE conversation) into hro_long_thread's 'reply still reads exactly what was typed'. The reference keeps drafts per browser (threads.js 'keep' store; judge sessions use --isolated), so the golden is unaffected. Lessons file patterns checked for this row: lesson 15 (restart re-reads several distinct revisions: satisfied), lesson 7/14 (timed steps use unique suffixed markers: satisfied), lesson 13 (localhost only: no public URL in probes).",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

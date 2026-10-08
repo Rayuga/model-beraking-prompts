@@ -1,0 +1,36 @@
+{
+  "number": 43,
+  "id": "gates_apply_before_shaping_and_carry_no_reward_mass",
+  "reviewer": "row-reviewer-43",
+  "input_sha256": "12bf37abe5ba3152b1255fb9b9531665c432b86e0b0d86562adc7c802940d224",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r13/rules/WebDev Rubrics QC.xlsx :: 'Quality Checks' row 44 (#43, block E): 'scoring.toml gates zero the reward and skip the scored suite, gates carry no weight, and the functional floor stops a non-working app farming polish/visual.' (read in memory with openpyxl read_only)",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/rules/WebDev Rubrics QC.xlsx :: 'Internal Quality Checks' row 44 (#43): 'Gate/constraint failures hard-zero the quality terms, and passing only the cheap gates earns little.'",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/rules/WebDev Rubrics QC.xlsx :: 'Deterministic Checks' check-scoring-policy.py row (related, for scope separation)",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/rules/harbor-webdev-rubric-qc/SKILL.md (delivery profile: shaped reward 0.6/0.2/0.2 behind two zero-weight gates and a functional floor)",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/rules/harbor-webdev-rubric-qc/references/quality-checks.md ### 43 and neighbours 40-46",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (tests/scoring.toml, tests/test.sh ordered contract, judge.toml schema)",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (check-scoring-policy.py, check-canonical-shared-files.py)",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/rules/projects/webdev-task-template/tests/{scoring.toml,test.sh,tools/score.py,gates/render/judge.toml}",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/task/tests/scoring.toml",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/task/tests/test.sh",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/task/tests/tools/score.py",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/task/tests/gates/{render,constraints}/judge.toml",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/task/tests/scored/{functional,polish,visual}/judge.toml (all criteria/weights parsed with tomllib)",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/task/tests/scored/{functional,polish,visual}/prompt.md global browser gate sections",
+    "qc/runs/hireops-workspace-2026-10-03-r13/raw-evidence-index.json (scope header and first entries)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "1) Policy bytes: task/tests/scoring.toml, test.sh and tools/score.py are byte-identical to the frozen template (diff -q reported 'same' for all three). scoring.toml: [gates] render = 0.0, constraints = 0.0; [weights] functional 0.6 / polish 0.2 / visual 0.2 (sum 1); [floors] functional = 0.05. Gates are absent from [weights], so they carry no reward mass. 2) Gates are binary single-criterion all_pass suites: gates/render/judge.toml (hro_gate_render, type binary, aggregation all_pass) and gates/constraints/judge.toml (hro_gate_shared, binary, all_pass); no weight/model key in [judge]. 3) Ordering/skip: test.sh:212 removes stale $LOG_DIR/scored before gates; test.sh:213 runs gates (failure/timeout -> exit 0 with the zero record written at :60 and trap ensure_reward at :61); test.sh:217-222 runs score.py: exit 1 (gate failed) -> exit 0 before the scored suite at :224; any other error -> write_zero_reward. score.py:41 gates_passed = all(score > 0.0); :42-44 scored dims forced to 0.0 unless gates pass AND scored output exists; :47 floors_passed requires scored_ran and functional > 0.05; :48 reward = weighted only if gates_passed and floors_passed else 0.0; :83 returns 1 on gate failure. After the gate-only score.py run the interim reward is 0 (scored_ran false), so a scored-suite timeout (test.sh:224-225) leaves reward 0. 4) Executed score.py (frozen copy, python -B, logs only in scratchpad, copied to per-row-review/evidence/43/score_py_simulation/) on synthetic suite outputs: gate fail with stale perfect scored -> exit 1, reward 0.0000; gates pass, no scored output -> reward 0; gates pass, functional 0.0168, polish 0.2083, visual 1.0 -> weighted 0.2517 but floors_passed 0, reward 0.0000; functional exactly 0.05 with polish=visual=1 -> reward 0 (strict >); functional 0.0588, visual 0.5 -> 0.1353; golden-like 0.9/0.8/0.8 -> 0.86; non-numeric gate value -> exit 2 (test.sh writes plain zero). 5) 'Passing only the cheap gates earns little': functional has 44 binary criteria, total weight 59.5. The gate observables map to hro_job_open (0.5) and hro_add_candidate (0.5), and hro_job_open additionally requires refusals; a gate-only app's credit is at most 1.0/59.5 = 0.0168 < 0.05 floor, so it cannot farm polish (12.0 weight, live/session behaviours) or visual (5 likert). Second layer: every scored prompt repeats the global browser gate and zeroes all criteria on a static/no-op shell (scored/visual/prompt.md 'A blank or static nonworking shell or an observed failure of that check gives every criterion its minimum raw Likert score 1'; same for functional/polish binary 0). 6) Counterexample attempts: (a) plausible broken app that could pass: board-only app (sign-in, jobs, cards, email validation, persistence, no stage moves/messages/live updates) might earn job_open+add_candidate+email_rules+restart = 3.5/59.5 = 0.059 and clear the floor, reaching about 0.6*0.059 + 0.2*visual; with visual 0.5 that is 0.135. That app is partially working rather than non-working, its reward stays far below a working app and is monotone in functionality, and the 0.05 floor value is template-controlled policy that task authors must not alter, so not a row defect. hro_anonymous/hro_observer_readonly/hro_candidate_no_staff require successful move/message controls, so such an app is unlikely to collect them. (b) conforming alternative that could fail: an app passing gates but scoring exactly 0.05 functional would be zeroed by the strict '>'; 0.05 corresponds to ~3 weight units, i.e. an app nearly without the core board rules, so not a credible conforming product. Gate criteria grade only sign-in plus job/candidate creation shared across contexts and leave rules/permissions to scored rows, so a conforming app is not expected to fail a gate on scored-only difficulty.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL — score.py gate/floor/skip arithmetic executed on synthetic suite outputs (CONFIRMED); RewardKit gate execution, actual judge scores for a gate-only or minimal app, and full configured verifier runs are NOT EXERCISED (raw-evidence-index scope states reward discrimination/ranking runs are absent). Those gaps belong to the runtime-evidence rows; the mechanism this row checks is template-identical and executed."
+}

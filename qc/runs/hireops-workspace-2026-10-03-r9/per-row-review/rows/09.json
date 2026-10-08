@@ -1,0 +1,34 @@
+{
+  "number": 9,
+  "id": "agent_environment_and_network_posture_are_correct",
+  "reviewer": "row-reviewer-09",
+  "input_sha256": "c5cd697aaa5daabac57bf7269873a877973f00326c7dcba6c4df9ac69303cb6c",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r9/rules/WebDev Rubrics QC.xlsx :: 'Quality Checks' row 10 (#9 agent_environment_and_network_posture_are_correct); 'Internal Quality Checks' row 10 (#9, older no-network wording, no annotation columns); 'Deterministic Checks' row 19 check-no-literal-secrets.py; Quality row 53 (#52) with its internal annotation for credential context (read via openpyxl read_only, in memory)",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/rules/harbor-webdev-rubric-qc/SKILL.md (Delivery profile: public network; Known false positives: demo passwords and ${VAR} templates)",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/rules/harbor-webdev-rubric-qc/references/quality-checks.md:43-45 (check 9 verify procedure)",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (task.toml block lines 56-60, 77-78)",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/rules/projects/webdev-task-template/task.toml and environment/Dockerfile",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/task/task.toml",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/task/environment/Dockerfile",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/task/environment/instructions/integration.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/task/environment/instructions/hireops_rules.md (secret scan)",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/task/environment/assets/seed_data.json (secret/PII scan)",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/task/solution/app/package.json, task/solution/solve.sh",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/task/tests/Dockerfile (compared against template for package parity)",
+    "qc/runs/hireops-workspace-2026-10-03-r9/raw-evidence-index.json (all 6 artifact sha256 and matching_source_files hashes re-verified: all match)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Skill reference quality-checks.md:44 asks for: cpus/memory_mb present and sane; no secret literal under [environment]; network_mode = \"public\"; [environment].docker_image absent; allow_internet omitted. task/task.toml:20-24 reads [environment] build_timeout_sec = 600.0, network_mode = \"public\", cpus = 2, memory_mb = 4096. The [agent]..[environment] block is byte-identical to the frozen template rules/projects/webdev-task-template/task.toml and to staged-task-contract.md:56-60. grep finds no docker_image and no allow_internet anywhere in task.toml. [environment] holds no env values at all; the only credential-shaped value in task.toml is the template's [verifier.env] ANTHROPIC_AUTH_TOKEN = \"${OPENROUTER_API_KEY}\" (a ${VAR} template, a known false positive, and verifier-side, not agent-side). task/environment/Dockerfile (sha256 0a75419e...67d1) is byte-identical to the template agent Dockerfile: FROM node:22-bookworm-slim; ENV NODE_PATH only (line 3); pinned global express@5.1.0 and better-sqlite3@12.4.1 (lines 9-12); COPY instructions/ and assets/; git init of /app with identity turing@local.invalid; no ARG/ENV secret, no key material. Secret scan of environment/ and the whole frozen task (provider key shapes sk-/sk-or-/sk-ant-/AKIA/ghp_/xox/AIza, PEM blocks, api_key/secret/token) found only the demo password Hireops!2026 (hireops_rules.md:11, instruction.md:17, app_context.md:8; explicitly allowed by the skill and check-no-literal-secrets.py) and session-token code in the golden app. Seed emails use only reserved-style domains hireops.example, candidates.example, mail.example; no phone/SSN patterns. Sanity of 2 CPU / 4096 MB: the agent workload is one Node 22 Express + better-sqlite3 process plus the agent's own tooling (integration.md: only those packages and Node built-ins); better-sqlite3 12.4.1 ships linux-x64 Node 22 prebuilds, fetched at build time over the public network (fetching is not a defect per quality-checks.md:45). Raw evidence (hash-verified) shows the same pinned packages run the frozen golden in the verifier image as uid 65534, consistent with these packages loading on node:22 bookworm. Counterexample probes: a broken app cannot exploit this row (it grades agent posture, not output); a conforming app is not starved, since the declared runtime is fixed to preinstalled Express/better-sqlite3 and public network allows any extra CDN/front-end fetch integration.md permits. Internal Quality Checks row 9 still says 'no-network ... nothing that secretly needs an install'; that wording is superseded by the public-network public sheet and skill Delivery profile, so network_mode = public is not flagged. Residual (not a defect, P3-level observation only): this round's raw evidence contains no build of the agent image itself, but the Dockerfile and resource block are unchanged template bytes and nothing in this row depends on a measured run.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

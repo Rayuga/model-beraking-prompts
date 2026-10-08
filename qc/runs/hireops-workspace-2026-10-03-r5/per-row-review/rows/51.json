@@ -1,0 +1,38 @@
+{
+  "number": 51,
+  "id": "everything_parses_and_would_run",
+  "reviewer": "row-reviewer-51",
+  "input_sha256": "8e9a1732929dada061b7ec8f471be452416cb15fa3c35c0af552efa55321e9c6",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    "qc/runs/hireops-workspace-2026-10-03-r5/per-row-review/prompts/51.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/rules/WebDev Rubrics QC.xlsx :: Quality Checks row 51 ('The gating files are well-formed: task.toml, scoring.toml, every judge.toml, the shell scripts (bash -n, no CRLF), and the reference/app entry.')",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/rules/WebDev Rubrics QC.xlsx :: Internal Quality Checks row 51 ('both TOML families, the shell scripts (bash -n, no CRLF), and the reference/app entry')",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/rules/WebDev Rubrics QC.xlsx :: Deterministic Checks rows check-fixtures.py, check-solve-contract.py, check-app-manifest.py (related parse/shell rows, context only)",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/rules/harbor-webdev-rubric-qc/references/quality-checks.md (intro and section 51)",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (full)",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (full, incl. shell-hygiene and TOML parse recipes)",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/rules/projects/webdev-task-template/ (byte comparison of tests/test.sh, tests/tools/score.py, tests/tools/restart_mcp.py, tests/Dockerfile, tests/.dockerignore, environment/Dockerfile, solution/solve.sh)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/task/task.toml",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/task/tests/scoring.toml",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/task/tests/{gates/render,gates/constraints,scored/functional,scored/polish,scored/visual}/judge.toml and prompt.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/task/tests/test.sh",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/task/solution/solve.sh",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/task/solution/app/{server.js,package.json,src/*.js,public/js/*.js,src/seed_data.json}",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/task/environment/Dockerfile, tests/Dockerfile, environment/assets/seed_data.json",
+    "qc/runs/hireops-workspace-2026-10-03-r5/raw-evidence-index.json and its cited artifacts under qc/repairs/hireops-2026-10-03-workspace/ (hashes verified)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "All checks run on the frozen task bytes (Python 3.12.10 tomllib, Git Bash bash -n, Node v24.19.0 node --check, in-memory ast.parse; no files compiled or written in the workspace). TOML: task.toml, tests/scoring.toml and all five tests/*/*/judge.toml parse with tomllib with no error. Each judge.toml has [judge] judge=claude-code, mode=batched, prompt_template=prompt.md, no model/reasoning_effort/temperature/weight keys, Playwright MCP present, unique criterion ids; gates are all_pass with 1 binary criterion each; functional has 43 binary criteria plus the verifier restart MCP; polish has 5 binary criteria; visual has 5 likert criteria with points = 5 (visual/judge.toml:20-21 etc.). Every prompt.md contains {criteria} and {app_context} exactly once. Shell: bash -n passes for tests/test.sh and solution/solve.sh; both start with '#!/bin/bash'; a recursive CRLF scan (grep -rlI $'\\r') over the whole task tree found no file with CR bytes, and no file carries a UTF-8 BOM. Embedded scripts were also checked: the restart-helper heredoc in test.sh (<<'SH' ... SH, extracted to scratchpad) passes bash -n; the 3 Python heredocs in test.sh pass ast.parse; the solve.sh Node heredoc (<<'JS') passes node --check. tests/tools/score.py and restart_mcp.py pass ast.parse and are byte-identical to the frozen template, as are test.sh, tests/Dockerfile, tests/.dockerignore and environment/Dockerfile (solve.sh differs from the template only by the task-specific DB-reset guard). Reference entry: solution/app/server.js ('require(./src/index.js)') and all 7 solution JS files pass node --check; package.json parses (main server.js, deps express 5.1.0 and better-sqlite3 12.4.1), and both dependencies are installed globally at those exact versions in both images with NODE_PATH=/usr/local/lib/node_modules, which test.sh also passes to the app (test.sh:106, helper :162). The app honours PORT (bootstrap.js:43, default 3000) and DB_PATH (db.js:9). environment/assets/seed_data.json and solution/app/src/seed_data.json both parse and are byte-identical. Budgets nest: gate judges 600+600 < gates 1500; scored judges 9000+900+900=10800 < scored 11100; 1500+11100=12600 < verifier 13200. Would-run evidence: raw-evidence-index.json artifact hashes for workspace.cjs, results/workspace.json, server.log and three PNGs all match, and every matching_source_files hash matches the frozen solution bytes. results/workspace.json records 21/21 scripted groups passed with page_errors=[], and server.log shows '[hireops] listening on 3000' twice, which is consistent with the real restart. That establishes that the golden boots under uid 65534 in the verifier image. Counterexample probes: (a) a broken submission cannot exploit this row, because the row grades task files, not the submission. A submission without /app/server.js gets a zero reward by design (test.sh:68). (b) A conforming alternative app that ships its own /app/node_modules is accepted, because test.sh only rejects symlinks that escape /app/node_modules. No parse-level failure path for a conforming app was found. Scope note: this is a source/parser review plus verified scripted-golden boot evidence. It is NOT a full configured RewardKit judge run, Oracle grade or model score. Those are absent per the evidence index and belong to the runtime/workload records, not to this row's parse procedure.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

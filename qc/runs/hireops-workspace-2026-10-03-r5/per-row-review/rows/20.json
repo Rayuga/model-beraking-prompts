@@ -1,0 +1,29 @@
+{
+  "number": 20,
+  "id": "solution_is_frozen_and_deterministic",
+  "reviewer": "row-reviewer-20",
+  "input_sha256": "8e9a1732929dada061b7ec8f471be452416cb15fa3c35c0af552efa55321e9c6",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r5/rules/WebDev Rubrics QC.xlsx :: 'Quality Checks' row #20 (D - solution/ (reference coverage), solution_is_frozen_and_deterministic: 'The reference is a committed, static baseline - not regenerated, fetched, or nondeterministic on any pinned value.') and 'Internal Quality Checks' row #20 (same text; no extra annotation columns or cell comments present)",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/rules/harbor-webdev-rubric-qc/SKILL.md (full)",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/rules/harbor-webdev-rubric-qc/references/quality-checks.md :: '### 20 · solution_is_frozen_and_deterministic' (seeding same rows every run; no random ids, no wall-clock-derived values, no boot-time fetch that could move a graded figure; fixed clock is the only time source graded rules use)",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/rules/projects/webdev-task-template/solution/solve.sh and solution/app/server.js",
+    "qc/REVIEW_POLICY.md (full)",
+    "task/solution/solve.sh, task/solution/app/{package.json,server.js}, task/solution/app/src/{bootstrap.js,db.js,index.js (grep for Date/random/crypto/fetch/now/ORDER BY)}, task/solution/app/public/index.html, task/solution/app/public/js/*.js (grep for fetch/Date/Math.random)",
+    "task/instruction.md, task/environment/instructions/hireops_rules.md (time/order/fetch-related lines), task/tests/scored/functional/prompt.md (protocol steps Z,S,M,L,C,B,N,T,K,R,D)",
+    "task/environment/assets/seed_data.json vs task/solution/app/src/seed_data.json (sha256 compare, timestamp fields)",
+    "qc/runs/hireops-workspace-2026-10-03-r5/raw-evidence-index.json (first entries; hashes re-verified)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Committed static baseline: solution/app holds only package.json (exact pins better-sqlite3 12.4.1, express 5.1.0), server.js, src/{bootstrap,db,index}.js, src/seed_data.json and public/ files; no node_modules, no committed app.db, no build/generate step. solve.sh matches the template contract (cp -a app/. /app/) plus a guarded removal of $DB_PATH/-wal/-shm under /app, so every installation boots from the same empty DB and the same committed seed; it fetches nothing. Seed copy is byte-identical to the shipped asset (both sha256 a1c65c80...7e83740). Seeding (src/db.js seedIfEmpty, lines ~61-86 of the db.js body) is a single transaction iterating the seed arrays in file order: users/jobs/applications use seed-provided ids (USR-REC1, APP-101...), application created_at is the literal '2026-06-15T09:00:00Z', all 127 messages and 3 notes carry seed created_at strings, message ids are AUTOINCREMENT in seed order on an empty DB, and read markers are resolved from read_count against those ids, so the seeded rows (and the Z-step pinned value 'Lena has 1 unread') are identical every run. The demo password is a fixed public constant. Seed is read from beside the module (path.join(__dirname,'seed_data.json')), not from cwd or network. No boot-time fetch: bootstrap.js only listens and proxies to a local worker; the client's only fetch is same-origin API calls (public/js/app.js:29) and index.html loads only local /js scripts. Nondeterminism that does exist is confined to runtime-created, unpinned values: index.js:59 now() = new Date().toISOString() for sessions/activity/notes/messages/new applications, index.js:60 uid() = crypto.randomBytes(3) hex for new JOB-/APP- ids, index.js:88 random session token. None feeds a graded figure: activity is ordered by id DESC (index.js:189), threads/paging by id (index.js:395-400), boards by position,id (index.js:182,199), undo by actions.id (index.js:166,350), stale-move detection by version, Interview limits by counts; the brief/rules impose no time window or time-derived rule (only the '15 seconds' propagation latency, which is a behaviour not a pinned value), and the functional protocol creates its own jobs/cards and reads relative facts, never absolute timestamps or generated ids. Hashes of all 12 frozen solution files and the two raw-evidence artifacts (workspace.cjs 749036d0..., results/workspace.json 1c7e6fcc...) match raw-evidence-index.json, so the scripted golden run (scripted, not a configured judge run) exercised exactly these bytes including a real restart. Weak-app probe: an app that regenerated seed ids randomly or reseeded on every boot would break cross-context/restart readbacks (D step compares records after restart_app) and the hro_restart row; this golden does not do either (seedIfEmpty skips when users exist). Conforming-alternative probe: an agent that stamps rows with wall-clock time or random ids is not penalised because no criterion pins those values. Latent P3 note only: candidate application list orders by created_at,id (index.js:173), mixing the fixed seed stamp 2026-06-15 with wall-clock stamps for new applications; on a container clock earlier than mid-2026 a new application would sort above seeded ones, but no criterion grades candidate list order, so no graded figure moves.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL"
+}

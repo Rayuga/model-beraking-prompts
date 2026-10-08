@@ -1,0 +1,35 @@
+{
+  "number": 15,
+  "id": "dockerfile_builds_the_declared_world",
+  "reviewer": "row-reviewer-15",
+  "input_sha256": "d622da81e9b07dcadf86ec7430f70ae35a57d0ff2275e3a0cf1bd6eaa7572278",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-lessons-2026-10-08-r3/rules/WebDev Rubrics QC.xlsx (read in memory via zipfile: 'Quality Checks' row 15 and 'Internal Quality Checks' row 15 'dockerfile_builds_the_declared_world'; no annotation columns on row 15; related Deterministic Checks rows check-dockerfiles.py, check-fixtures.py, check-runtime-deps-in-both-images.py, check-dockerfile-references.sh, check-dockerfile-sanity.sh, check-dockerfile-platform.sh, check-nproc.sh, check-pip-pinning.sh)",
+    ".qc-cache/hireops-lessons-2026-10-08-r3/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-lessons-2026-10-08-r3/rules/harbor-webdev-rubric-qc/references/quality-checks.md (section 15, plus 16/19/20 context)",
+    ".qc-cache/hireops-lessons-2026-10-08-r3/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md",
+    ".qc-cache/hireops-lessons-2026-10-08-r3/rules/projects/webdev-task-template/environment/Dockerfile and tests/Dockerfile",
+    "qc/REVIEW_POLICY.md",
+    "handoffs/LESSONS_FROM_COLDERWATER_2026-10-08.md",
+    ".qc-cache/hireops-lessons-2026-10-08-r3/task/environment/Dockerfile",
+    ".qc-cache/hireops-lessons-2026-10-08-r3/task/environment/instructions/integration.md, hireops_rules.md (grep for dependency/transport lines)",
+    ".qc-cache/hireops-lessons-2026-10-08-r3/task/environment/assets/seed_data.json (parsed, hashed)",
+    ".qc-cache/hireops-lessons-2026-10-08-r3/task/instruction.md (line 15)",
+    ".qc-cache/hireops-lessons-2026-10-08-r3/task/task.toml",
+    ".qc-cache/hireops-lessons-2026-10-08-r3/task/tests/Dockerfile, tests/test.sh lines 1-120, tests/.dockerignore",
+    ".qc-cache/hireops-lessons-2026-10-08-r3/task/solution/solve.sh, solution/app/package.json, require() calls in solution/app/server.js and src/*.js",
+    "qc/runs/hireops-lessons-2026-10-08-r3/raw-evidence-index.json (all 8 artifact hashes re-verified: match)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Static review of the agent image against workbook row 15 and skill quality-checks.md section 15. (1) Pinned: task/environment/Dockerfile:1 'FROM node:22-bookworm-slim' (tagged base, no --platform); :9-11 'npm install -g --no-audit --no-fund express@5.1.0 better-sqlite3@12.4.1' (exact versions); :3 'ENV NODE_PATH=/usr/local/lib/node_modules' matches the global install root. apt packages (ca-certificates git procps sqlite3, :5-7) are unpinned, which the workbook's check-dockerfiles.py classes as NOTE only. No pip installs. (2) Every runtime dependency pre-installed: solution/app/package.json depends only on better-sqlite3 12.4.1 and express 5.1.0; the only non-builtin require() calls in solution/app/server.js and src/*.js are require('express') (src/index.js) and require('better-sqlite3') (src/db.js); everything else is node: built-ins or local files. solve.sh (lines 1-36) only copies solution/app into /app and removes the DB; it runs no npm/pip/apt install, so nothing is installed at run time. Public brief agrees: instruction.md:15 'Server dependencies are already available, so don't install packages'; integration.md:3-4 'Express and better-sqlite3 already available through NODE_PATH; use only those packages and Node built-ins'. hireops_rules.md:128 allows 'Polling, server-sent events and sockets', all achievable with node:http built-ins (golden uses node:http/worker_threads), so no unlisted package such as ws is needed. Verifier image tests/Dockerfile:16-22 installs the same express@5.1.0/better-sqlite3@12.4.1 with NODE_PATH=/usr/local/lib/node_modules (:9), and test.sh:104-111 launches with that NODE_PATH, so the agent-image world matches grade time. (3) Stages assets: Dockerfile:14-16 'COPY instructions/ /instructions/', 'COPY assets/ /assets/', 'chmod -R a+rX /instructions /assets'; environment/assets/seed_data.json exists and parses as JSON (sha256 a1c65c80..., byte-identical to solution/app/src/seed_data.json); task.toml:2 artifacts include /assets. (4) /app created, git-initialised with only .gitkeep committed (:17-23); WORKDIR /app; no COPY/ADD of solution/ or tests/ (only the two COPY lines exist). (5) Template conformance: task/environment/Dockerfile is byte-identical to the frozen template rules/projects/webdev-task-template/environment/Dockerfile (both sha256 0a75419e9598ded9317b26bbf0d2b12de0b9b11185fb4c9fed1ca7f3e52467d1), so template-controlled settings are preserved. Colderwater lessons check: none of lessons 1-21 targets the agent Dockerfile directly; lesson 13 (no public internet in judge prompts) and lesson 19/20 (Docker golden harness) were considered - the Dockerfile fetches only at image-build time from pinned npm/apt sources, nothing at grade time. Adversarial probes: (a) Broken app that could pass: an agent that npm-installs an extra package (e.g. ws) into /app/node_modules during its build session would still run at grade time because test.sh copies /app including node_modules and only rejects out-of-tree symlinks; this violates the brief's 'don't install packages' but is not an image defect and does not let a broken app pass on this row. (b) Conforming alternative that could fail: an app reading /assets/seed_data.json at startup works because the agent image stages it and task.toml artifacts carry /assets into the separate verifier; an app depending on the sqlite3 CLI or git at runtime would lack them in the verifier image, but the brief never permits relying on them and the golden does not. Runtime evidence: raw-evidence-index.json (hashes re-verified) records scripted golden runs in the verifier image hireops-verifier:20261002-permission-repair (via-solve.log: solve.sh installed 11 files, 26 groups PASS). No entry records a build of this agent image in this round; since the file is byte-identical to the template and statically complete, the row is judged on source, and this is noted rather than treated as a missing required measurement for row 15.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

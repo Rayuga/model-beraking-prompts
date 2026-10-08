@@ -1,0 +1,30 @@
+{
+  "number": 28,
+  "id": "criteria_are_independent_and_noncontradictory",
+  "reviewer": "row-reviewer-28",
+  "input_sha256": "f53d9ed60d12f2a653d497dc98fac56a662e0d84393cdc5ff130c8a915d956db",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r3/rules/WebDev Rubrics QC.xlsx (sha256 6d44970b...; Quality Checks row 28 and Internal Quality Checks row 28 incl. Mukesh annotation 'we usually combine the multiple verifiers in one flow ... dont need to retest it again'); also skill asset WebDev_Rubrics_QC.xlsx (sha256 d7b5d607..., different bytes) row 28 text identical in both sheets",
+    ".qc-cache/hireops-workspace-2026-10-03-r3/rules/harbor-webdev-rubric-qc/SKILL.md (Known false positives: 'One criterion covering a whole flow' for checks 26/28/33)",
+    ".qc-cache/hireops-workspace-2026-10-03-r3/rules/harbor-webdev-rubric-qc/references/quality-checks.md section 28",
+    ".qc-cache/hireops-workspace-2026-10-03-r3/rules/projects/webdev-task-template/tests/scored/functional/{judge.toml,prompt.md} and scored/polish/judge.toml",
+    "qc/REVIEW_POLICY.md ('Independent credit takes precedence over flow grouping')",
+    "task/instruction.md, task/environment/instructions/hireops_rules.md, task/tests/app_context.md",
+    "task/tests/scored/functional/judge.toml (sha256 1560651e...; all 44 criteria) and prompt.md (sha256 20b954c3...)",
+    "task/tests/scored/polish/judge.toml (12ad5f28...) and prompt.md; scored/visual/judge.toml (3cd89b01...) and prompt.md",
+    "task/tests/gates/{render,constraints}/{judge.toml,prompt.md}",
+    "qc/runs/hireops-workspace-2026-10-03-r3/raw-evidence-index.json (header + first entries; input_sha256 matches; scope states no configured judge run exists \u2014 not needed for this source-level row)"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "Pairwise review of all 44 functional, 5 polish, 5 visual and 2 gate criteria. Most of the rubric is well partitioned, often with explicit ownership: hro_arrive_bottom defers multi-card arrival to hro_bulk_move (functional/judge.toml:65); hro_candidate_linked 'alone owns that link' (:398); hro_pol_live_thread 'owns the draft and focus; where the view goes while reading earlier messages is graded in Functional' (polish/judge.toml:32); visual prompt line 14 forbids double deduction across likert rows; refusal rows each name their own positive control. No pair demands incompatible products (e.g. hro_refused_put_back focus-on-card vs hro_pol_live_board focus-preserved are compatible; hro_drafts 'sending clears it' vs hro_pol_failed_send 'failed message stays in box' are compatible; status codes 401/404/'refused' are consistent with hireops_rules.md section 1). Defect (subsumption): hro_interview_full fail clause reads 'Fails if Interview can hold more cards than places by any route.' (.qc-cache/hireops-workspace-2026-10-03-r3/task/tests/scored/functional/judge.toml:110). Two other criteria own specific routes into an over-full Interview: hro_bulk_places 'Fails if any of the three enters by either route' (:227) and hro_undo_full 'undoing a move that would put a card back into a full Interview is refused ... Fails if Interview goes over its places.' (:128). An overfill via bulk move (protocol B step 8) or via undo (protocol L last step, J1) is literally a failure of hro_interview_full too, so one observable is graded by two rows. The only mitigation is the generic prompt sentence 'Never deduct one observed defect in more than one row.' (functional/prompt.md:23), which names no owner, so the judge must arbitrarily pick 1.5 (interview_full) vs 0.5 (undo_full) weight \u2014 a scoring nondeterminism. Secondary overlaps of the same class: (a) hro_candidate_view requires the candidate 'can read and reply in their own conversations' (:380) while hro_msg_exchange fails if 'Tomas's reply' is not received (:299) \u2014 a candidate that cannot reply fails both. (b) functional/prompt.md:19 defines 'A refused action ... adds no Activity line' as part of every refusal row's 'nothing changed', while hro_activity_refusals (:272) separately owns 'none of the refused attempts added a line' \u2014 an activity line on a refused skip could zero both hro_move_one_stage and hro_activity_refusals. Note (not counted as defect): hro_pol_live_board and hro_pol_live_thread score 0 when no live update arrives (polish/judge.toml:23,32), so an app without live sync loses hro_live_board/hro_msg_exchange and both polish rows; this is a necessary precondition (policy: a dead feature must not earn credit for doing nothing), not the same observable, and is a row-40 signal concern rather than row 28. Not a defect per skill false-positive list: many legs bundled inside one criterion (e.g. hro_job_open, hro_candidate_private). No runtime evidence bears on this row; verdict is from source text only.",
+  "counterexample": "A plausible broken app enforces the Interview cap on single moves (UI and replay) but its undo handler skips the capacity check. In protocol L, Rafael's undo of E's move succeeds and J1 Interview holds 3 of 2. Intended deduction: hro_undo_full (0.5). Literal reading of hro_interview_full ('by any route') also fails it (1.5); the prompt's 'never deduct in more than one row' leaves the judge free to deduct either, so the same app scores differently across runs by up to 1.0 weight. Likewise an app that checks the cap per card but not per set fails hro_bulk_places and, literally, hro_interview_full.",
+  "suggested_fix": "Scope hro_interview_full to the single-card route ('Fails if the single-card move into a full Interview is accepted through the UI or by replay; overfill by multi-card move belongs to hro_bulk_places and by undo to hro_undo_full'), and similarly state ownership in hro_candidate_view vs hro_msg_exchange (candidate reply) and that refusal rows do not deduct for activity lines owned by hro_activity_refusals.",
+  "run_verdict": "NOT EXERCISED"
+}

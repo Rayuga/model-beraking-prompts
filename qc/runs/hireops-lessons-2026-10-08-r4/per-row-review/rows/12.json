@@ -1,0 +1,31 @@
+{
+  "number": 12,
+  "id": "no_prebuilt_image_shadows_the_agent_dockerfile",
+  "reviewer": "row-reviewer-12",
+  "input_sha256": "2efc8dcc33d217e5aa005f531125764d19662c40957de60b26f4674029bc3966",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-lessons-2026-10-08-r4/rules/WebDev Rubrics QC.xlsx (read in memory via zipfile, sha256 6d44970b2ff67fefad1e2327e743fc226fcd4c50ff55baf899f41069a9b3fd7f): sheet 'Quality Checks' row 13 (#12, Block 'B - task.toml & run wiring', no_prebuilt_image_shadows_the_agent_dockerfile: \"[environment].docker_image isn't set while the agent Dockerfile still has active build steps (which would skip the Dockerfile entirely).\"); sheet 'Internal Quality Checks' row 13 (same wording, '(which would skip it entirely)', no additional annotation); sheet 'Deterministic Checks' scanned for docker_image/prebuilt/shadow: no matching checker",
+    ".qc-cache/hireops-lessons-2026-10-08-r4/rules/harbor-webdev-rubric-qc/SKILL.md (full)",
+    ".qc-cache/hireops-lessons-2026-10-08-r4/rules/harbor-webdev-rubric-qc/references/quality-checks.md section '### 12 · no_prebuilt_image_shadows_the_agent_dockerfile' (lines 53-54) and related check 9 (line 44: '[environment].docker_image absent')",
+    ".qc-cache/hireops-lessons-2026-10-08-r4/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md line 78: '[environment].docker_image must be absent while the Dockerfile has active build steps'",
+    ".qc-cache/hireops-lessons-2026-10-08-r4/rules/projects/webdev-task-template/task.toml (full) and environment/Dockerfile, tests/Dockerfile (diffed against task)",
+    "qc/REVIEW_POLICY.md (full)",
+    "handoffs/LESSONS_FROM_COLDERWATER_2026-10-08.md (full)",
+    ".qc-cache/hireops-lessons-2026-10-08-r4/task/task.toml (full, lines 1-38)",
+    ".qc-cache/hireops-lessons-2026-10-08-r4/task/environment/Dockerfile (full, lines 1-26)",
+    ".qc-cache/hireops-lessons-2026-10-08-r4/task/tests/Dockerfile and tests/.dockerignore (full)",
+    "qc/runs/hireops-lessons-2026-10-08-r4/manifest.json (input hashes for task.toml and environment/Dockerfile)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Frozen task.toml [environment] block (task/task.toml:20-24) contains only build_timeout_sec = 600.0, network_mode = \"public\", cpus = 2, memory_mb = 4096; no docker_image key. A recursive grep for 'docker_image' and 'image =' over the whole frozen task tree returns nothing, so no other config (e.g. [verifier.environment] at task.toml:37-38, which holds only network_mode) sets a prebuilt image. The agent Dockerfile (task/environment/Dockerfile:1-26) has active steps (FROM node:22-bookworm-slim; apt-get install ca-certificates git procps sqlite3; npm install -g express@5.1.0 better-sqlite3@12.4.1; COPY instructions/ and assets/; git init of /app; WORKDIR /app), and those steps are what deliver /instructions and /assets that the brief relies on, so they are live and will be built because nothing shadows them. task.toml differs from the template task.toml only in task-specific identity/metadata fields; the [agent], [environment], [verifier], [verifier.env] and [verifier.environment] blocks are byte-identical in content to the template (template task.toml lines 17-38). environment/Dockerfile is byte-identical to the template (diff empty; sha256 0a75419e...67d1 in both, matching manifest inputs). tests/Dockerfile is byte-identical to the template; it is the verifier image used under environment_mode = \"separate\" and is not affected by this row. Hashes of frozen task.toml (ac664d0e...8c9e068f26) and environment/Dockerfile equal both the manifest's recorded inputs and the current live project files, so the frozen snapshot reflects the candidate. Workbook Quality and Internal sheets add no extra interpretation beyond the skill's verify text. Adversarial consideration: a broken/conforming app cannot affect this row, since it concerns static harness wiring only; the only failing configuration would be a task.toml adding [environment].docker_image = \"...\" (the agent Dockerfile would then be dead code and /assets, /instructions might be missing) — not present. Lessons-from-Colderwater scan: none of lessons 1-21 concerns docker_image or agent-image wiring (they cover brief wording, weights, judge prompts, timing races, public addresses, restart checks, double-grading and process); no instance bears on this row. No Docker build was run for this review (none needed to establish the absence of a config key); whether the image builds within build_timeout_sec belongs to rows 9/11 and runtime evidence, not this row.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

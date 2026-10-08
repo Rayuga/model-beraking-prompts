@@ -1,0 +1,37 @@
+{
+  "number": 22,
+  "id": "verifier_image_can_launch_and_grade",
+  "reviewer": "row-reviewer-22",
+  "input_sha256": "12bf37abe5ba3152b1255fb9b9531665c432b86e0b0d86562adc7c802940d224",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r13/rules/WebDev Rubrics QC.xlsx: 'Quality Checks' row 22 (sheet row 23), 'Internal Quality Checks' row 22, 'Deterministic Checks' rows check-runtime-deps-in-both-images.py / check-verifier-tooling-baked.sh / check-pip-pinning.sh / check-dockerfile-platform.sh, 'ChangeLogs Sheet Link' (openpyxl read_only, in memory; no comment parts in zip)",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/rules/harbor-webdev-rubric-qc/references/quality-checks.md (#22)",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/rules/projects/webdev-task-template/tests/Dockerfile",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/task/tests/Dockerfile",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/task/tests/test.sh",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/task/tests/.dockerignore",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/task/tests/*/*/judge.toml (mcp_servers command/args)",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/task/tests/tools/{score.py,restart_mcp.py} (imports)",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/task/environment/Dockerfile",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/task/solution/solve.sh, solution/app/package.json, solution/app/src/*.js (require lines)",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/task/instruction.md line 13; environment/instructions/integration.md; hireops_rules.md ~198-202",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/task/task.toml (artifacts, verifier mode)",
+    "qc/runs/hireops-workspace-2026-10-03-r13/raw-evidence-index.json and hashes of qc/repairs/hireops-2026-10-03-workspace/{workspace.cjs,results/workspace.json,results/server.log}",
+    "docker image inspect / docker history of hireops-verifier:20261002-permission-repair (read-only, no container started)"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "Static: task/tests/Dockerfile is byte-identical to the frozen template tests/Dockerfile (both sha256 72998ab8ef0e4225e63b88fccdb754943c54022e25da355035efe7f759a55fdd), so it is template-controlled. It ships every component the row and quality-checks.md #22 require: (1) app runtime: Node copied from node:22-bookworm-slim (L1,L4) plus `express@5.1.0` and `better-sqlite3@12.4.1` installed globally with NODE_PATH=/usr/local/lib/node_modules (L9,L16-22). These match the agent image (environment/Dockerfile L9-12), the golden package.json deps and its require() calls (src/index.js:18 express, src/db.js:7 better-sqlite3; everything else node: builtins), and the brief (instruction.md:13 'Server dependencies are already available'; integration.md:3-4 'Express and better-sqlite3 already available through NODE_PATH'). test.sh:104-111 launch needs setpriv/setsid (util-linux, L13), python3 for probe_ready (python:3.12-slim base), and timeout/sed/find (coreutils/base) - all present. (2) Pinned browser: `@playwright/mcp@0.0.79` pins its bundled playwright, whose cli installs chromium with deps (L33-39) and symlinks /usr/local/bin/chromium, matching every judge.toml `--executable-path=/usr/local/bin/chromium`. (3) Playwright MCP: `playwright-mcp` binary from @playwright/mcp@0.0.79 (command in all five judge.toml). (4) Judge CLI: `@anthropic-ai/claude-code@2.1.281` (matches REWARDKIT_JUDGE claude-code). (5) RewardKit: `pip3 install harbor-rewardkit==0.1.7` (L31) pinned, consumed by test.sh:207 `rewardkit`. (6) python3 at /usr/local/bin/python3 for restart_mcp.py (functional judge.toml command); score.py/restart_mcp.py use only stdlib (json, math, sys, tomllib, subprocess, pathlib). Nothing is installed at trial time in test.sh. Runtime: docker history of hireops-verifier:20261002-permission-repair (created 2026-10-01, id sha256:e32bece...) shows layers whose RUN lines match this Dockerfile's commands. raw-evidence-index entries verified by hash (workspace.cjs 805eb274..., results/workspace.json 47c2e8ef..., server.log 6752f461...), and their 12 matching_source_files hashes equal the frozen solution bytes. In that image the golden started as uid 65534 ('[hireops] listening on 3000' twice in server.log, i.e. one real restart), and workspace.cjs:6,287 drove the baked playwright via /usr/local/bin/chromium. Counterexample attempts: a broken app cannot use the image to pass, because this row concerns tooling only. A conforming alternative that relies on node:sqlite or plain Node builtins runs on the same Node 22 major. An app vendoring extra packages into /app/node_modules is copied with /app and loaded natively (both images are Debian bookworm/glibc). The only asymmetries are git and the sqlite3 CLI, which exist only in the agent image; the brief limits the server to Node+Express+better-sqlite3, so no conforming server needs them. Risk=true because a required runtime measurement is missing: raw-evidence-index scope states 'Full configured grading/workload ... absent', so the claude-code judge CLI + rewardkit + playwright-mcp chain has not been observed launching and grading through test.sh on these bytes, and no build log binds the image to the current Dockerfile bytes (the layer commands match, but the docker history COPY . /tests content predates freeze). Base images are tag-pinned, not digest-pinned (node:22-bookworm-slim, python:3.12-slim). This is identical to the template and not a task defect.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL - app launch as uid 65534, restart and baked Chromium/Playwright were exercised in the scripted golden run. The judge CLI, rewardkit and the full test.sh grading path were NOT EXERCISED."
+}

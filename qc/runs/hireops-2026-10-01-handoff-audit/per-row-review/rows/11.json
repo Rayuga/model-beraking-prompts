@@ -1,0 +1,39 @@
+{
+  "number": 11,
+  "id": "timeouts_fit_the_work",
+  "reviewer": "row-reviewer-11",
+  "input_sha256": "adb13696bfe3e6c71690adc5c6af2002d5f107a10751c348ba8bc0f5401600b1",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-2026-10-01-handoff-audit/rules/WebDev Rubrics QC.xlsx: Quality Checks!A12:D12 (quality row 11); Internal Quality Checks!A12:D12 (inner < outer, sum of judges < verifier); no cell comments on either row",
+    ".qc-cache/hireops-2026-10-01-handoff-audit/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-2026-10-01-handoff-audit/rules/harbor-webdev-rubric-qc/references/quality-checks.md:50-51",
+    ".qc-cache/hireops-2026-10-01-handoff-audit/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md: task.toml, test.sh, and restart_mcp.py contracts",
+    ".qc-cache/hireops-2026-10-01-handoff-audit/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md:42-50 (relevant scoring, rubric, verifier, runtime procedures)",
+    "qc/README.md; qc/REVIEW_POLICY.md:25-31; NEW_TASK_AUTHORING_CONTEXT.md and TASK_AUTHORING_WORKFLOW.md current review entry guidance",
+    ".qc-cache/hireops-2026-10-01-handoff-audit/rules/projects/webdev-task-template/task.toml",
+    ".qc-cache/hireops-2026-10-01-handoff-audit/rules/projects/webdev-task-template/tests/test.sh and tests/tools/restart_mcp.py (read and byte-compared to candidate)",
+    ".qc-cache/hireops-2026-10-01-handoff-audit/task/task.toml:17-28",
+    ".qc-cache/hireops-2026-10-01-handoff-audit/task/tests/test.sh:33-57,104-125,127-183,203-227",
+    ".qc-cache/hireops-2026-10-01-handoff-audit/task/tests/tools/restart_mcp.py",
+    ".qc-cache/hireops-2026-10-01-handoff-audit/task/tests/gates/render/judge.toml and tests/gates/constraints/judge.toml:1-16",
+    ".qc-cache/hireops-2026-10-01-handoff-audit/task/tests/scored/functional/judge.toml, tests/scored/polish/judge.toml, tests/scored/visual/judge.toml: parsed complete files for counts and timeout headers",
+    ".qc-cache/hireops-2026-10-01-handoff-audit/task/tests/scored/functional/prompt.md:1-24,26-55",
+    ".qc-cache/hireops-2026-10-01-handoff-audit/task/instruction.md; task/environment/instructions/integration.md; task/environment/Dockerfile; task/tests/Dockerfile",
+    "qc/runs/hireops-2026-10-01-handoff-audit/raw-evidence-index.json (current SHA256 2f02b702098509f996d050be61e6b4dcbfa952892d2a3a84199f6d6a25cf7ec1)",
+    "qc/runs/hireops-2026-10-01-handoff-audit/local/shared-harness-witness.py; local/shared-harness/results.json; local/shared-harness-run.log",
+    "qc/runs/hireops-2026-10-01-handoff-audit/local/inspect-configured.py; local/configured-inspection/results.json",
+    "qc/runs/hireops-2026-10-01-handoff-audit/local/agent-build.log; local/verifier-build.log; local/install-lifecycle/results.json; local/mcp/results.json timing fields; local/ui-run.log opening observations"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P1",
+  "evidence": "Nominal arithmetic is correct: both gate judges are 600s (their judge.toml:4), so 600+600=1200 < gates 1500; scored judges are 9000/900/900s (their judge.toml:4), so 10800 < scored 11100. tests/test.sh:207 serializes judges with --max-concurrent-agent 1; suite calls at 213 and 224 give 1500+11100=12600 < task.toml:27 verifier 13200, leaving 600s outside suites. All judge maxima total 12000 < 13200. Agent 7200s and build 600s at task.toml:18,21 match the frozen template. However, the whole lifecycle is not bounded by those inner allowances: tests/test.sh:33-39 cleanup sends TERM and then executes `wait \"$APP_PID\"` with no deadline or KILL escalation before ensure_reward. These exact bytes equal frozen template tests/test.sh (SHA256 bd68259276ca4b034654efc8a1723a4e702ed62dbe590af6201565f43eabe5aa). The indexed local/shared-harness-witness.py:12,47-65 uses a SIGTERM-ignoring HTTP fixture, executes unchanged test.sh, and substitutes only an external rewardkit stub that immediately exits 7. local/shared-harness/results.json:27-31,45-46 records 12.004534760984825s, entrypoint_still_running=true, the original responding PID 95, and LOCAL CLI FAILURE FIXTURE, NO GRADING. Thus the run confirms cleanup remains blocked after an already-completed grading command; source establishes there is no finite inner cleanup deadline. It does not demonstrate a complete 13200s timeout or a provider score. Verified index hashes: driver 44b58bdf8477e2e8992988b164f62691b15f55bc219cae791056b131cd5c72e6, result f77ed93b2d18771474a8624c01db1bc5c02320a5776ca1561e633d68d0beaf3f, raw log 64ef9fb6d1bb872ca54e8daf691e95a9fe9e062bfb74f2d38fd66dd22f66f2ce; every source binding in that index entry matches frozen task bytes. Separately, workload fit is NOT EXERCISED: 86 functional, 14 polish and 6 visual criteria and the functional P0-P10 browser protocols have no full configured judge duration. configured-inspection/results.json (verified SHA256 6bf9aa47913875f44e0c4b16c35169eaa2d42a6d491ce59fc4898c414cb6facc) and inspect-configured.py:22-23 only launch /usr/bin/true with argument bytes, plus CLI version commands. The 7312ms MCP result is five tool-feasibility observations, not a judge run. agent-build.log:29,33 and verifier-build.log:35-62 show cached package/browser layers, so they do not establish cold-build fit under 600s. No target-agent build duration is supplied, and runtime-evidence.json is absent. qc/REVIEW_POLICY.md:25-31 prohibits inferring fit from allowances or scripted probes. Initial liveness also includes two 2s per-request limits plus up to 120 quarter-second retry sleeps (test.sh:48-50,116-122), so its attempt count must not be reported as a measured fixed 30s duration. No budget change is justified by these observations.",
+  "counterexample": "Measured broken fixture: an HTTP-only server installs process.on(\"SIGTERM\",()=>{}). Even with the grading stub already failed, the entrypoint cannot finish cleanup and remains alive at the 12s observation; the source wait has no upper bound, so this mechanism can consume the outer verifier allowance regardless of the valid suite sums. It was not observed to pass a product judge. A conforming alternative with all required persistent product behavior but a graceful-shutdown handler that leaves an active connection or background drain running can hit the same unbounded wait; the public instruction and integration contract do not impose a signal-shutdown deadline. Separately, a conforming implementation may need more UI discovery and control setup than the scripted golden; without a full configured run, its 86-row functional review can exhaust 9000s and lose unobserved credit (functional/prompt.md:9). This latter timing risk remains hypothetical, not a measured overrun.",
+  "suggested_fix": "Escalate the canonical cleanup defect to the shared-harness owner for an authorized bounded TERM/grace/KILL/reap correction, then freeze the corrected candidate and collect hash-bound full configured judge, target-builder and cold-build timing evidence before clearance; preserve current budgets unless measured workload justifies an explicitly authorized change below five hours.",
+  "run_verdict": "PARTIAL"
+}

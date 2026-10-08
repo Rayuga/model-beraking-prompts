@@ -1,0 +1,32 @@
+{
+  "number": 21,
+  "id": "verifier_entrypoint_is_safe_and_always_scores",
+  "reviewer": "row-reviewer-21",
+  "input_sha256": "88507720804547eb54db2aa2f2467f055d623a9ce90fcb32f9da1d62b6e5d67a",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r7/rules/WebDev Rubrics QC.xlsx (openpyxl read_only, in memory): 'Quality Checks' row 21 (E - verifier_entrypoint_is_safe_and_always_scores) plus related rows 11, 23, 24; 'Internal Quality Checks' row 21 (shorter wording, no extra annotation for row 21); 'Deterministic Checks' rows check-verifier-contract.py, check-scoring-policy.py, check-canonical-shared-files.py, check-required-files.py, check-runtime-contract-strings.py, check-trial-network-fetch.sh, check-nproc.sh",
+    ".qc-cache/hireops-workspace-2026-10-03-r7/rules/harbor-webdev-rubric-qc/SKILL.md (full)",
+    ".qc-cache/hireops-workspace-2026-10-03-r7/rules/harbor-webdev-rubric-qc/references/quality-checks.md (### 21 and surrounding E section)",
+    ".qc-cache/hireops-workspace-2026-10-03-r7/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (## tests/test.sh ordered contract, budgets, cross-file table)",
+    ".qc-cache/hireops-workspace-2026-10-03-r7/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (verifier-contract, scoring-policy, canonical-shared-files entries)",
+    ".qc-cache/hireops-workspace-2026-10-03-r7/rules/projects/webdev-task-template/tests/{test.sh,tools/score.py,Dockerfile,scoring.toml}, task.toml (diffed against task)",
+    "qc/REVIEW_POLICY.md (full)",
+    ".qc-cache/hireops-workspace-2026-10-03-r7/task/tests/test.sh (full, lines 1-227)",
+    ".qc-cache/hireops-workspace-2026-10-03-r7/task/tests/tools/score.py (full)",
+    ".qc-cache/hireops-workspace-2026-10-03-r7/task/tests/scoring.toml, task.toml, tests/*/*/judge.toml timeouts, tests/scored/functional/judge.toml:18",
+    ".qc-cache/hireops-workspace-2026-10-03-r7/task/instruction.md:13-15, environment/instructions/integration.md:5-10, environment/instructions/hireops_rules.md:201-202",
+    "qc/runs/hireops-workspace-2026-10-03-r7/raw-evidence-index.json (all 6 artifact hashes recomputed: all match; listed solution source hashes match frozen task)"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "Static and partially executed review. (1) task/tests/test.sh, tools/score.py, tests/Dockerfile and scoring.toml are byte-identical to the frozen template (diff exit 0; test.sh sha256 bd68259276ca4b034654efc8a1723a4e702ed62dbe590af6201565f43eabe5aa, score.py 13de2b3885967e22aa13ded3bf33c354e3e741e85be871612c04e996eef5c04e). `bash -n` passes. (2) Contract item by item against staged-task-contract.md: zero reward first -- `write_zero_reward` at test.sh:60 before `trap cleanup EXIT` (:61), and the zero record (:8) carries reward, all five dimensions, gates_passed, floors_passed, weighted_score, graded, no_op; `cleanup` (:33-40) kills the app process group and calls `ensure_reward` on every exit, including set -e aborts; no shell `exec` (only `find -exec` at :86). Refuses missing REWARDKIT env (:63-66) and missing /app/server.js (:68-70); rejects symlinks outside /app/node_modules or whose target escapes it (:72-83). Copies /app aside (:90-95) and launches it unprivileged via `setsid env -i ... setpriv --reuid=65534 --regid=65534 --clear-groups node` with only PATH, NODE_PATH, HOME, PORT, DB_PATH (:104-111). LOG_DIR is chmod 700 (:11) and /tests go-rwx (:12), so the uid-65534 app cannot forge a reward or read rubrics. Liveness: up to 120 probes x 0.25 s on /api/health then / before RewardKit; not ready means exit 0 with the zero record (:115-125). The restart helper is a heredoc + sed with chmod 755, exported as APP_RESTART_HELPER (:127-193), and functional judge.toml:18 consumes it. `{app_context}` is substituted (:195-201). Stale scored output is removed (:212); gates run (:213) with a 1500 s budget, then score.py, where 0 continues, 1 exits keeping the detailed record, and any other status writes the plain zero (:216-222). Scored runs (:224) with an 11100 s budget, then score.py `|| write_zero_reward` (:227). A RewardKit failure or timeout in either suite exits 0 with the zero or gate-only record. Budgets nest: gate judges 600 < 1500; scored judges 9000/900/900 < 11100 (max-concurrent-agent 1, sum 10800); 1500+11100=12600 plus <=30 s startup < verifier 13200. (3) Executed a scratch copy of the frozen test.sh outside the workspace: with no REWARDKIT env it printed the guidance and returned rc=0, and with REWARDKIT set but no /app/server.js it returned rc=0. In both cases reward.txt was `0.0` and reward.json was the full zero record. (4) Executed a scratch copy of score.py + scoring.toml on synthetic suite outputs. A failed gate returned rc=1 with reward 0.0000. Missing gates reward.json and a missing dimension both returned rc=2, so test.sh writes the plain zero. Passed gates with no scored output returned rc=0 with 0.0000. Full scored output {0.5,1,0.5} gave 0.6000, and functional 0.0 below the floor gave 0.0000. Adversarial: a broken app that returns HTTP 500 on /api/health passes liveness by design (HTTPError counts as alive), so the render/constraints gates must catch it, not this row. An app that daemonizes out of the process group survives cleanup only inside the separate verifier container, so its reward files remain protected. Conforming alternative: an app needing env beyond the five injected vars or a non-writable /app would be affected, but hireops_rules.md:201-202 and instruction.md:13 state the exact launch environment, DB_PATH and port; a non-writable /app falls back to the /tmp/submission copy (:99-102). There is no credible failure on this row. Risk=true because no full test.sh launch through both RewardKit suites in the verifier image is recorded for this candidate. raw-evidence-index.json scope states that the full configured grading run is absent, and the scripted golden run (workspace.cjs, results/*, hashes verified) did not run test.sh or RewardKit. The every-path reward claim is verified by reading plus executed early-exit and score.py paths, not by a real end-to-end verifier run.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL: early-exit paths of test.sh and all score.py exit paths executed in scratch (CONFIRMED); full verifier launch and both RewardKit suites NOT EXERCISED"
+}

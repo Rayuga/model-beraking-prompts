@@ -1,0 +1,37 @@
+{
+  "number": 37,
+  "id": "later_dimensions_tolerate_earlier_mutations",
+  "reviewer": "row-reviewer-37",
+  "input_sha256": "f3019705d6c93cd3614b12ba2579b06da00436576e2d71dd57ed4d4e28173657",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-lessons-2026-10-08-r1/rules/WebDev Rubrics QC.xlsx (read in memory with zipfile; openpyxl is not installed): 'Quality Checks' row 38 (#37, block E, later_dimensions_tolerate_earlier_mutations, 'A later dimension doesn't assume a pristine seed after an earlier dimension mutated the shared running app.'), same text in 'Internal Quality Checks' row 38; neighbouring rows 36 and 38 read for scope; no cell comments, threaded comments or drawing text in the workbook (persons list empty, drawings empty)",
+    ".qc-cache/hireops-lessons-2026-10-08-r1/rules/harbor-webdev-rubric-qc/SKILL.md (full)",
+    ".qc-cache/hireops-lessons-2026-10-08-r1/rules/harbor-webdev-rubric-qc/references/quality-checks.md section '37 · later_dimensions_tolerate_earlier_mutations' (and 36/38 for scope)",
+    ".qc-cache/hireops-lessons-2026-10-08-r1/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (full)",
+    ".qc-cache/hireops-lessons-2026-10-08-r1/rules/projects/webdev-task-template/tests/test.sh (diffed; identical to task test.sh)",
+    "qc/REVIEW_POLICY.md (full)",
+    "handoffs/LESSONS_FROM_COLDERWATER_2026-10-08.md (full)",
+    "qc/runs/hireops-lessons-2026-10-08-r1/per-row-review/prompts/37.md",
+    "qc/runs/hireops-lessons-2026-10-08-r1/raw-evidence-index.json (scope and first entries)",
+    "task/tests/test.sh sha256 bd68259276ca4b034654efc8a1723a4e702ed62dbe590af6201565f43eabe5aa",
+    "task/tests/app_context.md sha256 4d613bdc38b6b1ad2366f4ed04244838a40cf31fecfb2b14e00e98b7e5f6a0dc",
+    "task/tests/gates/render/prompt.md 32768740... and judge.toml",
+    "task/tests/gates/constraints/prompt.md b2a3e91d... and judge.toml 5d4a0e20...",
+    "task/tests/scored/functional/prompt.md 53d8ecd8... and judge.toml cb0d03a7... (all 41 criteria)",
+    "task/tests/scored/polish/prompt.md dd3a01b9... and judge.toml 0b0f1e64...",
+    "task/tests/scored/visual/prompt.md 18d64251... and judge.toml",
+    "task/environment/assets/seed_data.json sha256 a1c65c80... (jobs, applications, messages, notes, reads)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Shared-state model: tests/test.sh:104-113 launches ONE app process and one DB; lines 213-227 run the gates suite (render, constraints) and then the scored suite (functional, polish, visual) against that same running app with --max-concurrent-agent 1, so every later dimension sees all earlier mutations. The run order inside a suite is not documented or measured, so I checked every dimension under any order.\n\nState-relative wording is present everywhere it matters: app_context.md:27-31 'every review can create its own job and cards ... Other reviews may have added jobs, cards and messages; never rely on a starting count.' functional/prompt.md:15 'Earlier reviews may have added jobs, cards and messages. Use your own new jobs and cards for every board protocol (suffix every title and name for this review), never move another review's records, and never rely on starting counts.' polish/prompt.md:14 'Use your own new job and cards (suffix titles for this review) ... never rely on another review's records ... If a message or note box already holds text from an earlier review, record it and clear it before typing your own.' The per-dimension browser gates (functional:11, polish:11, visual:101, constraints criterion hro_gate_shared) each add a uniquely named and emailed card to Data Analyst Applied and look for that card, not a count. Because of that, constraints' 'exactly one card for that candidate' cannot collide.\n\nThe remaining absolute seed expectations are all guarded against every other dimension: (1) Lena's 1 unread (functional:33 Z, hro_unread_counts) matches the seed (reads USR-CAN3/APP-301 read_count 2 of 3 messages). Render forbids opening any conversation (render/prompt.md:9), constraints forbids messaging (constraints/prompt.md:9), polish says 'Never use Lena Fischer's conversation' (polish/prompt.md:24), and visual is read-only after its gate with 'Do not move cards or send messages' (visual/prompt.md:104). (2) The seeded Platform Engineer order Greta/Ade/Marco and Priya/Samuel, plus Noor's note (functional:33, hro_restart), match the seed (APP-105/106/108 APPLIED 1-3, APP-103/104 SCREEN 1-2, note on APP-101). No other dimension moves Platform Engineer cards or adds notes there: constraints says 'Do not open a job, move, reject', polish uses its own job and cards, and visual is read-only. (3) Noor's 120-message conversation: polish (hro_pol_live_thread) and functional U add messages to it, but hro_thread_latest and hro_thread_earlier grade the 'most recent 30' and '30 at a time ... until none remain', and T says 'count the messages shown'. Both are relative, and the app_context count is explicitly 'at the start'. (4) Tomas's application: T falls back to a new J3 'if that address is already on J2', and the seeded-conversation fallback reads counts 'relative to their values before you act'. (5) hro_restart and hro_activity use the dimension's own before-restart record and its own J1/J2, not seed totals (Lesson 16 is satisfied).\n\nTried counterexamples: a broken app that freezes the seed (it ignores writes) fails every gate's unique-card readback. Either a wrongly passing broken app or a correct app failing because an earlier dimension left mutations would need some criterion to assert an absolute post-seed count or seed-only order on a record that another dimension touches. I found no such assertion. Colderwater lessons checked for this row: 'never rely on a starting count' (present), grading relative to a before-restart baseline (present). There is no timing or restart cross-dimension coupling: restart_app is declared only in functional/judge.toml:14-18.\n\nResidual observation (P3, not a defect): functional T leaves unsent drafts and polish hro_pol_session_resume leaves Rafael's drafts behind. Functional lacks polish's 'record it and clear it' line, so if the unmeasured run order ever put polish before functional, and if the app stored drafts on the server, functional T's 'different unsent reply in another conversation' could land in a box that already holds a polish draft. The criterion still passes a correct app, because the draft is kept rather than lost, so this does not create a failure for a conforming app.\n\nNo configured judge run exists (the raw-evidence-index scope says full configured grading is absent), so cross-dimension interaction has not been exercised at runtime. This row is a wording and design check and was verified from the frozen sources.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

@@ -1,0 +1,30 @@
+{
+  "number": 20,
+  "id": "solution_is_frozen_and_deterministic",
+  "reviewer": "row-reviewer-20",
+  "input_sha256": "62b67c0517689833807fe690bec0bb6d251f744264d2ef6e0ae6f181ae9f7826",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r2/rules/WebDev Rubrics QC.xlsx: 'Quality Checks' row 20 (solution_is_frozen_and_deterministic: 'The reference is a committed, static baseline - not regenerated, fetched, or nondeterministic on any pinned value.'); 'Internal Quality Checks' row 20 (same wording, no extra annotation columns populated, no cell comments); row 47 in both sheets read for the boundary with verifier determinism",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/rules/harbor-webdev-rubric-qc/SKILL.md (whole file)",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/rules/harbor-webdev-rubric-qc/references/quality-checks.md (whole file; section '20 - solution_is_frozen_and_deterministic')",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/rules/projects/webdev-task-template/solution/solve.sh (template baseline)",
+    "qc/REVIEW_POLICY.md (whole file)",
+    "qc/runs/hireops-workspace-2026-10-03-r2/per-row-review/prompts/20.md",
+    "task/solution/solve.sh, task/solution/app/package.json, server.js, src/bootstrap.js, src/db.js, src/index.js (whole files); public/js/*.js and index.html grepped for Math.random/Date/fetch/remote URLs",
+    "task/solution/app/src/seed_data.json and task/environment/assets/seed_data.json (byte-compared; parsed)",
+    "task/environment/Dockerfile, task/task.toml (header through [verifier.environment]), task/instruction.md, task/environment/instructions/hireops_rules.md (grep for clock/date/order), task/tests/test.sh lines 60-119, task/tests/scored/*/prompt.md and gates/*/prompt.md (grep for time/seeded-value dependence)",
+    "qc/runs/hireops-workspace-2026-10-03-r2/raw-evidence-index.json (all 6 entry hashes and all matching_source_files hashes recomputed: all match) and qc/repairs/hireops-2026-10-03-workspace/results/workspace.json (restart result)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Committed static baseline: solution/solve.sh (LF, shebang) only resolves DB_PATH under /app, refuses while the DB is held open, runs `cp -a \"$(dirname \"$0\")/app/.\" /app/` and deletes app.db/-wal/-shm (solve.sh last two lines). No npm install, git clone, curl/wget or code generation; dependencies are the pinned globals express@5.1.0 and better-sqlite3@12.4.1 from environment/Dockerfile (package.json pins the same exact versions). The grep for http(s):// across solution/ (excluding seed) found nothing; the only browser fetch is same-origin `fetch(path, ...)` at public/js/app.js:29. Seed is frozen and copied with the app: src/db.js:10 reads seed_data.json beside the module (never /assets at runtime); `cmp` shows src/seed_data.json is byte-identical to environment/assets/seed_data.json. Seeding is deterministic and idempotent: db.js:62 `if (... COUNT(*) FROM users ...) > 0) return;`; every seeded row uses seed-supplied ids and timestamps (applications created_at is the constant '2026-06-15T09:00:00Z' at db.js:75; messages/notes use seed created_at, all present); message AUTOINCREMENT ids are assigned in seed order on a fresh DB (solve.sh removes any prior DB), and read markers map deterministically via ids[app][read_count-1] (db.js:82-83). Pinned graded figures re-derived from the seed: Lena Fischer's APP-301 has 3 messages, read_count 2, 1 unread not from her = the '1' pinned in scored/functional/prompt.md:25; Noor's APP-101 holds 120 messages for the 30-per-page paging (thread_page_size 30 in the seed). Ordering never depends on clock or randomness: columns use `ORDER BY position, id` (index.js:199), bulk order uses stage index and position (index.js:284), Activity newest-first uses `ORDER BY a.id DESC` (index.js:189), undo picks `ORDER BY id DESC` (index.js:166/337). Times are rendered in fixed UTC (app.js:21 timeZone 'UTC'). The brief and rules define no fixed clock and no graded time-of-day/date rule, so there is no clock to violate. Runtime evidence: workspace.json (hash verified against raw-evidence-index, source hashes match the frozen bytes) records 'restart keeps jobs, cards, order, messages and activity without reseeding; live updates resume' passed. Adversarial probes: (a) a reference that reseeded on every boot or regenerated message ids would shift Lena's unread and the paging counts — this one cannot, due to db.js:62 and fresh-DB deletion in solve.sh; (b) a conforming alternative is unaffected since this row grades only the reference. Residual, non-blocking observations (P3, no pinned value affected): new jobs/applications created at runtime get random 24-bit ids (index.js:60 `crypto.randomBytes(3)`), and new rows use wall-clock now() (index.js:59) for created_at; the candidate application list sorts by created_at then id (index.js:173), which only orders judge-created vs seeded rows and is not graded. Session tokens are random by necessity. None of these are pinned or graded values.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "CONFIRMED"
+}

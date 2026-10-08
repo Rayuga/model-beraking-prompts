@@ -1,0 +1,28 @@
+{
+  "number": 20,
+  "id": "solution_is_frozen_and_deterministic",
+  "reviewer": "row-reviewer-20",
+  "input_sha256": "6ca9ee7368c7aef18033c68fdd278d965bcb75bc20d710f6c60c557dfb8953eb",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/WebDev Rubrics QC.xlsx: Quality Checks row 21 (#20 solution_is_frozen_and_deterministic, 'The reference is a committed, static baseline - not regenerated, fetched, or nondeterministic on any pinned value.') and Internal Quality Checks row 21 (same text; no extra annotation columns or cell comments populated)",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/harbor-webdev-rubric-qc/references/quality-checks.md section 20 (seeding produces same rows every run; no random ids, no wall-clock-derived values, no boot-time fetch that could move a graded figure; fixed clock only time source used by graded rules) and section 47",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/projects/webdev-task-template/solution/solve.sh and solution/app/server.js",
+    "qc/REVIEW_POLICY.md",
+    "task/solution/solve.sh, task/solution/app/{server.js,package.json,src/bootstrap.js,src/db.js,src/index.js,src/seed_data.json,public/index.html,public/js/app.js (Date/fetch grep)}",
+    "task/environment/assets/seed_data.json, task/instruction.md, task/environment/instructions/hireops_rules.md (time/clock grep), task/tests/test.sh lines 80-130, all five judge.toml/prompt.md (time/clock/date grep)",
+    "qc/runs/hireops-workspace-2026-10-03-r1/raw-evidence-index.json (all 6 artifact hashes re-verified equal; all 12 matching_source_files hashes equal the frozen solution bytes) and qc/repairs/hireops-2026-10-03-workspace/results/workspace.json (head)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Committed static baseline: solution/solve.sh only refuses an in-use DB, copies the committed solution/app into /app (cp -a, same as template solve.sh) and deletes any stale app.db/-wal/-shm, so every install starts from the same bytes and seeds afresh; no download, npm install, build or generation step. package.json pins express 5.1.0 and better-sqlite3 12.4.1 (exact). The frozen solution/ tree is byte-identical to the project worktree (diff -r clean) and its 12 file hashes equal raw-evidence-index matching_source_files. index.html loads only same-origin /styles.css and /js/*.js; the only fetch() in public/js/app.js:29 is same-origin API. Deterministic seeding: src/db.js:71 reads seed_data.json from beside the module (byte-identical to environment/assets/seed_data.json, sha256 22df2a00...60bd); seedIfEmpty (db.js:122-147) inserts users/jobs/applications with the seed's fixed ids, applications with a fixed created_at '2026-06-15T09:00:00Z' (db.js:136), messages/notes with their seed created_at values, and read markers resolved by seed-array index (ids[app][read_count-1], db.js:143-144), so autoincrement message ids and unread/seen figures are identical every run; reseeding never happens on restart (db.js:123). Seed per-thread message timestamps are strictly increasing and unique (APP-101 120 msgs, APP-201 3, APP-301 2, APP-302 1), so id order == time order and the graded 30-per-page paging of Noor's thread (120 -> 30 shown, 90 earlier) is fixed. No Math.random anywhere; ordering everywhere is by position,id / id / created_at,id (index.js:173,182,189,199) — no tie depends on time. Non-pinned runtime values: index.js:59 now() = wall-clock ISO for runtime-created sessions/activity/messages/notes/actions/application created_at, and index.js:60 uid() = crypto.randomBytes(3) ids for jobs/applications created during grading, plus random session tokens (index.js:88). None of these is a pinned or graded value: the brief and hireops_rules.md define no fixed clock and no time-based rule (grep for clock/date/time/ago in instruction.md, rules, integration.md, all prompts and judge.toml finds only timeout and candidate words), criteria grade order/positions/counts/wording, and judges create and locate their own jobs by unique title, not id. Runtime evidence: scripted golden run (workspace.json, hash-verified) on the frozen solution bytes with a real restart passed its 18 groups including thread paging 30-at-a-time and unread counts; this is not a configured judge run or Oracle score, and none is claimed.",
+  "counterexample": "Tried: (1) a weak reference that reseeded on boot or derived seed ids/created_at from Date/random would move unread counts, paging and the Noor thread — not present (db.js:123 guard, fixed seed values). (2) Wall-clock created_at on new applications: candidate list orders by created_at,id (index.js:173); with a container clock earlier than 2026-06-15 a newly linked Tomas application would sort before seeded ones, but no criterion grades candidate-list order, so no graded figure moves. (3) A 3-byte random job/application id could collide (~1 in 16.7M per pair) causing a 500 on create — latent only (P3-level), not a pinned value. (4) A conforming alternative using its own ids/timestamps is not penalised by this row since nothing graded depends on the reference's values.",
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL — static inspection plus one hash-bound scripted golden run (with restart) confirm deterministic seeding and graded seed-derived figures; no repeated fresh-install comparison run and no configured judge/Oracle run exist, but neither is required to establish this row."
+}

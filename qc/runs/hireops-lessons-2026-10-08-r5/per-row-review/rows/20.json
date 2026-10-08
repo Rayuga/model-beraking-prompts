@@ -1,0 +1,33 @@
+{
+  "number": 20,
+  "id": "solution_is_frozen_and_deterministic",
+  "reviewer": "row-reviewer-20",
+  "input_sha256": "a79edbb8ae702f39a2f9b3b25acaca8a5c16f1cc7ab0609415d9267f51eac1db",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-lessons-2026-10-08-r5/rules/WebDev Rubrics QC.xlsx (read in memory with zipfile): 'Quality Checks' sheet1 row 21 (#20, D - solution/, solution_is_frozen_and_deterministic, 'The reference is a committed, static baseline - not regenerated, fetched, or nondeterministic on any pinned value.'); 'Internal Quality Checks' sheet4 row 21 has no annotation in E+ (annotations exist only on rows 15, 24, 27, 28, 29, 34, 42, 43, 45, 51, 53)",
+    ".qc-cache/hireops-lessons-2026-10-08-r5/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-lessons-2026-10-08-r5/rules/harbor-webdev-rubric-qc/references/quality-checks.md section '20 · solution_is_frozen_and_deterministic' (also 47 for the fixed-clock wording)",
+    ".qc-cache/hireops-lessons-2026-10-08-r5/rules/projects/webdev-task-template/solution/solve.sh, solution/app/server.js, instruction.md, environment/instructions/",
+    "qc/REVIEW_POLICY.md",
+    "handoffs/LESSONS_FROM_COLDERWATER_2026-10-08.md",
+    ".qc-cache/hireops-lessons-2026-10-08-r5/task/solution/solve.sh",
+    ".qc-cache/hireops-lessons-2026-10-08-r5/task/solution/app/package.json, server.js, src/bootstrap.js, src/db.js, src/index.js, src/seed_data.json",
+    ".qc-cache/hireops-lessons-2026-10-08-r5/task/solution/app/public/index.html, public/js/app.js, board.js, threads.js (grep for time/random/fetch)",
+    ".qc-cache/hireops-lessons-2026-10-08-r5/task/environment/assets/seed_data.json",
+    ".qc-cache/hireops-lessons-2026-10-08-r5/task/instruction.md, environment/instructions/integration.md, environment/instructions/hireops_rules.md sections 8-9",
+    ".qc-cache/hireops-lessons-2026-10-08-r5/task/tests/test.sh (solve/seed/DB grep), tests/scored/*/judge.toml, tests/gates/*/judge.toml, tests/*/*/prompt.md, tests/app_context.md (grep for clock/time/random/seed)",
+    "qc/runs/hireops-lessons-2026-10-08-r5/raw-evidence-index.json and manifest.json; qc/repairs/hireops-2026-10-03-workspace/via-solve.sh and results/via-solve.log"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Committed static baseline: solution/app holds only package.json, server.js, public/ and src/ (no app.db, no node_modules, no build step); solve.sh copies the committed tree with `cp -a \"$(dirname \"$0\")/app/.\" /app/` and deletes any existing DB (`rm -f -- \"$database_path\" ...`) so every install starts from the same fresh baseline; it fetches nothing and runs no npm install (express 5.1.0 / better-sqlite3 12.4.1 are pinned in package.json and preinstalled per integration.md). Seeding is deterministic: db.js:10 reads src/seed_data.json beside the module (byte-identical to environment/assets/seed_data.json, both sha256 a1c65c80...3740); db.js:61-86 inserts users/jobs/applications with seed ids, applications get the constant created_at '2026-06-15T09:00:00Z' (db.js:75), messages and notes take their created_at from the seed (all 127 messages and 3 notes carry one), message/note AUTOINCREMENT ids follow seed order, and read markers resolve from seed read_count (all 6 within range: APP-101 120/119 of 120, APP-201 1 and 3 of 3, APP-301 2 of 3). db.js:62 `if (... FROM users ...).c > 0) return;` prevents reseeding on restart. No random id, wall-clock value or boot-time fetch touches a seeded or graded figure: crypto random ids (index.js:60 uid, :88 session token) and now() (index.js:59) apply only to rows created at run time; bootstrap.js uses port 0 for an internal worker (not graded). Graded orderings use ids/positions (activity ORDER BY a.id DESC index.js:189; messages ORDER BY id; board ORDER BY position), not timestamps; the UI formats times with timeZone 'UTC' (app.js:21). The brief defines no fixed clock and no graded rule is time-based (grep of instruction.md, hireops_rules.md, integration.md, all judge.toml/prompt.md/app_context.md found no clock/timestamp-dependent bar); criteria pin only seed-derived values (e.g. functional judge.toml hro_intake_restart: seeded Platform Engineer Applied order Greta Lindqvist, Ade Bello, Marco Rossi). Frozen-ness against evidence: all 12 solution files' sha256 in raw-evidence-index.json match the frozen task bytes, and all 8 indexed artifacts' own hashes verify; via-solve.log (8 Oct rerun, installed via solve.sh into empty /app) records 'PASS seeded card order and internal notes are loaded' and 'PASS restart keeps jobs, cards, order, messages, unread counts and activity without reseeding'. Colderwater lessons checked for this row: lesson 19 (golden harness rerun after change) is satisfied for the current solution bytes; lesson 15 (real restart) is reflected in the no-reseed guard and the restart observation; no other lesson bears on reference determinism. Adversarial angles: a conforming model app that uses wall-clock timestamps or random ids is not penalised because no criterion pins a time or generated id; a reference that reseeded or regenerated on boot would be caught here, but this one does not. Latent P3 note only: a newly created application's created_at is wall-clock, and the candidate list orders by created_at, id (index.js:173), so on a verifier clock set before 2026-06-15 a new application would sort ahead of seeded ones; no criterion grades that order. Not measured: two independent fresh installs compared row-for-row, and any full configured judge/Oracle run; determinism across installs rests on source reading plus the single scripted golden run.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL - the scripted golden run via solve.sh confirms seeded data loads as committed and restart does not reseed; equality across two separate fresh installs and full configured judge/Oracle runs were not exercised."
+}

@@ -13,7 +13,11 @@ The product is served from the local server. It may load external fonts,
 scripts or CDN assets, but it cannot depend on an external backend or data
 service. How routes and files are laid out under /app is up to you.
 
-For delivery, use ordinary files under /app. Symbolic links are supported
-only inside /app/node_modules, and their resolved targets must also stay
-inside /app/node_modules. Use NODE_PATH for the preinstalled packages rather
-than linking to their global installation directories.
+We copy /app as ordinary files when we deploy it, so please don't rely on
+symbolic links outside /app/node_modules, and keep any link there pointing
+inside /app/node_modules. The preinstalled packages are reachable through
+NODE_PATH, so there's no need to link to where they're installed.
+
+We start it as node /app/server.js from a different working directory under a
+locked-down account, so find your files relative to the app itself and write
+only under /app or wherever DB_PATH points.

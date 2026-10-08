@@ -1,0 +1,37 @@
+{
+  "number": 13,
+  "id": "assets_match_the_task",
+  "reviewer": "row-reviewer-13",
+  "input_sha256": "6ca9ee7368c7aef18033c68fdd278d965bcb75bc20d710f6c60c557dfb8953eb",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/WebDev Rubrics QC.xlsx: 'Quality Checks' row 14 (#13 assets_match_the_task, block C) and 'Internal Quality Checks' row 14 (same text, no extra annotation in cols E+); 'Deterministic Checks' rows for check-assets-referenced.py (C4) and the fixtures/COPY row (C12)",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/harbor-webdev-rubric-qc/SKILL.md (full)",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/harbor-webdev-rubric-qc/references/quality-checks.md section '13 · assets_match_the_task' (lines 56-60) and neighbouring block C",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/projects/webdev-task-template/ (file list incl. environment/Dockerfile, environment/assets/seed_data.json, environment/instructions/*) for template layout",
+    "qc/REVIEW_POLICY.md (full)",
+    "qc/runs/hireops-workspace-2026-10-03-r1/raw-evidence-index.json (head; scope states no full judge/Oracle runs)",
+    "task/instruction.md (full)",
+    "task/environment/Dockerfile (full)",
+    "task/environment/instructions/hireops_rules.md (full)",
+    "task/environment/instructions/integration.md (full)",
+    "task/environment/assets/seed_data.json (parsed fully with Python; all entities dumped)",
+    "task/solution/app/src/seed_data.json (sha256 compared) and task/solution/app/src/db.js seed loader lines 10-83 (grep)",
+    "task/tests/app_context.md (full)",
+    "task/tests/test.sh (full)",
+    "task/tests/scoring.toml",
+    "task/tests/gates/render/prompt.md, task/tests/gates/constraints/prompt.md, task/tests/scored/{functional,polish,visual}/prompt.md (full)",
+    "task/tests/scored/functional/judge.toml lines 299-407 (seed-dependent criteria), polish/judge.toml line 41, render/judge.toml line 23 (grep)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "PATHS: The brief names exactly three shipped paths: /instructions/hireops_rules.md and /instructions/integration.md (instruction.md:11) and /assets/seed_data.json (instruction.md:13). All exist under task/environment/ and environment/Dockerfile:14-15 'COPY instructions/ /instructions/' and 'COPY assets/ /assets/' stage them, with line 16 chmod a+rX. No other /assets or /instructions path is referenced; hireops_rules.md:205 and integration.md:7 reference only /assets/seed_data.json. CONTENT vs PROMPT/RULES: seed_data.json (28365 bytes, sha256 22df2a00...660bd) parses and holds 10 users whose names/emails/roles match instruction.md:17 and app_context.md:10-19 exactly (3 recruiters, 3 hiring_managers, 1 observer, 3 candidates); 3 jobs (JOB-PLAT limit 3, JOB-DATA limit 2, JOB-DSGN limit 3, all within 1..50) as hireops_rules.md:205 says; 16 applications with cards ordered by 'position'; 126 messages with APP-101 (Noor Haddad, Platform Engineer) at 120 messages, time-sorted with no duplicate timestamps (the 'one conversation is long'); 3 notes; 6 read markers expressed as read_count 'counted from its first' (rules:206-207); candidate_status_labels APPLIED..REJECTED equal to the rules table at hireops_rules.md:182-189 verbatim; thread_page_size 30 equal to rules:144. Interview occupancy is within limits (PLAT 2/3, DATA 1/2, DSGN 1/3). The one rejected card APP-301 carries rejected_from SCREEN and a non-blank reject_reason as rules:49-51 require. All message sender_ids and application_ids resolve. CONTENT vs JUDGES: functional judge.toml:335 'Mei Lin starts with 2 unread on Tomas Varga's Data Analyst conversation' derives correctly: APP-201 has 3 messages (USR-REC2, USR-CAN2, USR-CAN2), Mei (USR-REC2) read_count=1, so 2 messages by others are unread. app_context.md:29-30 and functional judge.toml:317/326 '120 messages ... most recent 30 ... 30 at a time' match the seed (120 -> 30 shown, 90/60/30/0 remaining). judge.toml:344 'he is told there is one new message' is consistent because Rafael's APP-101 read_count=120 (zero unread before Noor's one new message). Noor's own read_count=119 leaves her last unread item as her own message #120, so she has 0 unread, consistent with 'own messages are never unread' (rules:152). Noor has two applications (APP-101 Platform, APP-302 Design) and the prompts name 'Platform Engineer' explicitly, so the reference is unambiguous. 'Tomas Varga's Data Analyst conversation' is APP-201 (JOB-DATA, manager Bill Okafor) consistent with protocol T/U. CONTENT vs SOLUTION: solution/app/src/seed_data.json is byte-identical (same sha256 22df2a00...) to the shipped asset, and solution/app/src/db.js:10 reads it relative to __dirname (rules:199-200), loads candidate_status_labels and thread_page_size (db.js:14-15), rejected_from/reject_reason (db.js:72-75) and read markers by read_count (db.js:83). Hence the golden assumes exactly the shipped content. COUNTEREXAMPLE PROBES: (a) Weak app passing because of the assets: an app that ignores read markers would show Mei 3 unread, not 2, and fails judge.toml:335. An app that loads all 120 messages fails :317. The asset content therefore discriminates and does not hand out free credit. (b) Conforming alternative failing because of the assets: the rules publish every value the judges rely on (page size, wording, read_count semantics), and all graded seed facts are re-derivable from the shipped file. I found no hidden asset-only requirement. Uppercase stage keys versus title-case display names are an ordinary mapping that the rules table documents. NOTE (P3, not an asset defect, no observed impact): judge.toml:335 relies on Mei's starting count of 2 surviving the earlier render/constraints gates. Neither gate sends messages, and app_context.md:30-31 says 'never rely on a starting count' only for added jobs/cards/messages. It stays untouched unless an earlier judge signs in as Mei and an app auto-opens Tomas's Data Analyst conversation. This is a state-ordering question for other rows (e.g. judge independence/state), not an asset mismatch. LIMITS: This is a static, source-only review. No Docker run, configured judge run, Oracle or model score was performed or claimed. The deterministic check-assets-referenced.py/check-fixtures.py executables were not run here; that is owned by the separate deterministic reviewer.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

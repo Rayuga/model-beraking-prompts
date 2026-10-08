@@ -1,0 +1,36 @@
+{
+  "number": 34,
+  "id": "interactive_time_varying_and_viewport_behavior_is_exercised",
+  "reviewer": "row-reviewer-34",
+  "input_sha256": "f53d9ed60d12f2a653d497dc98fac56a662e0d84393cdc5ff130c8a915d956db",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r3/rules/WebDev Rubrics QC.xlsx :: 'Quality Checks' row #34 ('If interactive/animated/responsive/themed, the judges actually click, wait, resize, or toggle - not score a still first paint.') and 'Internal Quality Checks' row #34 (same wording; no extra annotation in the remaining columns)",
+    ".qc-cache/hireops-workspace-2026-10-03-r3/rules/harbor-webdev-rubric-qc/SKILL.md (verdicts, severity, evidence standard, known false positives)",
+    ".qc-cache/hireops-workspace-2026-10-03-r3/rules/harbor-webdev-rubric-qc/references/quality-checks.md:142-143 (check 34 procedure) and the rest of the file for neighbouring checks 25/32",
+    ".qc-cache/hireops-workspace-2026-10-03-r3/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (prompt/judge.toml contract)",
+    ".qc-cache/hireops-workspace-2026-10-03-r3/rules/projects/webdev-task-template/ (frozen template tree listed; staged prompt shape compared via contract)",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/hireops-workspace-2026-10-03-r3/per-row-review/prompts/34.md and rows/34.template.json",
+    "task/instruction.md:1-17",
+    "task/tests/app_context.md:1-34",
+    "task/tests/gates/render/{prompt.md,judge.toml}",
+    "task/tests/gates/constraints/{prompt.md,judge.toml}",
+    "task/tests/scored/functional/{prompt.md,judge.toml}",
+    "task/tests/scored/polish/{prompt.md,judge.toml}",
+    "task/tests/scored/visual/{prompt.md,judge.toml}",
+    "task/solution/app/public/styles.css (overflow rules lines 65, 93, 101)",
+    "qc/runs/hireops-workspace-2026-10-03-r3/raw-evidence-index.json; qc/repairs/hireops-2026-10-03-workspace/results/workspace.json and workspace.cjs (hashes re-verified: 7addcbf5...7897 and 6c7e97da...b26 match index; board.js/threads.js/app.js frozen hashes match matching_source_files)"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "Time-varying/interactive asks in the brief: live board updates within 15 s without reload and without closing an open card, wiping a typed note or moving the cursor (instruction.md:5); long conversation opens at the latest messages and loads earlier ones keeping place; arrival while scrolled up keeps place and notifies; never touch draft or cursor (instruction.md:7); refused move puts the card back (instruction.md:3). Theme switching and phone layout are explicitly not required (instruction.md:11), so no resize/toggle obligation exists; visual/prompt.md:14 pins grading to 'a conventional desktop viewport' and states 'No phone layout or theme switching is required.' Every time-varying ask has an explicit act-and-wait instruction rather than a first-paint read: functional/prompt.md:47 (V) 'Without reloading or clicking in this page, wait up to 15 seconds (a wait-for call, or snapshots; accept what is present at the first snapshot at or after 15 seconds)' graded by hro_live_board (judge.toml:284-291); functional/prompt.md:39 (T) 'watch the reply arrive on Rafael's open conversation without reload' -> hro_msg_exchange; functional/prompt.md:41 (U) 'Every reading in U is made without reloading, navigating or clicking in Rafael's page: wait up to 15 seconds' plus the scrolled-up arrival procedure -> hro_unread_counts, hro_unread_scrolled_up, hro_seen; T also drives Shift+Enter/Enter and reads box/focus (hro_msg_compose), repeated earlier-loading (hro_thread_earlier), and draft survival across navigation/reload (hro_drafts). hro_refused_put_back (judge.toml:131-138) reads document.activeElement after a refused UI move. Polish (polish/prompt.md:14) forbids reload/navigate/click/type in the observed page until the update is seen or 15 s pass and tells the judge to read document.activeElement, field values and scroll offsets via page.evaluate; hro_pol_live_board types an unsaved note, scrolls, waits for a remote move, then checks open details, note text, focus, scroll and that further typing appends; hro_pol_live_thread does the same for a reply draft; hro_pol_earlier_place measures getBoundingClientRect().top before/after loading earlier; hro_pol_failed_send aborts one send via route handler/offline; hro_pol_session_resume ends the session in a second tab and presses Send. Each wait row is explicit that a missing update within 15 s scores 0 rather than being inferred. Counterexamples tried: (a) a broken app that polls and re-renders the whole board/thread innerHTML passes hro_live_board but fails hro_pol_live_board/hro_pol_live_thread (details closed, note/draft cleared, focus lost) -> correctly separated; (b) an app that refreshes only on window focus or click, or shows a 'click to refresh' banner, fails hro_live_board/hro_msg_exchange/hro_unread_counts because the judge is forbidden to click; (c) an app that restores the draft value after re-render but puts the caret at the start fails the 'typing more appends' leg; (d) a conforming app using SSE/WebSocket, polling up to 15 s, or auto-loading earlier messages on scroll-to-top passes (protocol says 'bring in earlier messages', mechanism-neutral; the 15 s window accepts the first snapshot at or after 15 s). Scripted golden evidence (workspace.json results 13-15, not a configured judge run) shows the golden satisfies these behaviours: live board arrival_ms 804 with open card, note draft and focus kept; scrolled-up arrival keeps draft, focus and scroll; seen/unread update live. RISK (why risk=true): (1) No configured judge run exists (raw-evidence-index.json scope: 'Full configured grading/workload ... are absent'), so whether the GLM judge actually performs the waits/scrolls/focus reads within its 900 s polish and 9000 s functional budgets is unmeasured; the row's 'judges actually click, wait' cannot be run-verified. (2) Minor feasibility ambiguity, P3: hro_pol_live_board requires 'scroll the page, or the board's scroll container if the page itself does not scroll' and then 'the scroll position has not been reset', but gives no rule if neither is scrollable at the judge viewport for a 3-card job; a conforming app whose board fits the viewport could be scored 0 by a literal judge. The golden board has overflow-x:auto with 6x210px min columns (styles.css:65), so it is probably horizontally scrollable at a 1280px viewport, but workspace.cjs never scrolled the board in the live-board group (scroll calls appear only for the conversation log, lines 311-333), so even the golden's scroll leg is unmeasured.",
+  "counterexample": null,
+  "suggested_fix": "Optional hardening (not a Fail): in hro_pol_live_board say 'if neither the page nor the board scrolls at this viewport, record that and judge the remaining legs'; and obtain one configured judge run transcript showing the V/U/polish waits and page.evaluate focus/scroll reads were actually performed.",
+  "run_verdict": "NOT EXERCISED"
+}

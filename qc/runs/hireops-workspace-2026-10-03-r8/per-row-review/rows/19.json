@@ -1,0 +1,31 @@
+{
+  "number": 19,
+  "id": "solution_honors_the_runtime_contract_and_is_self_contained",
+  "reviewer": "row-reviewer-19",
+  "input_sha256": "74f3c8aabb287552a2a6045a07212a40f8d2bd5574f78227a868fc40f9c7f265",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r8/rules/WebDev Rubrics QC.xlsx (openpyxl read_only, in memory): Quality Checks row 19 (D - solution/, 'solve.sh installs to the expected paths and the reference runs under the stated contract. (Network is public - fetching or installing at start is not a defect.)'); Internal Quality Checks row 19 (historical 'no network / no run-time install' wording, superseded by public-network profile); Deterministic Checks check-solve-contract.py, check-runtime-contract-strings.py, check-dockerfiles.py, check-nproc.sh, check-pip-pinning.sh; no xlsx comment parts present",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/rules/harbor-webdev-rubric-qc/references/quality-checks.md section 19 (and 4, 23, 49 for context)",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (check-solve-contract.py)",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (file tree, cross-file agreements table)",
+    ".qc-cache/hireops-workspace-2026-10-03-r8/rules/projects/webdev-task-template/solution/solve.sh and tests/test.sh (diff vs task test.sh: identical)",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/hireops-workspace-2026-10-03-r8/per-row-review/prompts/19.md and rows/19.template.json",
+    "task/solution/solve.sh, task/solution/app/{package.json,server.js,src/bootstrap.js,src/db.js,src/index.js (lines 1-60, 440-450)}, task/solution/app/src/seed_data.json",
+    "task/instruction.md, task/environment/instructions/integration.md, task/environment/Dockerfile, task/tests/Dockerfile, task/tests/test.sh, task/task.toml (timeouts)",
+    "qc/runs/hireops-workspace-2026-10-03-r8/raw-evidence-index.json; qc/repairs/hireops-2026-10-03-workspace/workspace.cjs (launch(), restart block lines 499-507), results/workspace.json, results/server.log (hashes verified)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "STATIC (frozen bytes, solve.sh sha256 1df2ed04...030a): solve.sh line 1 '#!/bin/bash', 'set -euo pipefail'; cat -A shows LF only, grep -c $'\r' = 0; 'bash -n' OK. It writes only to /app: 'mkdir -p /app', 'cp -a \"$(dirname \"$0\")/app/.\" /app/', then 'rm -f -- \"$database_path\" \"$database_path-wal\" \"$database_path-shm\"' where database_path is realpath of ${DB_PATH:-/app/app.db} and is refused unless under /app/*. No writes to /tests, /logs/verifier or /solution; no pkill, NODE_ENV, npm install, pip or bare nproc (grep empty). The embedded node heredoc only reads /proc to refuse resetting a DB still held open; on a fresh /app no DB exists and it exits 0 before any scan (process.argv[2] verified locally to be the path argument for 'node - <path>'). No app.db is shipped in solution/app (tree listing). ENTRY/PORT/DB: server.js = \"require('./src/index.js')\"; index.js main thread calls bootstrap.start, which listens on Number(process.env.PORT || 3000) at 0.0.0.0 (bootstrap.js:43) and answers GET /api/health and /health with 200 before any DB work (bootstrap.js:20-23); the worker inherits process.env incl. DB_PATH (bootstrap.js:45). db.js:9 'const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', 'app.db')' = /app/app.db by default; mkdirSync(dirname) supports the test.sh /tmp/submission fallback (test.sh:97-102). Seeding idempotent: seedIfEmpty returns if users COUNT>0 and inserts in one transaction (db.js:61-85). Self-contained: seed read from src/seed_data.json beside the module (db.js:10), byte-identical to environment/assets/seed_data.json (cmp); no runtime read of /assets or /instructions, no child_process. Dependencies express@5.1.0 and better-sqlite3@12.4.1 match package.json and are preinstalled globally in BOTH environment/Dockerfile and tests/Dockerfile with NODE_PATH=/usr/local/lib/node_modules, which test.sh passes to the env -i launch (test.sh:104-111); no node_modules or symlinks shipped, so test.sh's symlink refusal (72-83) is not triggered. Contract matches instruction.md line 13-15 and integration.md. RUNTIME (raw-evidence-index hashes re-verified; all 12 matching_source_files hashes equal the frozen task bytes): workspace.cjs launch() spawns 'node /app/server.js' with a minimal env {PATH,HOME,NODE_PATH,PORT=3000,DB_PATH=/tmp/hireops-workspace.db}, reported as uid 65534 in the verifier image; server.log shows '[hireops] listening on 3000' twice (initial + restart); workspace.json records 'restart keeps jobs, cards, order, messages and activity without reseeding; live updates resume' passed:true and page_errors []. This shows DB_PATH honoured outside /app, idempotent restart and reference operation under the stated contract. ADVERSARIAL: a broken reference that ignored DB_PATH, read /assets at runtime, required npm install, or shipped app.db would be caught by the checks above; none applies. A conforming alternative solve.sh (plain template cp) would equally pass this row; the extra /proc guard only fires when a DB already exists, which does not occur in the oracle flow. LIMITS (not waived, owned by other rows): no recorded run actually executes solve.sh followed by the frozen test.sh/Oracle; the golden evidence is a scripted driver, not a configured judge run or Oracle score. The row's own verify list is fully static (check-solve-contract.py scope) and every item was confirmed; runtime launch semantics were additionally observed. Minor note: solve.sh exits 1 if the agent environment sets DB_PATH outside /app, a self-imposed safety guard with no effect under the harness (DB_PATH is unset at solve time and test.sh sets it only at launch).",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL"
+}

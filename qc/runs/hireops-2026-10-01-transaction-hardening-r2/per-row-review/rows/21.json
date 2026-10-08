@@ -1,0 +1,37 @@
+{
+  "number": 21,
+  "id": "verifier_entrypoint_is_safe_and_always_scores",
+  "reviewer": "row-reviewer-21",
+  "input_sha256": "7e8adb4257e0b520304b0c4c7b2d16e184c9f951d54e3b3e77345643d59023f0",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-2026-10-01-transaction-hardening-r2/rules/WebDev Rubrics QC.xlsx: Quality Checks row 22 (quality #21), Internal Quality Checks row 22; Quality Checks and Deterministic Checks sheets read; list_checks.py enumerated",
+    ".qc-cache/hireops-2026-10-01-transaction-hardening-r2/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-2026-10-01-transaction-hardening-r2/rules/harbor-webdev-rubric-qc/references/quality-checks.md:92-94",
+    ".qc-cache/hireops-2026-10-01-transaction-hardening-r2/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md: tests/test.sh ordered contract",
+    ".qc-cache/hireops-2026-10-01-transaction-hardening-r2/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md: check-verifier-contract.py and shared-file/scoring procedures",
+    ".qc-cache/hireops-2026-10-01-transaction-hardening-r2/rules/projects/webdev-task-template/tests/test.sh:1-227; byte comparison of template score.py, restart_mcp.py and scoring.toml",
+    ".qc-cache/hireops-2026-10-01-transaction-hardening-r2/task/tests/test.sh:1-227",
+    ".qc-cache/hireops-2026-10-01-transaction-hardening-r2/task/tests/tools/score.py:1-91",
+    ".qc-cache/hireops-2026-10-01-transaction-hardening-r2/task/tests/tools/restart_mcp.py:1-113",
+    ".qc-cache/hireops-2026-10-01-transaction-hardening-r2/task/tests/scoring.toml; task/tests/Dockerfile; task/task.toml",
+    ".qc-cache/hireops-2026-10-01-transaction-hardening-r2/task/environment/instructions/integration.md:1-19",
+    ".qc-cache/hireops-2026-10-01-transaction-hardening-r2/task/tests/scored/functional/prompt.md:49 and judge.toml:924-929,1149-1154",
+    "qc/README.md; qc/REVIEW_POLICY.md; NEW_TASK_AUTHORING_CONTEXT.md and TASK_AUTHORING_WORKFLOW.md entry material",
+    "qc/runs/hireops-2026-10-01-transaction-hardening-r2/raw-evidence-index.json (all 150 artifact hashes checked)",
+    "qc/runs/hireops-2026-10-01-handoff-audit/local/shared-harness/results.json (indexed raw observations only)",
+    "qc/runs/hireops-2026-10-01-transaction-hardening-r1/per-row-review/evidence/43/orchestration-results.json and run-manifest.json (indexed synthetic raw observations only)",
+    "qc/runs/hireops-2026-10-01-transaction-hardening-r2/per-row-review/evidence/21/probe.py; results.json; run-manifest.json; probe-v2.py; controlled-recheck/results.json; controlled-recheck/run-manifest.json; index-hash-audit.json; artifact-hashes.json"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P1",
+  "evidence": "Confirmed shared-template process lifecycle defect, with rewards preserved. Frozen task/tests/test.sh is byte-identical to the frozen template (SHA256 bd68259276ca4b034654efc8a1723a4e702ed62dbe590af6201565f43eabe5aa). Lines 60-61 create the initial reward and install cleanup; 68-83 reject missing entrypoints and escaping symlinks; 104-111 sanitize the app environment and run UID 65534; 115-125 gate on liveness; 212-227 run gates, score.py, scored, score.py. Controlled fixtures confirmed missing-entry and escaping-symlink produce zero without invoking suites, CLI failure retains zero, and normal suite order is gates then scored. App observations contain only DB_PATH/HOME/NODE_PATH/PATH/PORT and UID 65534. However cleanup sends one SIGTERM then performs an unbounded wait before ensure_reward (test.sh:33-39). The generated restart helper sends SIGTERM, waits at most five seconds but does not require termination, then launches a replacement and accepts any HTTP responder as ready (test.sh:152-183). In a fresh network-none container using image sha256:fd5a522e1caa5692f9e3ece733b3f60ea79b20b1cf4b4aaf75bd99f5ccce8c27, the matching normal restart control replaced PID 24 with 52. A 30-second graceful-shutdown fixture returned helper status 0 but PID 82 still answered while new PID 159 failed EADDRINUSE; the SIGTERM-resistant fixture likewise retained PID 189 while recording PID 266 and status 0. A separate CLI-failure/SIGTERM-resistant case remained in cleanup after an external 8.003-second observation bound; its initial zero reward existed. No missing-reward claim is made. These current-byte observations are in qc/runs/hireops-2026-10-01-transaction-hardening-r2/per-row-review/evidence/21/controlled-recheck/results.json (SHA256 6d5e7f7c2b6af2ae64342c4583e4fc3ae4b505d6d53cf36860e38e4589738e0c); exact Docker command, image and 55-second outer bound are in controlled-recheck/run-manifest.json (SHA256 7b5a55799d8ef646888692005f12083e49e5c26478452c063ec4256756a185c1). Initial fixtures are retained separately; the controlled recheck fixes their deleted-working-directory noise and supplies a successful restart control. All 150 entries in raw-evidence-index.json matched their declared hashes; index SHA256 44a021e35f91308c5a0ac4a377682a94aeb37b49f8280bec70eeb52ef5f6a287. Deliberate fixture changes are explicit: synthetic app and local RewardKit CLI stub only; frozen test.sh, score.py and scoring policy are unchanged. The stub values/reward are not configured judge, Oracle, target-model, portal or full-workload evidence. Full configured measurements remain absent; this verdict rests on the concrete lifecycle execution, not on those missing measurements.",
+  "counterexample": "Broken alternative: an otherwise convincing app keeps newly written records only in memory and handles SIGTERM without exiting. The helper reports a successful restart even though the same PID and memory survived, so hro_restart and hro_change_retry_restart can appear satisfied without actual persistence. The PID/EADDRINUSE mechanism is reproduced; no actual model award is claimed. Conforming alternative: an otherwise fully durable implementation uses an ordinary 30-second graceful shutdown, which the public integration contract does not forbid. The reproduced helper proceeds after five seconds, fails to bind its replacement, and reports success against the still-running old process. When that scheduled shutdown completes, later browser checks can lose the app. Source plus the observed retained PID establish this failure path; a full configured false-negative score was not measured. An app that leaves its HTTP server alive after SIGTERM can also hold the outer cleanup wait indefinitely, regardless of product correctness.",
+  "suggested_fix": "Escalate to the shared-template owner for an authorized canonical lifecycle fix: ensure reward before cleanup, bound termination and escalate to SIGKILL, require the old process group to be gone before restart, and verify the replacement is alive before reporting success; then freeze a new candidate and rerun the matched controls. Preserve the current task/template bytes and scoring policy until that authorized shared change.",
+  "run_verdict": "CONFIRMED"
+}

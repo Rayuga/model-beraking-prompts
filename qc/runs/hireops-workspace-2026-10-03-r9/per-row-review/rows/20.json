@@ -1,0 +1,33 @@
+{
+  "number": 20,
+  "id": "solution_is_frozen_and_deterministic",
+  "reviewer": "row-reviewer-20",
+  "input_sha256": "c5cd697aaa5daabac57bf7269873a877973f00326c7dcba6c4df9ac69303cb6c",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    "qc/runs/hireops-workspace-2026-10-03-r9/per-row-review/prompts/20.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/rules/WebDev Rubrics QC.xlsx (openpyxl read_only, in memory): 'Quality Checks' row 20 'solution_is_frozen_and_deterministic' - 'The reference is a committed, static baseline - not regenerated, fetched, or nondeterministic on any pinned value.'; 'Internal Quality Checks' row 20 (same wording, no extra annotation in column E); 'ChangeLogs Sheet Link' (link label only); zipfile scan found no comment/note parts",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/rules/harbor-webdev-rubric-qc/references/quality-checks.md section '20 - solution_is_frozen_and_deterministic' (lines 87-88)",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (fixed-clock cross-file agreement row)",
+    ".qc-cache/hireops-workspace-2026-10-03-r9/rules/projects/webdev-task-template (file listing; solution/solve.sh, solution/app/server.js sizes)",
+    "qc/REVIEW_POLICY.md",
+    "task: instruction.md, task.toml, environment/Dockerfile, environment/instructions/integration.md, environment/instructions/hireops_rules.md (sections 3-6 and grep for time/clock), environment/assets/seed_data.json",
+    "task: solution/solve.sh, solution/app/package.json, server.js, src/bootstrap.js, src/db.js, src/index.js (grep for Date/random/crypto/fetch/ORDER BY/timers), src/seed_data.json, public/index.html, public/js/*.js (grep for external URLs, timers, Date)",
+    "task: tests/scored/functional/judge.toml (grep for time/date/id-dependent criteria)",
+    "qc/runs/hireops-workspace-2026-10-03-r9/raw-evidence-index.json (all 6 artifact hashes re-verified OK; all 12 matching_source_files hashes equal the frozen solution bytes; covers every solution file)",
+    "qc/repairs/hireops-2026-10-03-workspace/results/workspace.json and server.log (scripted golden observations, not a judge run)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Committed and static: solution/solve.sh (lines 1-36) only checks DB inactivity, runs `cp -a \"$(dirname \"$0\")/app/.\" /app/` (line 35) and deletes any old database (line 36); it fetches nothing, runs no npm install, no build step and no generator, and does not read /assets. package.json pins better-sqlite3 12.4.1 and express 5.1.0, matching the pinned global installs in environment/Dockerfile lines 9-11 (resolved via NODE_PATH). public/index.html loads only same-origin /styles.css and /js/*.js; grep found no off-origin URL in the client or server. Seed is a committed copy: solution/app/src/seed_data.json SHA256 a1c65c80...83740 is byte-identical to environment/assets/seed_data.json. Deterministic seeding: src/db.js seedIfEmpty (lines 61-86) inserts only SEED values plus constants (password 'Hireops!2026', applications created_at '2026-06-15T09:00:00Z' line 75; messages/notes use the seed's own created_at 2026-07-01..2026-07-29), in seed order inside one transaction, so AUTOINCREMENT message ids and the read markers (line 83, derived from read_count over inserted ids) come out identical on every fresh install; it reseeds only when users is empty (line 62). No fixed clock is needed: hireops_rules.md has no time-based graded rule (no expiry, deadline, age or 'today' figure); the only timing is the 15-second live-update window, which is a latency bound, not a pinned value. Graded orders use stable keys, not wall clock: board `ORDER BY position, id` (index.js 182, 199), activity `ORDER BY a.id DESC` (189), messages/pages `ORDER BY id` (407-412), undo target `ORDER BY id DESC` (166, 350). Nondeterministic values exist only for runtime-created records and are not pinned anywhere: uid() random 3-byte hex ids for new jobs/applications (index.js 60, 208, 226), random session tokens (88), and wall-clock now() created_at for new sessions/activity/notes/messages (59). grep of functional judge.toml shows no criterion pinning ids, timestamps or clock-derived figures. Scripted golden evidence (hash-verified, frozen bytes): workspace.json reports 'seeded card order and internal notes are loaded' and 'restart keeps jobs, cards, order, messages and activity without reseeding' passed; this is a scripted run, not a configured judge run or Oracle score. Broken-app probe: an app that reseeds random ids on each boot or orders Activity by millisecond timestamps would fail persistence/ordering criteria, but the reference does neither. Conforming-alternative probe: N/A for this row (it constrains the reference, not submissions); the criteria grade observable behaviour, so an alternative using its own id scheme is not penalised.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL",
+  "notes": "Latent, non-graded only: the candidate applications list orders by `created_at, id` (index.js 173), and a newly added candidate-linked application gets wall-clock created_at; its relative order versus seeded ones depends on the container clock being after 2026-06-15. The brief and rules do not specify that order and no criterion grades it, so it is not a defect. Random 3-byte uid collision on a new job/application would surface as a PK error; probability is negligible at grading volumes. run_verdict PARTIAL: one hash-bound scripted golden run confirms seeded load and restart without reseeding; no repeated fresh-install comparison or configured judge run was measured, and none was claimed."
+}

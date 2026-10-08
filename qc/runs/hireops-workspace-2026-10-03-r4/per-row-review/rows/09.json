@@ -1,0 +1,35 @@
+{
+  "number": 9,
+  "id": "agent_environment_and_network_posture_are_correct",
+  "reviewer": "row-reviewer-09",
+  "input_sha256": "d2912713cc20e12d1c3605e76373f75f766ca522cce13fdf91e93082f6570a7a",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r4/rules/WebDev Rubrics QC.xlsx :: Quality Checks row #9 (B - task.toml & run wiring): 'Agent image has sane CPU/memory and no secret literals. Network is public here, so network_mode = \"public\" is correct - do not flag it.'",
+    ".qc-cache/hireops-workspace-2026-10-03-r4/rules/WebDev Rubrics QC.xlsx :: Internal Quality Checks row #9: 'Agent image is no-network with sane CPU/memory, no secret literals, and nothing that secretly needs an install.' (no-network wording superseded by the public profile in the client sheet and SKILL.md Delivery profile; 'nothing that secretly needs an install' still applied)",
+    ".qc-cache/hireops-workspace-2026-10-03-r4/rules/harbor-webdev-rubric-qc/SKILL.md (full, incl. Delivery profile and Known false positives)",
+    ".qc-cache/hireops-workspace-2026-10-03-r4/rules/harbor-webdev-rubric-qc/references/quality-checks.md section '9 · agent_environment_and_network_posture_are_correct' (lines 43-45)",
+    ".qc-cache/hireops-workspace-2026-10-03-r4/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md frozen [environment] block (lines 56-60, 73-74)",
+    ".qc-cache/hireops-workspace-2026-10-03-r4/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (network/NOTE-only entries, dockerfile checker description)",
+    ".qc-cache/hireops-workspace-2026-10-03-r4/rules/projects/webdev-task-template/task.toml",
+    ".qc-cache/hireops-workspace-2026-10-03-r4/rules/projects/webdev-task-template/environment/Dockerfile",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r4/task/task.toml",
+    ".qc-cache/hireops-workspace-2026-10-03-r4/task/environment/Dockerfile",
+    ".qc-cache/hireops-workspace-2026-10-03-r4/task/environment/ (listing; grep of assets/seed_data.json, instructions/*.md for secret patterns)",
+    ".qc-cache/hireops-workspace-2026-10-03-r4/task/solution/solve.sh",
+    ".qc-cache/hireops-workspace-2026-10-03-r4/task/solution/app/package.json and require() scan of solution/app/**/*.js",
+    "qc/runs/hireops-workspace-2026-10-03-r4/raw-evidence-index.json (scope header and first entries)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "task/task.toml:20-24 [environment]: build_timeout_sec = 600.0, network_mode = \"public\", cpus = 2, memory_mb = 4096 - byte-identical to template task.toml:20-24 and to the frozen block in staged-task-contract.md:56-60; diff of task.toml vs template differs only in [task]/[metadata] identity fields (lines 5-15). No docker_image, allow_internet or allowed_hosts key anywhere in task.toml (grep rc=1). No secret literal under [environment]; the only credential-shaped lines are [verifier.env] ANTHROPIC_AUTH_TOKEN = \"${OPENROUTER_API_KEY}\" (template placeholder, expected per SKILL.md Known false positives) and ANTHROPIC_API_KEY = \"\". [verifier.environment] network_mode = \"public\" (line 38) is correct per profile and not flagged. Agent image: task/environment/Dockerfile SHA256 0a75419e...67d1 equals template environment/Dockerfile SHA256 exactly; pinned base node:22-bookworm-slim, globally installs express@5.1.0 and better-sqlite3@12.4.1 with NODE_PATH=/usr/local/lib/node_modules, no ENV/ARG secrets, no COPY of solution/ or tests/. Secret grep (api key/secret/token/password/sk-/private key/AKIA/ghp_/xox) over task/environment and task.toml found only the documented demo password 'Hireops!2026' at environment/instructions/hireops_rules.md:11, which is an expected demo credential per profile, not a live secret. 'Nothing that secretly needs an install': solution/app/package.json pins exactly express 5.1.0 and better-sqlite3 12.4.1 (matching the image), the solution's require() set is only those two plus Node built-ins (crypto, fs, path, node:http, node:worker_threads) and local modules, and solve.sh performs no npm/apt install (it only copies app/ to /app and resets the DB). 2 CPUs / 4 GiB is sane for a Node+SQLite app with native better-sqlite3 preinstalled (no compile at solve time). Broken-config counterexample considered: a task setting cpus=0.5/memory_mb=512, adding docker_image, or inlining a real sk- key - none present. Conforming-alternative counterexample: an agent solution that wants extra npm packages can fetch them since the network is public (quality-checks.md:45 note), so the posture does not unfairly fail a different conforming implementation. Static configuration row; no runtime measurement is required for this verdict, and none is claimed (no agent-image build log was inspected).",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

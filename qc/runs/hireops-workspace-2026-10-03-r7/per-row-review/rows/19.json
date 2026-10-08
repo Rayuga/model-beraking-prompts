@@ -1,0 +1,30 @@
+{
+  "number": 19,
+  "id": "solution_honors_the_runtime_contract_and_is_self_contained",
+  "reviewer": "row-reviewer-19",
+  "input_sha256": "88507720804547eb54db2aa2f2467f055d623a9ce90fcb32f9da1d62b6e5d67a",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r7/rules/WebDev Rubrics QC.xlsx (openpyxl read_only, in memory): Quality Checks row 19 'D - solution/ (reference coverage) | solution_honors_the_runtime_contract_and_is_self_contained | solve.sh installs to the expected paths and the reference runs under the stated contract. (Network is public - fetching or installing at start is not a defect.)'; Internal Quality Checks row 19 (older wording 'with no network / no run-time install', superseded by the public-network profile, no extra annotation); Deterministic Checks check-solve-contract.py, check-runtime-contract-strings.py, check-runtime-deps-in-both-images.py; zip scan found no comment/note parts",
+    ".qc-cache/hireops-workspace-2026-10-03-r7/rules/harbor-webdev-rubric-qc/SKILL.md (delivery profile, evidence standard, verdicts)",
+    ".qc-cache/hireops-workspace-2026-10-03-r7/rules/harbor-webdev-rubric-qc/references/quality-checks.md section 19",
+    ".qc-cache/hireops-workspace-2026-10-03-r7/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (layout; cross-file table: entry /app/server.js, DB_PATH, seed)",
+    ".qc-cache/hireops-workspace-2026-10-03-r7/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (check-solve-contract.py, check-runtime-contract-strings.py)",
+    ".qc-cache/hireops-workspace-2026-10-03-r7/rules/projects/webdev-task-template/solution/solve.sh, solution/app/server.js, instruction.md",
+    "qc/REVIEW_POLICY.md",
+    "task/solution/solve.sh, task/solution/app/{package.json,server.js,src/bootstrap.js,src/db.js,src/index.js (head/tail + require scan),src/seed_data.json hash}, public/index.html script/link scan",
+    "task/instruction.md, task/environment/instructions/integration.md, task/environment/Dockerfile, task/tests/Dockerfile, task/tests/test.sh, task/task.toml",
+    "qc/runs/hireops-workspace-2026-10-03-r7/raw-evidence-index.json; qc/repairs/hireops-2026-10-03-workspace/workspace.cjs (launch section), results/workspace.json, results/server.log (hashes re-verified)"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "Source contract (all against frozen bytes; solve.sh sha256 1df2ed04... matches evidence index). (1) solve.sh: line 1 '#!/bin/bash', 'set -euo pipefail', LF only (cat -A shows no ^M); 'mkdir -p /app' then 'cp -a \"$(dirname \"$0\")/app/.\" /app/' (same install pattern as template solve.sh) and 'rm -f -- \"$database_path\" \"$database_path-wal\" \"$database_path-shm\"' so no database is shipped (instruction.md:15 'start with no shipped database'). It writes nothing to /tests, /logs/verifier or /solution, has no pkill, no NODE_ENV, no npm/pip install. Its extra guard resolves DB_PATH (default /app/app.db), refuses paths outside /app, and on a fresh install exits the /proc scan immediately when no db/wal/shm exists; I confirmed 'node - <path>' puts the path at process.argv[2] as the heredoc assumes. (2) Entry: server.js 'require(./src/index.js)'; index.js main thread calls bootstrap.start, which listens on Number(process.env.PORT || 3000) on 0.0.0.0 (bootstrap.js:43) and answers GET/HEAD /api/health before any DB work (bootstrap.js:20-23), matching instruction.md:13 and integration.md. The worker opens the DB and serves the UI and API through a proxy in the same process (index.js:447 binds 127.0.0.1:0). (3) DB_PATH: db.js:9 'process.env.DB_PATH || path.join(__dirname, '..', 'app.db')', which resolves to /app/app.db in /app and honours the DB_PATH that test.sh:109 injects for either /app or /tmp/submission. (4) Seeding is idempotent and atomic: seedIfEmpty returns when users > 0 and seeds inside one db.transaction (db.js:122-147). (5) Self-contained: the seed is read from beside the module (db.js:10), not /assets. src/seed_data.json and environment/assets/seed_data.json share sha256 a1c65c80.... Runtime requires are only express, better-sqlite3 and node built-ins. package.json pins express 5.1.0 and better-sqlite3 12.4.1, both preinstalled globally in the agent Dockerfile and tests/Dockerfile with NODE_PATH. No node_modules or symlinks are shipped (so the test.sh:72-83 symlink refusal is not triggered), and index.html loads only local /styles.css and /js/*.js. Runtime: raw-evidence-index entries were re-hashed and match (workspace.cjs 70c0ca38..., workspace.json a424b50f..., server.log 6752f461...). workspace.cjs:16 launches 'node /app/server.js' with env {PATH, HOME, NODE_PATH=/usr/local/lib/node_modules, PORT=3000, DB_PATH}, the same variable set test.sh injects. workspace.json has 25/25 groups passed, page_errors [], including 'restart keeps jobs, cards, order, messages and activity without reseeding'. server.log shows two '[hireops] listening on 3000' lines (start plus real restart). This empirically shows the worker-thread design resolves NODE_PATH packages, loads better-sqlite3 in the verifier image, and keeps data across a restart. Adversarial probes: a broken reference that read /assets at runtime, shipped app.db, needed npm install, or reseeded on restart would violate instruction.md:13-15; the golden does none of these. No conforming alternative is penalised by this row, because solve.sh/reference choices do not constrain the agent's app. Residual unmeasured items (hence risk=true): solve.sh itself was not executed in any recorded run. The evidence driver launches /app/server.js but does not show how /app was populated. The DB was /tmp/hireops-workspace.db, not the default /app/app.db. The uid-65534 claim comes from the index scope text and is not visible in workspace.cjs (no setpriv). There is no full test.sh/Oracle run on these bytes. These are measurement gaps, not demonstrated defects.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL"
+}

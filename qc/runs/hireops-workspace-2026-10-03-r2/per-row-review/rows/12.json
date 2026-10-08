@@ -1,0 +1,33 @@
+{
+  "number": 12,
+  "id": "no_prebuilt_image_shadows_the_agent_dockerfile",
+  "reviewer": "row-reviewer-12",
+  "input_sha256": "62b67c0517689833807fe690bec0bb6d251f744264d2ef6e0ae6f181ae9f7826",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r2/rules/WebDev Rubrics QC.xlsx :: Quality Checks row 13 (#12, B - task.toml & run wiring: \"[environment].docker_image isn't set while the agent Dockerfile still has active build steps (which would skip the Dockerfile entirely).\")",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/rules/WebDev Rubrics QC.xlsx :: Internal Quality Checks row 13 (#12; same text, columns E-Z empty, no cell comments)",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/rules/WebDev Rubrics QC.xlsx :: Deterministic Checks rows mentioning Docker/environment (check-dockerfiles.py, check-fixtures.py, check-allow-internet.sh, check-no-allow-internet-true.sh, etc.; none dedicated to docker_image)",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/rules/harbor-webdev-rubric-qc/references/quality-checks.md:53-54 (### 12 Verify: docker_image not set while agent Dockerfile has active build steps) and :43-45 (check 9 also requires docker_image absent)",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md:78",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/rules/projects/webdev-task-template/task.toml",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/rules/projects/webdev-task-template/environment/Dockerfile",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/task/task.toml",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/task/environment/Dockerfile",
+    ".qc-cache/hireops-workspace-2026-10-03-r2/task/environment/ (full listing: Dockerfile, assets/seed_data.json, instructions/hireops_rules.md, instructions/integration.md; no docker-compose file)",
+    "qc/runs/hireops-workspace-2026-10-03-r2/raw-evidence-index.json (header: input_sha256 matches; scope states no full configured grading run)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "task/task.toml:20-24 [environment] contains only build_timeout_sec = 600.0, network_mode = \"public\", cpus = 2, memory_mb = 4096; no docker_image key. A recursive grep for 'docker_image' (and 'allow_internet') across the whole frozen task tree returned no hits, and no docker-compose*.yaml exists under task/ (find -iname '*compose*' empty), so no alternate image reference can shadow the build. task/environment/Dockerfile has active build steps (FROM node:22-bookworm-slim; RUN apt-get ... ca-certificates git procps sqlite3; RUN npm install -g express@5.1.0 better-sqlite3@12.4.1; COPY instructions/ /instructions/; COPY assets/ /assets/; RUN chmod/mkdir/git init; WORKDIR /app), which will therefore be built as intended — the condition the row forbids (prebuilt image set + live Dockerfile) does not occur. The Dockerfile is byte-identical to the frozen template (cmp reports identical; sha256 0a75419e9598ded9317b26bbf0d2b12de0b9b11185fb4c9fed1ca7f3e52467d1), and task.toml differs from the template only in [task] name/description/keywords and [metadata] fields (diff lines 5-7, 10-12, 14-15); [environment] is unchanged from the template, which itself has no docker_image. Adversarial consideration: a broken setup that could pass would be docker_image pointing to a stale prebuilt image lacking /assets seed data or the pinned npm globals, so agents work against an environment different from the Dockerfile — not possible here since the key is absent. A conforming alternative (Dockerfile reduced to a bare FROM with docker_image set) is not this task's shape. Run verdict: this is a static config row; no agent-phase Harbor build/trial was run by this reviewer (no Docker started per assignment), and raw-evidence-index.json states full configured grading runs are absent, but no runtime measurement is required to establish absence of the key.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

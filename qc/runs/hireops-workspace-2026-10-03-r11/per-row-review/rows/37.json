@@ -1,0 +1,30 @@
+{
+  "number": 37,
+  "id": "later_dimensions_tolerate_earlier_mutations",
+  "reviewer": "row-reviewer-37",
+  "input_sha256": "4bd1eea4300538bac22f9b8dcda9da2275fa78d20f45231f132076233ce1bf9f",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r11/rules/WebDev Rubrics QC.xlsx (openpyxl in memory): 'Quality Checks' row 37 and 'Internal Quality Checks' row 37 (identical wording: \"A later dimension doesn't assume a pristine seed after an earlier dimension mutated the shared running app.\"); no cell comments/annotations exist in any sheet",
+    ".qc-cache/hireops-workspace-2026-10-03-r11/rules/harbor-webdev-rubric-qc/SKILL.md (full)",
+    ".qc-cache/hireops-workspace-2026-10-03-r11/rules/harbor-webdev-rubric-qc/references/quality-checks.md section '37 · later_dimensions_tolerate_earlier_mutations' (lines 153-154) and blocks A, E, F",
+    ".qc-cache/hireops-workspace-2026-10-03-r11/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (full)",
+    ".qc-cache/hireops-workspace-2026-10-03-r11/rules/projects/webdev-task-template/tests/{test.sh,app_context.md,scoring.toml,scored/functional/prompt.md,scored/polish/prompt.md}",
+    "qc/REVIEW_POLICY.md (full)",
+    "task/tests/test.sh (full; byte-identical to template per diff)",
+    "task/tests/app_context.md, task/tests/gates/{render,constraints}/{prompt.md,judge.toml}, task/tests/scored/{functional,polish,visual}/prompt.md, task/tests/scored/{polish,visual}/judge.toml (full), task/tests/scored/functional/judge.toml (all criterion descriptions)",
+    "task/environment/assets/seed_data.json (parsed: reads, applications, message counts, jobs; byte-identical to solution/app/src/seed_data.json), task/instruction.md, task/environment/instructions/hireops_rules.md (grep for seed/unread)",
+    "qc/runs/hireops-workspace-2026-10-03-r11/raw-evidence-index.json (header/scope only)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Shared state: tests/test.sh:104-113 starts ONE app process/DB; run_suite gates (l.213) then scored (l.224) all hit it, so render+constraints always precede scored dimensions, and functional/polish/visual run in an order the task does not control (rewardkit --max-concurrent-agent 1). Wording is order-agnostic: (1) app_context.md:27-31 'Other reviews may have added jobs, cards and messages; never rely on a starting count.' and injected into every prompt. (2) functional/prompt.md:15 'Earlier reviews may have added jobs, cards and messages. Use your own new jobs and cards ... never move another review's records, and never rely on starting counts.'; T fallback (l.39) 'counts read relative to their values before you act'; U Mei count computed 'from the sequence you observed' (l.41). (3) polish/prompt.md:14 'never rely on another review's records' and 'If a message or note box already holds text from an earlier review, record it and clear it before typing your own.' (4) visual/prompt.md:14 read-only after its gate ('Do not move cards or send messages'). The only absolute seed expectations are functional Z (prompt l.25; judge.toml hro_unread_counts l.344 'Lena Fischer starts with 1 unread'; hro_restart l.416 seeded Platform Engineer order Greta/Ade/Marco, Priya/Samuel and Noor's note). I verified each is protected from every other dimension: seed reads USR-CAN3/APP-301 read_count 2 of 3 messages (last by USR-REC3) => 1 unread; Lena's state changes only if someone posts in APP-301 or Lena opens it; render gate (prompt l.9) opens no conversation; constraints gate (l.9) 'Do not move, reject or message anything' and uses unique emails; polish/prompt.md:16 'Never use Lena Fischer's conversation' and its board rows use 'your cards'/'the same job' (own job); visual sends/moves nothing and its candidate view is Noor. No dimension other than functional moves Platform Engineer cards or edits APP-101 notes. Polish's mutations of Noor's APP-101 conversation (Noor sends, Rafael opens) are tolerated by functional rows l.326/335/353, which grade 'most recent 30', '30 at a time ... until none remain' and unread before/after relative to observed state, with app_context explicitly saying 120 is the start value only. Functional's mutations (J1/J2/Tomas conversations, Rafael drafts, rejections, Activity) cannot disturb polish (own job, clears pre-existing drafts) or visual (craft only; 'a seeded job is fine'). Functional's single restart_app (D, last) only matters to later dimensions if the app cannot restart, which is a real persistence/startup failure rather than a pristine-seed assumption. Gates create only their own suffixed job+card, which no later criterion counts. Counterexamples tried: (a) broken app that reseeds on every start: later dimensions do not reuse earlier records, so it is not over-credited there and hro_restart catches it; (b) conforming app run in order polish->visual->functional: Lena still 1, Platform Engineer order/note untouched, Noor's paging/unread rows graded relative => no false failure found. Minor P3 observation (not a defect): functional T draft legs (prompt l.39, judge l.380) lack polish's 'clear pre-existing draft' instruction, so if polish ran first and left Rafael's session_resume draft in the conversation the functional judge picks as 'another conversation', the typed text would append to it; that conversation still keeps its own different draft, so hro_msg_drafts is not falsified. Limit: no full configured sequential judge run exists (raw-evidence-index scope: 'Full configured grading/workload ... absent'), so actual judge compliance with these instructions across dimension order is NOT EXERCISED; this row is decided by wording per quality-checks.md:154 and is not a measured reward claim.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

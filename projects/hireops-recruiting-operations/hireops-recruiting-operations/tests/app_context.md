@@ -8,24 +8,31 @@ URL: http://localhost:3000
 All accounts use password `Hireops!2026`.
 
 - Rafael Costa — `rafael.costa@hireops.example` — Recruiter.
-- Mei Lin — `mei.lin@hireops.example` — Comp partner.
-- Ingrid Sorensen — `ingrid.sorensen@hireops.example` — Approver, tier 1.
-- Bill Okafor — `bill.okafor@hireops.example` — Approver, tier 2.
-- Yuki Tanaka — `yuki.tanaka@hireops.example` — Approver, tier 3.
-- Farah Nasser — `farah.nasser@hireops.example` — Finance controller.
-- Aud Halvorsen — `aud.halvorsen@hireops.example` — Auditor.
+- Mei Lin — `mei.lin@hireops.example` — Recruiter.
+- Farah Nasser — `farah.nasser@hireops.example` — Recruiter.
+- Ingrid Sorensen — `ingrid.sorensen@hireops.example` — Hiring manager.
+- Bill Okafor — `bill.okafor@hireops.example` — Hiring manager.
+- Yuki Tanaka — `yuki.tanaka@hireops.example` — Hiring manager.
+- Aud Halvorsen — `aud.halvorsen@hireops.example` — Observer (reads everything, changes nothing).
+- Noor Haddad — `noor.haddad@candidates.example` — Candidate.
+- Tomas Varga — `tomas.varga@candidates.example` — Candidate.
+- Lena Fischer — `lena.fischer@candidates.example` — Candidate.
 
 ## Key screens
 
-Coordinated Changes, Requisitions, Offers, Equity Table, Referrals and Audit Trail.
-Operational demonstration rows may be absent; prepare your own controls.
-Finance prepares and commits coordinated changes; all signed-in roles can read them
-and can work a hypothetical change out in the same editor without saving it. The
-editor shows member figures and requisition headrooms before saving, holds two to
-four members, and keeps unsent entries per signed-in person. The Coordinated
-Changes view updates itself within 15 seconds when someone else changes the books.
-The reference moment is 2026-08-01T00:00:00Z. Referral retention uses that
-moment; rescission vesting uses its supplied effective date. The app may use
-any route layout and suitable labels. Discover navigation and operation
-requests through the visible UI; never assume the reference implementation's
-private routes, selectors or response field names.
+Staff: a pipeline Board per job (stages Applied, Screen, Interview, Offer, Hired, Rejected),
+Conversations (one per application, between staff and the candidate) and Activity.
+Candidates: their own applications and conversations only.
+
+Recruiters open jobs and add candidates, so every review can create its own job and cards.
+Adding a candidate with one of the candidate account emails gives that account the application
+and its conversation. The starting data has three jobs; Noor Haddad's Platform Engineer
+conversation is long (120 messages at the start). Other reviews may have added jobs, cards and
+messages; never rely on a starting count.
+
+If selecting several cards or any other control needs a modifier key, hold the key down during the
+click (the click tool's modifiers, or keyboard.down, then mouse.click, then keyboard.up); pressing and
+releasing it before the click does not count as holding it.
+
+The app may use any route layout and labels. Discover navigation and requests through the
+visible UI; never assume the reference implementation's routes, selectors or field names.

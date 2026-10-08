@@ -1,0 +1,32 @@
+{
+  "number": 12,
+  "id": "no_prebuilt_image_shadows_the_agent_dockerfile",
+  "reviewer": "row-reviewer-12",
+  "input_sha256": "de71097d0218ad0e37f5b027c877965607d108243cfd5da9ba6f7e8288f74a59",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-lessons-2026-10-08-r6/rules/WebDev Rubrics QC.xlsx (sha256 6d44970b...fd7f, read in memory via zipfile): 'Quality Checks' sheet row 13 (#12, B - task.toml & run wiring): \"[environment].docker_image isn't set while the agent Dockerfile still has active build steps (which would skip the Dockerfile entirely).\"; 'Internal Quality Checks' sheet row 13 (#12): same wording ('which would skip it entirely'); no comments/threaded comments parts exist and the four drawing parts carry no text; 'Deterministic Checks' sheet has no docker_image checker (related rows check-dockerfiles.py, check-fixtures.py, check-dockerfile-references.sh reviewed for context only)",
+    ".qc-cache/hireops-lessons-2026-10-08-r6/rules/harbor-webdev-rubric-qc/SKILL.md (sha256 8f2b660d...bc3, full)",
+    ".qc-cache/hireops-lessons-2026-10-08-r6/rules/harbor-webdev-rubric-qc/references/quality-checks.md:53-54 (### 12: 'If it is set, the Dockerfile is dead code') and :44 (check 9 also requires docker_image absent)",
+    ".qc-cache/hireops-lessons-2026-10-08-r6/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md:40-78 (canonical task.toml; line 78 '[environment].docker_image must be absent while the Dockerfile has active build steps')",
+    ".qc-cache/hireops-lessons-2026-10-08-r6/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (grep: no docker_image rule)",
+    ".qc-cache/hireops-lessons-2026-10-08-r6/rules/projects/webdev-task-template/task.toml and environment/Dockerfile (frozen template)",
+    "qc/REVIEW_POLICY.md (full, 37 lines)",
+    "handoffs/LESSONS_FROM_COLDERWATER_2026-10-08.md (full)",
+    ".qc-cache/hireops-lessons-2026-10-08-r6/task/task.toml (full, 38 lines)",
+    ".qc-cache/hireops-lessons-2026-10-08-r6/task/environment/Dockerfile (full, 26 lines)",
+    ".qc-cache/hireops-lessons-2026-10-08-r6/task/tests/Dockerfile (line 1 only, for scope)",
+    "qc/runs/hireops-lessons-2026-10-08-r6/manifest.json (input hashes only) and raw-evidence-index.json (scope header)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Frozen task/task.toml [environment] (lines 20-24) contains exactly build_timeout_sec = 600.0, network_mode = \"public\", cpus = 2, memory_mb = 4096; tomllib parse confirms keys {build_timeout_sec, network_mode, cpus, memory_mb} and 'docker_image' not in environment; [verifier.environment] (lines 37-38) has only network_mode; no unexpected top-level tables; file has no BOM/CR bytes that could hide a key. `grep -rni 'docker_image\\|image\\s*='` over the whole frozen task tree returns nothing, and there is no docker-compose*.yaml that could set an image. The agent Dockerfile task/environment/Dockerfile has active build steps (FROM node:22-bookworm-slim, ENV, apt RUN, npm -g express@5.1.0 better-sqlite3@12.4.1, COPY instructions/ and assets/, chmod/git-init RUN, WORKDIR, CMD) and is byte-identical to the frozen template Dockerfile (both sha256 0a75419e...67d1), so it is the image actually built and is not shadowed. task.toml differs from the template task.toml only in [task]/[metadata] task-specific text (diff lines 5-15); the [environment] block matches the template and staged-task-contract.md:56-60 exactly. Hashes of task/task.toml (ac664d0e...8f26) and task/environment/Dockerfile match manifest.json inputs. Counterexample search: a candidate that added docker_image = \"<prebuilt>\" under [environment] would silently skip the COPY of /instructions and /assets and the pinned installs; no such key exists. A conforming alternative (prebuilt image with Dockerfile reduced to no build steps) is not relevant because this task keeps the template's Dockerfile. Colderwater lessons checked: none of items 1-21 (brief wording, weights, judge prompts, timing, public URLs, restart checks, prompt size, process) bears on [environment].docker_image; lesson 17/18 drift risk checked by comparing to the frozen template bytes, no drift in this row's scope. This is a static configuration row; no runtime measurement is required for it (no Docker container started per assignment). Out of scope: tests/Dockerfile is the verifier image (environment_mode = \"separate\") and not governed by this row.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

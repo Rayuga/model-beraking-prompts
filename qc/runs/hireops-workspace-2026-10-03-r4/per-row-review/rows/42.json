@@ -1,0 +1,38 @@
+{
+  "number": 42,
+  "id": "reward_ranking_is_monotone",
+  "reviewer": "row-reviewer-42",
+  "input_sha256": "d2912713cc20e12d1c3605e76373f75f766ca522cce13fdf91e93082f6570a7a",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    "qc/runs/hireops-workspace-2026-10-03-r4/per-row-review/prompts/42.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r4/rules/WebDev Rubrics QC.xlsx :: 'Quality Checks' row 43 (#42 reward_ranking_is_monotone: \"A worse app never outscores a better one - weights/gates/criteria don't invert the ranking.\") and neighbouring rows 42/44",
+    ".qc-cache/hireops-workspace-2026-10-03-r4/rules/WebDev Rubrics QC.xlsx :: 'Internal Quality Checks' row 43 annotation: \"Mukesh - we need to monitor this one.\"",
+    ".qc-cache/hireops-workspace-2026-10-03-r4/rules/harbor-webdev-rubric-qc/SKILL.md (delivery profile 0.6/0.2/0.2, verdicts, evidence standard, known false positives)",
+    ".qc-cache/hireops-workspace-2026-10-03-r4/rules/harbor-webdev-rubric-qc/references/quality-checks.md ### 42 (lines 172-173) and ### 41/43/44 for scope boundaries",
+    ".qc-cache/hireops-workspace-2026-10-03-r4/rules/projects/webdev-task-template/tests/{scoring.toml,tools/score.py,test.sh} (diffed against task: identical)",
+    "qc/REVIEW_POLICY.md (runtime and model evidence section: reward ordering needs separate hash-bound runtime record)",
+    ".qc-cache/hireops-workspace-2026-10-03-r4/task/instruction.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r4/task/environment/instructions/hireops_rules.md (grep: 401, source, places, observer)",
+    ".qc-cache/hireops-workspace-2026-10-03-r4/task/tests/scoring.toml",
+    ".qc-cache/hireops-workspace-2026-10-03-r4/task/tests/tools/score.py",
+    ".qc-cache/hireops-workspace-2026-10-03-r4/task/tests/gates/render/{judge.toml,prompt.md}",
+    ".qc-cache/hireops-workspace-2026-10-03-r4/task/tests/gates/constraints/{judge.toml,prompt.md}",
+    ".qc-cache/hireops-workspace-2026-10-03-r4/task/tests/scored/functional/{judge.toml,prompt.md}",
+    ".qc-cache/hireops-workspace-2026-10-03-r4/task/tests/scored/polish/{judge.toml,prompt.md}",
+    ".qc-cache/hireops-workspace-2026-10-03-r4/task/tests/scored/visual/{judge.toml,prompt.md}",
+    "qc/runs/hireops-workspace-2026-10-03-r4/raw-evidence-index.json (all 6 artifact hashes re-verified: match)",
+    "qc/runs/hireops-workspace-2026-10-03-r4/manifest.json"
+  ],
+  "verdict": "Not exercised",
+  "risk": true,
+  "severity": null,
+  "evidence": "STATIC (source) REVIEW - no inversion found. (1) Aggregation math: tests/tools/score.py is byte-identical to the template (diff empty; sha256 13de2b38...). score.py:41 gates_passed = all(score > 0.0); :46 weighted = sum(w*score)/sum(w) with nonnegative weights functional 0.6 / polish 0.2 / visual 0.2 (scoring.toml:5-8, identical to template, matches SKILL delivery profile); :47-48 reward = weighted only if gates and functional floor (>0.05, scoring.toml:11) pass, else 0. Reward is therefore monotone non-decreasing in every dimension score; the only discontinuities are the gate/floor steps, which only zero apps that are worse on the gated/functional axis. (2) Mass: functional 43 binary criteria, total weight 58.5; polish 5 binary, 12.0; visual 5 likert(5 points), 6.0 (all weights equal 1.2). Function carries 0.6 > craft 0.4 combined, so the skill's example inversion (craft outweighing function) is absent. Highest functional weights (2.5: hro_stale_refused, hro_live_board, hro_candidate_private) track the brief's stated 'hard part' (instruction.md:1-9). (3) Gates cannot be failed by a stronger app for an unpublished reason: gate render (gates/render/judge.toml:23) needs wrong-password refusal + recruiter sign-in; gate constraints (gates/constraints/judge.toml:23) needs UI job with team/manager/places and a candidate with name/email/source, read back by the Observer in an independent context - all public (instruction.md:17 accounts, hireops_rules.md:28 places 1-50, :31 'name, an email address and a source', :18 Observer reads). (4) Dead-feature credit (the main way a worse app could outscore a better buggy one) is closed: functional prompt.md:13 'Every refusal row needs its own positive control: a successful action of the same kind, observed in this review', each refusal criterion names its control (e.g. hro_reject_hired, hro_mgr_early_refused, hro_undo_full, hro_undo_once, hro_bulk_all_or_none, hro_activity_refusals), and hro_candidate_no_staff/hro_candidate_private say a candidate page that receives none of its own data is 0. Polish rows explicitly score 0 when the live update/message never arrives (polish/judge.toml:23, :32) and polish/visual prompts line 7 give binary 0/Likert 1 to a feature that does not work. Functional prompt.md:23 'Never deduct one observed defect in more than one row' limits within-dimension double counting; cross-dimension double counting (hro_live_board 2.5/58.5 functional plus hro_pol_live_board 3/12 polish) only widens the gap in the right direction. (5) Gate failure gives 0 in all scored prompts (functional :13, polish :12, visual :12 Likert 1 normalised to 0). Hashes re-verified: raw-evidence-index.json entries (workspace.cjs 7bbf898f..., results/workspace.json 8d72fd13..., server.log 6752f461..., board/conversation/candidate.png) all match. MEASUREMENT GAP (why risk=true): raw-evidence-index.json 'scope' states 'Full configured grading/workload, reward discrimination/ranking and Oracle/target scores are absent.' The only runtime evidence is a scripted golden Playwright/API driver, which produces no reward and no ordering across graded apps. REVIEW_POLICY.md requires a separate hash-bound reward-ordering record, and the internal annotation says this row must be monitored. No mutated weaker app was scored against the golden through the configured judges, so the static conclusion is unmeasured and cannot be upgraded to Pass. Latent observations (not defects, P3 at most): (a) Under the mandated 0.6/0.2/0.2 profile an app just above the 0.05 floor (e.g. job_open+add_candidate+email_rules+arrive_bottom = 3.0/58.5 = 0.051) with perfect visual reaches 0.031+0.2 = 0.231, roughly tying an app with functional 0.30 and visual averaging 2/5 (0.18+0.05 = 0.23); this is template policy (score.py/scoring.toml unchanged, SKILL profile) and belongs to row 44, not a task-authored inversion. (b) hro_pol_failed_send (polish/judge.toml:50, prompt.md:14) relies on aborting a request or context.setOffline; a conforming app that sends over an already-open WebSocket may not be interrupted by either, so it could lose 1.5/12 polish against an equally good fetch-based app. This is a tool-feasibility tie/discrimination risk, not a worse-outscores-better inversion; the golden does not use WebSockets (no 'WebSocket/EventSource/socket' in solution/app/public/js/threads.js).",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

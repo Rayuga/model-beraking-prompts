@@ -1,0 +1,38 @@
+{
+  "number": 46,
+  "id": "tests_and_key_are_out_of_agent_reach",
+  "reviewer": "row-reviewer-46",
+  "input_sha256": "8e9a1732929dada061b7ec8f471be452416cb15fa3c35c0af552efa55321e9c6",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r5/rules/WebDev Rubrics QC.xlsx :: 'Quality Checks' row 46 (E - tests/; 'The agent can't read the criteria it's graded on or influence the reward - grading is isolated in the verifier.') and 'Internal Quality Checks' row 46 (same text, no extra annotation in column E); 'Deterministic Checks' rows check-dockerfiles/check-instruction-hygiene/check-required-files/check-runtime-deps-in-both-images for related mechanics",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/rules/harbor-webdev-rubric-qc/references/quality-checks.md :: '### 46' (line 184-185) and C block lines 56-71",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md :: artifacts line 38, environment_mode line 64",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md :: line 60 (no COPY of solution/ or tests/ into agent image)",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/rules/projects/webdev-task-template/ (byte comparison of tests/test.sh, tests/Dockerfile, tests/.dockerignore, tests/tools/score.py, tests/tools/restart_mcp.py, tests/scoring.toml, environment/Dockerfile; diff of task.toml)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/task/environment/Dockerfile",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/task/environment/instructions/hireops_rules.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/task/environment/instructions/integration.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/task/instruction.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/task/task.toml",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/task/tests/Dockerfile",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/task/tests/.dockerignore",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/task/tests/test.sh",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/task/tests/gates/render/judge.toml (head)",
+    "qc/runs/hireops-workspace-2026-10-03-r5/raw-evidence-index.json (scope statement and first entries)",
+    "harbor-rewardkit 0.1.7 package source (extracted wheel in session scratchpad): rewardkit/agents.py ClaudeCodeCLI.build_command, rewardkit/judges.py _arun_agent_call lines 495-560, rewardkit/isolation.py"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": "P3",
+  "evidence": "TASK-LEVEL CHECK PASSES (source inspection; no image build/run performed by this reviewer). (1) Agent image: task/environment/ contains only Dockerfile, instructions/{hireops_rules.md,integration.md}, assets/seed_data.json. environment/Dockerfile lines 14-15 COPY only instructions/ and assets/; lines 9-12 install only express@5.1.0 and better-sqlite3@12.4.1 globally; no claude-code, codex, playwright, harbor-rewardkit, tests/ or solution/ in the agent image. environment/Dockerfile is byte-identical to the frozen template (sha256 0a75419e...). (2) Verifier isolation: task.toml line 28 environment_mode = \"separate\"; tests/Dockerfile (byte-identical to template, sha256 72998ab8...) is the only image with the judge CLIs (line 17-19), harbor-rewardkit==0.1.7 (line 31) and the criteria (line 43 COPY . /tests; line 44 chmod -R go-rwx /tests). test.sh (template-identical, sha256 bd682592...) line 3 umask 077, lines 11-12 chmod 700 log dir and go-rwx /tests, writes a zero reward first (line 60) and only score.py writes the final reward. (3) No criteria leakage into agent-visible text: grep of task/environment/** and instruction.md for hro_|criteri|rubric|judge|grader|reward|score|weight returned no matches; I read hireops_rules.md, integration.md and instruction.md in full and they state product rules, not criterion text or judge vocabulary. (4) Submission cannot write the reward: test.sh lines 72-83 reject any symlink outside /app/node_modules (exit 0 with zero reward), lines 104-111 launch the app with env -i (no OPENROUTER key or REWARDKIT vars) under setpriv uid/gid 65534, so it cannot read /tests (root 0700), /logs/verifier (0700), or root /proc/<pid>/environ. (5) Agent-modifiable /assets artifact is copied into the verifier (task.toml line 2) but no judge prompt or app_context references /assets, /instructions, /tests or /app (grep of tests/**/*.md returned no matches), so tampering /assets cannot change grading inputs. RESIDUAL LATENT RISKS (template/shared-harness level, not task-fixable, NOT EXERCISED): (a) rewardkit 0.1.7 passes the full judge prompt including all criteria as argv to `claude -p` (agents.py build_command; judges.py _arun_agent_call). The submitted app runs in the same verifier container as uid 65534; unless /proc is mounted hidepid (Docker default is not), the app could read /proc/<judge pid>/cmdline at grade time and see the criteria, enabling criteria-tailored on-page injection. Mitigated by injection-resistant prompts (row 45); the agent itself never sees criteria during its run. (b) Restart and cleanup kill only the app's process group (test.sh line 36, helper line 154); a submission that setsid-detaches an in-memory daemon holding port 3000 would survive app-restart.sh and answer probe_ready, potentially faking restart persistence without durable storage. Both require deliberately adversarial code and live in template-controlled test.sh/shared rewardkit that this task must not edit. risk=true only to surface these unmeasured harness-level exposures to the owner; no task-level defect found.",
+  "counterexample": "Plausible broken app that could pass (harness-level, unexercised): server.js forks a setsid-detached child that keeps all data in memory on port 3000; on app-restart.sh the new node gets EADDRINUSE and exits quietly while the detached child keeps answering, so restart-persistence criteria may pass without SQLite durability. Separately, the app could poll /proc/*/cmdline for the judge's `claude -p` prompt and render criterion-matching claims. Conforming alternative that could fail: none found for this row; a correct app is unaffected by the isolation (it runs as 65534 from /app or the /tmp/submission copy with DB_PATH honoured, as hireops_rules.md section 8 discloses).",
+  "suggested_fix": "No task edit. Escalate to the harness owner: run the verifier app in its own PID namespace (or mount /proc with hidepid=2) and kill all uid-65534 processes (e.g. pkill -U 65534) before relaunch/cleanup; consider passing the judge prompt via stdin rather than argv in rewardkit.",
+  "run_verdict": "NOT EXERCISED"
+}

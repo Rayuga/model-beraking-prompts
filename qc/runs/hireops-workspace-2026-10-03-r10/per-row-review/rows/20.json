@@ -1,0 +1,27 @@
+{
+  "number": 20,
+  "id": "solution_is_frozen_and_deterministic",
+  "reviewer": "row-reviewer-20",
+  "input_sha256": "622c7c3d5aa7f77beae16575e8006f426f50f3a84b0bead9f50ac5b0b1c70804",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r10/rules/WebDev Rubrics QC.xlsx: 'Quality Checks' row #20 and 'Internal Quality Checks' row #20 (identical text, no extra annotation column value); also row #47 for scope boundary (read via openpyxl read_only)",
+    ".qc-cache/hireops-workspace-2026-10-03-r10/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r10/rules/harbor-webdev-rubric-qc/references/quality-checks.md section '20 · solution_is_frozen_and_deterministic' (and neighbouring 19/21-25)",
+    ".qc-cache/hireops-workspace-2026-10-03-r10/rules/projects/webdev-task-template/solution/solve.sh and solution/app/server.js",
+    "qc/REVIEW_POLICY.md",
+    "task/solution/solve.sh, task/solution/app/{package.json,server.js,src/bootstrap.js,src/db.js,src/index.js,public/js/*.js (grep)}, task/solution/app/src/seed_data.json, task/environment/{Dockerfile,assets/seed_data.json}, task/instruction.md, task/environment/instructions/hireops_rules.md (grep), task/tests/** judge/prompt grep for pinned time/id values",
+    "qc/runs/hireops-workspace-2026-10-03-r10/raw-evidence-index.json (all 6 artifact hashes re-verified as matching; all 12 matching_source_files hashes match the frozen task bytes) and qc/repairs/hireops-2026-10-03-workspace/results/workspace.json"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Committed static baseline: the full reference app is committed under task/solution/app (server.js -> src/index.js -> src/bootstrap.js, src/db.js, public/*), and task/solution/solve.sh only realpath-checks DB_PATH under /app, refuses if the DB is held open, 'cp -a \"$(dirname \"$0\")/app/.\" /app/' and removes any stale app.db/-wal/-shm. No npm install, curl, wget, git or code generation in solve.sh; deps are pinned exactly in package.json (better-sqlite3 12.4.1, express 5.1.0) and preinstalled at the same versions by environment/Dockerfile 'npm install -g express@5.1.0 better-sqlite3@12.4.1'. Deterministic seeding: src/db.js reads seed_data.json from beside the module (byte-identical to environment/assets/seed_data.json, cmp OK; sha a1c65c80... matches the evidence index) and seedIfEmpty() inserts users/jobs/applications with ids, positions and stages taken verbatim from the seed, a constant application created_at '2026-06-15T09:00:00Z', messages/notes with their seed created_at, and read markers mapped from read_count to AUTOINCREMENT ids assigned in seed order inside one transaction - so the seeded rows are identical every run. It reseeds only when users is empty, so restarts keep work. No boot-time fetch: the server has no fetch/http client except bootstrap.js proxying to its own worker on 127.0.0.1; seed and config come from local files. Nondeterminism exists only in newly created runtime records: index.js:59 now()=new Date().toISOString() for sessions/activity/notes/messages/actions created_at, and index.js:60 uid()=crypto.randomBytes(3) for new JOB-/APP- ids, plus random session tokens. None is a pinned graded value: the brief and hireops_rules.md define no time-based rule (no ages, deadlines or 'today'), ordering uses AUTOINCREMENT ids or position (e.g. activity ORDER BY a.id DESC, messages ORDER BY id, column ORDER BY position,id; candidate list ORDER BY created_at,id where seeded rows share a fixed stamp and new rows are strictly later), and grep of tests/gates and tests/scored prompts/judge.toml finds no pinned timestamp, clock value or generated id - judges use unique entered titles/names. Hence the fixed seed is the only data source graded rules depend on and no fixed clock is needed. Runtime corroboration (golden scripted, not a judge run): qc/repairs/hireops-2026-10-03-workspace/results/workspace.json (hash verified) reports 'seeded card order and internal notes are loaded' passed against these exact solution bytes. Adversarial probes: a broken reference that read /assets/seed_data.json at runtime or ran npm install would be caught here, but the golden does neither; a reference with random seeded ids would break pinned cross-references, but seed ids are literal. A conforming alternative app cannot fail this row since it concerns only the reference. Minor latent observation (P3, not a defect for this row): uid() uses a 24-bit random suffix with no collision retry, so a created job/application could in principle hit a PRIMARY KEY conflict (~1 in 16.7M per pair); judge workloads create a handful of records, so no observable impact.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

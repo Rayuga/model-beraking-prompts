@@ -1,0 +1,36 @@
+{
+  "number": 19,
+  "id": "solution_honors_the_runtime_contract_and_is_self_contained",
+  "reviewer": "row-reviewer-19",
+  "input_sha256": "7e8adb4257e0b520304b0c4c7b2d16e184c9f951d54e3b3e77345643d59023f0",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-2026-10-01-transaction-hardening-r2/rules/WebDev Rubrics QC.xlsx: Quality Checks row 20 (quality #19), Internal Quality Checks row 20, Deterministic Checks row 34; both public check inventories read",
+    ".qc-cache/hireops-2026-10-01-transaction-hardening-r2/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-2026-10-01-transaction-hardening-r2/rules/harbor-webdev-rubric-qc/references/quality-checks.md:83-85",
+    ".qc-cache/hireops-2026-10-01-transaction-hardening-r2/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md:62",
+    ".qc-cache/hireops-2026-10-01-transaction-hardening-r2/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md",
+    ".qc-cache/hireops-2026-10-01-transaction-hardening-r2/rules/harbor-webdev-rubric-qc/scripts/list_checks.py (executed enumeration: 53 quality, 48 deterministic)",
+    "qc/README.md; qc/REVIEW_POLICY.md; NEW_TASK_AUTHORING_CONTEXT.md and TASK_AUTHORING_WORKFLOW.md entry guidance",
+    ".qc-cache/hireops-2026-10-01-transaction-hardening-r2/rules/projects/webdev-task-template/solution/solve.sh:1-5; solution/app/server.js; environment/instructions/integration.md; tests/test.sh:75-115",
+    ".qc-cache/hireops-2026-10-01-transaction-hardening-r2/task/instruction.md:9-13; environment/instructions/integration.md:3-19",
+    ".qc-cache/hireops-2026-10-01-transaction-hardening-r2/task/solution/solve.sh:1-34; solution/app/server.js; solution/app/package.json",
+    ".qc-cache/hireops-2026-10-01-transaction-hardening-r2/task/solution/app/src/db.js:1-182; src/bootstrap.js:1-59; src/index.js:1-48,440-445",
+    ".qc-cache/hireops-2026-10-01-transaction-hardening-r2/task/environment/Dockerfile; task/tests/Dockerfile; task/tests/test.sh runtime launch references",
+    "qc/runs/hireops-2026-10-01-transaction-hardening-r2/raw-evidence-index.json",
+    "qc/runs/hireops-2026-10-01-transaction-hardening-r2/verification-extra.json; verify-extra.py; local/install-lifecycle.py; local/install-lifecycle/results.json; local/install-lifecycle.log; local/install-lifecycle/app.log; local/install-lifecycle/restart/app-restart.log",
+    "qc/runs/hireops-2026-10-01-transaction-hardening-r2/per-row-review/evidence/19/hash-verification.json",
+    "qc/runs/hireops-2026-10-01-transaction-hardening-r2/per-row-review/evidence/19/install-isolation.py; install-isolation-result.json; run.json; docker.stdout.log; docker.stderr.log"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "Bounded installer defect, not a failure of the measured normal launch: frozen task/solution/solve.sh:15-27 scans every /proc process and throws on every error other than ENOENT/ESRCH, before the copy at line 33. In an isolated fresh container with neither /app/server.js nor /app/app.db, an unrelated nobody-owned sleep process causes exit 1: \"EACCES: permission denied, readlink /proc/8/fd/0\"; server.js remains absent. Stopping only that sleeper makes the unchanged installer exit 0 and install server.js. This adds an undocumented ability-to-read-every-process precondition to workbook row 19's installer promise and instruction.md:9,11 / integration.md:3-10's self-contained /app launch contract; it is not necessary to protect a database that does not exist. The probe is a deliberately constructed, otherwise permissible Linux process condition, not an observed failure of the ordinary hosted Oracle setup. Independent raw record: per-row-review/evidence/19/run.json identifies command, network-none disposable container, exact image sha256:fd5a522e1caa5692f9e3ece733b3f60ea79b20b1cf4b4aaf75bd99f5ccce8c27 and artifacts; install-isolation-result.json SHA256 991d685082c7dcd8f22d6324749fa21d578617ab98dce472b2ea0be5b9d598ff; tested solve.sh SHA256 3bf863a5703a9c7297986ca72a6300b47780546531e966b3a7386982dc852741. Positive evidence is preserved: bash -n passed and solve.sh is LF-only, copies only into /app, and contains no pkill, NODE_ENV=production or package install. db.js:13-28 honors DB_PATH and reads the co-located matching seed; db.js:122-179 seeds transactionally once. bootstrap.js:20-24 answers health independently of database work and :43-45 honors PORT on 0.0.0.0 in the same Node process. The hash-verified existing lifecycle driver starts the current 13-file golden as uid 65534 from /tests with sanitized env, then the actual shared restart MCP replaces PID 21 with PID 97 and retains the saved requisition. Its results.json SHA256 is 52b5ba96bded2e133fe4ec16117c150d46673f70ce31284169193f478c73e9f9; verification-extra.json binds all 37 current task files. Eight cited index artifact hashes, every lifecycle app hash, and all task source hashes were independently checked in evidence/19/hash-verification.json. The internal workbook no-network/no-install wording is superseded by the public row and skill; no network defect is alleged. These are finite installer/runtime observations, not private deterministic checker execution, full configured judge completion, or an Oracle/model score.",
+  "counterexample": "Confirmed conforming-runtime alternative that the installer falsely rejects: an otherwise fresh permitted Linux container has one unrelated uid-65534 sleep 30 process, no app server and no database. The installer should be able to copy the static application, but its global /proc scan fails before doing so. A conforming installer can skip database-inactivity inspection when the database and its journals are all absent while retaining conservative protection for an existing database. Plausible broken-app escape considered (reasoning only): an app that deletes/reseeds its database at every node startup would pass a fresh install and health check, but is rejected by the actual lifecycle positive-control/create/restart/identical-readback probe; the current app retains that saved record.",
+  "suggested_fix": "Skip the inactivity scan for a genuinely absent database and journals, or use a database-scoped ownership/locking mechanism; preserve refusal when an existing database may be active and add the unrelated-process fresh-install control.",
+  "run_verdict": "CONFIRMED"
+}

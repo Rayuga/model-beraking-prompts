@@ -1,0 +1,32 @@
+{
+  "number": 23,
+  "id": "verifier_and_instruction_agree_on_the_runtime_contract",
+  "reviewer": "row-reviewer-23",
+  "input_sha256": "12bf37abe5ba3152b1255fb9b9531665c432b86e0b0d86562adc7c802940d224",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r13/rules/WebDev Rubrics QC.xlsx (read in memory with openpyxl read_only): 'Quality Checks' row 24 (#23, block E, verifier_and_instruction_agree_on_the_runtime_contract: 'Every launch assumption in test.sh (probe URL, env vars, paths, seed, deps) is something the instruction told the agent to satisfy. (No same-origin requirement - network is public.)'); 'Internal Quality Checks' row 24 incl. annotation (sign-in is house convention, not a contract mismatch); 'Deterministic Checks' row 31 check-runtime-contract-strings.py (mechanical half)",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/rules/harbor-webdev-rubric-qc/SKILL.md (delivery profile: public network; known false positive for check 23: sign-in surface)",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/rules/harbor-webdev-rubric-qc/references/quality-checks.md section '23 · verifier_and_instruction_agree_on_the_runtime_contract' (and 4, 19, 49 for context)",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md sections 'tests/test.sh' and 'Cross-file agreements'",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/rules/projects/webdev-task-template/tests/test.sh (diffed against task test.sh: byte-identical)",
+    "qc/REVIEW_POLICY.md",
+    "task/tests/test.sh (sha256 bd68259276ca4b034654efc8a1723a4e702ed62dbe590af6201565f43eabe5aa)",
+    "task/instruction.md (sha256 256c5b5db2bd4ea295e1f35878d5b0987ff55e03de05b5b5662bbe926f38c9b9)",
+    "task/environment/instructions/integration.md (sha256 1b56dd3f...c352c)",
+    "task/environment/instructions/hireops_rules.md section 8 'Runtime file paths' (sha256 38fff76c...8f26)",
+    "task/task.toml, task/environment/Dockerfile, task/tests/Dockerfile, task/solution/solve.sh, task/solution/app/src/{bootstrap,db,index}.js (listen/PORT/DB_PATH/health lines), task/tests/app_context.md and all five prompt.md URLs",
+    "qc/runs/hireops-workspace-2026-10-03-r13/raw-evidence-index.json; hashes re-verified for qc/repairs/hireops-2026-10-03-workspace/results/workspace.json (47c2e8ef...), results/server.log (6752f461...), and frozen solution/app/server.js, src/bootstrap.js, solve.sh (match index); workspace.cjs line 16 launch env inspected"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Enumerated every launch assumption in task/tests/test.sh and matched each to a public statement. (1) Entry /app/server.js (test.sh:68,97) <- instruction.md:13 'It must start with node /app/server.js'; integration.md:5. (2) Port 3000 / PORT env (test.sh:108; probe URLs test.sh:48,136) <- instruction.md:13 'listen on port 3000 (honour PORT if it's set)'; integration.md:5-6 '0.0.0.0' (probe uses 127.0.0.1, compatible). All prompt/app_context URLs are http://localhost:3000. (3) Liveness probe /api/health then / (test.sh:48) <- instruction.md:13 'expose GET /api/health as a check that never touches the database'; integration.md:9-10. (4) DB_PATH injected as /app/app.db or /tmp/submission/app.db (test.sh:98-101,109) <- instruction.md:13 'keep its durable data in /app/app.db, honouring DB_PATH when that is set'; rules.md:201. (5) Sanitized env -i with only PATH, NODE_PATH, HOME, PORT, DB_PATH (test.sh:104-109) <- hireops_rules.md:202 'The launch environment contains PATH, HOME, NODE_PATH, PORT and DB_PATH; do not rely on inherited shell variables.' (6) Unprivileged uid 65534 and possibly a writable copy launched from another path (test.sh:99-111) <- hireops_rules.md:198-201 'runs as an unprivileged user and may launch a writable copy ... Resolve bundled UI and seed files relative to the entry or module directory'. (7) Deps via NODE_PATH=/usr/local/lib/node_modules (test.sh:106); tests/Dockerfile installs express@5.1.0 and better-sqlite3@12.4.1 matching environment/Dockerfile <- integration.md:3-4 'Express and better-sqlite3 already available through NODE_PATH'; instruction.md:13 'don't install packages'. (8) Symlink rejection outside /app/node_modules (test.sh:72-83) <- integration.md:16-19. (9) Seed: test.sh performs no seeding and /assets may be absent <- instruction.md:15 'Copy what you need into /app; /assets and /instructions are unavailable at runtime. Load ... once, start with no shipped database, and keep new work across restarts' (covers restart helper test.sh:127-193 as well). (10) No same-origin requirement in any prompt (grep found none); network public in task.toml:22,38. No fixed-clock env is injected, and the brief requires none. Sign-in accounts are stated (instruction.md:17) and are in any case the known false positive. Runtime support: the scripted golden (workspace.cjs:16) launched node /app/server.js from cwd /tmp with exactly PATH/HOME/NODE_PATH/PORT/DB_PATH as uid 65534 with a real restart; server.log shows '[hireops] listening on 3000' twice. Hashes match the frozen bytes. Weak/alternative probes: a conforming app binding 127.0.0.1 or 0.0.0.0, reading PORT, writing its db at DB_PATH, and resolving files via __dirname launches correctly. A conforming app that relies on an extra env var (NODE_ENV, TZ) or on cwd=/app is warned against in rules section 8. A broken app with no /api/health still passes the probe via '/' (lenient, not a contract mismatch; gates judge real behaviour). test.sh is byte-identical to the frozen template.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL: the golden was launched under the same sanitized env, cwd and uid by the scripted driver, with a restart. The full test.sh/RewardKit verifier launch was not exercised in this round, per the raw-evidence index scope. That gap belongs to the full-verifier-launch runtime record, not to this source-agreement row."
+}

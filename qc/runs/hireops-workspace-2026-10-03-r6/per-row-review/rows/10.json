@@ -1,0 +1,33 @@
+{
+  "number": 10,
+  "id": "verifier_is_isolated_pinned_and_credentialed",
+  "reviewer": "row-reviewer-10",
+  "input_sha256": "cefa38a90e730105bedd5082c7d28c322a25773d30a55777d75037f5036618d6",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r6/rules/WebDev Rubrics QC.xlsx (Quality Checks row 11 / #10; Deterministic Checks rows 2,7,11,19,43; Internal Quality Checks rows 11,48,53; zip searched for comments - none)",
+    ".qc-cache/hireops-workspace-2026-10-03-r6/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r6/rules/harbor-webdev-rubric-qc/references/quality-checks.md (#9-#13)",
+    ".qc-cache/hireops-workspace-2026-10-03-r6/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r6/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (rubric-schema, dockerfiles sections)",
+    ".qc-cache/hireops-workspace-2026-10-03-r6/rules/projects/webdev-task-template/task.toml, tests/Dockerfile, tests/*/*/judge.toml",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r6/task/task.toml",
+    ".qc-cache/hireops-workspace-2026-10-03-r6/task/tests/Dockerfile",
+    ".qc-cache/hireops-workspace-2026-10-03-r6/task/tests/test.sh (lines 1-110,160-166)",
+    ".qc-cache/hireops-workspace-2026-10-03-r6/task/tests/{gates,scored}/*/judge.toml",
+    ".qc-cache/hireops-workspace-2026-10-03-r6/task/environment/Dockerfile",
+    "qc/runs/hireops-workspace-2026-10-03-r6/raw-evidence-index.json"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Static review of frozen task .qc-cache/hireops-workspace-2026-10-03-r6/task against workbook Quality Checks row 11 (#10), skill references/quality-checks.md:47-48 and staged-task-contract.md:62-75,113-140. (1) Isolation: task/task.toml:26-28 '[verifier]' timeout_sec = 13200.0, environment_mode = \"separate\"; task/tests/Dockerfile:43 'COPY . /tests' builds its own verifier image; environment/Dockerfile (FROM node:22-bookworm-slim) contains no tests/OPENROUTER/ANTHROPIC references. (2) Pinned image: task/tests/Dockerfile is byte-identical to the frozen template tests/Dockerfile (sha256 72998ab8ef0e4225e63b88fccdb754943c54022e25da355035efe7f759a55fdd for both); bases are version-tagged (node:22-bookworm-slim, python:3.12-slim, lines 1-2), npm globals pinned (@anthropic-ai/claude-code@2.1.281, @openai/codex@0.151.0, @playwright/mcp@0.0.79, express@5.1.0, better-sqlite3@12.4.1, lines 16-21), pip harbor-rewardkit==0.1.7 (line 31), chromium installed through the pinned Playwright MCP CLI (lines 33-39). Bases are tag- not digest-pinned and apt is unpinned, but this is the template-controlled shared build and the deterministic check-dockerfiles definition treats unpinned apt as NOTE; not a task defect. (3) Credentials: task/task.toml:30-35 [verifier.env] = REWARDKIT_JUDGE=\"claude-code\", REWARDKIT_MODEL=\"z-ai/glm-5.3-flashx\", ANTHROPIC_BASE_URL=\"https://openrouter.ai/api\", ANTHROPIC_AUTH_TOKEN=\"${OPENROUTER_API_KEY}\", ANTHROPIC_API_KEY=\"\". cmp of everything from '[verifier]' to EOF between task and template task.toml: byte-equal (LF, no BOM, no CR). [verifier.environment] network_mode=\"public\" (line 37-38), no allowed_hosts - correct under the public-network profile (SKILL.md:26). No provider key shapes (sk-or-/sk-ant-) anywhere in task. test.sh:63-66 refuses grading without REWARDKIT_JUDGE/MODEL; app launched via env -i + setpriv uid 65534 (test.sh:99-110,160-166), so judge credentials are not passed to the submission. (4) judge.toml: all five [judge] headers (gates/constraints, gates/render, scored/functional, scored/polish, scored/visual, lines 1-13/19) are identical to template headers and contain only judge=\"claude-code\" fallback, mode, timeout, isolated, prompt_template; grep '^\\s*(model|reasoning_effort|temperature|weight|REWARDKIT_MODEL|ANTHROPIC|OPENROUTER)' over tests/ found no hit. Adversarial probes: a broken/cheating submission cannot influence this row (verifier image and env are fixed by the task, submission runs unprivileged without judge creds); a conforming app cannot be failed by it. Workbook Internal Quality Checks row 11 still mentions an allowlist; superseded by current public-network wording in the Quality Checks sheet and SKILL.md:26. No comments/threaded annotations exist in the workbook zip. Runtime: raw-evidence-index.json records scripted golden runs inside a separately built hireops-verifier image (20261002-permission-repair) but explicitly no configured judge run; live OpenRouter auth through the claude-code judge is therefore not exercised, but this row's procedure is static and the block is the unchanged template block, so the gap belongs to the full-verifier-launch runtime records rather than this row.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

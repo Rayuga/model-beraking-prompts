@@ -1,0 +1,37 @@
+{
+  "number": 37,
+  "id": "later_dimensions_tolerate_earlier_mutations",
+  "reviewer": "row-reviewer-37",
+  "input_sha256": "12bf37abe5ba3152b1255fb9b9531665c432b86e0b0d86562adc7c802940d224",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r13/rules/WebDev Rubrics QC.xlsx (Quality Checks row 37; Internal Quality Checks row 37, no extra annotation; read with openpyxl read_only)",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/rules/harbor-webdev-rubric-qc/references/quality-checks.md (### 37)",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (restart/test.sh contract sections)",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/rules/projects/webdev-task-template (file tree; tests/test.sh diffed byte-identical to task test.sh; tests/app_context.md and scored/functional/prompt.md read)",
+    "qc/REVIEW_POLICY.md",
+    "task/tests/test.sh",
+    "task/tests/scoring.toml",
+    "task/tests/app_context.md",
+    "task/tests/Dockerfile",
+    "task/tests/gates/render/{judge.toml,prompt.md}",
+    "task/tests/gates/constraints/{judge.toml,prompt.md}",
+    "task/tests/scored/functional/{judge.toml,prompt.md}",
+    "task/tests/scored/polish/{judge.toml,prompt.md}",
+    "task/tests/scored/visual/{judge.toml,prompt.md}",
+    "task/environment/assets/seed_data.json (jobs, notes, reads; compared to solution/app/src/seed_data.json)",
+    "qc/runs/hireops-workspace-2026-10-03-r13/raw-evidence-index.json (scope)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Execution order and shared state: tests/test.sh:104-113 starts ONE app process on one DB_PATH; test.sh:213 runs suite gates (render, constraints) then test.sh:224 runs suite scored (functional, polish, visual) with --max-concurrent-agent 1 against that same running app; functional's restart_app (judge.toml:14-18, prompt D) restarts on the same DB. So every later dimension sees earlier mutations. The intra-suite dimension order of harbor-rewardkit 0.1.7 (tests/Dockerfile) could not be verified locally (package not installed), so I checked tolerance in both orders.\n\nMutations by each dimension: render gate prompt.md:9 'Do not create, move or send anything, and do not open any conversation'. Constraints gate judge.toml:23 creates a job with a unique title and one candidate; prompt.md:9 'Do not move, reject or message anything here'. Polish prompt.md:11 and visual prompt.md:11 each create their own uniquely suffixed gate job and card; polish prompt.md:14 'Use your own new job and cards ... never rely on another review's records'; polish adds messages to seeded conversations (Noor's, via hro_pol_live_thread/failed_send/session_resume) and leaves unsent drafts; polish prompt.md:16 'Never use Lena Fischer's conversation'. Visual prompt.md:14 is read-only ('Do not move cards or send messages').\n\nState-relative wording in later readers: app_context.md:27-31 'Other reviews may have added jobs, cards and messages; never rely on a starting count' (injected into every prompt by test.sh:195-201). Functional prompt.md:15 repeats it and requires own suffixed jobs; prompt.md:39 Tomas fallback 'counts read relative to their values before you act'; prompt.md:41 Mei's unread 'counted from the sequence you observed'; hro_thread_latest/earlier (judge.toml:326,335) grade 'most recent 30' and 'how many are still to come', not a fixed 120. Polish prompt.md:14 'If a message or note box already holds text from an earlier review, record it and clear it before typing your own' (tolerates functional hro_drafts leftovers). Visual reads 'a job with cards in several stages (a seeded job is fine)'.\n\nThe only seed-absolute expectations are functional Z (prompt.md:25; hro_restart judge.toml:416; hro_unread_counts judge.toml:344): Lena's own unread=1, the Platform Engineer Applied/Screen order and Noor's seeded note. I verified none of these can be mutated by any other dimension in either order: no other prompt moves cards on a seeded job, adds a note to Noor's card (polish notes are unsaved and on 'your cards'), or opens/messages Lena's conversation (polish forbids it; gates/visual never use Lena). Seed confirms the expectation source exists (environment/assets/seed_data.json: JOB-PLAT, note 'Strong systems answers; weaker on incident follow-up.', reads table; identical to solution/app/src/seed_data.json). Z is also ordered 'Before anything else' inside functional and functional itself says 'Move nothing on that job'.\n\nCounterexamples tried: (a) broken app that re-seeds on start: would erase gate/functional jobs and duplicate or reset data; hro_restart (judge.toml:416 'starting data is not loaded again', 'anything lost') catches it, so seed-absolute Z reads cannot be satisfied by a re-seeding app. (b) conforming app penalised by earlier mutation: if polish ran before functional and left Rafael's unsent draft in Noor's conversation, functional hro_drafts types 'a different unsent reply in another conversation' and grades only that each keeps its own draft; hro_msg_compose uses Tomas's newly created conversation with no prior draft; scrolled-up/unread rows count Noor's single new message relative to observed state. No credible order-dependent false failure found.\n\nMinor Note (no score impact found): functional prompt lacks polish's explicit 'record and clear pre-existing box text' instruction; harmless in both orders as analysed. Runtime: raw-evidence-index.json scope states full configured grading is absent; scripted golden observations (qc/repairs/hireops-2026-10-03-workspace/results/workspace.json) do not run the five dimensions sequentially, so cross-dimension tolerance is source-reviewed, not exercised.\n\nTemplate: frozen template tests/test.sh is byte-identical to the task's, so the single shared app across gates and scored suites is template-controlled, and tolerance must come from the task prompts (which it does).",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

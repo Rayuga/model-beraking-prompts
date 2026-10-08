@@ -1,0 +1,41 @@
+{
+  "number": 37,
+  "id": "later_dimensions_tolerate_earlier_mutations",
+  "reviewer": "row-reviewer-37",
+  "input_sha256": "6ca9ee7368c7aef18033c68fdd278d965bcb75bc20d710f6c60c557dfb8953eb",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/WebDev Rubrics QC.xlsx: Quality Checks row 37 and Internal Quality Checks row 37 (later_dimensions_tolerate_earlier_mutations: 'A later dimension doesn't assume a pristine seed after an earlier dimension mutated the shared running app.'; the internal sheet adds no further annotation for this row)",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/harbor-webdev-rubric-qc/references/quality-checks.md section '37 · later_dimensions_tolerate_earlier_mutations' (state-relative wording: read the current value, quote the seeded expectation beside it, grade against what was observed)",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (test.sh order, shared app process, restart helper)",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/projects/webdev-task-template (file list, tests/scored/functional/prompt.md; tests/test.sh is byte-identical to the task's)",
+    "qc/REVIEW_POLICY.md",
+    "NEW_TASK_AUTHORING_CONTEXT.md:170 ('later dimensions must tolerate earlier legitimate mutations')",
+    "projects/common-ground-ballot/README.md:34 (pinned runner discovers dimensions in alphabetical order)",
+    "task/tests/test.sh (one app process and one DB for all suites; gates then scored; rewardkit --max-concurrent-agent 1)",
+    "task/tests/scoring.toml",
+    "task/tests/app_context.md",
+    "task/tests/gates/render/{judge.toml,prompt.md}",
+    "task/tests/gates/constraints/{judge.toml,prompt.md}",
+    "task/tests/scored/functional/{judge.toml,prompt.md}",
+    "task/tests/scored/polish/{judge.toml,prompt.md}",
+    "task/tests/scored/visual/{judge.toml,prompt.md}",
+    "task/instruction.md",
+    "task/environment/instructions/hireops_rules.md sections 5, 6 (Unread, Seen, Drafts), 9",
+    "task/environment/assets/seed_data.json (users, jobs, applications, messages, reads; identical to solution/app/src/seed_data.json)",
+    "task/solution/app/src/index.js (markRead lines 132-147, 400, 407) and public/js/app.js (landing view selection lines 93-111)",
+    "qc/runs/hireops-workspace-2026-10-03-r1/raw-evidence-index.json and manifest.json (scope statements)"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "Run order: test.sh runs one app process and one database for every suite (tests/test.sh:108-117, 207-231). Gates run first, then the scored suite. Per projects/common-ground-ballot/README.md:34, the runner discovers dimensions alphabetically, so the order is constraints, render, functional, polish, visual. Most later dimensions grade state relative to what they observe. app_context.md:29-31 says 'Other reviews may have added jobs, cards and messages; never rely on a starting count.' Functional (prompt.md:15), polish (prompt.md:14) and visual (prompt.md:14) each create their own suffixed job and cards. hro_thread_latest and hro_thread_earlier count relative to what is shown. hro_unread_scrolled_up and hro_seen use before/after reads. Polish uses Noor's conversation only relatively ('at its newest message', earlier messages exist). Visual is read-only, and the seeded jobs it may view are untouched by functional (prompt.md:15 'never move another review's records'). hro_restart compares the reviewer's own recorded state. DEFECT: one absolute seed assertion remains in a later dimension. tests/scored/functional/judge.toml:335 (hro_unread_counts, weight 2) says 'Mei Lin starts with 2 unread on Tomas Varga's Data Analyst conversation ... Fails if any count is wrong'. prompt.md:39 (U) adds '(the starting read markers give her 2)'. That value comes from seed reads {USR-REC2, APP-201, read_count 1} plus Tomas's two seeded messages on APP-201. It holds only if nobody has had APP-201 open as Mei since the start, and read markers are mutable by viewing. The golden calls markRead on conversation open (src/index.js:400), and hireops_rules.md section 6 Unread defines the count relative to when 'that person last had the conversation open'. An earlier dimension may legitimately mutate it. tests/gates/render/judge.toml:23 lets the judge sign in as 'a seeded Recruiter' with no preference for Rafael (unlike constraints, which says 'prefer Rafael Costa'), and accepts 'conversations' as the workspace shown. Render's prompt.md:9 forbids only create/move/send, not opening a conversation. APP-201 has the newest seeded message (2026-07-29T11:15Z), and Mei is its job's recruiter, so a render judge signed in as Mei who opens her top conversation clears her count to 0. A conforming app that lands on Conversations with the newest conversation open does the same with no click. hro_unread_counts then fails a correct app. The same pristine assumption is also exposed inside functional. T (prompt.md:37) says 'As Mei Lin write in Tomas's conversation', but Tomas then has two conversations: seeded APP-201 Data Analyst and the new J2 one. Both are managed by Bill Okafor (seed JOB-DATA manager_id USR-MGR2, and J2's manager per S), so every T sub-step fits either. Writing in APP-201 counts as reading (hireops_rules.md section 6), and U, which runs after T, then reads 0, not 2. The criterion is also internally ambiguous: 'after Tomas's two new messages Rafael's count for that conversation' grammatically refers to the Data Analyst conversation, while U says Tomas sends on 'Tomas's conversation from T'. Probability is low for the cross-dimension path (the judge must choose Mei in render, or the app must auto-open) and moderate for the within-functional path. The consequence is a weight-2 functional row lost by a correct app. No configured judge run exists (raw-evidence-index scope: 'Full configured grading/workload ... absent'), so cross-dimension interference is unmeasured either way.",
+  "counterexample": "Conforming alternative that fails: an app whose staff landing view is Conversations, sorted newest first with the top conversation open (allowed: 'layout and names are yours'; hireops_rules.md section 6 counts having it open as reading). The render gate judge signs in as Mei Lin, which is allowed ('a seeded Recruiter'), and sees Tomas Varga's Data Analyst conversation (APP-201, newest seed message) open. Mei's unread on APP-201 becomes 0. In functional U the judge reads Mei's count as 0. The criterion says 'Mei Lin starts with 2 ... Fails if any count is wrong', so the correct app loses hro_unread_counts (weight 2 of the functional mass). The golden can hit the same outcome with no app difference if functional T's 'As Mei Lin write in Tomas's conversation' is done in APP-201 instead of the J2 conversation. Plausible broken app that could pass: an app that shows the seeded unread counts but never updates them on viewing or sending would match '2' at U regardless of earlier views. The rise-by-two and clear-on-open legs still catch it, so no false pass was found for this row.",
+  "suggested_fix": "Make the Mei check state-relative and protected. In U, have the judge record Mei's APP-201 count before acting and grade that it equals Tomas's messages after her last open (2 when nobody has opened it as Mei; quote the seed value beside the observed one). Make the render gate prefer Rafael Costa and say not to open conversations as Mei. Name the J2 conversation explicitly in T ('the J2 conversation, not the Data Analyst one'), and make hro_unread_counts' 'that conversation' refer unambiguously to the T conversation.",
+  "run_verdict": "NOT EXERCISED"
+}

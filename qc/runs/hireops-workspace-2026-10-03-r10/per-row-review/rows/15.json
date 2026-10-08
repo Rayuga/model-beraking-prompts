@@ -1,0 +1,42 @@
+{
+  "number": 15,
+  "id": "dockerfile_builds_the_declared_world",
+  "reviewer": "row-reviewer-15",
+  "input_sha256": "622c7c3d5aa7f77beae16575e8006f426f50f3a84b0bead9f50ac5b0b1c70804",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    "qc/runs/hireops-workspace-2026-10-03-r10/per-row-review/prompts/15.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r10/rules/WebDev Rubrics QC.xlsx (openpyxl read_only, in memory): 'Quality Checks' row 15 'dockerfile_builds_the_declared_world | Agent image is pinned, pre-installs every runtime dependency (no run-time install), and stages the assets.'; 'Internal Quality Checks' row 15 (same wording, no annotation); 'Deterministic Checks' rows check-dockerfiles.py, check-dockerfile-references.sh, check-fixtures.py, check-runtime-deps-in-both-images.py, check-dockerfile-platform.sh, check-nproc.sh, check-pip-pinning.sh for context",
+    ".qc-cache/hireops-workspace-2026-10-03-r10/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r10/rules/harbor-webdev-rubric-qc/references/quality-checks.md section '15 · dockerfile_builds_the_declared_world' (and 13, 16, 22 neighbours)",
+    ".qc-cache/hireops-workspace-2026-10-03-r10/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r10/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (Dockerfile checker paragraph)",
+    ".qc-cache/hireops-workspace-2026-10-03-r10/rules/projects/webdev-task-template/environment/Dockerfile",
+    ".qc-cache/hireops-workspace-2026-10-03-r10/rules/projects/webdev-task-template/task.toml",
+    ".qc-cache/hireops-workspace-2026-10-03-r10/rules/projects/webdev-task-template/tests/Dockerfile",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r10/task/environment/Dockerfile",
+    ".qc-cache/hireops-workspace-2026-10-03-r10/task/environment/instructions/integration.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r10/task/environment/assets/seed_data.json (hash)",
+    ".qc-cache/hireops-workspace-2026-10-03-r10/task/instruction.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r10/task/task.toml",
+    ".qc-cache/hireops-workspace-2026-10-03-r10/task/tests/Dockerfile",
+    ".qc-cache/hireops-workspace-2026-10-03-r10/task/tests/.dockerignore",
+    ".qc-cache/hireops-workspace-2026-10-03-r10/task/tests/test.sh",
+    ".qc-cache/hireops-workspace-2026-10-03-r10/task/solution/solve.sh",
+    ".qc-cache/hireops-workspace-2026-10-03-r10/task/solution/app/package.json and require() scan of solution/app/**",
+    "qc/runs/hireops-workspace-2026-10-03-r10/raw-evidence-index.json",
+    "docker image ls / docker history / docker image inspect (read-only; no container started) of hireops-agent:20261001-hard-r3-uncached"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Source: task/environment/Dockerfile is byte-identical to the frozen template rules/projects/webdev-task-template/environment/Dockerfile (both SHA256 0A75419E9598DED9317B26BBF0D2B12DE0B9B11185FB4C9FED1CA7F3E52467D1), so it is template-controlled and unmodified. Against the skill's procedure (quality-checks.md #15): (1) base 'FROM node:22-bookworm-slim' (line 1) is a version-tagged base without --platform; (2) 'ENV NODE_PATH=/usr/local/lib/node_modules' (line 3) plus 'RUN npm install -g --no-audit --no-fund express@5.1.0 better-sqlite3@12.4.1 && npm cache clean --force' (lines 9-12) pre-install exactly the two runtime packages, pinned with @version, globally, matching NODE_PATH; (3) 'COPY instructions/ /instructions/' and 'COPY assets/ /assets/' (lines 14-15) followed by 'chmod -R a+rX /instructions /assets' (line 16); (4) /app is created, git-initialised and committed with only .gitkeep (lines 16-23); WORKDIR /app, CMD sleep infinity. No COPY/ADD of solution/ or tests/ (the build context is environment/, which contains only Dockerfile, assets/seed_data.json, instructions/{hireops_rules.md,integration.md}). No RUN step needs grade-time network. Runtime-dependency completeness: a require() scan of solution/app/** finds only node built-ins (node:http, node:worker_threads, fs, path, crypto), express and better-sqlite3; solution/app/package.json pins dependencies better-sqlite3 12.4.1 and express 5.1.0, matching the image. instruction.md: 'Server dependencies are already available, so don't install packages'; integration.md lines 1-3: 'Express and better-sqlite3 already available through NODE_PATH; use only those packages and Node built-ins' — the declared world equals the built world. solve.sh performs no npm/apt install (cp -a app into /app, deletes any DB). Staged seed environment/assets/seed_data.json equals solution/app/src/seed_data.json (SHA256 A1C65C80...3740), so the staged asset is what the golden consumes. Verifier side (row 22's subject, checked only for runtime parity): tests/Dockerfile is byte-identical to template (72998AB8...5FDD) and installs express@5.1.0 and better-sqlite3@12.4.1 with NODE_PATH set, and test.sh launches the app with NODE_PATH=/usr/local/lib/node_modules, so the dependency set the agent targets is the one available at grade time. Runtime evidence: docker history of local image hireops-agent:20261001-hard-r3-uncached (built 2026-10-01, amd64, NODE_VERSION=22.23.2) shows the identical RUN/COPY sequence completed (npm layer 17.8MB, apt layer 98MB, COPY assets 12kB, COPY instructions 31.8kB, git-init layer), Config.WorkingDir=/app, Cmd=[sleep infinity], Env NODE_PATH=/usr/local/lib/node_modules. That build predates the current assets/instructions bytes, but the Dockerfile steps are identical and the changed inputs are plain text COPYs, so it is valid evidence that the build steps succeed uncached; no current-bytes agent build is recorded in raw-evidence-index.json (which covers only the scripted golden run in the verifier image). Adversarial probes: (a) a broken app that relies on an extra npm package (e.g. ws) installed at run time would not be enabled by this image and would fail to start under test.sh's env -i launch, so the image does not give it hidden help; a vendored copy under /app/node_modules is allowed by integration.md and test.sh's symlink rule, which is the agent's choice, not an image defect. (b) A conforming alternative using only Express/better-sqlite3/built-ins (e.g. SSE or long-poll for live updates, since no ws library is provided) is fully supported by this image; nothing it would legitimately need (native build toolchain, extra packages) is required by the brief. Minor notes, not defects for this row: the base is tag-pinned rather than digest-pinned (node:22 minor drifts, observed 22.23.2) and apt packages are unpinned, which the workbook's check-dockerfiles.py treats as a NOTE; both lines are template-controlled and must not be edited for this task.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "CONFIRMED"
+}

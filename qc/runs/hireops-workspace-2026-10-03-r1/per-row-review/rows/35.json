@@ -1,0 +1,38 @@
+{
+  "number": 35,
+  "id": "core_behavior_is_graded_and_state_is_proven_durable_where_it_must_be",
+  "reviewer": "row-reviewer-35",
+  "input_sha256": "6ca9ee7368c7aef18033c68fdd278d965bcb75bc20d710f6c60c557dfb8953eb",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/WebDev Rubrics QC.xlsx :: Quality Checks row 36 (#35 core_behavior_is_graded_and_state_is_proven_durable_where_it_must_be, 'Server-backed != same-origin - network is public'); Internal Quality Checks row 36 (same check, no extra internal annotation in columns E+); scanned all Internal annotations columns for context",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/harbor-webdev-rubric-qc/references/quality-checks.md (section 35, plus 29/30/37/39/40/44 for context)",
+    ".qc-cache/hireops-workspace-2026-10-03-r1/rules/projects/webdev-task-template/ (file tree enumerated; compared task tests/ layout against it)",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/hireops-workspace-2026-10-03-r1/per-row-review/prompts/35.md",
+    "task/instruction.md",
+    "task/environment/instructions/hireops_rules.md",
+    "task/tests/app_context.md",
+    "task/tests/scoring.toml",
+    "task/tests/test.sh lines 60-219 (launch, DB_PATH, restart helper)",
+    "task/tests/gates/render/{judge.toml (grep),prompt.md}",
+    "task/tests/gates/constraints/{judge.toml,prompt.md}",
+    "task/tests/scored/functional/{judge.toml,prompt.md}",
+    "task/tests/scored/polish/judge.toml",
+    "task/tests/scored/{polish,visual}/prompt.md (grep for gate/draft/session wording)",
+    "task/solution/app/src/db.js (grep: DB_PATH, seedIfEmpty), task/solution/app/public/js/{app.js,threads.js} (grep: per-person draft keys)",
+    "qc/runs/hireops-workspace-2026-10-03-r1/raw-evidence-index.json; qc/repairs/hireops-2026-10-03-workspace/results/workspace.json (groups 11-16)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "DEFINING BEHAVIOUR IS GRADED. The brief's product (instruction.md:1-7) is a shared pipeline board with one-stage moves, shared order, Interview places, conflict refusal naming the colleague, all-or-none bulk moves, undo, live updates, and staff/candidate conversations. Functional judge.toml grades each directly with positive controls: hro_move_one_stage (w1.5), hro_reorder (w1.5, read as Mei Lin in independent context), hro_interview_full (1.5), hro_stale_refused (2.5, replayed stale move refused, names who), hro_bulk_move/hro_bulk_all_or_none/hro_bulk_places, hro_undo_restores/hro_undo_conflict, hro_live_board (2.5), hro_msg_exchange (1.5, Tomas independent context), hro_unread_counts, hro_seen, hro_candidate_private (2.5).\n\nSERVER-BACKED (not same-origin) IS PROVEN BY CROSS-CONTEXT READBACK. gates/constraints/judge.toml:23 hro_gate_shared: create a job+candidate via UI as Rafael, then 'In a new independent empty browser context sign in as the Observer ... find that same job and exactly one card'; 'a browser-only save ... does not satisfy the gate'. constraints/prompt.md:9 and functional/prompt.md:11 define independence as a new browser context ('A reload or a second tab of the same context is not independent'). Nothing requires same-origin; the brief only says serve UI and API from one process (instruction.md:13), which is a stated requirement, and the gate checks readback, not origin. Further cross-context readbacks: hro_job_open, hro_add_candidate, hro_reorder, hro_msg_exchange, hro_thread_access, hro_candidate_linked.\n\nDURABILITY ACROSS RESTART + RE-AUTH IS GRADED. Brief: 'keep its durable data in /app/app.db ... keep new work across restarts' (instruction.md:13-15); rules 'Order survives a reload, a fresh sign-in and a restart' (hireops_rules.md:59). hro_restart (functional judge.toml:401-408): 'after restart_app and a fresh sign-in your jobs, card order per stage, notes, messages and activity lines are unchanged and the starting data is not loaded again'; protocol D (functional/prompt.md:49) records state first, calls restart_app once, 'A reload is not a restart.' The restart helper (test.sh:127-193) kills the process group and relaunches the same entry with the same DB_PATH as uid 65534, so it is a real process restart over the same DB file, and the functional judge.toml:14-18 wires restart_mcp.py to $APP_RESTART_HELPER.\n\nBROWSER-SIDE STATE (DRAFTS) DURABILITY AND RE-AUTH. Brief instruction.md:7 requires an unsent reply to survive switching, reload and sign-out/sign-in, private to that person on that browser (rules hireops_rules.md:168-175; unsaved note kept per person per browser, :105-106). Graded: hro_drafts (functional, switch conversation/Board + reload, per-conversation, cleared on send); hro_pol_session_resume (polish judge.toml:53-60: session ended in another tab, sign-in prompt, nothing sent, same person signs back in and the draft is there and sends, then Mei Lin signs in and sees no draft); hro_pol_failed_send (note draft survives reload); hro_pol_live_board/hro_pol_live_thread (draft/focus kept across live arrival).\n\nSOLVABILITY / RUN EVIDENCE (golden only). Golden db.js:2-3,9,57-61 honours DB_PATH and seeds only an empty DB; threads.js:112,124,182,196 keep drafts under a per-person key (app.js:38-42). raw-evidence-index.json entries hash-verified now: workspace.cjs 773cc339...303c and results/workspace.json a848d40d...e354 match; db.js 0367a73b..., threads.js 31b5894f..., app.js 6ce330f3... match the frozen task bytes. results/workspace.json group 16 'restart keeps jobs, cards, order, messages and activity without reseeding; live updates resume' passed:true; group 14 'session ended mid-draft: sign-in prompt, nothing sent, same person resumes and sends; another person sees no draft' passed:true; group 13 drafts across switch and reload passed:true. This is scripted golden evidence, not a configured judge run, Oracle grade or model score.\n\nADVERSARIAL PROBES. (a) Broken app with an in-memory server store (shared but not durable): passes the gate (cross-context readback) but hro_restart fails - caught. (b) App that wipes/reseeds on boot: hro_restart fails on lost work or duplicated starting data - caught. (c) localStorage-only 'backend': fails the gate (independent context sees nothing) - caught. (d) Drafts in localStorage not keyed by person: Mei sees Rafael's draft, hro_pol_session_resume fails - caught. (e) Drafts lost on sign-out: hro_pol_session_resume fails - caught. Conforming alternatives: server-side per-user drafts, SSE vs polling, in-memory sessions invalidated by restart (protocol D prescribes a fresh sign-in), INSERT-OR-IGNORE idempotent seeding, a different origin layout for assets/CDN - none would be failed by these criteria. No credible conforming-fail found for this row.\n\nOBSERVATION FOR OTHER ROWS (not a row-35 defect): hro_restart carries 1.5 of 58.5 total functional weight (I summed all 43 functional criteria), so a non-durable in-memory server loses only ~2.6% of functional (~1.5% of total reward). Durability is proven by a criterion as row 35 requires; whether that weight is honest belongs to rows 40/44.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL"
+}

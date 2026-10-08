@@ -1,0 +1,40 @@
+{
+  "number": 35,
+  "id": "core_behavior_is_graded_and_state_is_proven_durable_where_it_must_be",
+  "reviewer": "row-reviewer-35",
+  "input_sha256": "f53d9ed60d12f2a653d497dc98fac56a662e0d84393cdc5ff130c8a915d956db",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r3/rules/WebDev Rubrics QC.xlsx: Quality Checks row 36 (#35 core_behavior_is_graded_and_state_is_proven_durable_where_it_must_be, 'Server-backed != same-origin - network is public'); Internal Quality Checks row 36 (same check, internal wording 'state survives reload/re-auth and is server-backed where required'); listed sheets Quality Checks, Deterministic Checks, ChangeLogs Sheet Link, Internal Quality Checks; scanned all cell comments (none relevant)",
+    ".qc-cache/hireops-workspace-2026-10-03-r3/rules/harbor-webdev-rubric-qc/SKILL.md (full: delivery profile, verdicts/severity, evidence standard, known false positives, workflow)",
+    ".qc-cache/hireops-workspace-2026-10-03-r3/rules/harbor-webdev-rubric-qc/references/quality-checks.md section '### 35' and neighbouring 32-41",
+    ".qc-cache/hireops-workspace-2026-10-03-r3/rules/projects/webdev-task-template (file list; template gate/scored structure compared with task)",
+    "qc/REVIEW_POLICY.md (full)",
+    "qc/runs/hireops-workspace-2026-10-03-r3/per-row-review/prompts/35.md",
+    "task/instruction.md (all 17 lines)",
+    "task/environment/instructions/hireops_rules.md (all)",
+    "task/environment/instructions/integration.md (all)",
+    "task/tests/app_context.md",
+    "task/tests/gates/render/{judge.toml,prompt.md}",
+    "task/tests/gates/constraints/{judge.toml,prompt.md}",
+    "task/tests/scored/functional/{judge.toml,prompt.md} (all 40 criteria, protocols Z,S,M,L,C,B,N,T,U,K,R,V,A,D)",
+    "task/tests/scored/polish/{judge.toml,prompt.md} (all 5 criteria)",
+    "task/tests/scored/visual/{judge.toml,prompt.md} (grep for draft/session/storage; no durability criteria there)",
+    "task/tests/scoring.toml",
+    "task/tests/test.sh lines ~127-193 (app-restart helper / APP_RESTART_HELPER) and tests/tools/restart_mcp.py (restart_app single-use tool)",
+    "task/solution/app/public/js/app.js:38-42 and threads.js:112,124,182,196 (golden draft storage: per-person localStorage keys)",
+    "qc/runs/hireops-workspace-2026-10-03-r3/raw-evidence-index.json; recomputed sha256 of workspace.cjs, results/workspace.json, results/server.log and frozen solution server.js, src/db.js, src/index.js, src/bootstrap.js, public/js/app.js, threads.js, board.js - all match the index",
+    "qc/repairs/hireops-2026-10-03-workspace/results/workspace.json (20 groups, all passed, page_errors []) and workspace.cjs:376-423"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "DEFINING BEHAVIOUR IS GRADED: the instruction's core promises (instruction.md:3-9) are each owned by weighted criteria: one-stage moves/reorder/interview places/reject/reopen (functional hro_move_one_stage 1.5, hro_reorder 1.5, hro_interview_full 1.5 ...), concurrency 'nobody's work gets trampled' (hro_stale_refused 2.5 naming who; hro_bulk_all_or_none 2; hro_undo_conflict 2), live board within 15 s (hro_live_board 2.5; polish hro_pol_live_board 3), conversations/paging/unread/seen (hro_thread_latest, hro_thread_earlier, hro_unread_counts, hro_seen), candidate privacy (hro_candidate_private 2.5). Gate constraints (gates/constraints/judge.toml:22-24) already requires a UI-created job and card to be read back by the Observer in 'a new independent empty browser context' and explicitly rejects 'a static seed response, a no-op success message, a browser-only save or a job-only app'. SERVER-BACKED WHERE REQUIRED (shared state proven across independent contexts, not same-origin): job/card (hro_job_open, hro_add_candidate 'an independent context sees the same order'), order (hro_reorder 'what an independent context of another recruiter sees'; rules 3 'same for everyone'), stale-version conflict made by Mei 'in an independent context' (protocol C), messages (protocol T 'as Tomas in an independent context read it and reply'), per-person unread (Mei's count 'in her own session'), seen marks across Rafael/Tomas/Aud, Activity listing Ingrid's and Mei's actions (only possible from shared server state). The browser_run_code_unsafe newContext recipe (functional prompt.md:11) excludes reload/second-tab false independence. RESTART DURABILITY: hro_restart (weight 1.5) after restart_app compares jobs, per-stage order, notes, messages and activity and checks no reseed; restart_app is wired via test.sh:127-193 APP_RESTART_HELPER and tools/restart_mcp.py (single use), and 'if restart_app reports an error or cannot be called, hro_restart is 0' (protocol D). RELOAD / RE-AUTH DURABILITY for client-held state the brief demands (instruction.md:7 'stays ... when I look at another one, reload, or get signed out; when I sign back in it is still there, and nobody else who signs in on that browser sees it'): hro_drafts (switch, Board, reload, per-conversation, cleared on send), hro_pol_failed_send (note draft survives reload, rules 3 'kept for that person on that browser'), hro_pol_session_resume 2.5 (session ended in second tab, sign-in prompt, nothing sent, same person resumes and sends, Mei sees no draft). Drafts are rightly NOT required to be server-backed (rules 6 'Where drafts are kept is yours'); the golden uses per-person localStorage (app.js:38-42) and that is a conforming choice the criteria accept. BROKEN APP THAT COULD PASS: (a) localStorage-only board/messages - fails the gate's Observer independent-context readback and every cross-context row, floor 0.05 functional; (b) in-memory server without SQLite - passes gates but fails hro_restart (only 1.5 of functional weight; acceptable since restart is one promise among many); (c) global, non-per-user draft key - fails hro_pol_session_resume's Mei check. CONFORMING ALTERNATIVE THAT COULD FAIL: per-tab sessions (handled: 'if sessions are per tab, use this page's own sign-out instead'); app that proactively shows the sign-in prompt before Enter (handled: 'that also passes'); server-stored drafts (allowed); SSE vs polling (allowed). None wrongly fails. RUNTIME: scripted golden (hash-verified) passes 'session ended mid-draft ...', 'drafts kept per conversation across switch and reload ...', 'live board ... draft survives reload' and 'restart keeps jobs, cards, order, messages and activity without reseeding' (results/workspace.json; workspace.cjs:377-421). NOTE (P3, not blocking): protocol N (functional prompt.md:37) says 'as Aud read the notes' without naming an independent context, unlike T/V/C; a notes implementation kept only in shared browser storage could theoretically show notes to Aud if the judge switched users in the same context, and the same-context restart readback would not catch it. Practical exposure is low (the judge's other protocols all use independent contexts, and such an app is implausible given server-enforced note permissions), so this does not fail the row. RISK=true because required runtime evidence is missing: no full configured judge run exists (raw-evidence-index scope: 'Full configured grading/workload, reward discrimination/ranking and Oracle/target scores are absent'); the scripted golden restarted by killing/relaunching its own child (workspace.cjs:415), not through the configured restart_app MCP tool, so hro_restart via restart_app and the judge's ability to execute the session-resume and independent-context recipes are unmeasured.",
+  "counterexample": null,
+  "suggested_fix": "Optional hardening (P3): in functional protocol N say 'as Aud in an independent context read the notes' so note sharing is proven server-side like the other shared state. Separately obtain a full configured judge run exercising restart_app before claiming runtime clearance.",
+  "run_verdict": "PARTIAL"
+}

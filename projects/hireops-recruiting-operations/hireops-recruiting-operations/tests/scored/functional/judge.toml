@@ -1,7 +1,7 @@
 [judge]
 judge = "claude-code"
-mode = "batched"
-timeout = 9000
+mode = "individual"
+timeout = 600
 isolated = false
 prompt_template = "prompt.md"
 
@@ -20,1370 +20,141 @@ args = ["/tests/tools/restart_mcp.py", "$APP_RESTART_HELPER"]
 [scoring]
 aggregation = "weighted_mean"
 
-[[criterion]]
-id = "hro_numeric_validation"
-name = "hro_numeric_validation"
-type = "binary"
-weight = 0.09042553
-description = """
-P2 requisition input: after a valid requisition creation control, reject negative, fractional-cent, nonnumeric and unsafe-integer budget values in the app's observed input representation. The invalid attempt adds no requisition or economic record and does not change an existing one. Browser money fields legitimately accept two decimal dollar amounts. Offer inputs and computed overflow have separate owners.
-"""
-
-[[criterion]]
-id = "hro_offer_create_validation"
-name = "hro_offer_create_validation"
-type = "binary"
-weight = 0.09042553
-description = """
-P2 offer creation input: after a valid offer creation control, reject negative money, fractional shares, fractional cents in an observed cents-valued request, nonnumeric and unsafe-integer economic inputs without creating or replacing an offer or economic record. Reuse the UI-observed request shape; interpret units as whole shares and normal browser money as two-decimal dollars. Requisition budget and revision validation have separate owners.
-"""
-
-[[criterion]]
-id = "hro_offer_revision_validation"
-name = "hro_offer_revision_validation"
-type = "binary"
-weight = 0.09042553
-description = """
-P2 offer revision input: after a valid revision control, reject negative money, fractional shares, fractional cents in an observed cents-valued request, nonnumeric and unsafe-integer economic inputs. The invalid revision preserves the current offer, lineage and all economic records. Reuse the UI-observed request shape; valid create and invalid create receive separate credit.
-"""
-
-[[criterion]]
-id = "hro_computed_overflow"
-name = "hro_computed_overflow"
-type = "binary"
-weight = 0.09042553
-description = """
-P2 computed overflow: units9007199254740991 at fair.02/strike0 exceed safe intrinsic despite individually safe inputs and must be refused without creating or changing an offer or economic record. Accept and preserve a neighboring valid control with the same safe units and zero fair/strike spread. Use the actual UI or observed request representation. Input-type validation has separate credit.
-"""
-
-[[criterion]]
-id = "hro_money_precision"
-name = "hro_money_precision"
-type = "binary"
-weight = 0.12056737
-description = """
-P2 exact-money control: on an affordable ordinary requisition, raise through the UI a base100.00, bonus0, one-unit offer with relocation90071992547409.91 and fair/strike both70368744177664.01 dollars. These are valid safe-integer cent values; equal fair and strike keep intrinsic zero and run-rate small while the nonzero unit makes the equity fields applicable. Save and freshly read the exact values. Approve as a distinct sufficient-tier approver, then open revision through the UI, change only base to101.00 and submit, leaving the three large money fields exactly as the form pre-filled them. The saved revision and retained predecessor must preserve all three large amounts exactly. A normal small-money creation/revision establishes working controls; reuse prior controls. Observe rendered values or ordinary product responses, interpreting their public representation rather than demanding cents-valued keys. This row owns exact UI money round-tripping, not rejection of invalid inputs, general revision lineage or arithmetic formulas.
-"""
-
-[[criterion]]
-id = "hro_date_rejection"
-name = "hro_date_rejection"
-type = "binary"
-weight = 0.18085106
-description = """
-P2 offer date refusal: first successfully create an offer with valid full UTC offer/referral instants. Impossible 2025-02-30T00:00:00Z, nonsensical date text, missing required offer start, and missing separate hire start with a selected referrer must be refused without new/changed offer data. Use otherwise valid controls and observed replays if native inputs block invalid text. An economic-only revision may ignore injected date fields while applying the valid economic change; it need not edit dates. Valid date-only acceptance and rescission-date validation have separate credit.
-"""
-
-[[criterion]]
-id = "hro_date_only"
-name = "hro_date_only"
-type = "binary"
-weight = 0.18085106
-description = """
-P2 date-only acceptance: through offer creation, save real YYYY-MM-DD values for both required offer start and separate referred-hire start with a referrer. Fresh readback represents each as UTC midnight; equivalent valid display formatting is allowed. This accepts valid calendar inputs independently of invalid-date refusal. Full UTC instant precision is covered by the dedicated date/lineage protocols.
-"""
-
-[[criterion]]
-id = "hro_rescission_date_validation"
-name = "hro_rescission_date_validation"
-type = "binary"
-weight = 0.12056737
-description = """
-P2 rescission date: on an independently prepared current committed offer, establish one valid Finance rescission control. An impossible calendar date 2025-02-30T00:00:00Z, invalid text or missing effective date must refuse rescission without changing status, budget or settlement records. Accept a real YYYY-MM-DD date as UTC midnight. Do not inherit offer-creation date validation or unrelated settlement arithmetic verdicts.
-"""
-
-[[criterion]]
-id = "hro_intrinsic"
-name = "hro_intrinsic"
-type = "binary"
-weight = 0.4822695
-description = """
-P3: visible intrinsic equals units times positive fair-minus-strike: two units at .03/.02 -> $.02. Also inspect pending offers with fair equal to and below strike: intrinsic is zero. No credit for gross-fair or strike notional as intrinsic. Owns only intrinsic. Apply P5a to any actually observed computed claims for this owned intrinsic result; keep credit independent of claims affecting other outcomes. A supported request with no such claims satisfies this conditional authority observation without invented keys.
-"""
-
-[[criterion]]
-id = "hro_annual"
-name = "hro_annual"
-type = "binary"
-weight = 0.4822695
-description = """
-P3: $.02 intrinsic annualizes to $.01; $.01 intrinsic annualizes to $0.00. Require exact visible annualized values; no rounding the unit spread or using gross grant value. Can establish these independently with valid pending offers if another composition leg is broken. Apply P5a to any actually observed computed claims for this owned annualized intrinsic result; keep credit independent of claims affecting other outcomes. A supported request with no such claims satisfies this conditional authority observation without invented keys.
-"""
-
-[[criterion]]
-id = "hro_runrate"
-name = "hro_runrate"
-type = "binary"
-weight = 0.4822695
-description = """
-P3 and P4 initial: run-rate excludes signing and relocation and includes annualized intrinsic; P3 baseline $199999.98, P4 $100001.77. Check visible figure, independently of band or commitment correctness. Apply P5a to any actually observed computed claims for this owned run-rate result; keep credit independent of claims affecting other outcomes. A supported request with no such claims satisfies this conditional authority observation without invented keys.
-"""
-
-[[criterion]]
-id = "hro_basis"
-name = "hro_basis"
-type = "binary"
-weight = 0.4822695
-description = """
-P3 baseline basis $199999.99 (base199999.97 plus half-up .01 bonus plus annual .01); P4 initial basis $105001.78. Relocation excluded. Distinguish rounding half the odd-cent bonus before addition. Apply P5a to any actually observed computed claims for this owned approval basis result; keep credit independent of claims affecting other outcomes. A supported request with no such claims satisfies this conditional authority observation without invented keys.
-"""
-
-[[criterion]]
-id = "hro_bands"
-name = "hro_bands"
-type = "binary"
-weight = 0.4822695
-description = """
-P3: bases199999.97/199999.98 and349999.97/349999.98, each with bonus.01 and equity intrinsic.02, yield bases199999.99/200000.00/349999.99/350000.00 and required tiers1/2/2/3. Judge the stated bands against known raw inputs, not a possibly wrong sibling display. Apply P5a to any actually observed computed claims for this owned displayed band/tier result; keep credit independent of claims affecting other outcomes. A supported request with no such claims satisfies this conditional authority observation without invented keys.
-"""
-
-[[criterion]]
-id = "hro_approval_role_recruiter"
-name = "hro_approval_role_recruiter"
-type = "binary"
-weight = 0.24113474
-description = """
-P5: first observe successful UI approval by a distinct authorized approver. Replay the observed request as Rafael Costa, Recruiter against another affordable pending offer; require403, unchanged pending state and no settlement records. Use valid eligible data; hiding a control is insufficient. Each forbidden role has independent credit. In P5a, if the observed request supplies identity/role/tier/band claims, alter only those claims on this otherwise valid control; they cannot override this session-based permission. Absent claims are conforming; do not invent keys or inherit another permission verdict.
-"""
-
-[[criterion]]
-id = "hro_approval_role_comp"
-name = "hro_approval_role_comp"
-type = "binary"
-weight = 0.24113474
-description = """
-P5: first observe successful UI approval by a distinct authorized approver. Replay the observed request as Mei Lin, Comp partner against another affordable pending offer; require403, unchanged pending state and no settlement records. Use valid eligible data; hiding a control is insufficient. Each forbidden role has independent credit. In P5a, if the observed request supplies identity/role/tier/band claims, alter only those claims on this otherwise valid control; they cannot override this session-based permission. Absent claims are conforming; do not invent keys or inherit another permission verdict.
-"""
-
-[[criterion]]
-id = "hro_approval_role_finance"
-name = "hro_approval_role_finance"
-type = "binary"
-weight = 0.24113474
-description = """
-P5: first observe successful UI approval by a distinct authorized approver. Replay the observed request as Farah Nasser, Finance against another affordable pending offer; require403, unchanged pending state and no settlement records. Use valid eligible data; hiding a control is insufficient. Each forbidden role has independent credit. In P5a, if the observed request supplies identity/role/tier/band claims, alter only those claims on this otherwise valid control; they cannot override this session-based permission. Absent claims are conforming; do not invent keys or inherit another permission verdict.
-"""
-
-[[criterion]]
-id = "hro_approval_role_auditor"
-name = "hro_approval_role_auditor"
-type = "binary"
-weight = 0.24113474
-description = """
-P5: first observe successful UI approval by a distinct authorized approver. Replay the observed request as Aud Halvorsen, Auditor against another affordable pending offer; require403, unchanged pending state and no settlement records. Use valid eligible data; hiding a control is insufficient. Each forbidden role has independent credit. In P5a, if the observed request supplies identity/role/tier/band claims, alter only those claims on this otherwise valid control; they cannot override this session-based permission. Absent claims are conforming; do not invent keys or inherit another permission verdict.
-"""
-
-[[criterion]]
-id = "hro_raise_role_recruiter"
-name = "hro_raise_role_recruiter"
-type = "binary"
-weight = 0.04889564
-description = """
-P1/P5: Rafael Costa, Recruiter can raise a new ordinary offer directly PENDING through the UI on a suitable existing requisition, then freshly retrieve it. Reuse prior successful creation. This actor's requisition-creation outcome is not a prerequisite. Judge permission separately from numerical settlement.
-"""
-
-[[criterion]]
-id = "hro_req_create_recruiter"
-name = "hro_req_create_recruiter"
-type = "binary"
-weight = 0.05
-description = """
-P1: Rafael Costa, Recruiter can create a new ordinary requisition through the UI and retrieve its actual identity and entered budget in a fresh signed-in read. Reuse the initial Recruiter setup when successful. This permission is independent of offer creation and other actors; generated IDs and optional descriptive fields are valid.
-"""
-
-[[criterion]]
-id = "hro_raise_role_comp"
-name = "hro_raise_role_comp"
-type = "binary"
-weight = 0.06889564
-description = """
-P1/P5: Mei Lin, Comp partner can raise a new ordinary offer directly PENDING through the UI on a suitable existing requisition, then freshly retrieve it. Reuse prior successful creation. This actor's requisition-creation outcome is not a prerequisite. Judge permission separately from numerical settlement.
-"""
-
-[[criterion]]
-id = "hro_raise_role_tier1"
-name = "hro_raise_role_tier1"
-type = "binary"
-weight = 0.06889564
-description = """
-P1/P5: Ingrid Sorensen, tier-1 Approver can raise a new ordinary offer directly PENDING through the UI on a suitable existing requisition, then freshly retrieve it. Reuse prior successful creation. This actor's requisition-creation outcome is not a prerequisite. Judge permission separately from numerical settlement.
-"""
-
-[[criterion]]
-id = "hro_raise_role_tier2"
-name = "hro_raise_role_tier2"
-type = "binary"
-weight = 0.06889564
-description = """
-P1/P5: Bill Okafor, tier-2 Approver can raise a new ordinary offer directly PENDING through the UI on a suitable existing requisition, then freshly retrieve it. Reuse prior successful creation. This actor's requisition-creation outcome is not a prerequisite. Judge permission separately from numerical settlement.
-"""
-
-[[criterion]]
-id = "hro_raise_role_tier3"
-name = "hro_raise_role_tier3"
-type = "binary"
-weight = 0.06889564
-description = """
-P1/P5: Yuki Tanaka, tier-3 Approver can raise a new ordinary offer directly PENDING through the UI on a suitable existing requisition, then freshly retrieve it. Reuse prior successful creation. This actor's requisition-creation outcome is not a prerequisite. Judge permission separately from numerical settlement.
-"""
-
-[[criterion]]
-id = "hro_raise_role_finance"
-name = "hro_raise_role_finance"
-type = "binary"
-weight = 0.06889564
-description = """
-P1/P5: Farah Nasser, Finance can raise a new ordinary offer directly PENDING through the UI on a suitable existing requisition, then freshly retrieve it. Reuse prior successful creation. This actor's requisition-creation outcome is not a prerequisite. Judge permission separately from numerical settlement.
-"""
-
-[[criterion]]
-id = "hro_raise_role_auditor"
-name = "hro_raise_role_auditor"
-type = "binary"
-weight = 0.06889564
-description = """
-P5 Auditor offer creation: first establish a successful authorized UI offer-creation control. Replay its observed shape as Auditor with a fresh ID and valid data; require403, no saved offer and no economic effects. Hidden controls alone are insufficient. Other roles have separate credit.
-"""
-
-[[criterion]]
-id = "hro_revision_role_recruiter"
-name = "hro_revision_role_recruiter"
-type = "binary"
-weight = 0.13779128
-description = """
-P4/P5: Rafael Costa, Recruiter successfully revises a separate current committed offer into BandIII on an ample budget through the UI, with no new approval or tier check. Reuse prior observations; formula correctness has separate credit. In P5a, if the observed request supplies identity/role/tier/band claims, alter only those claims on this otherwise valid control; they cannot override this session-based permission. Absent claims are conforming; do not invent keys or inherit another permission verdict.
-"""
-
-[[criterion]]
-id = "hro_revision_role_comp"
-name = "hro_revision_role_comp"
-type = "binary"
-weight = 0.13779128
-description = """
-P5: after an ordinary successful authorized UI revision establishes the request shape, replay a valid revision as Mei Lin, Comp partner against a separate current committed control. Require403 and no lineage/economic mutation. Other actors' permissions and numerical settlement have separate credit. In P5a, if the observed request supplies identity/role/tier/band claims, alter only those claims on this otherwise valid control; they cannot override this session-based permission. Absent claims are conforming; do not invent keys or inherit another permission verdict.
-"""
-
-[[criterion]]
-id = "hro_revision_role_tier1"
-name = "hro_revision_role_tier1"
-type = "binary"
-weight = 0.13779128
-description = """
-P4/P5: Ingrid Sorensen, tier-1 Approver successfully revises a separate current committed offer through the UI. Reuse prior observations; a minimal base change suffices, and formula correctness has separate credit. Other revisers have independent credit. In P5a, if the observed request supplies identity/role/tier/band claims, alter only those claims on this otherwise valid control; they cannot override this session-based permission. Absent claims are conforming; do not invent keys or inherit another permission verdict.
-"""
-
-[[criterion]]
-id = "hro_revision_role_tier2"
-name = "hro_revision_role_tier2"
-type = "binary"
-weight = 0.13779128
-description = """
-P4/P5: Bill Okafor, tier-2 Approver successfully revises a separate current committed offer through the UI. Reuse prior observations; a minimal base change suffices, and formula correctness has separate credit. Other revisers have independent credit. In P5a, if the observed request supplies identity/role/tier/band claims, alter only those claims on this otherwise valid control; they cannot override this session-based permission. Absent claims are conforming; do not invent keys or inherit another permission verdict.
-"""
-
-[[criterion]]
-id = "hro_revision_role_tier3"
-name = "hro_revision_role_tier3"
-type = "binary"
-weight = 0.13779128
-description = """
-P4/P5: Yuki Tanaka, tier-3 Approver successfully revises a separate current committed offer through the UI. Reuse prior observations; a minimal base change suffices, and formula correctness has separate credit. Other revisers have independent credit. In P5a, if the observed request supplies identity/role/tier/band claims, alter only those claims on this otherwise valid control; they cannot override this session-based permission. Absent claims are conforming; do not invent keys or inherit another permission verdict.
-"""
-
-[[criterion]]
-id = "hro_revision_role_finance"
-name = "hro_revision_role_finance"
-type = "binary"
-weight = 0.13779128
-description = """
-P4/P5: Farah Nasser, Finance successfully revises a separate current committed offer through the UI. Reuse prior observations; a minimal base change suffices, and formula correctness has separate credit. Other revisers have independent credit. In P5a, if the observed request supplies identity/role/tier/band claims, alter only those claims on this otherwise valid control; they cannot override this session-based permission. Absent claims are conforming; do not invent keys or inherit another permission verdict.
-"""
-
-[[criterion]]
-id = "hro_revision_role_auditor"
-name = "hro_revision_role_auditor"
-type = "binary"
-weight = 0.1377913
-description = """
-P5: after an ordinary successful authorized UI revision establishes the request shape, replay a valid revision as Aud Halvorsen, Auditor against a separate current committed control. Require403 and no lineage/economic mutation. Other actors' permissions and numerical settlement have separate credit. In P5a, if the observed request supplies identity/role/tier/band claims, alter only those claims on this otherwise valid control; they cannot override this session-based permission. Absent claims are conforming; do not invent keys or inherit another permission verdict.
-"""
-
-[[criterion]]
-id = "hro_rescission_role_recruiter"
-name = "hro_rescission_role_recruiter"
-type = "binary"
-weight = 0.16075648
-description = """
-P5: Finance first successfully rescinds a current committed control at a valid instant. Replay the observed valid request as Rafael Costa, Recruiter against a separate current committed target. Require403 with its saved status and economics unchanged. Reuse the Finance success; this forbidden actor has independent credit. In P5a, if the observed request supplies identity/role/tier/band claims, alter only those claims on this otherwise valid control; they cannot override this session-based permission. Absent claims are conforming; do not invent keys or inherit another permission verdict.
-"""
-
-[[criterion]]
-id = "hro_rescission_role_comp"
-name = "hro_rescission_role_comp"
-type = "binary"
-weight = 0.16075648
-description = """
-P5: Finance first successfully rescinds a current committed control at a valid instant. Replay the observed valid request as Mei Lin, Comp partner against a separate current committed target. Require403 with its saved status and economics unchanged. Reuse the Finance success; this forbidden actor has independent credit. In P5a, if the observed request supplies identity/role/tier/band claims, alter only those claims on this otherwise valid control; they cannot override this session-based permission. Absent claims are conforming; do not invent keys or inherit another permission verdict.
-"""
-
-[[criterion]]
-id = "hro_rescission_role_tier1"
-name = "hro_rescission_role_tier1"
-type = "binary"
-weight = 0.16075648
-description = """
-P5: Finance first successfully rescinds a current committed control at a valid instant. Replay the observed valid request as Ingrid Sorensen, tier-1 Approver against a separate current committed target. Require403 with its saved status and economics unchanged. Reuse the Finance success; this forbidden actor has independent credit. In P5a, if the observed request supplies identity/role/tier/band claims, alter only those claims on this otherwise valid control; they cannot override this session-based permission. Absent claims are conforming; do not invent keys or inherit another permission verdict.
-"""
-
-[[criterion]]
-id = "hro_rescission_role_tier2"
-name = "hro_rescission_role_tier2"
-type = "binary"
-weight = 0.16075648
-description = """
-P5: Finance first successfully rescinds a current committed control at a valid instant. Replay the observed valid request as Bill Okafor, tier-2 Approver against a separate current committed target. Require403 with its saved status and economics unchanged. Reuse the Finance success; this forbidden actor has independent credit. In P5a, if the observed request supplies identity/role/tier/band claims, alter only those claims on this otherwise valid control; they cannot override this session-based permission. Absent claims are conforming; do not invent keys or inherit another permission verdict.
-"""
-
-[[criterion]]
-id = "hro_rescission_role_tier3"
-name = "hro_rescission_role_tier3"
-type = "binary"
-weight = 0.16075648
-description = """
-P5: Finance first successfully rescinds a current committed control at a valid instant. Replay the observed valid request as Yuki Tanaka, tier-3 Approver against a separate current committed target. Require403 with its saved status and economics unchanged. Reuse the Finance success; this forbidden actor has independent credit. In P5a, if the observed request supplies identity/role/tier/band claims, alter only those claims on this otherwise valid control; they cannot override this session-based permission. Absent claims are conforming; do not invent keys or inherit another permission verdict.
-"""
-
-[[criterion]]
-id = "hro_rescission_role_auditor"
-name = "hro_rescission_role_auditor"
-type = "binary"
-weight = 0.16075652
-description = """
-P5: Finance first successfully rescinds a current committed control at a valid instant. Replay the observed valid request as Aud Halvorsen, Auditor against a separate current committed target. Require403 with its saved status and economics unchanged. Reuse the Finance success; this forbidden actor has independent credit. In P5a, if the observed request supplies identity/role/tier/band claims, alter only those claims on this otherwise valid control; they cannot override this session-based permission. Absent claims are conforming; do not invent keys or inherit another permission verdict.
-"""
-
-[[criterion]]
-id = "hro_tier_1_band_1"
-name = "hro_tier_1_band_1"
-type = "binary"
-weight = 0.12056736
-description = """
-P5: the seeded tier-1 approver successfully approves on an affordable Band1 pending offer raised by someone else. Establish the band from raw inputs. For a refusal, this same actor must first successfully approve an in-range control using the same observed mechanism. Reuse matching successes; use distinct targets from self-approval. Own only this tier/band decision, independently of other matrix cells, numerical settlement and feedback wording. In P5a, if the observed request supplies identity/role/tier/band claims, alter only those claims on this otherwise valid control; they cannot override this session-based permission. Absent claims are conforming; do not invent keys or inherit another permission verdict.
-"""
-
-[[criterion]]
-id = "hro_tier_1_band_2"
-name = "hro_tier_1_band_2"
-type = "binary"
-weight = 0.12056736
-description = """
-P5: the seeded tier-1 approver receives403 and leaves the target pending with unchanged economic state on an affordable Band2 pending offer raised by someone else. Establish the band from raw inputs. For a refusal, this same actor must first successfully approve an in-range control using the same observed mechanism. Reuse matching successes; use distinct targets from self-approval. Own only this tier/band decision, independently of other matrix cells, numerical settlement and feedback wording. In P5a, if the observed request supplies identity/role/tier/band claims, alter only those claims on this otherwise valid control; they cannot override this session-based permission. Absent claims are conforming; do not invent keys or inherit another permission verdict.
-"""
-
-[[criterion]]
-id = "hro_tier_2_band_2"
-name = "hro_tier_2_band_2"
-type = "binary"
-weight = 0.12056736
-description = """
-P5: the seeded tier-2 approver successfully approves on an affordable Band2 pending offer raised by someone else. Establish the band from raw inputs. For a refusal, this same actor must first successfully approve an in-range control using the same observed mechanism. Reuse matching successes; use distinct targets from self-approval. Own only this tier/band decision, independently of other matrix cells, numerical settlement and feedback wording. In P5a, if the observed request supplies identity/role/tier/band claims, alter only those claims on this otherwise valid control; they cannot override this session-based permission. Absent claims are conforming; do not invent keys or inherit another permission verdict.
-"""
-
-[[criterion]]
-id = "hro_tier_2_band_3"
-name = "hro_tier_2_band_3"
-type = "binary"
-weight = 0.12056736
-description = """
-P5: the seeded tier-2 approver receives403 and leaves the target pending with unchanged economic state on an affordable Band3 pending offer raised by someone else. Establish the band from raw inputs. For a refusal, this same actor must first successfully approve an in-range control using the same observed mechanism. Reuse matching successes; use distinct targets from self-approval. Own only this tier/band decision, independently of other matrix cells, numerical settlement and feedback wording. In P5a, if the observed request supplies identity/role/tier/band claims, alter only those claims on this otherwise valid control; they cannot override this session-based permission. Absent claims are conforming; do not invent keys or inherit another permission verdict.
-"""
-
-[[criterion]]
-id = "hro_tier_3_band_1"
-name = "hro_tier_3_band_1"
-type = "binary"
-weight = 0.12056736
-description = """
-P5: the seeded tier-3 approver successfully approves on an affordable Band1 pending offer raised by someone else. Establish the band from raw inputs. For a refusal, this same actor must first successfully approve an in-range control using the same observed mechanism. Reuse matching successes; use distinct targets from self-approval. Own only this tier/band decision, independently of other matrix cells, numerical settlement and feedback wording. In P5a, if the observed request supplies identity/role/tier/band claims, alter only those claims on this otherwise valid control; they cannot override this session-based permission. Absent claims are conforming; do not invent keys or inherit another permission verdict.
-"""
-
-[[criterion]]
-id = "hro_tier_3_band_3"
-name = "hro_tier_3_band_3"
-type = "binary"
-weight = 0.12056738
-description = """
-P5: the seeded tier-3 approver successfully approves on an affordable Band3 pending offer raised by someone else. Establish the band from raw inputs. For a refusal, this same actor must first successfully approve an in-range control using the same observed mechanism. Reuse matching successes; use distinct targets from self-approval. Own only this tier/band decision, independently of other matrix cells, numerical settlement and feedback wording. In P5a, if the observed request supplies identity/role/tier/band claims, alter only those claims on this otherwise valid control; they cannot override this session-based permission. Absent claims are conforming; do not invent keys or inherit another permission verdict.
-"""
-
-[[criterion]]
-id = "hro_dual"
-name = "hro_dual"
-type = "binary"
-weight = 0.4822695
-description = """
-P5: as an approver, raise an affordable pending offer, record its creator and attempt to approve it as that same person. Refuse with unchanged state. A matching unrelated offer raised by another person must be successfully approved by this actor. Then a distinct sufficient-tier approver must approve the same self-refused target. Judge separation of duties, not a seeded ID or formula accuracy. In P5a, if the observed request supplies identity/role/tier/band claims, alter only those claims on this otherwise valid control; they cannot override this session-based permission. Absent claims are conforming; do not invent keys or inherit another permission verdict.
-"""
-
-[[criterion]]
-id = "hro_approval_budget"
-name = "hro_approval_budget"
-type = "binary"
-weight = 0.75
-description = """
-P6: on an independent budget100000.00 requisition, approve base99999.99, bonus100000.00, no equity despite basis149999.99; remaining $.01 permits base$.01, then another base$.01 is refused without settlement effects or changes to saved economic state. This distinguishes run-rate from band basis, equality from strict-less-than and live headroom from initial budget. This row owns financial enforcement; exact refusal-message formatting is not required.
-"""
-
-[[criterion]]
-id = "hro_commitment"
-name = "hro_commitment"
-type = "binary"
-weight = 0.4822695
-description = """
-P4 approval on your own fresh requisition: record its budget, existing movements and headroom, then approve the dedicated offer. A visible commitment consumes exactly100001.77 and fresh headroom drops by that amount. Headroom equals the recorded budget plus the net signed commitment/reversal/release movements, rather than a planning-only scalar. Use judge-created records; no imported requisition is required. This row owns live movement netting and the approval effect. Later preservation of old monetary rows belongs to hro_history. Apply P5a to any actually observed computed claims for this owned approval commitment/headroom result; keep credit independent of claims affecting other outcomes. A supported request with no such claims satisfies this conditional authority observation without invented keys.
-"""
-
-[[criterion]]
-id = "hro_grant"
-name = "hro_grant"
-type = "binary"
-weight = 0.4822695
-description = """
-P4 approval: new grant contains7 units with original start instant and equity schedule20% at12 months,+4% thereafter,capped at32 months. Also approve a zero-unit control and verify no nonzero/current equity grant. Score the recorded approval-time grant only; preservation after later revisions belongs to hro_revision_equity. Read the units, start and vesting schedule in rendered product details; an authenticated payload alone cannot replace that required display. Expandable details and equivalent percentage/date wording are valid. Apply P5a to any actually observed computed claims for this owned initial grant units/start/schedule result; keep credit independent of claims affecting other outcomes. A supported request with no such claims satisfies this conditional authority observation without invented keys.
-"""
-
-[[criterion]]
-id = "hro_signing"
-name = "hro_signing"
-type = "binary"
-weight = 0.36170212
-description = """
-P4 approval: exactly10000.01 paid as initial signing remittance linked to the approved offer. Inspect an otherwise equivalent zero-bonus approved control: no nonzero signing payment. Allow omitted zero rows. Read the paid signing remittance in rendered product details; normal responses may corroborate it but cannot replace its display. Apply P5a to any actually observed computed claims for this owned initial signing remittance result; keep credit independent of claims affecting other outcomes. A supported request with no such claims satisfies this conditional authority observation without invented keys.
-"""
-
-[[criterion]]
-id = "hro_relocation_approval"
-name = "hro_relocation_approval"
-type = "binary"
-weight = 0.12056737
-description = """
-P4 approval: successfully approve an otherwise valid affordable offer with a nonzero relocation amount, such as P4's123.45, and a nonzero signing bonus. Capture its payment/remittance records immediately before and after. Approval must not post a relocation payment or any other financial posting attributable to paying or reimbursing relocation. The offer may retain and display the agreed relocation input, including in its audit receipt. A successful approval is required; a missing or refused operation cannot earn absence credit. Judge only relocation's exclusion from settlement here, independently of the signing amount, approval budget arithmetic or another criterion's verdict. Use an independent ordinary successful approval with nonzero relocation if P4 cannot advance. Identify the financial purpose from ordinary product records and observed responses, not an exact row-kind label, field name or endpoint. A hidden UI alone does not establish absence when the normal product response exposes additional payment records. As the matching working-payment control, observe an actual nonzero signing payment from this successful approval (or an equivalent dedicated approval with nonzero relocation). A successful status transition without any payment write is insufficient. Require payment existence here, not its exact amount or a sibling arithmetic verdict.
-"""
-
-[[criterion]]
-id = "hro_referral_creation"
-name = "hro_referral_creation"
-type = "binary"
-weight = 0.4722695
-description = """
-P4 approval: exactly one10000.00 accrual for this P4 offer, credited to employee Dara Whitfield, not the candidate, with5000.00 at-hire and5000.00 contingent components and the separate referred-hire date. An approved no-referrer control has no referral accrual. Owns creation/split, not retention timing or later immutability. Read the recipient, separate referred-hire date and at-hire/contingent halves in rendered product details, allowing expandable views and equivalent labels; response-only fields do not satisfy the required display. Apply P5a to any actually observed computed claims for this owned initial referral recipient/components result; keep credit independent of claims affecting other outcomes. A supported request with no such claims satisfies this conditional authority observation without invented keys.
-"""
-
-[[criterion]]
-id = "hro_referrer_roster"
-name = "hro_referrer_roster"
-type = "binary"
-weight = 0.05
-description = """
-P1/P4: every supplied referring employee (Dara Whitfield, Sofia Marchetti and Omar Haddad) is available for assignment to a new ordinary offer. Observe each selection/reference in the normal UI or saved draft product readback; different picker or text-entry designs are valid. Reuse ordinary offer setup and do not require an approval per employee. This owns roster usability only, independently of referral amounts or settlement.
-"""
-
-[[criterion]]
-id = "hro_revision_lineage"
-name = "hro_revision_lineage"
-type = "binary"
-weight = 0.4822695
-description = """
-P4: both revisions mint new already-COMMITTED offers, retain prior economic/date/creator fields and link each superseded predecessor to its successor. Latest values exactly match all six supplied economics. Do not require a specific generated-ID format. If second revision fails, demonstrate a separate second-generation chain before concluding; initial approval correctness is not this row's bar.
-"""
-
-[[criterion]]
-id = "hro_revision_budget"
-name = "hro_revision_budget"
-type = "binary"
-weight = 0.75
-description = """
-P6 revision branch: budget100000.00, committed base80000.00 no equity, headroom20000.00. Revision to100000.00 succeeds because old commitment is released; next revision100000.01 refuses and preserves active lineage/movements/headroom. A later revision to90000.00 yields10000.00 headroom, with original reversal and replacement rows visible. Distinct from the approval budget branch. Apply P5a to any actually observed computed claims for this owned revision replacement commitment/headroom result; keep credit independent of claims affecting other outcomes. A supported request with no such claims satisfies this conditional authority observation without invented keys.
-"""
-
-[[criterion]]
-id = "hro_revision_signing"
-name = "hro_revision_signing"
-type = "binary"
-weight = 0.36170212
-description = """
-P4: first signing adjustment-1999.98, second+4000.02; net signing paid12000.05. Zero-delta revision may omit a zero adjustment. Judge the new adjustment amounts and current paid total here, relative to successful observed predecessor values if unrelated inputs had to use equivalent fallback. Preservation of the original payment's historical fields belongs to hro_history. Apply P5a to any actually observed computed claims for this owned revision signing adjustment result; keep credit independent of claims affecting other outcomes. A supported request with no such claims satisfies this conditional authority observation without invented keys.
-"""
-
-[[criterion]]
-id = "hro_relocation_revision"
-name = "hro_relocation_revision"
-type = "binary"
-weight = 0.12056737
-description = """
-P4 revisions: after recording the predecessor's nonzero relocation amount and payment/remittance records, successfully revise relocation from123.45 to222.22 and then to333.00 with the other P4 inputs. Compare fresh payment/remittance records after each revision: neither revision posts a relocation payment, repayment, reversal or adjustment for the new amount, prior amount or their difference. Retaining relocation in offer versions and snapshots is allowed. Successful revisions that actually save the changed relocation inputs are required; unchanged or refused actions cannot earn absence credit. Judge only relocation's exclusion from settlement here; signing adjustment accuracy, lineage correctness and preserved historical fields have their own criteria. If an unrelated P4 outcome fails, use independent ordinary successful revisions with different nonzero before/after relocation amounts; do not require second-generation lineage merely to establish this exclusion. Identify financial purpose through ordinary product records and observed responses, without an exact type label, field name or endpoint. UI omission alone does not establish absence when ordinary product responses expose additional payment records. As the matching working-payment control, each exclusion observation needs an actual nonzero signing adjustment from a successful revision that changes the signing bonus as well as nonzero relocation. A saved offer with a dead payment writer is insufficient. Require adjustment existence here, independently of the exact signed amount or a sibling arithmetic verdict.
-"""
-
-[[criterion]]
-id = "hro_revision_equity"
-name = "hro_revision_equity"
-type = "binary"
-weight = 0.4822695
-description = """
-P4: first and second prior grants become SUPERSEDED historical grants preserving7 units at fair1.02/strike0.01 and11 units at fair2.03/strike0.02, respectively, with their original grant instant. The active replacement grant has13 units at fair3.04/strike0.03 and the original instant, not revision time. Compare prices on the grant records themselves, not only the offer. Previous cancellation totals remain unchanged. No two grants simultaneously count as current. A separate successful revision to zero units leaves no active grant while preserving superseded history. Apply P5a to any actually observed computed claims for this owned replacement grant result; keep credit independent of claims affecting other outcomes. A supported request with no such claims satisfies this conditional authority observation without invented keys.
-"""
-
-[[criterion]]
-id = "hro_referral_immutable"
-name = "hro_referral_immutable"
-type = "binary"
-weight = 0.4822695
-description = """
-P4: record initial referral identity/employee/dates/components/vested amount; both successful revisions and the final successful rescission leave that original accrual unchanged; a refused transition earns no credit and create no extra referral. Compare against its initial observation, not sibling arithmetic expectations. If P4 cannot advance, independent valid offers can establish each transition; need all three operation kinds.
-"""
-
-[[criterion]]
-id = "hro_release"
-name = "hro_release"
-type = "binary"
-weight = 0.4822695
-description = """
-P4 final: release90009.78, restoring original P4 requisition headroom; new row points at latest offer, which becomes RESCINDED with entered effective instant. If unrelated revisions fail, rescind an independently committed ordinary offer and grade release equal to its recorded run-rate. Old monetary-row preservation belongs to hro_history. Apply P5a to any actually observed computed claims for this owned rescission budget release result; keep credit independent of claims affecting other outcomes. A supported request with no such claims satisfies this conditional authority observation without invented keys.
-"""
-
-[[criterion]]
-id = "hro_claw"
-name = "hro_claw"
-type = "binary"
-weight = 0.36170212
-description = """
-P4 final12-month case: current12000.05 paid, half-up40% vested4800.02, claw7200.03. P7 13-month case bonus100.01 ->45.00 vested55.01 claw; schedule differs from equity. Show retained and clawed figures, effective instant and the new contra against lineage payments, with final net paid equal to retained signing. Old payment-field preservation belongs to hro_history. Apply P5a to any actually observed computed claims for this owned signing vesting/clawback result; keep credit independent of claims affecting other outcomes. A supported request with no such claims satisfies this conditional authority observation without invented keys.
-"""
-
-[[criterion]]
-id = "hro_relocation_rescission"
-name = "hro_relocation_rescission"
-type = "binary"
-weight = 0.12056737
-description = """
-P4 final rescission: on the current committed offer carrying nonzero relocation333.00, record payment/remittance records, then successfully rescind as Finance with a valid effective date and freshly read the records. Rescission must not post any relocation clawback, repayment, reversal or other financial settlement of relocation. The stored relocation input may remain in the historical offer and receipt. Successful rescission is required; a dead handler cannot earn absence credit. Judge relocation's exclusion independently of signing-clawback arithmetic, equity cancellation, budget release or sibling verdicts. If P4 cannot advance, directly approve and then rescind an independent ordinary offer with nonzero relocation and a nonzero partially unvested signing bonus; no revision is required for this fallback. Inspect ordinary product records and observed responses, without requiring an exact financial-row label, schema or endpoint. A UI that hides payment records does not establish absence when ordinary product responses expose them. As the matching working-payment control, observe an actual nonzero signing contra-payment from rescinding a hire with a partially unvested nonzero bonus and nonzero relocation. A status change without a payment write is insufficient. Require contra-payment existence here, not correct clawback arithmetic or a sibling verdict. Fully vested zero-clawback cases may omit a zero row and are not the positive control.
-"""
-
-[[criterion]]
-id = "hro_cancel"
-name = "hro_cancel"
-type = "binary"
-weight = 0.4822695
-description = """
-P4 final: latest13-unit grant retains3 and cancels10 at20%; historical7/11 grants gain no cancellation. P7 13-month case7 units at24% retains2 cancels5. A direct independent13-unit approval at the same original date can establish12-month rounding if unrelated revision setup fails; historical-grant protection still needs a completed revision witness. Apply P5a to any actually observed computed claims for this owned equity retention/cancellation result; keep credit independent of claims affecting other outcomes. A supported request with no such claims satisfies this conditional authority observation without invented keys.
-"""
-
-[[criterion]]
-id = "hro_months"
-name = "hro_months"
-type = "binary"
-weight = 0.4822695
-description = """
-P7: leap-day start2024-02-29T12:34:56.789Z, rescind one millisecond before2025-02-28T12:34:56.789Z ->11 months, at instant ->12. A separate effective instant before its start gives zero completed months and zero vested rate. Separate Jan31 start2024-01-31T12:00:00Z, rescind2025-03-30T12:00:00Z ->13 months, not14 from repeatedly clamping February. Derive expected signing rates0/40/45% and equity0/20/24%. Only grade the month selection here; use visibly reported month/rate or distinguish with simple100.00 bonus and100 units. Do not charge this row for correct months plus a separate amount-rounding defect.
-"""
-
-[[criterion]]
-id = "hro_signing_cap"
-name = "hro_signing_cap"
-type = "binary"
-weight = 0.24113475
-description = """
-P7: at24 completed months a100.01 signing bonus is fully vested with zero clawback; at32 months it remains fully vested with zero clawback. Allow an omitted zero contra. First establish an actual partial signing rescission, e.g. P7's13-month case, so a handler that never settles cannot pass. Grade this signing cap independently of equity amounts/cancellation or a sibling's numerical-rounding failure: visibly reported signing rate100% and matching full retained amount establish the cap.
-"""
-
-[[criterion]]
-id = "hro_equity_cap"
-name = "hro_equity_cap"
-type = "binary"
-weight = 0.24113475
-description = """
-P7: at24 completed months the7-unit equity grant is only68% vested, retaining5 and cancelling2; at32 months the same-size independent grant is fully vested, retaining7 and cancelling0. Allow an omitted zero cancellation. Establish a successful partial equity rescission before crediting the absence of a32-month cancellation. Judge the equity schedule and cap independently of signing: if unrelated unit rounding obscures the rate, an otherwise equivalent100-unit control must retain68/cancel32 at24 months and retain100/cancel0 at32. Amount rounding for the odd-unit12/13-month witnesses belongs to hro_cancel.
-"""
-
-[[criterion]]
-id = "hro_referral_clock"
-name = "hro_referral_clock"
-type = "binary"
-weight = 0.36170212
-description = """
-P8: offer start2026-07-01 for all, referral starts2026-02-01T00:00:00Z and2026-02-01T00:00:00.001Z -> reference2026-08-01 yields10000.00 vs5000.00 vested. Add start2026-01-31T12:00:00Z -> cliff2026-07-31T12:00:00Z, fully vested. Approval and later rescission effective dates must not substitute for fixed reference or referral start. Read the retention cliff date and vested/contingent amounts in rendered product details; no exact layout or date spelling is required.
-"""
-
-[[criterion]]
-id = "hro_referral_immediate"
-name = "hro_referral_immediate"
-type = "binary"
-weight = 0.12056737
-description = """
-P8 future-start control: approve an otherwise ordinary affordable offer whose offer start is2026-09-01T00:00:00Z and separate referred-hire start is2026-09-15T00:00:00Z, both later than the stored2026-08-01 reference moment. Immediately after approval, the referral shows5000.00 vested at hire and5000.00 still contingent; it must not withhold the first half until either scheduled start. Reuse a prior ordinary successful referred approval as control. This row owns immediate vesting at the approval event; referral ownership/split is hro_referral_creation and the separate six-month cliff is hro_referral_clock.
-"""
-
-[[criterion]]
-id = "hro_competing"
-name = "hro_competing"
-type = "binary"
-weight = 0.75
-description = """
-P6 race: own requisition budget100.00, two separate pending base60.00 offers, each bonus10.00, one unit at fair1.00/strike0, referrer Dara with referral start2026-02-01; both created by Recruiter with valid offer start2026-01-01. After a separate successful ordinary approval establishes the real request shape, as distinct tier3 send these two approval requests concurrently using Promise.all through browser_run_code_unsafe and the observed app interface. Exactly one commits and consumes60.25; the other remains pending, headroom39.75, only one settlement movement/receipt and one winner grant/payment/referral, with none for the loser. Do not require which offer wins or any response latency. Re-read fresh persisted state. This is a finite concurrent witness, not a proof of every interleaving.
-"""
-
-[[criterion]]
-id = "hro_stale_approval"
-name = "hro_stale_approval"
-type = "binary"
-weight = 0.05028368
-description = """
-P4/P5/P9 sequential approval: after an actual successful ordinary approval, replay its approval request and require refusal. The successful pending approval is the positive control for the same approval mechanism. This row owns sequential approval eligibility only, not revision or rescission protections. Compare fresh persisted state before/after: no new offer, movement, grant, payment, referral, successful settlement audit entry or after-image, and no changed active lineage/economic values. Generic access/security logs may grow. Reuse successful observed action controls, not sibling verdicts.
-"""
-
-[[criterion]]
-id = "hro_draft_eligibility"
-name = "hro_draft_eligibility"
-type = "binary"
-weight = 0.05
-description = """
-P9 conditional imported-history observation: if the app exposes any imported DRAFT offers, they have no commitment/headroom effect and cannot be approved directly. After a successful fresh PENDING approval control, adapt that observed approval request only to one imported DRAFT identity; require refusal and fresh unchanged economic/history state. This sole intended-refusal seed probe is permitted; never intentionally settle or alter other seed records. If the optional history is omitted or no DRAFT is exposed, this condition is satisfied without requiring import, provided the fresh PENDING approval control succeeded. Owns DRAFT eligibility only; ordinary repeated approval has separate credit.
-"""
-
-[[criterion]]
-id = "hro_stale_revision"
-name = "hro_stale_revision"
-type = "binary"
-weight = 0.09042553
-description = """
-P4/P5/P9 sequential revision: first perform a successful committed-offer revision. Attempt revision of its superseded ancestor, an ordinary PENDING offer and an already rescinded offer; all refuse. Use an independent ordinary successful rescission to prepare the last target if P4 failed. This row owns sequential revision eligibility only, not approval or rescission refusal. Compare fresh persisted state before/after: no new offer, movement, grant, payment, referral, successful settlement audit entry or after-image, and no changed active lineage/economic values. Generic access/security logs may grow. Reuse successful observed action controls, not sibling verdicts.
-"""
-
-[[criterion]]
-id = "hro_stale_rescission"
-name = "hro_stale_rescission"
-type = "binary"
-weight = 0.09042553
-description = """
-P4/P5/P9 sequential rescission: first perform a successful Finance rescission of an ordinary committed target. Replay that rescission, then attempt Finance rescission of a superseded ancestor and an ordinary PENDING offer; all refuse. Independently prepare the superseded target with an ordinary successful revision if needed. This row owns sequential rescission eligibility only, not approval or revision refusal. Compare fresh persisted state before/after: no new offer, movement, grant, payment, referral, successful settlement audit entry or after-image, and no changed active lineage/economic values. Generic access/security logs may grow. Reuse successful observed action controls, not sibling verdicts.
-"""
-
-[[criterion]]
-id = "hro_concurrent_approval"
-name = "hro_concurrent_approval"
-type = "binary"
-weight = 0.06028368
-description = """
-P9 same-target approval pair: target one affordable PENDING hire, raised by a person distinct from the authorized approver. Use Promise.all with two copies of the actual UI-observed successful request shape under an authorized session and an ample budget. Exactly one succeeds and the other is refused. Inspect fresh persisted results: only one transition's complete effects and one current lineage; no duplicate economic rows or settlement receipts. Do not require which request wins or its latency. The winner is the matching positive control; an independently successful ordinary action first establishes the request shape. Evaluate exclusivity relative to the observed successful action, not a sibling formula verdict. If the shared chain cannot reach this stage, prepare an independent eligible target; do not require the earlier concurrent stage to pass. One offer becomes committed with one approval's movements/grant/payment/referral where applicable and one receipt. P6/hro_competing separately owns two different hires competing for insufficient combined budget.
-"""
-
-[[criterion]]
-id = "hro_concurrent_revision"
-name = "hro_concurrent_revision"
-type = "binary"
-weight = 0.09042553
-description = """
-P9 same-target revision pair: target one current COMMITTED hire and submit the same valid compensation change twice concurrently. Use Promise.all with two copies of the actual UI-observed successful request shape under an authorized session and an ample budget. Exactly one succeeds and the other is refused. Inspect fresh persisted results: only one transition's complete effects and one current lineage; no duplicate economic rows or settlement receipts. Do not require which request wins or its latency. The winner is the matching positive control; an independently successful ordinary action first establishes the request shape. Evaluate exclusivity relative to the observed successful action, not a sibling formula verdict. If the shared chain cannot reach this stage, prepare an independent eligible target; do not require the earlier concurrent stage to pass. Exactly one successor is minted, its predecessor is superseded once, and only one reversal/replacement, signing adjustment and replacement grant where applicable is posted. Same-target approval success is not this row's prerequisite.
-"""
-
-[[criterion]]
-id = "hro_concurrent_rescission"
-name = "hro_concurrent_rescission"
-type = "binary"
-weight = 0.09042553
-description = """
-P9 same-target rescission pair: target one current COMMITTED hire as Finance with the same valid effective date in both requests. Use Promise.all with two copies of the actual UI-observed successful request shape under an authorized session and an ample budget. Exactly one succeeds and the other is refused. Inspect fresh persisted results: only one transition's complete effects and one current lineage; no duplicate economic rows or settlement receipts. Do not require which request wins or its latency. The winner is the matching positive control; an independently successful ordinary action first establishes the request shape. Evaluate exclusivity relative to the observed successful action, not a sibling formula verdict. If the shared chain cannot reach this stage, prepare an independent eligible target; do not require the earlier concurrent stage to pass. The target becomes rescinded once, with only one release, contra/cancellation where applicable and receipt. Same-target revision success is not this row's prerequisite.
-"""
-
-[[criterion]]
-id = "hro_anon_read_changes"
-name = "hro_anon_read_changes"
-type = "binary"
-weight = 0.13779128
-description = """
-P9 confidentiality of Coordinated Changes previews and receipts: identify the actual populated authenticated values/records supplying this family, then replay its observed read requests without every cookie/token/auth credential in a fresh empty context. No operational values or records belonging to this owned family may be returned. A shared bootstrap may supply several families: reuse its measured response, but a leak belonging only to another family must not fail this row. Do not invent routes or require a separate endpoint per screen. A missing populated authenticated control proves nothing. The exact anonymous401 response policy has its own criterion; this row owns confidentiality, independently of status formatting and other data families. Health, login/static shell and generic error messages may remain public.
-"""
-
-[[criterion]]
-id = "hro_anon_read_requisitions"
-name = "hro_anon_read_requisitions"
-type = "binary"
-weight = 0.13779128
-description = """
-P9 confidentiality of Requisitions and available requisition details: identify the actual populated authenticated values/records supplying this family, then replay its observed read requests without every cookie/token/auth credential in a fresh empty context. No operational values or records belonging to this owned family may be returned. A shared bootstrap may supply several families: reuse its measured response, but a leak belonging only to another family must not fail this row. Do not invent routes or require a separate endpoint per screen. A missing populated authenticated control proves nothing. The exact anonymous401 response policy has its own criterion; this row owns confidentiality, independently of status formatting and other data families. Health, login/static shell and generic error messages may remain public.
-"""
-
-[[criterion]]
-id = "hro_anon_read_offers"
-name = "hro_anon_read_offers"
-type = "binary"
-weight = 0.13779128
-description = """
-P9 confidentiality of Offers and available offer details: identify the actual populated authenticated values/records supplying this family, then replay its observed read requests without every cookie/token/auth credential in a fresh empty context. No operational values or records belonging to this owned family may be returned. A shared bootstrap may supply several families: reuse its measured response, but a leak belonging only to another family must not fail this row. Do not invent routes or require a separate endpoint per screen. A missing populated authenticated control proves nothing. The exact anonymous401 response policy has its own criterion; this row owns confidentiality, independently of status formatting and other data families. Health, login/static shell and generic error messages may remain public.
-"""
-
-[[criterion]]
-id = "hro_anon_read_equity"
-name = "hro_anon_read_equity"
-type = "binary"
-weight = 0.13779128
-description = """
-P9 confidentiality of Equity Table grant/vesting data: identify the actual populated authenticated values/records supplying this family, then replay its observed read requests without every cookie/token/auth credential in a fresh empty context. No operational values or records belonging to this owned family may be returned. A shared bootstrap may supply several families: reuse its measured response, but a leak belonging only to another family must not fail this row. Do not invent routes or require a separate endpoint per screen. A missing populated authenticated control proves nothing. The exact anonymous401 response policy has its own criterion; this row owns confidentiality, independently of status formatting and other data families. Health, login/static shell and generic error messages may remain public.
-"""
-
-[[criterion]]
-id = "hro_anon_read_referrals"
-name = "hro_anon_read_referrals"
-type = "binary"
-weight = 0.13779128
-description = """
-P9 confidentiality of Referrals and accrual data: identify the actual populated authenticated values/records supplying this family, then replay its observed read requests without every cookie/token/auth credential in a fresh empty context. No operational values or records belonging to this owned family may be returned. A shared bootstrap may supply several families: reuse its measured response, but a leak belonging only to another family must not fail this row. Do not invent routes or require a separate endpoint per screen. A missing populated authenticated control proves nothing. The exact anonymous401 response policy has its own criterion; this row owns confidentiality, independently of status formatting and other data families. Health, login/static shell and generic error messages may remain public.
-"""
-
-[[criterion]]
-id = "hro_anon_read_audit"
-name = "hro_anon_read_audit"
-type = "binary"
-weight = 0.13779128
-description = """
-P9 confidentiality of ordinary Audit Trail and individual approval/revision/rescission receipts (coordinated batch previews/receipts belong only to hro_anon_read_changes): identify the actual populated authenticated values/records supplying this family, then replay its observed read requests without every cookie/token/auth credential in a fresh empty context. No operational values or records belonging to this owned family may be returned. A shared bootstrap may supply several families: reuse its measured response, but a leak belonging only to another family must not fail this row. Do not invent routes or require a separate endpoint per screen. A missing populated authenticated control proves nothing. The exact anonymous401 response policy has its own criterion; this row owns confidentiality, independently of status formatting and other data families. Health, login/static shell and generic error messages may remain public.
-"""
-
-[[criterion]]
-id = "hro_anon_read_status"
-name = "hro_anon_read_status"
-type = "binary"
-weight = 0.1377913
-description = """
-P9 anonymous-read response policy: inventory all distinct operational read families actually used by the six screens and available details/receipts. First capture populated authenticated success for each, then replay without every observed credential in a fresh empty context. Each must return401. Deduplicate a shared bootstrap: its status is judged once, not once per screen. This row owns the public unauthenticated response-status policy; each data family's confidentiality is scored independently, so an incorrect status alone does not erase proved non-disclosure. Public health and login/static shell may remain public. Do not guess routes or award credit without the populated authenticated controls; report bounded coverage.
-"""
-
-[[criterion]]
-id = "hro_anon_req_create"
-name = "hro_anon_req_create"
-type = "binary"
-weight = 0.4
-description = """
-P9 anonymous requisition creation: capture a successful authenticated UI creation request, then replay its actual shape with a fresh unique title (and unused ID if the UI accepts one) and without every observed auth credential in a fresh empty context. Require401; fresh authenticated readback shows no new requisition and the valid control remains. Do not guess a route or count login/logout as operational writes. Other write families have separate credit.
-"""
-
-[[criterion]]
-id = "hro_anon_offer_create"
-name = "hro_anon_offer_create"
-type = "binary"
-weight = 0.4
-description = """
-P9 anonymous offer creation: capture a successful authenticated UI creation request, then replay its actual shape against a separate valid requisition with a fresh candidate (and unused ID if the UI accepts one) and without every observed auth credential in a fresh empty context. Require401; fresh authenticated readback shows no new offer or economic record and the valid control remains. Do not guess a route. Other write families have separate credit.
-"""
-
-[[criterion]]
-id = "hro_anon_approve"
-name = "hro_anon_approve"
-type = "binary"
-weight = 0.4
-description = """
-P9 anonymous approval: capture a successful authenticated UI approval request, then replay its actual shape against a separate otherwise eligible pending offer without every observed auth credential in a fresh empty context. Require401; fresh authenticated readback shows the offer still pending with no commitment, grant, payment, referral or successful receipt. The valid control remains. Do not use a stale or over-budget target as the only refusal witness. Other write families have separate credit.
-"""
-
-[[criterion]]
-id = "hro_anon_revise"
-name = "hro_anon_revise"
-type = "binary"
-weight = 0.4
-description = """
-P9 anonymous revision: capture a successful authenticated UI revision request, then replay its actual shape against a separate current committed offer without every observed auth credential in a fresh empty context. Require401; fresh authenticated readback shows no new lineage, financial row or successful receipt, and the current offer remains unchanged. The valid control remains. Do not use a stale target as the only refusal witness. Other write families have separate credit.
-"""
-
-[[criterion]]
-id = "hro_anon_rescind"
-name = "hro_anon_rescind"
-type = "binary"
-weight = 0.4
-description = """
-P9 anonymous rescission: capture a successful authenticated UI rescission request, then replay its actual shape against a separate current committed offer without every observed auth credential in a fresh empty context. Require401; fresh authenticated readback shows no status change, release, clawback, equity cancellation or successful receipt. The valid control remains. Do not use an already rescinded target as the only refusal witness. Other write families have separate credit.
-"""
-
-[[criterion]]
-id = "hro_audit_text"
-name = "hro_audit_text"
-type = "binary"
-weight = 0.12056737
-description = """
-P4 approval audit: after a successful ordinary approval, a human-readable audit entry names its actor and target and summarizes before/after state. No particular wording, timestamp or exact total log-count increase required. Use an independent eligible approval control; revision and rescission entries have separate credit.
-"""
-
-[[criterion]]
-id = "hro_audit_revision"
-name = "hro_audit_revision"
-type = "binary"
-weight = 0.12056737
-description = """
-P4 revision audit: after a successful ordinary revision, a human-readable audit entry names its actor, old and new offer and summarizes before/after state. Use an independent eligible revision control if the shared chain fails. Approval and rescission entries have separate credit.
-"""
-
-[[criterion]]
-id = "hro_audit_rescission"
-name = "hro_audit_rescission"
-type = "binary"
-weight = 0.12056737
-description = """
-P4 rescission audit: after a successful ordinary Finance rescission, a human-readable audit entry names its actor and target and summarizes before/after state. Use an independent eligible rescission control if the shared chain fails. Approval and revision entries have separate credit.
-"""
-
-[[criterion]]
-id = "hro_audit_readback"
-name = "hro_audit_readback"
-type = "binary"
-weight = 0.12056737
-description = """
-P4 audit persistence: record the actual human-readable line of at least one successful approval, revision or rescission, then sign out and open Audit Trail in a fresh signed-in Auditor context. The same actor, target and before/after meaning must remain readable; a static seeded line is insufficient. An independent successful action may prepare the line. This row judges fresh-sign-in persistence, not whether all three action families wrote entries; each action has separate credit.
-"""
-
-[[criterion]]
-id = "hro_afterimage"
-name = "hro_afterimage"
-type = "binary"
-weight = 0.12056737
-description = """
-P4 approval receipt: after an independently successful ordinary approval, expose a structured product snapshot containing its actual actor, before/after headroom and relevant compensation/settlement figures. Snapshot presentation may be columns, expansion or equivalent; raw implementation inspection prohibited. Arithmetic accuracy and other actions' receipts have separate credit. Apply P5a to any actually observed computed claims for this owned approval receipt actor result; keep credit independent of claims affecting other outcomes. A supported request with no such claims satisfies this conditional authority observation without invented keys.
-"""
-
-[[criterion]]
-id = "hro_afterimage_revision"
-name = "hro_afterimage_revision"
-type = "binary"
-weight = 0.12056737
-description = """
-P4 revision receipt: after an independently successful ordinary revision, expose a structured product snapshot containing its actual actor, before/after headroom, compensation and signing adjustment. Snapshot presentation may be columns, expansion or equivalent; raw implementation inspection prohibited. Arithmetic accuracy and other actions' receipts have separate credit. Apply P5a to any actually observed computed claims for this owned revision receipt actor result; keep credit independent of claims affecting other outcomes. A supported request with no such claims satisfies this conditional authority observation without invented keys.
-"""
+# Criterion weights: each criterion runs in its own judge session (mode = "individual"). Each leg of a criterion is weighted 1.0 standard, 1.5 important or 2.0 core to the brief, and a criterion's weight is the sum of its legs' weights (61 in all), so bundles are not re-weighted.
+# Timeout: individual mode was set at the lead's instruction (relayed by the task owner, 8 October 2026). RewardKit applies [judge].timeout to each criterion's session, so 15 sessions x 600 s plus polish 900 s and visual 900 s = 10800 s fits the scored-suite budget of 11100 s in tests/test.sh. Not yet measured against a configured judge run.
+# Legs: intake_restart 4.5 = job opening 1 + adding 1 + email rules 1 + restart 1.5; moves 4 = one stage 1.5 + bottom 1 + re-order 1.5; reject_reopen 3 = reject 1 + hired 1 + reopen 1; two_people 4 = stale move 2 + live board 2; interview_places 5.5 = full 1.5 + free place 1 + undo full 1 + put back 2; bulk 5 = move 1.5 + all or none 2 + places 1.5; undo 5 = restores 2 + conflict 2 + once 1; activity 2 = lines 1 + refusals 1; manager_roles 4 = late stages 1 + early refused 1 + other job 1 + notes 1; readonly_roles 4.5 = observer 1 + candidate 1 + anonymous 1.5 + statuses 1; messaging 4 = exchange 1.5 + compose 1 + access 1.5; drafts 2; long_thread 5.5 = latest 1.5 + earlier 2 + scrolled up 2; unread_seen 3.5 = unread 2 + seen 1.5; candidate 4.5 = view 1.5 + private 2 + linked 1.
 
 [[criterion]]
-id = "hro_afterimage_rescission"
-name = "hro_afterimage_rescission"
+id = "hro_intake_restart"
+name = "hro_intake_restart"
 type = "binary"
-weight = 0.12056737
+weight = 4.5
 description = """
-P4 rescission receipt: after an independently successful ordinary Finance rescission, expose a structured product snapshot containing its actual actor, before/after headroom and relevant clawback, equity and budget settlement. Snapshot presentation may be columns, expansion or equivalent; raw implementation inspection prohibited. Arithmetic accuracy and other actions' receipts have separate credit. Apply P5a to any actually observed computed claims for this owned rescission receipt actor result; keep credit independent of claims affecting other outcomes. A supported request with no such claims satisfies this conditional authority observation without invented keys.
+Steps. (1) Before anything else, as Rafael and without opening any conversation, read the seeded Platform Engineer board: Applied reads Greta Lindqvist, Ade Bello, Marco Rossi and Screen reads Priya Nair, Samuel Ortiz, in that order; open Noor Haddad's card there: its internal note reads 'Strong systems answers; weaker on incident follow-up.' Move nothing on that job. (2) Open job J1 with hiring manager Ingrid Sorensen and 2 interview places, and job J2 with hiring manager Bill Okafor and 2 places; also try to open a job with a blank title, with places 0, 51 and 2.5, and (by replaying the observed request) with a Recruiter's account as the hiring manager. (3) Add six candidates to J1 (A to F in that order) and read them as Mei Lin in an independent context. On J1 try adding an invalid email address and A's address in different letter case; add A's address to J2 (the control). (4) Move B to Screen, move E up one place within Applied, reject F with a suffixed reason, add an internal note to one J1 card, send one suffixed message in Noor's Platform Engineer conversation, and record your jobs, their card order per stage, F's rejection and reason, that note, that message, your unread total and the Activity lines of J1, with the seeded Platform Engineer order and note. Call restart_app once, then sign in again in a fresh independent context and compare. A reload is not a restart; if restart_app reports an error or cannot be called, this criterion is 0. Bar. The seeded Platform Engineer order and Noor's note are as quoted. Each job opens with its title, and any team, manager or places value the app shows matches what was entered; an independent context sees it. The blank title, places 0, 51 and 2.5 and the Recruiter-as-manager are refused with nothing created. Added candidates appear at the bottom of Applied in the order added with the entered name, Mei reads the same order, and any email or source the app shows matches what was entered. The invalid and different-case addresses are refused with no new card, the refusal is shown at the email field and the typed name, email and source stay in the form; the same address on J2 is accepted. After the restart everything recorded is unchanged (nothing lost, reordered or duplicated) and the starting data is not loaded again (the seeded jobs appear once). Fails if any condition stated above does not hold.
 """
 
 [[criterion]]
-id = "hro_afterimage_history"
-name = "hro_afterimage_history"
+id = "hro_moves"
+name = "hro_moves"
 type = "binary"
-weight = 0.12056737
+weight = 4
 description = """
-P4 receipt history: record one actual structured action snapshot, perform a later valid action in that hire's lineage, then read the earlier snapshot again in a fresh Auditor context. Its actor and then-current before/after values remain unchanged rather than being recomputed from the latest offer. Use independent successful controls; this row owns historical immutability, not the numerical correctness of any settlement.
+Steps. As Rafael Costa (Recruiter) open a new job (any title and team, suffixed) with 2 interview places and add A, B, D, E in that order. Through ordinary controls (no dragging required): move A Applied to Screen; move B Applied to Screen; move A Screen to Interview; try A Interview to Hired and A Interview to Applied; move A back Interview to Screen; read Screen's order again as Mei Lin in an independent context. Move a card up and down within Applied and read the order, also as Mei Lin. Bar. Every one-stage move forward and back works through ordinary non-drag controls and the mover's page shows the card in its new stage at the first look after the action, without a reload or another person's update; the two skips (Interview to Hired, Interview to Applied) are refused with the card unchanged. B lands below A, and A, moved back into Screen, lands below B; Mei reads the same order. A card's place within a stage changes up and down with ordinary controls and Mei reads the same order. Fails if any condition stated above does not hold.
 """
 
 [[criterion]]
-id = "hro_history"
-name = "hro_history"
+id = "hro_reject_reopen"
+name = "hro_reject_reopen"
 type = "binary"
-weight = 0.24113475
+weight = 3
 description = """
-P4 approval ledger history: record the economic fields of original commitment movements and signing payment records immediately after an independently successful approval. After a later successful revision or rescission in that lineage, the same rows retain their original amounts, identities and links; corrections are new entries. Read them again after fresh Auditor sign-in. Compare recorded actual values, not sibling arithmetic expectations. Revision ledger history has separate credit; offer fields, grant history, audit prose and after-images belong elsewhere.
+Steps. As Rafael Costa (Recruiter) open a new job (any title and team, suffixed) with 2 interview places and add C, D, E, F, G, H. Reject C from Applied, first with a blank reason and then with a reason; undo that rejection; reject it again with a reason; read the rejected-from stage and reason; try to reopen C to Screen; reopen it to Applied; undo that reopening; reopen it again. Move E to Screen and reject it with a reason; try to reopen it to Applied and to Interview; reopen it to Screen. Advance D one stage at a time to Hired and try to reject it. Move F and G one stage at a time into Interview; reject F from Interview with a reason; move H into Interview (2 of 2); try to reopen F; move H back to Screen; reopen F. Bar. A blank reason is refused; a rejection with a reason moves the card to Rejected and staff can read the reason and the stage it was rejected from (on the card, its details, its reopen control or its Activity line); undoing the rejection puts C back in Applied at its place. A rejected card reopens only to the stage it was rejected from (C to Screen refused; E to Applied and to Interview refused, each with the card unchanged); after reopening the reason is gone; undoing the reopening puts C back in Rejected with its reason. Whether a reason is present is read from the card's current state (the card, its details or reopen control, or a fresh board or card read the UI makes), never from Activity, whose old rejection line keeps it by design. Rejecting the Hired card is refused and it stays Hired. Reopening F while Interview is full is refused with F still Rejected, and once a place is free F reopens to Interview. All of this works through ordinary non-drag controls. Fails if any condition stated above does not hold.
 """
 
 [[criterion]]
-id = "hro_revision_ledger_history"
-name = "hro_revision_ledger_history"
+id = "hro_two_people"
+name = "hro_two_people"
 type = "binary"
-weight = 0.24113475
+weight = 4
 description = """
-P4 revision ledger history: record the economic fields of each reversal, replacement commitment and signed payment adjustment immediately after an independently successful revision. After a later successful revision or rescission, those rows retain their original amounts, identities and links; corrections are new entries. Read them again after fresh Auditor sign-in. Compare recorded actual values, not sibling arithmetic expectations. Approval ledger history has separate credit; offer fields, grant history, audit prose and after-images belong elsewhere.
+Steps. As Rafael Costa (Recruiter) open a new job (any title and team, suffixed) and add F, G and H. (1) Move F Applied to Screen on this page and capture that request, including whatever version or freshness value it sends. In an independent context Mei Lin moves F Screen to Applied. Replay the captured request from this page exactly as it was sent; it now comes from an out-of-date view of F. (2) Keep this page on the job's board as Rafael. As one timed observation, Mei Lin in her own independent context moves G to Screen and adds a new suffixed card to the job, and this page is read until both show. Bar. The out-of-date move is refused with status 409 and changes nothing; F stays where Mei put it; the refusal says the card was changed and identifies who changed it, by name in the response or on screen, or by an identifier that the app's own staff data shows belongs to Mei. The original move is the control. Within 15 seconds, without reload or click, this page shows Mei's move in the new stage and place and shows her new card. Fails if any condition stated above does not hold.
 """
 
 [[criterion]]
-id = "hro_restart"
-name = "hro_restart"
+id = "hro_interview_places"
+name = "hro_interview_places"
 type = "binary"
-weight = 0.5
+weight = 5.5
 description = """
-P10 LAST: save fresh ordinary req and pending offer independently of revisions, grants or audit. Record any imported operational seed IDs/counts plus these saved details and any available P4 lineage/ledger/snapshot values. Call restart_app exactly once, reopen/sign in and reread: all recorded records/data survive identically, seed IDs remain exactly once, no newly written data replaced with seed. No seeded-only substitute for successful fresh write. Do not rejudge pre-restart arithmetic; tool error is missing restart evidence, not proof of storage loss.
+Steps. As Rafael Costa (Recruiter) open a new job (any title and team, suffixed) with 2 interview places and add A, B, E. Move A and B one stage at a time into Interview (2 of 2). Move E to Screen and try Screen to Interview through the UI. Then replay the captured successful move request with E and Interview in Rafael's session. Re-order A and B inside Interview. Move A to Offer, then E into Interview, then E back to Screen (Rafael's latest move). As Mei Lin in an independent context move A Offer to Interview (2 of 2 again). As Rafael undo the E move. As Mei Lin move A Interview to Offer; as Rafael undo the E move again. Bar. The move into the full Interview is refused through the UI and by replay and E stays in Screen; A and B entering Interview are the control. On the page that tried it, E is shown in its real stage and place, the reason is shown (on or for that card, or a message shown right after the attempt that is about that move), and keyboard focus is on a control of that card (document.activeElement inside the card or its open details). Two other ways meet the same three legs: a UI that refuses before the card moves, and a UI that does not offer the move at all where that card itself shows why (Interview is full) and focus is on a control of that card after you looked for the move there. Re-ordering inside the full Interview is allowed and the freed place is taken at once. The undo that would overfill Interview is refused with nothing changed; once a place is free the same undo goes ahead and E is back in Interview. Fails if any condition stated above does not hold.
 """
 
 [[criterion]]
-id = "hro_change_net_budget"
-name = "hro_change_net_budget"
+id = "hro_bulk"
+name = "hro_bulk"
 type = "binary"
-weight = 1.6
+weight = 5
 description = """
-B1: both the fully-funded cross-requisition cycle and same-requisition60/40 to80/20 offset commit using complete-set net headrooms. Each touched budget has the correct final balance and source reversal/destination commitment movements. Validated netting must not reject an affordable set due to intermediate order. Owns budget netting, not signing/grants/lineage records.
+Steps. As Rafael Costa (Recruiter) open a new job (any title and team, suffixed) with 2 interview places and add V, W, X, Y, Z and then A2. Through ordinary controls (no dragging required), capturing the request of the first successful multi-card move for the replays: (1) move V to Screen; (2) move Y up two places within Applied (Applied reads Y, W, X, Z, A2); (3) select W, X and Y (in that order) and move them to Screen together, and read Screen's order as Mei Lin in an independent context; (4) select V and Z and try Interview (Z would skip), and replay the captured multi-card request with V, Z and Interview; (5) select V, W, X and try Interview (3 into 2 places), and replay it with V, W, X and Interview; (6) select V and X and move them to Interview; (7) as Mei Lin move X back to Screen; (8) as Rafael select V (Interview) first and then W (Screen) and try Applied (V would skip Screen), and replay it with V, W and Applied; (9) select V (Interview) and A2 (Applied) and move them to Screen together, and read Screen's order as Mei Lin. Bar. The three cards move in one action and land below V ordered as the board had them (Y, W, X), not in selection order; V and A2 from different stages land together at the bottom of Screen as A2, V; Mei reads the same orders. The sets with a skipping card (first in board order in step 4, last and selected first in step 8) and the three into two places are each refused through the UI and by replay with none of the set moved; steps 3, 6 and 9 are the control. Fails if any condition stated above does not hold.
 """
 
 [[criterion]]
-id = "hro_change_over_budget"
-name = "hro_change_over_budget"
+id = "hro_undo"
+name = "hro_undo"
 type = "binary"
-weight = 1.5
+weight = 5
 description = """
-B1/B2: on a dedicated100.00 requisition with committed run-rates60/40, establish the affordable80/20 replacement control. A separate new-key intent80/20.01 must not commit the one-cent final overrun. Allow refusal during prepare or, if a draft is saved, commit. Fresh readback preserves every member and all economic/settlement history from immediately before the attempt; a draft and generic access logs may remain. A corrected affordable intent under a new key succeeds. Owns final-budget refusal, independently of affordable netting or stale-token handling.
+Steps. As Rafael Costa (Recruiter) open a new job (any title and team, suffixed) with 2 interview places and add V, W, X, Y, Z and then A2. (1) Move V to Screen and undo it. (2) Move V to Screen again; move Y up two places within Applied. (3) Select W, X and Y and move them to Screen together; undo; read Applied as Mei Lin in an independent context; try to undo again and replay that undo request. (4) Move W, X, Y to Screen together again; select V and X and move them to Interview; as Mei Lin move X back to Screen; as Rafael try to undo the V-and-X move (UI and replay). (5) Move Z Applied to Screen, then A2 Applied to Screen, add an internal note to A2, and as Mei Lin re-order Y within its stage; undo once; then try to undo again (UI and replay). (6) Select Y and W and move them to Applied together; as Mei Lin move W one place within Applied; as Rafael try to undo (UI and replay). (7) Move Z Screen to Applied; as Mei Lin reject Z with a reason; as Rafael try to undo. (8) Reject Y with a reason; as Mei Lin reopen Y; as Rafael try to undo the rejection (UI and replay). Bar. Undo of V's move puts V back at the top of Applied; undo of the three-card move puts Y, W and X back in Applied at their places (Y, W, X, Z, A2) with V still in Screen, and Mei reads the same. The repeated undo in step 3 is refused. The undo is refused with nothing changed after another person moved one card of the move to another stage (4), re-ordered one within its stage (6), rejected one (7) and reopened a card Rafael rejected (8); the undo in step 5 goes ahead because only a note and a different card changed, and A2 is back in Applied; after it a further undo is refused and Z stays in Screen. If Mei's re-order, rejection or reopening itself does not work (graded in hro_moves and hro_reject_reopen), the undo leg it was meant to trigger is left out. Fails if any condition stated above does not hold.
 """
 
 [[criterion]]
-id = "hro_change_lineage"
-name = "hro_change_lineage"
+id = "hro_activity"
+name = "hro_activity"
 type = "binary"
 weight = 2
 description = """
-B1: each selected source stays SUPERSEDED on its original requisition and gets exactly one current COMMITTED successor on the chosen destination. Preserve candidate, original creator/approver, original start and referral identity/start links. Discover generated IDs from results. This owns cross-requisition offer lineage; settlement amounts, grant records and referral accruals have separate owners.
+Steps. As Rafael Costa (Recruiter) open a new job (any title and team, suffixed) and add four cards. Through ordinary controls: move one card to Screen; move two cards to Screen together; re-order a card within Applied; reject a card with a suffixed reason and reopen it; undo your latest move. Try one blank-reason rejection and one skipped stage. Read the Activity view, then filter it to this job, then read the same lines as Aud Halvorsen (Observer) in an independent context. Bar. Activity has a readable line naming who and what changed (the stages for moves) for every successful action of this session on the job: the opening, each addition, each card of the single and multi-card moves (one line naming every card of a multi-card move with its stages also counts), the rejection with its reason, the reopening, the re-ordering and the undo; notes need not appear. Lines are newest first; the unfiltered view shows them among other jobs' lines (all jobs), and the filter shows all of this job's lines and only this job's; the refused attempts added no line; the Observer reads the same lines. A line is expected only for an action that succeeded in this session; an action that did not succeed (for example an undo the app refused) needs no line, and its own failure is graded in its own criterion. If no stage move succeeded in this session, this criterion is 0. Fails if any condition stated above does not hold.
 """
 
 [[criterion]]
-id = "hro_change_signing"
-name = "hro_change_signing"
+id = "hro_manager_roles"
+name = "hro_manager_roles"
 type = "binary"
-weight = 1.25
+weight = 4
 description = """
-B1: append only the signed new-minus-old bonus per successor (-1.98,+2.04), retaining prior payment history; no full re-payment. Independently observe amounts and lineage totals using a simpler valid set if transfer setup fails. No deduction here for a separately owned grant/referral/budget defect.
+Steps. As Rafael Costa (Recruiter) open a new job (any title and team, suffixed) J1 with hiring manager Ingrid Sorensen and 4 interview places, and a job J2 with hiring manager Bill Okafor. Add seven cards to J1 and, as Rafael, move cards so that J1 has cards in Applied, Screen and Interview (three in Interview). As Ingrid in an independent context: move an Interview card to Offer, to Hired and back to Offer; re-order cards in Offer or Interview; reject one card from Interview with a reason and reopen it; reject one from Offer with a reason and reopen it to Offer; try Applied to Screen, Screen to Interview, Interview to Screen, rejecting a Screen card and re-ordering cards within Applied. As Rafael reject a J1 Screen card with a reason; as Ingrid try to reopen it; then as Rafael reopen it (the control). As Rafael also move one J1 Interview card back to Screen and forward again, and re-order two Applied cards, as controls for Ingrid's refused equivalents. As Ingrid try to open a job and to add a candidate (replay Rafael's observed requests if not offered). As Rafael move two J1 Applied cards to Screen together once, capturing that request. As Ingrid select one Offer card and one Screen card and try to move them to Interview together (if the UI does not offer it, replay Rafael's captured multi-card request in her session with those two cards and Interview); then as Rafael make the same two-card move as the control. As Bill Okafor try a move, a re-order, a rejection, a reopening and a note on J1 cards through the UI; for any that is not offered, replay Rafael's observed request of that kind (fresh legal values) in Bill's session. As Rafael add an internal note on a J1 card; as Ingrid add a note on a J1 card; as Aud Halvorsen (Observer) in an independent context read both notes. Bar. Ingrid's late-stage moves, re-orders, rejections from Interview and Offer and their reopenings all succeed. Her multi-card move of an Offer card with a Screen card is refused with neither card moved, while Rafael's identical move succeeds. Her Applied to Screen, Screen to Interview and Interview to Screen, rejecting a Screen card, re-ordering within Applied, reopening the Screen rejection, opening a job and adding a candidate are each refused with nothing changed (UI or replay); Rafael's identical requests are the control. Bill's move, re-order, rejection, reopening and note on J1 are each refused by the server with nothing changed, through the UI or by replay (hiding the controls is optional); Ingrid's move and Rafael's note are the controls. Rafael's and Ingrid's notes are saved and the Observer reads both. A refusal leg for Ingrid or Bill exists only for a request kind whose Rafael control succeeded in this session (otherwise that feature is graded in its own criterion). Fails if any condition stated above does not hold.
 """
 
 [[criterion]]
-id = "hro_change_relocation"
-name = "hro_change_relocation"
+id = "hro_readonly_roles"
+name = "hro_readonly_roles"
 type = "binary"
-weight = 0.25
+weight = 4.5
 description = """
-B1: around a successful coordinated change with nonzero changed relocation values, compare all payment/remittance records and retained compensation terms. Relocation stays recorded on successors but produces no reimbursement, contra-payment or other settlement. Use ordinary nonzero signing adjustments as the working-payment control, and a simpler eligible change set if another B1 branch fails. Owns coordinated relocation exclusion only, not signing adjustment arithmetic.
+Steps. As Rafael Costa (Recruiter) open a new job (any title and team, suffixed) and add five cards. As Rafael perform and capture one move, one multi-card move, one re-order within a stage, one reject, one reopen, one undo, one open-job (a second suffixed job), one add-candidate and one note request, one board read, one Activity read, one card-detail or notes read, one conversation read and one message send (open the conversation of a card you added in this session and send a suffixed message there). As Aud Halvorsen (Observer) in an independent context sign in and load the board, then replay the move, multi-card move, re-order, reject, reopen, undo, add-candidate, open-job and note requests (fresh legal values as described above). As Tomas Varga (candidate) in an independent context sign in and load his applications list, then replay the same nine requests. In a fresh context with no credentials replay the board read, Activity read, card-detail or notes read, conversation read, move, multi-card move, re-order, reject, reopen, undo, add-candidate, note and message requests. Bar. Every one of those replays is refused with nothing changed and returns no workspace data: the Observer's with 403; Tomas's with 403, or 404 when the request names an application that is not his; the anonymous ones with 401. The Observer's board and Tomas's list load in their sessions (the session controls) and Rafael's requests succeeded (the same-kind controls). A refusal leg exists only for a request kind whose staff control succeeded in this session (otherwise there is nothing of that kind to refuse, and that feature is graded in its own criterion); if no kind has a successful control, this criterion is 0. Whether the Observer's screens show write controls is the app's choice. Fails if any condition stated above does not hold.
 """
 
 [[criterion]]
-id = "hro_change_grants"
-name = "hro_change_grants"
+id = "hro_messaging"
+name = "hro_messaging"
 type = "binary"
-weight = 1.5
+weight = 4
 description = """
-B1: prior grants remain historical and SUPERSEDED; replacement grants use11 units at2.03/.02 and13 units at3.04/.03 and original start instant. A separate zero-unit replacement creates no grant. Owns replacement equity records, not subsequent vesting or offer lineage.
+Steps. As Rafael Costa (Recruiter) open a new job (any title and team, suffixed) with hiring manager Bill Okafor and add a card for Tomas Varga with email tomas.varga@candidates.example; that gives Tomas a new conversation (if it never appears for him, which hro_candidate grades, use his seeded Data Analyst conversation instead, with Bill and Ingrid's legs judged on that job's own manager and another job's manager, and counts read relative to their values before you act). (1) As Rafael send a message there that includes the characters <b>plain</b>; as Tomas in an independent context read it and reply; watch the reply arrive on Rafael's open conversation (a timed observation). (2) Try sending a blank message. Type a two-line message using Shift+Enter, send with Enter, and read the box and focus; reload and open the conversation again and read the box. (3) As Mei Lin write in this conversation; as Bill write in it; as Ingrid Sorensen (not this job's manager) check it is not listed or is refused, and replay Rafael's observed read of it in her session; as Aud Halvorsen read it and look for a way to send. Replay Rafael's observed send request on it, with new text, in Aud's, Ingrid's and Noor Haddad's sessions. Bar. Rafael's message reaches Tomas and Tomas's reply appears on Rafael's open conversation within 15 seconds without reload. <b>plain</b> shows as those literal characters, not bold; the blank message is refused; Shift+Enter makes a new line, Enter sends and the line break is kept; afterwards the box is empty and still focused, and after the reload the sent text does not reappear. Mei and Bill write in it; Ingrid cannot open it and her read replay is refused with no messages returned; the Observer reads it with no send control or a refused send; the send replays are refused with nothing added, Aud's and Ingrid's with 403 and Noor's as not found (404). Rafael's own read and send are the controls. Fails if any condition stated above does not hold.
 """
 
 [[criterion]]
-id = "hro_change_referral"
-name = "hro_change_referral"
-type = "binary"
-weight = 1
-description = """
-B1: after a successful coordinated commit, the original referral accrual remains attached to its original offer/referrer with its unchanged original hire-start and vested/contingent amounts; coordinated successors neither duplicate nor move it. Use an ordinary referral-bearing committed pair if another B1 detail fails.
-"""
-
-[[criterion]]
-id = "hro_change_preview"
-name = "hro_change_preview"
-type = "binary"
-weight = 1
-description = """
-B1: ordinary labelled form selects two through four current sources, destinations and six replacement terms. Saved readable preview exposes old/new member run-rates, signing adjustments, replacement equity terms and touched requisitions before/after headrooms with original identities. These are one reviewable proposed transaction; exact layout/labels are not prescribed. Numerical settlement correctness belongs to other rows; inspect preview correspondence to the known intent.
-"""
-
-[[criterion]]
-id = "hro_change_preview_neutral"
-name = "hro_change_preview_neutral"
-type = "binary"
-weight = 0.5
-description = """
-B1/B3: after a successful preparation, commitments, source statuses, grants, payments, referrals and successful settlement history equal their pre-prepare state. Generic access logging and the draft itself may grow. The preview does not reserve or settle anything. Owns economic neutrality only; draft persistence and later commit success are independent.
-"""
-
-[[criterion]]
-id = "hro_change_preview_durable"
-name = "hro_change_preview_durable"
-type = "binary"
-weight = 0.5
-description = """
-B1/B3: after successful preparation, a fresh independent signed-in context retrieves the same saved operation identity, canonical member intent and original computed preview values. Use its normal history/detail view and product reads; no exact schema is required. Owns durable preview retrieval independently of economic neutrality and later commit success.
-"""
-
-[[criterion]]
-id = "hro_change_shape"
-name = "hro_change_shape"
-type = "binary"
-weight = 1
-description = """
-B2: a valid nonblank-key four-member control works. One/five members, repeated source, missing/nonexistent destination and missing/blank operation key cannot produce a valid preview or economic effects. Use the observed request representation and a nearby valid control. Do not require a particular validation status within4xx. With one current COMMITTED member, a second member that is a PENDING offer and, separately, one that is a RESCINDED offer likewise cannot produce a valid preview or economic effects; if the editor does not list such offers, replay the observed prepare request with that offer's identity. Compensation numeric validity and an affordable final budget are separately owned.
-"""
-
-[[criterion]]
-id = "hro_change_numeric"
-name = "hro_change_numeric"
-type = "binary"
-weight = 1
-description = """
-B2: after valid compensation controls, negative/nonnumeric/sub-cent money, fractional units, unsafe integer inputs and safe-input computed overflow refuse without a valid preview or financial effects. Safe units9007199254740991 with a zero fair/strike spread remain accepted, while the same units at fair.02/strike0 overflow. Adapt dollars/cents and value types to the actual UI-observed request; do not invent fields or force impossible text into native controls. Nearby valid values still prepare successfully. Owns coordinated numeric/overflow validation only.
-"""
-
-[[criterion]]
-id = "hro_change_stale_leaf"
-name = "hro_change_stale_leaf"
-type = "binary"
-weight = 1.5
-description = """
-B2: ordinarily revise a selected second source after saved preview, then Finance commit returns409. All members and economic/history records remain exactly as immediately before the attempt, including the first still-valid member. A valid fresh preview/commit is the positive control. Owns stale-source all-or-none refusal, not input retention or economic ABA.
-"""
-
-[[criterion]]
-id = "hro_change_aba"
-name = "hro_change_aba"
+id = "hro_drafts"
+name = "hro_drafts"
 type = "binary"
 weight = 2
 description = """
-B2: after preview, another hire is committed then rescinded on a touched requisition so headroom returns to its exact original value. Original sources remain current, yet saved commit returns409 without effects. A new-key preview of the still-current intent then commits successfully, which is the positive control; a desk whose commit never succeeds earns no credit here. This owns history-sensitive freshness; equality of balances alone is insufficient.
+Steps. As Rafael Costa (Recruiter) open a new job (any title and team, suffixed) and add two cards, so that two conversations of your own exist. As Rafael open the first conversation and type an unsent reply; open the second conversation, then the Board, then come back to the first, then reload, reading the first conversation's box each time. Type a different unsent reply in the second conversation and check each conversation keeps its own. Bar. Each unsent reply stays with its own conversation through the switch to another conversation, the Board and the reload, and the two conversations keep different drafts. That a sent message does not come back after a reload is graded only in hro_messaging. Fails if any condition stated above does not hold.
 """
 
 [[criterion]]
-id = "hro_change_noninvalidating"
-name = "hro_change_noninvalidating"
+id = "hro_long_thread"
+name = "hro_long_thread"
 type = "binary"
-weight = 1
+weight = 5.5
 description = """
-B2: pending creation on a touched requisition, an unrelated requisition settlement and another preview alone leave the saved operation committable. All selected sources stay current. Compare successful commit after those changes; merely displaying a draft is insufficient. Separate from refusing real economic changes.
+Steps. As Rafael open Noor Haddad's Platform Engineer conversation (earlier sessions may have added messages to it; read counts relative to what it holds). Count the messages shown and their order and where the view is. Bring in earlier messages repeatedly, reading the counts, the order and the remaining count each time, until none remain. Then click into the message box and type an unfinished reply, scroll the message list up to earlier messages without clicking elsewhere (mouse wheel over the list, or set its scrollTop), and as Noor in an independent context (Mei Lin if Noor cannot send, which hro_messaging grades) send a suffixed message as a timed observation. Read Rafael's place, the notice, his reply text, document.activeElement and his unread count for that conversation; then go to the new message and read the count again. Scroll up to earlier messages again; Noor sends one more suffixed message (a timed observation); with Rafael still scrolled up, send a short reply with Enter and read his unread count for the conversation. Bar. Where Mei Lin stood in for a candidate who could not send, read that candidate's name in this Bar as Mei's. The conversation opens showing its most recent 30 messages, oldest of them first, scrolled to the newest. Earlier messages come in 30 at a time in order, with how many are still to come shown correctly, until none remain, with none missing or repeated. While Rafael is scrolled up with an unfinished reply, Noor's message does not move his place; within 15 seconds without reload he is told there is one new message; the reply still reads exactly what was typed and the box still has focus; the conversation stays unread until he goes to the new message, then it is read; and after Noor's next message, sending his own reply while still scrolled up leaves his unread count for it at 0 (sending counts as reading). Fails if any condition stated above does not hold.
 """
 
 [[criterion]]
-id = "hro_change_intent_key"
-name = "hro_change_intent_key"
+id = "hro_unread_seen"
+name = "hro_unread_seen"
 type = "binary"
-weight = 1
+weight = 3.5
 description = """
-B3: same actor/key with reordered identical members returns the same immutable saved preview/result; changed term/destination/source under that key returns409 without effects. A new key permits changed eligible intent. After a stale preview, repeating the original prepare request must not refresh captured state. In B3's commit replay, any member identity, destination or term the observed commit request carries is changed to a different valid value: the commit either settles exactly the saved intent or is refused without effects, and never settles the altered values; a commit request that carries none of these satisfies this leg. An ordinary successful prepare and commit of another operation is the positive control, so a desk whose commit never succeeds earns no credit here. This is one stable operation-identity contract; no prescribed hash or record naming.
+Steps. (1) In an independent context sign in as Lena Fischer and, without opening it, read her unread count on her Product Designer conversation; the starting read markers give her 1. No other session opens Lena's conversation. (2) As Rafael Costa (Recruiter) open a new job (any title and team, suffixed) with hiring manager Bill Okafor and add a card for Tomas Varga with email tomas.varga@candidates.example (if it never appears for him, use his seeded Data Analyst conversation and its own manager, with counts relative to their values before you act). Send one message in it as Rafael so it exists. Every reading below that follows another person's action is a timed observation; never reload, navigate or click in the observed page while it runs. (3) With Rafael's page on the Conversations view and this conversation not open, read his count on it and his total; Tomas sends two messages (if Tomas cannot send, which hro_messaging grades, Mei Lin sends them); read both again; open the conversation. With it open at its newest message, Tomas sends one more; read Rafael's count and total. Read Mei Lin's count for this conversation in her own session without opening it. (4) Close the conversation on Tomas's page with the app's own close or back control; if it has none, reload his page (a conversation opens only when he chooses one) and confirm that none is open. Rafael sends a new message; read it as not seen; Aud Halvorsen opens the conversation; read again; Tomas opens it; read on Rafael's page. (5) Move Rafael's page to the Board and keep Mei out of the conversation. Tomas sends a message and, with his page left open, Bill opens the conversation; read on Tomas's page. Close Bill's context. Tomas sends one more and Rafael opens the conversation; read on Tomas's page. Bar. Where Mei Lin stood in for a candidate who could not send, read that candidate's name in this Bar as Mei's. Lena's count is 1. Rafael's count and total each rise by exactly two within 15 seconds without reload or click, opening the conversation clears it, and the message that arrives while it is open at its newest does not raise either; his own messages never count. Mei's count equals the messages in it not written by her (she has not opened it). Rafael's message shows as not seen, is still not seen after only the Observer opened it, and shows as seen on his page within 15 seconds without reload after Tomas opens it. Tomas's message shows as seen on his page within 15 seconds without reload after Bill opens the conversation, and his next one after Rafael opens it. Fails if any condition stated above does not hold.
 """
 
 [[criterion]]
-id = "hro_change_retry_concurrent"
-name = "hro_change_retry_concurrent"
+id = "hro_candidate"
+name = "hro_candidate"
 type = "binary"
-weight = 2
+weight = 4.5
 description = """
-B4: concurrent identical commits both return the one original success, with one set of effects and receipts. Verify unique successors and movements/payment/grant/history deltas against stored before-values. Use zero-extra or same-requisition setup if needed; judge duplicate effects, not formulas already owned elsewhere.
-"""
-
-[[criterion]]
-id = "hro_change_overlap"
-name = "hro_change_overlap"
-type = "binary"
-weight = 2
-description = """
-B4: two distinct outstanding previews with different source pairs but a shared requisition race to commit. Exactly one completes and the other409; the loser posts no partial successors or financial/history effects. No chosen winner or timing threshold. This is transaction-wide conflict atomicity, distinct from same-operation retries or one stale member.
-"""
-
-[[criterion]]
-id = "hro_change_disjoint"
-name = "hro_change_disjoint"
-type = "binary"
-weight = 1
-description = """
-B4: two saved eligible previews touching disjoint requisitions both commit. Observe each complete result, not only absence of a conflict message. Owns independence from unrelated operations; no global write-version invalidation.
-"""
-
-[[criterion]]
-id = "hro_change_receipt"
-name = "hro_change_receipt"
-type = "binary"
-weight = 0.25
-description = """
-B1: a durable batch receipt identifies actual actor/operation, all old/new offers, source/destination requisitions, compensation, signed adjustments and complete before/after headrooms. Retrieve it in a fresh signed-in context. Judge fidelity to the observed transaction rather than regrade arithmetic. Member audit lines, structured member snapshots and later historical preservation have independent owners.
-"""
-
-[[criterion]]
-id = "hro_change_audit"
-name = "hro_change_audit"
-type = "binary"
-weight = 0.25
-description = """
-B1: every successful member revision produces a readable audit line identifying the action, actor and old/new offer, with the transaction before/after summary. Read these through the ordinary Audit Trail after a fresh sign-in. A card, row or another readable layout is valid. Owns readable member history independently of batch receipts and structured member snapshots; use a simpler successful change set if needed.
-"""
-
-[[criterion]]
-id = "hro_change_afterimages"
-name = "hro_change_afterimages"
-type = "binary"
-weight = 0.25
-description = """
-B1: each successful member has a durable structured before/after receipt with actual actor, source/destination identities and observed compensation/settlement figures. All member headrooms reflect the same complete transaction, not an intermediate half-posted state. Read through normal product views/responses in a fresh signed-in context. Owns member snapshot fidelity; missing text lines or batch receipt do not erase an independently observed snapshot.
-"""
-
-[[criterion]]
-id = "hro_change_history"
-name = "hro_change_history"
-type = "binary"
-weight = 0.25
-description = """
-B6: preserve the batch receipt and member text/snapshots actually obtained from a successful coordinated commit. After later successful ordinary revision and rescission, freshly read those original artifacts: their actor, identities, before/after values and original settlement details remain unchanged. This owns preservation of earlier recorded history, not initial artifact creation or cached write replay. Preserve evidence for each artifact that exists; do not inherit an initial sibling failure or silently accept changed historical values. If needed, use a simpler successful transfer and later action to obtain an independent preservation witness.
-"""
-
-[[criterion]]
-id = "hro_change_retry_later"
-name = "hro_change_retry_later"
-type = "binary"
-weight = 1
-description = """
-B6: after later ordinary revision and rescission of a batch successor, retry the original saved operation and receive the original successful receipt unchanged with no new effects. UI exposes a way to retry/retrieve that saved operation. No current-leaf or current-budget rejection of an already committed result. Restart replay has separate credit.
-"""
-
-[[criterion]]
-id = "hro_change_retry_restart"
-name = "hro_change_retry_restart"
-type = "binary"
-weight = 1
-description = """
-P10: after the real process restart, retry the previously committed coordinated operation. Return its original receipt and no duplicate effects, even after B6 later changes. Pre-restart saved values are the oracle. Tool failure is NOT EXERCISED, not observed data loss. Ordinary record durability has separate credit.
-"""
-
-[[criterion]]
-id = "hro_change_later_destination"
-name = "hro_change_later_destination"
-type = "binary"
-weight = 0.25
-description = """
-B6: an ordinary revision of a transferred current successor replaces its commitment on the destination requisition. Its original source budget stays as the completed transfer left it. Observe the replacement/reversal and final budgets after a successful revision. Use a simple transfer as alternate setup. Owns post-transfer revision budget ownership, independently of rescission, vesting and batch history.
-"""
-
-[[criterion]]
-id = "hro_change_later_release"
-name = "hro_change_later_release"
-type = "binary"
-weight = 0.25
-description = """
-B6: ordinary Finance rescission of a transferred current successor releases its latest commitment to the destination requisition while the original source budget stays unchanged. Read the persisted release and budgets. If ordinary revision is unavailable, rescind a dedicated transferred successor directly; do not inherit that earlier failure. Owns post-transfer release ownership, not vesting amounts or original-result replay.
-"""
-
-[[criterion]]
-id = "hro_change_signing_anchor"
-name = "hro_change_signing_anchor"
-type = "binary"
-weight = 0.25
-description = """
-B6: after a successful transfer, rescind a dedicated successor at2025-02-28T12:34:56.789Z for the B1 original start2024-02-29T12:34:56.789Z, or another exact public calendar boundary for a dedicated original start. The retained signing amount and contra-payment use the original start under the public calendar/cliff rules. A later ordinary revision may be reused when it succeeds, but is not required for this observation. Owns signing date anchoring after transfer; use an ordinary nonzero bonus control and do not inherit budget or equity failures.
-"""
-
-[[criterion]]
-id = "hro_change_equity_anchor"
-name = "hro_change_equity_anchor"
-type = "binary"
-weight = 0.25
-description = """
-B6: after a successful transfer, rescind a dedicated positive-unit successor at2025-02-28T12:34:56.789Z for the B1 original start2024-02-29T12:34:56.789Z, or another exact public calendar boundary for a dedicated original start. Vested versus cancelled units use the original anchor under the public calendar/cliff rules. A later ordinary revision may be reused when it succeeds, but is not required. Owns equity date anchoring after transfer, independently of signing, budget and receipt/retry outcomes.
-"""
-
-[[criterion]]
-id = "hro_change_readers"
-name = "hro_change_readers"
-type = "binary"
-weight = 0.5
-description = """
-B5: every supplied signed-in role can navigate to saved coordinated previews and receipts with their stored values. Reuse authenticated product reads from other protocols; a missing write control is not a read failure. Preview and receipt form one operation history. Anonymous confidentiality is separately graded.
-"""
-
-[[criterion]]
-id = "hro_change_prepare_recruiter"
-name = "hro_change_prepare_recruiter"
-type = "binary"
-weight = 0.12
-description = """
-B5: after a successful Finance prepare control, replay that observed operation as Rafael Costa on an otherwise eligible target; require403 with unchanged financial state and no new or changed valid saved preview from the denied attempt. Verify saved operation identities and stored intent through a fresh authorized product/history read; existing legitimate previews remain intact, while generic security/access logs are allowed. Owns this actor and operation only; do not inherit another role verdict.
-"""
-
-[[criterion]]
-id = "hro_change_commit_recruiter"
-name = "hro_change_commit_recruiter"
-type = "binary"
-weight = 0.12
-description = """
-B5: after a successful Finance commit control, replay that observed operation as Rafael Costa on an otherwise eligible target; require403 with unchanged financial state. Repeat against a committed operation to prove authorization precedes cached write results. Owns this actor and operation only; do not inherit another role verdict.
-"""
-
-[[criterion]]
-id = "hro_change_prepare_comp"
-name = "hro_change_prepare_comp"
-type = "binary"
-weight = 0.12
-description = """
-B5: after a successful Finance prepare control, replay that observed operation as Mei Lin on an otherwise eligible target; require403 with unchanged financial state and no new or changed valid saved preview from the denied attempt. Verify saved operation identities and stored intent through a fresh authorized product/history read; existing legitimate previews remain intact, while generic security/access logs are allowed. Owns this actor and operation only; do not inherit another role verdict.
-"""
-
-[[criterion]]
-id = "hro_change_commit_comp"
-name = "hro_change_commit_comp"
-type = "binary"
-weight = 0.12
-description = """
-B5: after a successful Finance commit control, replay that observed operation as Mei Lin on an otherwise eligible target; require403 with unchanged financial state. Repeat against a committed operation to prove authorization precedes cached write results. Owns this actor and operation only; do not inherit another role verdict.
-"""
-
-[[criterion]]
-id = "hro_change_prepare_tier1"
-name = "hro_change_prepare_tier1"
-type = "binary"
-weight = 0.12
-description = """
-B5: after a successful Finance prepare control, replay that observed operation as Ingrid Sorensen on an otherwise eligible target; require403 with unchanged financial state and no new or changed valid saved preview from the denied attempt. Verify saved operation identities and stored intent through a fresh authorized product/history read; existing legitimate previews remain intact, while generic security/access logs are allowed. Owns this actor and operation only; do not inherit another role verdict.
-"""
-
-[[criterion]]
-id = "hro_change_commit_tier1"
-name = "hro_change_commit_tier1"
-type = "binary"
-weight = 0.12
-description = """
-B5: after a successful Finance commit control, replay that observed operation as Ingrid Sorensen on an otherwise eligible target; require403 with unchanged financial state. Repeat against a committed operation to prove authorization precedes cached write results. Owns this actor and operation only; do not inherit another role verdict.
-"""
-
-[[criterion]]
-id = "hro_change_prepare_tier2"
-name = "hro_change_prepare_tier2"
-type = "binary"
-weight = 0.12
-description = """
-B5: after a successful Finance prepare control, replay that observed operation as Bill Okafor on an otherwise eligible target; require403 with unchanged financial state and no new or changed valid saved preview from the denied attempt. Verify saved operation identities and stored intent through a fresh authorized product/history read; existing legitimate previews remain intact, while generic security/access logs are allowed. Owns this actor and operation only; do not inherit another role verdict.
-"""
-
-[[criterion]]
-id = "hro_change_commit_tier2"
-name = "hro_change_commit_tier2"
-type = "binary"
-weight = 0.12
-description = """
-B5: after a successful Finance commit control, replay that observed operation as Bill Okafor on an otherwise eligible target; require403 with unchanged financial state. Repeat against a committed operation to prove authorization precedes cached write results. Owns this actor and operation only; do not inherit another role verdict.
-"""
-
-[[criterion]]
-id = "hro_change_prepare_tier3"
-name = "hro_change_prepare_tier3"
-type = "binary"
-weight = 0.12
-description = """
-B5: after a successful Finance prepare control, replay that observed operation as Yuki Tanaka on an otherwise eligible target; require403 with unchanged financial state and no new or changed valid saved preview from the denied attempt. Verify saved operation identities and stored intent through a fresh authorized product/history read; existing legitimate previews remain intact, while generic security/access logs are allowed. Owns this actor and operation only; do not inherit another role verdict.
-"""
-
-[[criterion]]
-id = "hro_change_commit_tier3"
-name = "hro_change_commit_tier3"
-type = "binary"
-weight = 0.12
-description = """
-B5: after a successful Finance commit control, replay that observed operation as Yuki Tanaka on an otherwise eligible target; require403 with unchanged financial state. Repeat against a committed operation to prove authorization precedes cached write results. Owns this actor and operation only; do not inherit another role verdict.
-"""
-
-[[criterion]]
-id = "hro_change_prepare_auditor"
-name = "hro_change_prepare_auditor"
-type = "binary"
-weight = 0.12
-description = """
-B5: after a successful Finance prepare control, replay that observed operation as Aud Halvorsen on an otherwise eligible target; require403 with unchanged financial state and no new or changed valid saved preview from the denied attempt. Verify saved operation identities and stored intent through a fresh authorized product/history read; existing legitimate previews remain intact, while generic security/access logs are allowed. Owns this actor and operation only; do not inherit another role verdict.
-"""
-
-[[criterion]]
-id = "hro_change_commit_auditor"
-name = "hro_change_commit_auditor"
-type = "binary"
-weight = 0.12
-description = """
-B5: after a successful Finance commit control, replay that observed operation as Aud Halvorsen on an otherwise eligible target; require403 with unchanged financial state. Repeat against a committed operation to prove authorization precedes cached write results. Owns this actor and operation only; do not inherit another role verdict.
-"""
-
-[[criterion]]
-id = "hro_change_anon_prepare"
-name = "hro_change_anon_prepare"
-type = "binary"
-weight = 0.4
-description = """
-B5: after successful authenticated Finance prepare, replay the actual observed request without credentials in a clean context on an eligible target. Require401 and unchanged business records. Owns anonymous prepare only; invalid/stale data is not a successful negative control.
-"""
-
-[[criterion]]
-id = "hro_change_anon_commit"
-name = "hro_change_anon_commit"
-type = "binary"
-weight = 0.4
-description = """
-B5: after successful authenticated Finance commit, replay the actual observed request without credentials in a clean context on an eligible target. Require401 and unchanged business records. Owns anonymous commit only; invalid/stale data is not a successful negative control.
-"""
-
-[[criterion]]
-id = "hro_desk_figures"
-name = "hro_desk_figures"
-type = "binary"
-weight = 2.5
-description = """
-D1: with B1's exchange entered in Finance's editor and nothing saved, each member shows old/new run-rate100.00->100.00, signing adjustments-1.98 and+2.04, and old/new approval-band basis105.01->104.02 and105.01->106.03. Each touched requisition shows headroom0.00 before and0.00 after and is not marked over budget. Raising the first member's base by one cent to94.48 marks only its destination requisition over budget (final headroom-0.01); restoring94.47 clears the mark. A fresh product read confirms no preview was saved by these entries. After the preview is then saved, every figure that both the editor and the saved preview display is the same in both. Computing in the browser or on the server, per keystroke or after leaving the field, is equally valid; allow a few seconds. Fails if the figures or headrooms appear only after saving, if the funded exchange is shown as over budget, if the one-cent overrun is not marked, or if a figure shown in both places differs. Owns pre-save figures, whole-change netting on screen and their agreement with the saved preview; saved-preview content and settlement arithmetic have other owners.
-"""
-
-[[criterion]]
-id = "hro_desk_remove_member"
-name = "hro_desk_remove_member"
-type = "binary"
-weight = 1
-description = """
-D3: the editor starts with two members and reaches four through its add control. With four distinct members entered using distinctive terms, remove the second member through its own control. The remaining three keep their selected offers, destinations and every typed term exactly, and the headroom figures no longer include the removed member's effect. The removed member can then be added and entered again. Identify members by their selected offer and typed values, not by a position label. Fails if only the last member can be removed, if removal blanks, shifts or mixes another member's values, or if fewer than four members can be entered. Owns add/remove editing; member-count validation on save belongs to hro_change_shape.
-"""
-
-[[criterion]]
-id = "hro_desk_field_refusal"
-name = "hro_desk_field_refusal"
-type = "binary"
-weight = 1
-description = """
-D4: with otherwise valid members entered, set one member's signing bonus to a sub-cent value such as4.045 and save. If the app accepts that value, try a non-numeric value such as abc in the same field. Once a save is refused for that term, the explanation identifies that member and that term, by naming them or by sitting at that field, and that input is marked invalid (aria-invalid, the :invalid state, or text beside it); the other members' inputs are not marked. All other entries stay as typed and no preview is added (fresh product read). Correcting only that field then saves successfully, which is the positive control. Native browser validation that blocks the save and marks that field is valid. Fails if the refusal is only a general banner that does not identify the member and term, if other entries are lost, or if the corrected change cannot be saved. If no malformed term is ever refused there is no explanation to observe: give0. Owns how a refused entry is explained and what is kept; whether the server refuses malformed numbers belongs to hro_change_numeric.
-"""
-
-[[criterion]]
-id = "hro_live_stale_mark"
-name = "hro_live_stale_mark"
-type = "binary"
-weight = 2.5
-description = """
-L1 with B2's restored-balance step: Finance's Coordinated Changes view stays open showing a saved preview that is presented as current or carries no out-of-date mark, with the editor still holding the entries that produced it; that earlier state is the control. In a separate browser context an Approver approves an extra hire on a touched requisition. Without reloading, navigating, clicking or typing in Finance's view, within15 seconds the saved preview is shown as out of date and the editor's headroom for that requisition shows the new balance. After Finance then rescinds the extra hire in its own page, so the balance is back to its original value, the desk still shows that preview as out of date. In the other direction, the preview used for B2's non-invalidating events (a pending offer created on a touched requisition, a settlement on an unrelated requisition, another preview) is still shown as current15 seconds after them. Fails if the mark appears only after a reload, navigation or click, never appears, disappears when the balance returns, or is put on a preview that only non-invalidating events touched. Owns what the open desk displays; the409 or success of the commit itself belongs to hro_change_aba and hro_change_noninvalidating.
-"""
-
-[[criterion]]
-id = "hro_live_source_flag"
-name = "hro_live_source_flag"
-type = "binary"
-weight = 1.5
-description = """
-L2 with B2's stale-source step: Finance's editor holds two members that were entered and saved as a preview. In a separate browser context another permitted user ordinarily revises the second member's source offer. Without reloading, navigating, clicking or typing in Finance's view, within15 seconds the editor member whose selected offer was replaced is flagged as no longer current, and the first member keeps its selection and typed terms and is not flagged; the unflagged state before the revision is the control. Fails if the flag appears only after a reload or click, if it lands on the wrong member, or if the other member's entries change. Owns the live per-member flag in the editor.
-"""
-
-[[criterion]]
-id = "hro_live_committed_viewer"
-name = "hro_live_committed_viewer"
-type = "binary"
-weight = 1.5
-description = """
-L3: an Auditor in a separate browser context has the Coordinated Changes view open and sees a saved preview that is not yet committed. Finance commits that preview in the main page. Without reloading, navigating, clicking or typing in the Auditor's view, within15 seconds it shows that change as committed together with its receipt figures. The Auditor's earlier uncommitted view is the control. Read the Auditor's page inside browser_run_code_unsafe in that context. Fails if the Auditor must reload or click to see the commit. Owns live arrival of a commit for a reader; receipt content belongs to hro_change_receipt.
-"""
-
-[[criterion]]
-id = "hro_whatif_roles"
-name = "hro_whatif_roles"
-type = "binary"
-weight = 2
-description = """
-D2: after B1's preview is saved and before it is committed, sign in as Auditor in a separate browser context, open the same editor and enter B1's exchange. The Auditor sees the same member figures and requisition headrooms Finance saw in D1. Repeat as Recruiter. For the Comp partner and each of the three Approvers, in the sessions B5 already opens, confirm the same editor is offered, shows member figures and headrooms for a two-member entry, and offers no working save or commit; the full figure comparison is required only for Auditor and Recruiter. Neither is offered a working save or commit: the control is absent or disabled, or using it is refused. A fresh product read before and after shows no additional saved preview, receipt, settlement or change audit record from either what-if; an ordinary sign-in audit line and the person's own unsent entries are not such records. Finance's successful save of the same entries is the positive control. The what-if may be computed in the browser or by the server; a successful response from a calculation that saves nothing is not a failure. Fails if any of the six non-Finance roles cannot reach the editor or its figures, if the figures differ from Finance's for the same entries, or if a what-if leaves a saved preview. Owns the positive what-if for non-Finance roles; the403 on prepare and commit belongs to the hro_change_prepare and hro_change_commit rows.
-"""
-
-[[criterion]]
-id = "hro_entries_reload"
-name = "hro_entries_reload"
-type = "binary"
-weight = 0.5
-description = """
-E1: as Finance enter a distinctive operation key and distinctive terms for two members and do not save. Switch to another workspace and back: the key, selected offers, destinations and terms are as entered. Reload the page: they are still as entered. Fails if either the workspace switch or the reload loses or resets any of them. Owns unsent entries across a workspace switch and a reload for the same signed-in person.
-"""
-
-[[criterion]]
-id = "hro_keep_revision_terms"
-name = "hro_keep_revision_terms"
-type = "binary"
-weight = 0.5
-description = """
-R1: on a dedicated current committed offer, open its revision editor. Change at least one valid compensation field to a distinctive value, for example signing bonus1.23, and make a different field invalid; prefer a clearly over-budget base so the form submits and is refused; ordinary native numeric validation is also valid. After the visible refusal the valid changed input is still there and editable together with the unchanged fields. Correct only the invalid input to an ordinary affordable value and save successfully, which is the positive control. Compare entered values, not a particular input representation; no exact shortfall wording is required. Fails if the refusal clears or resets the valid entries, or if the corrected revision cannot be saved. Owns retained revision terms after a refusal, not lineage or formulas.
-"""
-
-[[criterion]]
-id = "hro_keep_rescission_date"
-name = "hro_keep_rescission_date"
-type = "binary"
-weight = 0.5
-description = """
-R2: first observe one ordinary successful UI rescission on a dedicated target and its request. On another eligible committed target open Finance's rescission form, enter a real effective date such as2025-02-01, and abort exactly one matching outgoing rescission request before it reaches the server, leaving the form data unmodified; remove the interception in finally. A visible failure appears and the entered date is still shown in an editable control or a read-only confirmation with a retry action. Retrying unchanged then rescinds with that same date. This single prescribed interception is the only permitted alteration of traffic for this row. If the tool cannot perform and release it, report NOT EXERCISED rather than an application failure. Compare equivalent date representations semantically. Fails if the date is cleared after the failure or the retry cannot succeed with it. Owns the retained effective date and retry, not settlement formulas.
+Steps. As Rafael Costa (Recruiter) open a new job (any title and team, suffixed) and add a card for Tomas Varga with email tomas.varga@candidates.example. Sign in as Noor Haddad and as Tomas Varga in independent contexts and read their application lists, statuses and conversations. Capture every request the candidate pages make and inspect every response; if a candidate page keeps an event stream or socket open, also read what it receives (for example page.on('websocket') frames, or a new EventSource on the observed URL) and count those payloads as received responses. As Rafael add an internal note with a unique suffix to Tomas's new card and reject the card with a reason ending in a unique suffix, and read both back as Rafael (the control); search every candidate response for both; then reopen the card once, then move it one stage at a time to Hired, reading Tomas's status wording after each move (reload or re-open his applications list first). As Tomas replay the staff card-detail or notes read you observed as Rafael for a card that is not his, and the board read and the Activity read you observed as Rafael, and ask for the conversation of an application that is not his using an id you saw as staff. Bar. The card added with Tomas's email becomes his application and conversation when he signs in. Each candidate's own applications appear with job title, team and status in the candidate wording, including Noor's Platform Engineer (Infrastructure, Interviewing) and Product Designer (Design, Application received) and Tomas's Data Analyst (Finance Systems, In review); Tomas's new card reads Not moving forward, then Application received, In review, Interviewing, Offer and Hired as it moves; each can open and read their own conversations. No response a candidate page receives contains internal notes, a rejection reason, a rejected-from stage, board positions, other candidates or their applications, or activity, including while Tomas's card is rejected. The replayed staff notes or card-detail read is refused while Rafael's identical read succeeded; the board and Activity replays are refused or answered with only what the candidate's own view shows; the other application's conversation is answered as not found. A candidate page that receives none of its own data makes this criterion 0. Fails if any condition stated above does not hold.
 """

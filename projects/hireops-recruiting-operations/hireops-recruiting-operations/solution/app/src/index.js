@@ -3,466 +3,448 @@ const { isMainThread, parentPort } = require('node:worker_threads');
 if (isMainThread) {
   module.exports = require('./bootstrap').start(__filename);
 } else {
-// hireops HTTP layer. A recruiting-operations + compensation back-office (offer &
-// clawback desk).
+// HireOps HTTP layer: a recruiting workspace with a shared pipeline board and
+// recruiter-candidate conversations.
 //
-// Non-negotiables:
-//  - /health answers immediately, never gated on seeding or the database.
-//  - Identity comes ONLY from the session cookie. A role, actor, approver, band or
-//    amount in a request body is a CLAIM, never authority; every decision is
-//    recomputed from stored records and the session identity.
-//  - No wall clock: referral vesting uses the one stored reference moment; signing/
-//    equity clawback uses a rescission's OWN stored effective date.
-//  - Money is integer cents; percentages integer basis points; round half-up once.
-//  - Every approve/revise/rescind writes an append-only after-image + audit row;
-//    corrections are additions (supersede + contra + release), never edits/deletes.
+//  - /api/health answers before the database is touched (see bootstrap.js).
+//  - Identity comes only from the session cookie; nothing in a request body is authority.
+//  - Every board change is one SQLite transaction: a refused move or bulk move leaves
+//    every card, position and history row as it was.
+//  - A card carries a version. A move made against an older version is refused, so two
+//    people cannot silently overwrite each other.
+//  - Candidates are served by their own read model and never receive staff-only data.
 const path = require('path');
-const fs = require('fs');
 const crypto = require('crypto');
 const express = require('express');
 const dbmod = require('./db');
-const R = require('./rules');
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
-
-// Public health lives in bootstrap; these routes also support the internal listener.
 app.get('/health', (_req, res) => res.json({ ok: true, service: 'hireops' }));
 app.get('/api/health', (_req, res) => res.json({ ok: true, service: 'hireops' }));
 
 const db = dbmod.open();
+const { stages: STAGES, candidateLabels: LABELS, pageSize: PAGE } = dbmod.reference;
+const FLOW = STAGES.filter((s) => s !== 'REJECTED');
+const MANAGER_STAGES = ['INTERVIEW', 'OFFER', 'HIRED'];
+const STAFF = ['recruiter', 'hiring_manager', 'observer'];
+const title = (s) => s.charAt(0) + s.slice(1).toLowerCase();
 
-app.use(express.json({ limit: '2mb' }));
-app.use(cookieParser);
-const PUBLIC_DIR = path.join(__dirname, '..', 'public');
-app.use(express.static(PUBLIC_DIR));
-
-// Live desk: every successful write tells open workspaces that the books moved.
-// The stream carries no data; each listener re-reads through its own session.
-const streams = new Set();
-app.use((req, res, next) => {
-  if (req.method !== 'GET' && req.method !== 'HEAD' && !req.path.startsWith('/api/auth/')) {
-    res.on('finish', () => {
-      if (res.statusCode < 400) for (const stream of streams) stream.write('event: books\ndata: changed\n\n');
-    });
-  }
-  next();
-});
-setInterval(() => { for (const stream of streams) stream.write(': keep-alive\n\n'); }, 25000).unref();
-
-function cookieParser(req, _res, next) {
+app.use(express.json({ limit: '1mb' }));
+app.use((req, _res, next) => {
   req.cookies = {};
   for (const part of String(req.headers.cookie || '').split(';')) {
     const i = part.indexOf('=');
     if (i > 0) { try { req.cookies[part.slice(0, i).trim()] = decodeURIComponent(part.slice(i + 1).trim()); } catch {} }
   }
   next();
-}
+});
+const PUBLIC_DIR = path.join(__dirname, '..', 'public');
+app.use(express.static(PUBLIC_DIR));
 
-const now = () => R.refAt(db);
-const uid = (p) => `${p}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
+// Live updates: every successful write tells open workspaces that something changed.
+// The stream carries no data; each listener re-reads through its own session.
+const streams = new Set();
+app.use((req, res, next) => {
+  if (req.method !== 'GET' && req.method !== 'HEAD' && !req.path.startsWith('/api/auth/')) {
+    res.on('finish', () => { if (res.statusCode < 400) for (const s of streams) s.write('event: changed\ndata: 1\n\n'); });
+  }
+  next();
+});
+setInterval(() => { for (const s of streams) s.write(': keep-alive\n\n'); }, 25000).unref();
+
 const one = (sql, ...a) => db.prepare(sql).get(...a) || null;
 const all = (sql, ...a) => db.prepare(sql).all(...a);
-function audit(actorId, action, subject, detail) {
-  db.prepare('INSERT INTO audit_log (actor_id,action,subject,detail,created_at) VALUES (?,?,?,?,?)')
-    .run(actorId || null, action, subject, detail == null ? null : String(detail), now());
-}
-function afterImage(offerId, action, actorId, figures) {
-  db.prepare('INSERT INTO after_images (offer_id,action,actor_id,figures_json,created_at) VALUES (?,?,?,?,?)')
-    .run(offerId, action, actorId || null, JSON.stringify(figures), now());
-}
+const run = (sql, ...a) => db.prepare(sql).run(...a);
+const now = () => new Date().toISOString();
+const uid = (p) => `${p}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+function reject(message, status = 400, details) { const e = new Error(message); e.status = status; e.details = details; throw e; }
+const text = (v, label, max = 200) => {
+  if (typeof v !== 'string' || !v.trim()) reject(`${label} is required.`);
+  if (v.trim().length > max) reject(`${label} is too long.`);
+  return v.trim();
+};
 
-function money(c) {
-  if (c === null || c === undefined) return null;
-  const s = c < 0 ? '-' : '', a = Math.abs(c);
-  return `${s}$${Math.floor(a / 100).toLocaleString('en-US')}.${String(a % 100).padStart(2, '0')}`;
-}
-const bp = (b) => (b === null || b === undefined) ? null : `${Math.floor(b / 100)}.${String(b % 100).padStart(2, '0')}%`;
-const romanTier = (t) => ({ 1: 'I', 2: 'II', 3: 'III' })[t] || String(t);
-
-// Identity is resolved from the session ONLY.
 function currentUser(req) {
   const t = req.cookies.hireops_session;
-  if (!t) return null;
-  const s = one('SELECT * FROM sessions WHERE token=?', t);
-  if (!s) return null;
-  const u = one('SELECT * FROM users WHERE id=?', s.user_id);
-  if (!u || u.suspended) return null;
-  return u;
+  const s = t && one('SELECT user_id FROM sessions WHERE token=?', t);
+  return s ? one('SELECT id,name,email,role FROM users WHERE id=?', s.user_id) : null;
 }
 function auth(...roles) {
   return (req, res, next) => {
     const u = currentUser(req);
-    if (!u) return res.status(401).json({ error: 'authentication required' });
-    if (roles.length && !roles.includes(u.role))
-      return res.status(403).json({ error: `role ${u.role} may not perform this action`,
-        your_role: u.role, allowed_roles: roles });
+    if (!u) return res.status(401).json({ error: 'Sign in to continue.' });
+    if (roles.length && !roles.includes(u.role)) return res.status(403).json({ error: 'Your role cannot do this.' });
     req.user = u;
     next();
   };
 }
-const bad = (res, msg, code) => res.status(code || 400).json({ error: msg });
-const fail = (res, code, msg, extra) => res.status(code).json({ error: msg, ...(extra || {}) });
 
-// ================================================================= auth routes
+// ------------------------------------------------------------------ sign-in
 app.post('/api/auth/login', (req, res) => {
   const { email, password } = req.body || {};
-  const u = one('SELECT * FROM users WHERE email=?', String(email || '').toLowerCase());
-  if (!u || u.password !== password) return bad(res, 'invalid credentials', 401);
+  const u = one('SELECT * FROM users WHERE email=?', String(email || '').trim().toLowerCase());
+  if (!u || u.password !== password) return res.status(401).json({ error: 'That email and password do not match an account.' });
   const token = crypto.randomBytes(24).toString('hex');
-  db.prepare('INSERT INTO sessions (token,user_id,created_at) VALUES (?,?,?)').run(token, u.id, now());
+  run('INSERT INTO sessions (token,user_id,created_at) VALUES (?,?,?)', token, u.id, now());
   res.setHeader('Set-Cookie', `hireops_session=${token}; Path=/; HttpOnly; SameSite=Lax`);
-  audit(u.id, 'LOGIN', u.id, null);
-  res.json({ id: u.id, name: u.name, email: u.email, role: u.role, authority_tier: u.authority_tier });
+  res.json({ id: u.id, name: u.name, email: u.email, role: u.role });
 });
 app.post('/api/auth/logout', (req, res) => {
-  const t = req.cookies.hireops_session;
-  if (t) db.prepare('DELETE FROM sessions WHERE token=?').run(t);
+  if (req.cookies.hireops_session) run('DELETE FROM sessions WHERE token=?', req.cookies.hireops_session);
   res.setHeader('Set-Cookie', 'hireops_session=; Path=/; HttpOnly; Max-Age=0; SameSite=Lax');
   res.json({ ok: true });
 });
 app.get('/api/auth/me', (req, res) => {
   const u = currentUser(req);
-  if (!u) return bad(res, 'authentication required', 401);
-  res.json({ id: u.id, name: u.name, email: u.email, role: u.role, authority_tier: u.authority_tier });
+  return u ? res.json(u) : res.status(401).json({ error: 'Sign in to continue.' });
 });
-
-// ================================================================= views
-const userBrief = (id) => id ? one('SELECT id,name,role,authority_tier FROM users WHERE id=?', id) : null;
-
-function compositionView(o) {
-  const c = R.composition(o);
-  return { ...c,
-    base_salary_display: money(c.base_salary_cents), signing_bonus_display: money(c.signing_bonus_cents),
-    relocation_display: money(c.relocation_cents),
-    equity_intrinsic_display: money(c.equity_intrinsic_cents),
-    equity_fair_display: money(c.equity_fair_cents),
-    equity_strike_display: money(c.equity_strike_cents),
-    equity_annualized_display: money(c.equity_annualized_cents),
-    committed_run_rate_display: money(c.committed_run_rate_cents),
-    band_basis_display: money(c.band_basis_cents),
-    required_tier_label: romanTier(c.required_tier),
-  };
-}
-
-function offerView(o) {
-  const comp = compositionView(o);
-  const grant = one('SELECT * FROM equity_grants WHERE offer_id=? ORDER BY id', o.id);
-  const cancellation = one('SELECT * FROM equity_cancellations WHERE offer_id=? ORDER BY id DESC', o.id);
-  const lineage = R.lineageIds(db, o.id);
-  const accrual = one('SELECT * FROM referral_accruals WHERE offer_id=? ORDER BY id', lineage[0]);
-  const outflow = R.netSigningOutflow(db, o.id);
-  const remits = outflow.rows
-    .map((r) => ({ ...r, amount_display: money(r.amount_cents) }));
-  const commits = all('SELECT * FROM commitment_movements WHERE offer_id=? ORDER BY id', o.id)
-    .map((m) => ({ ...m, movement_display: money(m.movement_cents) }));
-
-  const v = {
-    id: o.id, req_id: o.req_id, candidate: o.candidate, status: o.status,
-    lineage_ids: lineage, lineage_root_id: lineage[0],
-    start_date: o.start_date, referred_by: o.referred_by, referred_hire_start: o.referred_hire_start,
-    supersedes_id: o.supersedes_id, superseded_by_id: o.superseded_by_id,
-    rescinded_at: o.rescinded_at, rescission_effective_at: o.rescission_effective_at,
-    raised_by: o.raised_by, approved_by: o.approved_by, approved_at: o.approved_at,
-    raiser: userBrief(o.raised_by), approver: userBrief(o.approved_by),
-    composition: comp,
-    equity_grant: grant ? { ...grant, cancelled: null } : null,
-    referral_accrual: accrual ? referralAccrualView(accrual) : null,
-    remittances: remits,
-    net_signing_outflow_cents: outflow.net_signing_outflow_cents,
-    net_signing_outflow_display: money(outflow.net_signing_outflow_cents),
-    commitment_movements: commits,
-  };
-  // A rescinded offer surfaces its clawback and equity-cancellation figures,
-  // computed at ITS OWN stored effective date rather than any wall clock.
-  if (o.status === 'RESCINDED' && o.rescission_effective_at) {
-    const claw = R.signingClawback(o, o.rescission_effective_at);
-    v.clawback = { ...claw,
-      signing_paid_display: money(claw.signing_paid_cents),
-      signing_vested_display: money(claw.signing_vested_cents),
-      clawback_display: money(claw.clawback_cents), vested_pct: bp(claw.vested_bp) };
-    if (grant) {
-      const ec = R.equityCancellation(grant, o.rescission_effective_at);
-      v.equity_grant.cancelled = { ...ec, vested_pct: bp(ec.vested_bp) };
-    }
-  }
-  if (cancellation) v.equity_cancellation = cancellation;
-  return v;
-}
-
-function referralAccrualView(ra) {
-  const rv = R.referralVested(ra, now());
-  return { ...ra, ...rv,
-    referrer: one('SELECT id,name FROM employees WHERE id=?', ra.referrer_id),
-    total_display: money(rv.total_cents), at_hire_display: money(rv.at_hire_cents),
-    contingent_display: money(rv.contingent_cents), vested_display: money(rv.vested_cents) };
-}
-
-function reqView(r) {
-  const hr = R.headroom(db, r.id);
-  return {
-    id: r.id, title: r.title, dept: r.dept, note: r.note,
-    budget_cents: r.budget_cents,
-    movements: all('SELECT kind,offer_id,movement_cents FROM commitment_movements WHERE req_id=? ORDER BY id', r.id)
-      .map((m) => ({ ...m, movement_display: money(m.movement_cents) })),
-    budget_display: money(r.budget_cents),
-    headroom_cents: hr.headroom_cents, headroom_display: money(hr.headroom_cents),
-    committed_sum_cents: hr.committed_sum_cents, committed_sum_display: money(hr.committed_sum_cents),
-    offers: all('SELECT id FROM offers WHERE req_id=? ORDER BY id', r.id).map((x) => x.id) };
-}
-
-// ================================================================= bootstrap / reads
 app.get('/api/events', auth(), (req, res) => {
   res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache, no-transform', 'X-Accel-Buffering': 'no' });
   res.write('retry: 3000\n\n');
   streams.add(res);
   req.on('close', () => streams.delete(res));
 });
-let changeSetView = null; // Supplied by the change-set module below.
+
+// ------------------------------------------------------------------ conversations: access and read state
+const jobOf = (a) => one('SELECT * FROM jobs WHERE id=?', a.job_id);
+/* Who may open a conversation: every recruiter and the observer, the job's own hiring
+ * manager, and the candidate the application belongs to. Only the first, third and
+ * fourth of those may write. */
+function threadAccess(user, a) {
+  if (user.role === 'recruiter') return 'write';
+  if (user.role === 'observer') return 'read';
+  if (user.role === 'hiring_manager') return jobOf(a).manager_id === user.id ? 'write' : null;
+  if (user.role === 'candidate') return a.candidate_user_id === user.id ? 'write' : null;
+  return null;
+}
+function application(id, user, need) {
+  const a = one('SELECT * FROM applications WHERE id=?', id);
+  if (!a) reject('No such application.', 404);
+  if (need) {
+    const access = threadAccess(user, a);
+    // A candidate asking about someone else's application learns nothing, not even that it exists.
+    if (!access) reject(user.role === 'candidate' ? 'No such application.' : 'This conversation belongs to another hiring manager\'s job.', user.role === 'candidate' ? 404 : 403);
+    if (need === 'write' && access !== 'write') reject('Your role can read this conversation but cannot write in it.', 403);
+  }
+  return a;
+}
+const lastRead = (userId, appId) => (one('SELECT last_read_id FROM reads WHERE user_id=? AND application_id=?', userId, appId) || { last_read_id: 0 }).last_read_id;
+const unread = (userId, appId) => one('SELECT COUNT(*) AS c FROM messages WHERE application_id=? AND id>? AND sender_id<>?', appId, lastRead(userId, appId), userId).c;
+function markRead(userId, appId, upTo) {
+  const top = (one('SELECT MAX(id) AS m FROM messages WHERE application_id=?', appId) || {}).m || 0;
+  const value = Math.max(lastRead(userId, appId), Math.min(Number.isSafeInteger(upTo) ? upTo : top, top));
+  run(`INSERT INTO reads (user_id,application_id,last_read_id) VALUES (?,?,?)
+       ON CONFLICT(user_id,application_id) DO UPDATE SET last_read_id=excluded.last_read_id`, userId, appId, value);
+}
+/* A message is seen once someone on the other side has opened the conversation at or
+ * after it: the candidate for a staff message; a recruiter or the job's hiring manager
+ * for a candidate message. The observer never counts as either side. */
+function seenBoundary(a, viewerIsCandidate) {
+  if (viewerIsCandidate) {
+    const job = jobOf(a);
+    return (one(`SELECT MAX(r.last_read_id) AS m FROM reads r JOIN users u ON u.id=r.user_id
+      WHERE r.application_id=? AND (u.role='recruiter' OR u.id=?)`, a.id, job.manager_id) || {}).m || 0;
+  }
+  return a.candidate_user_id ? lastRead(a.candidate_user_id, a.id) : 0;
+}
+function messageView(m, a, viewer, boundary) {
+  const sender = one('SELECT name,role FROM users WHERE id=?', m.sender_id);
+  const mine = m.sender_id === viewer.id;
+  return { id: m.id, body: m.body, created_at: m.created_at, sender_name: sender.name,
+    from_candidate: sender.role === 'candidate', mine, seen: mine ? m.id <= boundary : undefined };
+}
+function threadSummary(a, user) {
+  const last = one('SELECT * FROM messages WHERE application_id=? ORDER BY id DESC LIMIT 1', a.id);
+  return { unread: unread(user.id, a.id), message_count: one('SELECT COUNT(*) AS c FROM messages WHERE application_id=?', a.id).c,
+    last_message: last ? { id: last.id, body: last.body, created_at: last.created_at,
+      sender_name: one('SELECT name FROM users WHERE id=?', last.sender_id).name } : null };
+}
+
+// ------------------------------------------------------------------ workspace read
+function myUndo(user) {
+  const a = one('SELECT * FROM actions WHERE actor_id=? ORDER BY id DESC LIMIT 1', user.id);
+  return a && !a.undone ? { action_id: a.id, summary: a.summary } : null;
+}
 app.get('/api/bootstrap', auth(), (req, res) => {
+  const u = req.user;
+  if (u.role === 'candidate') {
+    // Candidate read model: own applications only, the public status wording only.
+    return res.json({ user: u, page_size: PAGE, applications: all('SELECT * FROM applications WHERE candidate_user_id=? ORDER BY created_at, id', u.id).map((a) => {
+      const job = jobOf(a);
+      return { id: a.id, job_title: job.title, team: job.team, status: LABELS[a.stage], ...threadSummary(a, u) };
+    }) });
+  }
+  const users = all("SELECT id,name,role FROM users WHERE role<>'candidate' ORDER BY name");
   res.json({
-    user: { id: req.user.id, name: req.user.name, email: req.user.email, role: req.user.role, authority_tier: req.user.authority_tier },
-    clock: R.clock(db),
-    constants: dbmod.reference.constants,
-    requisitions: all('SELECT * FROM requisitions ORDER BY id').map(reqView),
-    offers: all('SELECT * FROM offers ORDER BY id').map(offerView),
-    referral_accruals: all('SELECT * FROM referral_accruals ORDER BY id').map(referralAccrualView),
-    commitment_movements: all('SELECT * FROM commitment_movements ORDER BY id')
-      .map((m) => ({ ...m, movement_display: money(m.movement_cents) })),
-    equity_grants: all('SELECT * FROM equity_grants ORDER BY id'),
-    equity_cancellations: all('SELECT * FROM equity_cancellations ORDER BY id'),
-    remittances: all('SELECT * FROM remittances ORDER BY id').map((r) => ({ ...r, amount_display: money(r.amount_cents) })),
-    after_images: all('SELECT * FROM after_images ORDER BY id')
-      .map((a) => ({ ...a, figures: safeParse(a.figures_json) })),
-    users: all('SELECT id,name,email,role,authority_tier FROM users ORDER BY id'),
-    employees: all('SELECT * FROM employees ORDER BY id'),
-    change_sets: all('SELECT * FROM change_sets ORDER BY rowid DESC').map(changeSetView),
-    audit: all('SELECT * FROM audit_log ORDER BY id DESC'),
+    user: u, stages: STAGES, page_size: PAGE, users,
+    jobs: all('SELECT * FROM jobs ORDER BY title, id'),
+    applications: all('SELECT * FROM applications ORDER BY job_id, stage, position').map((a) => {
+      const access = threadAccess(u, a);
+      return { id: a.id, job_id: a.job_id, candidate_name: a.candidate_name, candidate_email: a.candidate_email, source: a.source,
+        stage: a.stage, position: a.position, version: a.version, rejected_from: a.rejected_from, reject_reason: a.reject_reason,
+        note_count: one('SELECT COUNT(*) AS c FROM notes WHERE application_id=?', a.id).c,
+        thread: access, ...(access ? threadSummary(a, u) : {}) };
+    }),
+    activity: all('SELECT a.*, u.name AS actor_name FROM activity a JOIN users u ON u.id=a.actor_id ORDER BY a.id DESC'),
+    undo: myUndo(u),
   });
 });
-function safeParse(s) { try { return JSON.parse(s); } catch { return null; } }
 
-app.get('/api/offers/:id', auth(), (req, res) => {
-  const o = one('SELECT * FROM offers WHERE id=?', req.params.id);
-  return o ? res.json(offerView(o)) : bad(res, 'no such offer', 404);
-});
-app.get('/api/requisitions/:id', auth(), (req, res) => {
-  const r = one('SELECT * FROM requisitions WHERE id=?', req.params.id);
-  return r ? res.json(reqView(r)) : bad(res, 'no such requisition', 404);
-});
+// ------------------------------------------------------------------ jobs and candidates
+function log(jobId, appId, actor, kind, detail, actionId) {
+  run('INSERT INTO activity (job_id,application_id,actor_id,kind,detail,action_id,created_at) VALUES (?,?,?,?,?,?,?)',
+    jobId, appId, actor.id, kind, detail, actionId || null, now());
+}
+const column = (jobId, stage) => all('SELECT id FROM applications WHERE job_id=? AND stage=? ORDER BY position, id', jobId, stage).map((r) => r.id);
+function writeColumn(ids) { ids.forEach((id, i) => run('UPDATE applications SET position=? WHERE id=?', i + 1, id)); }
 
-// Validation precedes writes. Express converts our explicit errors into safe JSON.
-function reject(message, status = 400) { const e = new Error(message); e.status = status; throw e; }
-function idValue(value, label) {
-  if (typeof value !== 'string' || !value.trim()) reject(`${label} must be a nonblank string`);
-  return value;
-}
-function integer(value, label) {
-  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0)
-    reject(`${label} must be a nonnegative safe integer`);
-  return value;
-}
-function dateValue(value, label) {
-  if (!R.validDate(value)) reject(`${label} must be a real UTC date or ISO instant ending in Z`);
-  return value;
-}
-const economicKeys = ['base_salary_cents', 'signing_bonus_cents', 'relocation_cents', 'equity_units', 'equity_fair_cents', 'equity_strike_cents'];
-function economics(body, prior = null) {
-  const result = {};
-  for (const key of economicKeys) result[key] = integer(Object.hasOwn(body, key) ? body[key] : (prior ? prior[key] : 0), key);
-  R.composition(result); // Also checks derived integer ranges before persistence.
-  return result;
-}
-function movement(o, kind, cents, ref) {
-  db.prepare('INSERT INTO commitment_movements (req_id,offer_id,kind,movement_cents,ref,created_at) VALUES (?,?,?,?,?,?)')
-    .run(o.req_id, o.id, kind, cents, ref || o.id, now());
-}
-function remit(o, kind, cents) {
-  db.prepare('INSERT INTO remittances (id,offer_id,kind,amount_cents,ref,created_at) VALUES (?,?,?,?,?,?)')
-    .run(`RM-${o.id}-${kind}`, o.id, kind, cents, o.id, now());
-}
-function mintGrant(o) {
-  if (!o.equity_units) return;
-  const v = dbmod.reference.constants.equity_vesting;
-  db.prepare('INSERT INTO equity_grants (id,offer_id,units,strike_cents,fair_cents,grant_date,schedule_note,state,created_at) VALUES (?,?,?,?,?,?,?,?,?)')
-    .run(`GR-${o.id}`, o.id, o.equity_units, o.equity_strike_cents, o.equity_fair_cents, o.start_date,
-      `${v.cliff_bp / 100}% at the ${v.cliff_months}-month cliff, then +${v.monthly_bp / 100}% per completed month to 100% at ${v.full_months} months`, 'LIVE', now());
-}
-function snapshot(o) {
-  const view = offerView(o);
-  return { ...view, headroom_cents: R.headroom(db, o.req_id).headroom_cents };
-}
-
-function receipt(action, actor, before, after, settlement = {}) {
-  afterImage(after.id, action, actor.id, { actor_id: actor.id, actor_name: actor.name, actor_role: actor.role, before, after, ...settlement });
-  audit(actor.id, `OFFER_${{ APPROVE: 'APPROVED', REVISE: 'REVISED', RESCIND: 'RESCINDED' }[action]}`, after.id,
-    `${before.candidate}: ${before.id} ${before.status} -> ${after.id} ${after.status}; `
-    // A coordinated member reports every requisition of its transaction, never one
-    // requisition's opening balance against another's closing balance.
-    + (settlement.transaction_headrooms
-      ? `headroom ${settlement.transaction_headrooms.map((r) => `${r.req_id} ${money(r.before_headroom_cents)} -> ${money(r.after_headroom_cents)}`).join(', ')}; `
-      : `headroom ${money(before.headroom_cents)} -> ${money(after.headroom_cents)}; `)
-    + `run-rate ${money(before.composition.committed_run_rate_cents)} -> ${money(after.composition.committed_run_rate_cents)}; `
-    + `signing net ${money(before.net_signing_outflow_cents)} -> ${money(after.net_signing_outflow_cents)}`);
-}
-function storedOffer(id, status) {
-  const o = one('SELECT * FROM offers WHERE id=?', id);
-  if (!o) reject('no such offer', 404);
-  if (o.status !== status || o.superseded_by_id) reject(`offer ${o.id} is ${o.status}; action requires current ${status}`, 409);
-  return o;
-}
-function budgetCheck(rate, available) {
-  if (rate > available) reject(`committed run-rate ${money(rate)} exceeds available headroom ${money(available)}; shortfall ${money(rate - available)}`, 409);
-}
-
-app.post('/api/requisitions', auth(), (req, res) => {
-  const b = req.body || {}, id = idValue(b.id, 'requisition id');
-  if (one('SELECT id FROM requisitions WHERE id=?', id)) reject('requisition id already exists', 409);
-  const budget = integer(b.budget_cents, 'budget_cents');
+app.post('/api/jobs', auth('recruiter'), (req, res) => {
+  const b = req.body || {};
+  const jobTitle = text(b.title, 'Job title'), team = text(b.team, 'Team');
+  const manager = one("SELECT id FROM users WHERE id=? AND role='hiring_manager'", b.manager_id);
+  if (!manager) reject('Choose a hiring manager.');
+  if (!Number.isInteger(b.interview_limit) || b.interview_limit < 1 || b.interview_limit > 50) reject('Interview limit must be a whole number from 1 to 50.');
+  const id = uid('JOB');
   db.transaction(() => {
-    db.prepare('INSERT INTO requisitions (id,title,dept,budget_cents,stated_headroom_scalar_cents,note) VALUES (?,?,?,?,?,?)')
-      .run(id, String(b.title || 'Untitled requisition'), String(b.dept || 'General'), budget, 0, b.note == null ? null : String(b.note));
-    audit(req.user.id, 'REQUISITION_CREATED', id, String(b.title || ''));
+    run('INSERT INTO jobs (id,title,team,recruiter_id,manager_id,interview_limit) VALUES (?,?,?,?,?,?)', id, jobTitle, team, req.user.id, manager.id, b.interview_limit);
+    log(id, null, req.user, 'JOB_OPENED', `${req.user.name} opened ${jobTitle}`);
   })();
-  res.json({ created: true, ...reqView(one('SELECT * FROM requisitions WHERE id=?', id)) });
+  res.json(one('SELECT * FROM jobs WHERE id=?', id));
 });
 
-app.post('/api/offers', auth('recruiter', 'comp_partner', 'approver', 'finance_controller'), (req, res) => {
-  const b = req.body || {}, id = idValue(b.id, 'offer id');
-  if (one('SELECT id FROM offers WHERE id=?', id)) reject('offer id already exists', 409);
-  const reqId = idValue(b.req_id, 'requisition id');
-  if (!one('SELECT id FROM requisitions WHERE id=?', reqId)) reject('a valid requisition is required');
-  const candidate = idValue(b.candidate, 'candidate'), e = economics(b);
-  const start = dateValue(b.start_date, 'offer start date');
-  const referrer = b.referred_by == null || b.referred_by === '' ? null : idValue(b.referred_by, 'referrer');
-  if (referrer && !one('SELECT id FROM employees WHERE id=?', referrer)) reject('a valid referring employee is required');
-  const referralStart = referrer ? dateValue(b.referred_hire_start, 'referred hire start date') : null;
+app.post('/api/applications', auth('recruiter'), (req, res) => {
+  const b = req.body || {};
+  const job = one('SELECT * FROM jobs WHERE id=?', b.job_id);
+  if (!job) reject('Choose a job.');
+  const name = text(b.candidate_name, 'Candidate name'), source = text(b.source, 'Source', 80);
+  const email = String(b.candidate_email || '').trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 200) reject('Enter a valid email address.', 400, { field: 'candidate_email' });
+  if (one('SELECT id FROM applications WHERE job_id=? AND candidate_email=?', job.id, email))
+    reject('This person has already applied to this job.', 409, { field: 'candidate_email' });
+  const account = one("SELECT id FROM users WHERE email=? AND role='candidate'", email);
+  const id = uid('APP');
   db.transaction(() => {
-    db.prepare(`INSERT INTO offers (id,req_id,candidate,status,base_salary_cents,signing_bonus_cents,relocation_cents,
-      equity_units,equity_fair_cents,equity_strike_cents,referred_by,referred_hire_start,start_date,raised_by,raised_at,note)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
-      .run(id, reqId, candidate, 'PENDING', ...economicKeys.map(k => e[k]), referrer, referralStart, start, req.user.id, now(), b.note == null ? null : String(b.note));
-    audit(req.user.id, 'OFFER_DRAFTED', id, `${candidate} on ${reqId}`);
+    run(`INSERT INTO applications (id,job_id,candidate_name,candidate_email,candidate_user_id,source,stage,position,created_at)
+      VALUES (?,?,?,?,?,?,?,?,?)`, id, job.id, name, email, account ? account.id : null, source, 'APPLIED', column(job.id, 'APPLIED').length + 1, now());
+    log(job.id, id, req.user, 'ADDED', `${req.user.name} added ${name} to Applied`);
   })();
-  res.json({ created: true, ...offerView(one('SELECT * FROM offers WHERE id=?', id)) });
+  res.json(one('SELECT * FROM applications WHERE id=?', id));
 });
 
-app.post('/api/offers/:id/approve', auth('approver'), (req, res) => {
-  let after;
-  db.transaction(() => {
-    const o = storedOffer(req.params.id, 'PENDING'), before = snapshot(o), comp = R.composition(o);
-    if (req.user.id === o.raised_by) reject('the person who raised an offer may not approve it', 409);
-    if ((req.user.authority_tier || 0) < comp.required_tier)
-      reject(`held authority tier ${req.user.authority_tier || 0} does not meet required tier ${comp.required_tier}`, 403);
-    budgetCheck(comp.committed_run_rate_cents, before.headroom_cents);
-    db.prepare("UPDATE offers SET status='COMMITTED',approved_by=?,approved_at=? WHERE id=?").run(req.user.id, now(), o.id);
-    movement(o, 'COMMIT', -comp.committed_run_rate_cents);
-    mintGrant(o);
-    if (o.signing_bonus_cents) remit(o, 'SIGNING', o.signing_bonus_cents);
-    if (o.referred_by) {
-      const c = dbmod.reference.constants, atHire = R.halfUpRatio(BigInt(c.referral_bonus_cents) * BigInt(c.referral_at_hire_bp), 10000);
-      db.prepare('INSERT INTO referral_accruals (id,offer_id,referrer_id,candidate,referred_hire_start,total_cents,at_hire_cents,contingent_cents,created_at) VALUES (?,?,?,?,?,?,?,?,?)')
-        .run(`RA-${o.id}`, o.id, o.referred_by, o.candidate, o.referred_hire_start, c.referral_bonus_cents, atHire, c.referral_bonus_cents - atHire, now());
-    }
-    after = snapshot(one('SELECT * FROM offers WHERE id=?', o.id));
-    receipt('APPROVE', req.user, before, after);
-  })();
-  res.json({ approved: true, ...after, req_headroom_cents: after.headroom_cents, req_headroom_display: money(after.headroom_cents) });
-});
-
-app.post('/api/offers/:id/revise', auth('recruiter', 'approver', 'finance_controller'), (req, res) => {
-  let before, after, old;
-  db.transaction(() => {
-    const o = storedOffer(req.params.id, 'COMMITTED');
-    before = snapshot(o);
-    const e = economics(req.body || {}, o), comp = R.composition(e);
-    const available = R.sumSafe(before.headroom_cents, before.composition.committed_run_rate_cents);
-    budgetCheck(comp.committed_run_rate_cents, available);
-    let id = `${o.id}-R`;
-    while (one('SELECT id FROM offers WHERE id=?', id)) id = uid('OFF');
-    const revised = { ...o, ...e, id };
-    db.prepare(`INSERT INTO offers (id,req_id,candidate,status,base_salary_cents,signing_bonus_cents,relocation_cents,
-      equity_units,equity_fair_cents,equity_strike_cents,referred_by,referred_hire_start,start_date,
-      raised_by,raised_at,approved_by,approved_at,supersedes_id,note) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
-      .run(id, o.req_id, o.candidate, 'COMMITTED', ...economicKeys.map(k => e[k]), o.referred_by, o.referred_hire_start,
-        o.start_date, o.raised_by, o.raised_at, o.approved_by, o.approved_at, o.id, `Revision of ${o.id}`);
-    db.prepare("UPDATE offers SET status='SUPERSEDED',superseded_by_id=? WHERE id=?").run(id, o.id);
-    movement(o, 'REVERSAL', before.composition.committed_run_rate_cents, id);
-    movement(revised, 'COMMIT', -comp.committed_run_rate_cents);
-    const delta = e.signing_bonus_cents - o.signing_bonus_cents;
-    if (delta !== 0) remit(revised, 'SIGNING_ADJUSTMENT', delta);
-    db.prepare("UPDATE equity_grants SET state='SUPERSEDED' WHERE offer_id=?").run(o.id);
-    mintGrant(revised);
-    after = snapshot(one('SELECT * FROM offers WHERE id=?', id));
-    old = offerView(one('SELECT * FROM offers WHERE id=?', o.id));
-    receipt('REVISE', req.user, before, after, { signing_adjustment_cents: delta });
-  })();
-  res.json({ revised: true, revised_offer_id: after.id, superseded_offer_id: before.id,
-    reversal_cents: before.composition.committed_run_rate_cents, reversal_display: money(before.composition.committed_run_rate_cents),
-    fresh_commit_cents: after.composition.committed_run_rate_cents, fresh_commit_display: money(after.composition.committed_run_rate_cents),
-    req_headroom_cents: after.headroom_cents, req_headroom_display: money(after.headroom_cents), revised_offer: after, superseded_offer: old });
-});
-
-app.post('/api/offers/:id/rescind', auth('finance_controller'), (req, res) => {
-  let after, claw, ec;
-  const effective = dateValue((req.body || {}).effective_at, 'rescission effective date');
-  db.transaction(() => {
-    const o = storedOffer(req.params.id, 'COMMITTED'), before = snapshot(o);
-    claw = R.signingClawback(o, effective);
-    const grant = one("SELECT * FROM equity_grants WHERE offer_id=? AND state='LIVE'", o.id);
-    ec = grant ? R.equityCancellation(grant, effective) : null;
-    db.prepare("UPDATE offers SET status='RESCINDED',rescinded_at=?,rescission_effective_at=? WHERE id=?").run(now(), effective, o.id);
-    movement(o, 'RELEASE', before.composition.committed_run_rate_cents);
-    if (claw.clawback_cents > 0) remit(o, 'CLAWBACK_CONTRA', claw.clawback_cents);
-    if (ec && ec.cancelled_units > 0) {
-      db.prepare('INSERT INTO equity_cancellations (id,grant_id,offer_id,effective_at,vested_units,cancelled_units,ref,created_at) VALUES (?,?,?,?,?,?,?,?)')
-        .run(`EC-${o.id}`, grant.id, o.id, effective, ec.vested_units, ec.cancelled_units, o.id, now());
-      db.prepare("UPDATE equity_grants SET state='CANCELLED_PARTIAL' WHERE id=?").run(grant.id);
-    }
-    after = snapshot(one('SELECT * FROM offers WHERE id=?', o.id));
-    receipt('RESCIND', req.user, before, after, { effective_at: effective, signing_settlement: claw, equity_settlement: ec });
-  })();
-  res.json({ rescinded: true, ...after, effective_at: effective,
-    clawback_cents: claw.clawback_cents, clawback_display: money(claw.clawback_cents),
-    signing_vested_cents: claw.signing_vested_cents, signing_vested_display: money(claw.signing_vested_cents),
-    contra_minted: claw.clawback_cents > 0, equity_cancelled_units: ec ? ec.cancelled_units : 0,
-    equity_vested_units: ec ? ec.vested_units : 0, req_headroom_cents: after.headroom_cents, req_headroom_display: money(after.headroom_cents) });
-});
-
-changeSetView = require('./change-sets')({app, db, R, auth, reject, idValue, economics, economicKeys,
-  storedOffer, snapshot, movement, remit, mintGrant, receipt, audit, now, uid, one, all});
-
-// ================================================================= append-only trail (edits/deletes refused)
-function trailImmutable(_req, res) {
-  return res.status(405).json({ error: 'the audit trail and after-images are append-only; entries cannot be edited or deleted' });
-}
-app.put('/api/after_images/:id', auth(), trailImmutable);
-app.patch('/api/after_images/:id', auth(), trailImmutable);
-app.delete('/api/after_images/:id', auth(), trailImmutable);
-app.put('/api/audit/:id', auth(), trailImmutable);
-app.patch('/api/audit/:id', auth(), trailImmutable);
-app.delete('/api/audit/:id', auth(), trailImmutable);
-
-// ================================================================= fallthrough
-app.use('/api', (_req, res) => res.status(404).json({ error: 'no such endpoint' }));
-app.use((req, res, next) => {
-  if (req.method === 'GET' && !req.path.startsWith('/api/')) {
-    const idx = path.join(PUBLIC_DIR, 'index.html');
-    if (fs.existsSync(idx)) return res.sendFile(idx);
-    return res.status(200).type('html').send('<!doctype html><title>App</title><p>Application is running.</p>');
+// ------------------------------------------------------------------ moving cards
+/* Validates one card's move for this person and returns the stage it lands in.
+ * Nothing is written here. */
+function checkMove(a, job, toStage, user, reason, givenVersion) {
+  if (user.role !== 'recruiter' && user.role !== 'hiring_manager') reject('Your role cannot move candidates.', 403);
+  if (!STAGES.includes(toStage)) reject('Choose a stage.');
+  if (a.version !== givenVersion) {
+    const last = one("SELECT a.detail FROM activity a WHERE a.application_id=? ORDER BY a.id DESC LIMIT 1", a.id);
+    reject(`${a.candidate_name} was changed by someone else${last ? ' (' + last.detail + ')' : ''}. Nothing was moved; the board now shows the current position.`,
+      409, { conflict: 'stale', application_id: a.id });
   }
+  const from = a.stage;
+  if (from !== toStage) {
+    if (toStage === 'REJECTED') {
+      if (from === 'HIRED') reject(`${a.candidate_name} is hired and cannot be rejected.`, 409, { application_id: a.id });
+      if (typeof reason !== 'string' || !reason.trim()) reject('Give a reason for rejecting.', 400, { field: 'reason', application_id: a.id });
+    } else if (from === 'REJECTED') {
+      if (toStage !== a.rejected_from) reject(`${a.candidate_name} can only be reopened to ${title(a.rejected_from)}, the stage they were rejected from.`, 409, { application_id: a.id });
+    } else if (Math.abs(FLOW.indexOf(toStage) - FLOW.indexOf(from)) !== 1) {
+      reject(`${a.candidate_name} can only move one stage at a time; ${title(from)} to ${title(toStage)} skips a stage.`, 409, { application_id: a.id });
+    }
+  }
+  if (user.role === 'hiring_manager') {
+    if (job.manager_id !== user.id) reject('Only this job\'s own hiring manager can move its candidates.', 403, { application_id: a.id });
+    const origin = from === 'REJECTED' ? a.rejected_from : from;
+    const target = toStage === 'REJECTED' ? origin : toStage;
+    if (!MANAGER_STAGES.includes(origin) || !MANAGER_STAGES.includes(target) || (toStage === 'REJECTED' && from === 'HIRED')
+      || (from === 'REJECTED' && toStage === 'REJECTED'))
+      reject('A hiring manager works only between Interview, Offer and Hired.', 403, { application_id: a.id });
+  }
+}
+function describe(a, from, to, actor, reason) {
+  if (from === to) return `${actor.name} reordered ${a.candidate_name} in ${title(to)}`;
+  if (to === 'REJECTED') return `${actor.name} rejected ${a.candidate_name} from ${title(from)}: ${reason.trim()}`;
+  if (from === 'REJECTED') return `${actor.name} reopened ${a.candidate_name} to ${title(to)}`;
+  return `${actor.name} moved ${a.candidate_name} from ${title(from)} to ${title(to)}`;
+}
+/* Moves the given cards, in the given order, into one stage of one job. All of it
+ * happens or none of it does. beforeId places a single card ahead of another card. */
+function moveCards(items, toStage, beforeId, reason, user, kind) {
+  return db.transaction(() => {
+    let cards = items.map((it) => {
+      const a = one('SELECT * FROM applications WHERE id=?', it.id);
+      if (!a) reject('No such application.', 404);
+      return a;
+    });
+    if (new Set(cards.map((c) => c.id)).size !== cards.length) reject('A candidate is listed twice.');
+    const job = one('SELECT * FROM jobs WHERE id=?', cards[0].job_id);
+    if (cards.some((c) => c.job_id !== job.id)) reject('Select candidates from one job at a time.');
+    if (cards.length > 1) {                    // several together arrive in the order they had on the board
+      const rank = (c) => STAGES.indexOf(c.stage) * 100000 + c.position;
+      const order = cards.map((c, i) => i).sort((x, y) => rank(cards[x]) - rank(cards[y]));
+      [cards, items] = [order.map((i) => cards[i]), order.map((i) => items[i])];
+    }
+    cards.forEach((a, i) => checkMove(a, job, toStage, user, reason, items[i].version));
+    const entering = cards.filter((c) => c.stage !== 'INTERVIEW').length;
+    if (toStage === 'INTERVIEW' && entering) {
+      const held = column(job.id, 'INTERVIEW').length;
+      if (held + entering > job.interview_limit)
+        reject(`Interview is full for ${job.title}: ${held} of ${job.interview_limit} places are taken and this would add ${entering}.`, 409, { conflict: 'limit' });
+    }
+    const moving = new Set(cards.map((c) => c.id));
+    if (beforeId != null) {
+      const anchor = one('SELECT * FROM applications WHERE id=?', beforeId);
+      if (!anchor || anchor.job_id !== job.id || anchor.stage !== toStage || moving.has(anchor.id))
+        reject('That position is no longer on this board. Nothing was moved.', 409, { conflict: 'stale' });
+    }
+    const before = cards.map((a) => ({ id: a.id, stage: a.stage, index: column(job.id, a.stage).indexOf(a.id),
+      rejected_from: a.rejected_from, reject_reason: a.reject_reason, version_after: a.version + 1 }));
+    const touched = new Set([toStage, ...cards.map((c) => c.stage)]);
+    const columns = Object.fromEntries([...touched].map((s) => [s, column(job.id, s).filter((id) => !moving.has(id))]));
+    const at = beforeId != null ? columns[toStage].indexOf(beforeId) : columns[toStage].length;
+    columns[toStage].splice(at, 0, ...cards.map((c) => c.id));
+    const actionId = Number(run('INSERT INTO actions (actor_id,kind,summary,before_json,created_at) VALUES (?,?,?,?,?)', user.id, kind,
+      cards.length === 1 ? describe(cards[0], cards[0].stage, toStage, user, reason || '') : `${user.name} moved ${cards.length} candidates to ${title(toStage)}`,
+      JSON.stringify(before), now()).lastInsertRowid);
+    for (const a of cards) {
+      run('UPDATE applications SET stage=?, version=version+1, rejected_from=?, reject_reason=? WHERE id=?', toStage,
+        toStage === 'REJECTED' ? (a.stage === 'REJECTED' ? a.rejected_from : a.stage) : null,
+        toStage === 'REJECTED' ? (a.stage === 'REJECTED' ? a.reject_reason : reason.trim()) : null, a.id);
+      log(job.id, a.id, user, a.stage === toStage ? 'REORDERED' : toStage === 'REJECTED' ? 'REJECTED' : a.stage === 'REJECTED' ? 'REOPENED' : 'MOVED',
+        describe(a, a.stage, toStage, user, reason || ''), actionId);
+    }
+    for (const ids of Object.values(columns)) writeColumn(ids);
+    return { action_id: actionId, moved: cards.map((c) => c.id) };
+  }).immediate();
+}
+const version = (v) => { if (!Number.isInteger(v)) reject('Reload the board and try again.', 409, { conflict: 'stale' }); return v; };
+
+/* Only staff who may move reach the move rules. Anyone else is refused before a card is
+ * looked at, and a candidate asking about another application is told it does not exist. */
+function mayMove(user, ids) {
+  if (user.role === 'recruiter' || user.role === 'hiring_manager') return;
+  for (const id of ids) {
+    const a = one('SELECT candidate_user_id FROM applications WHERE id=?', id);
+    if (!a || (user.role === 'candidate' && a.candidate_user_id !== user.id)) reject('No such application.', 404);
+  }
+  reject('Your role cannot move candidates.', 403);
+}
+app.post('/api/applications/:id/move', auth(), (req, res) => {
+  const b = req.body || {};
+  mayMove(req.user, [req.params.id]);
+  res.json(moveCards([{ id: req.params.id, version: version(b.version) }], b.to_stage, b.before_id == null ? null : String(b.before_id), b.reason, req.user, 'MOVE'));
+});
+app.post('/api/moves/bulk', auth(), (req, res) => {
+  const b = req.body || {};
+  if (!Array.isArray(b.items) || b.items.length < 2 || b.items.length > 50) reject('Select between 2 and 50 candidates to move together.');
+  mayMove(req.user, b.items.map((it) => String((it || {}).id)));
+  res.json(moveCards(b.items.map((it) => ({ id: String((it || {}).id), version: version((it || {}).version) })), b.to_stage, null, b.reason, req.user, 'BULK'));
+});
+
+/* Undo puts every card of my most recent move back in the stage and place it came
+ * from. It is refused, changing nothing, if any of those cards has changed since. */
+app.post('/api/undo', auth('recruiter', 'hiring_manager'), (req, res) => {
+  const result = db.transaction(() => {
+    const action = one('SELECT * FROM actions WHERE actor_id=? ORDER BY id DESC LIMIT 1', req.user.id);
+    if (!action || action.undone || action.id !== (req.body || {}).action_id) reject('There is nothing of yours to undo.', 409);
+    const before = JSON.parse(action.before_json);
+    const cards = before.map((b) => ({ b, a: one('SELECT * FROM applications WHERE id=?', b.id) }));
+    const changed = cards.find(({ a, b }) => a.version !== b.version_after);
+    if (changed) reject(`${changed.a.candidate_name} has been changed since your move, so it cannot be undone. Nothing was changed.`, 409, { conflict: 'stale' });
+    const job = one('SELECT * FROM jobs WHERE id=?', cards[0].a.job_id);
+    const returning = cards.filter(({ a, b }) => b.stage === 'INTERVIEW' && a.stage !== 'INTERVIEW').length;
+    if (returning && column(job.id, 'INTERVIEW').length + returning > job.interview_limit)
+      reject(`Interview is now full for ${job.title}, so the move cannot be undone. Nothing was changed.`, 409, { conflict: 'limit' });
+    const moving = new Set(before.map((b) => b.id));
+    const touched = new Set(cards.flatMap(({ a, b }) => [a.stage, b.stage]));
+    const columns = Object.fromEntries([...touched].map((s) => [s, column(job.id, s).filter((id) => !moving.has(id))]));
+    for (const b of [...before].sort((x, y) => x.index - y.index)) columns[b.stage].splice(Math.min(b.index, columns[b.stage].length), 0, b.id);
+    for (const { a, b } of cards) {
+      run('UPDATE applications SET stage=?, version=version+1, rejected_from=?, reject_reason=? WHERE id=?', b.stage, b.rejected_from, b.reject_reason, a.id);
+      log(job.id, a.id, req.user, 'UNDONE', `${req.user.name} undid a move: ${a.candidate_name} is back in ${title(b.stage)}`, action.id);
+    }
+    for (const ids of Object.values(columns)) writeColumn(ids);
+    run('UPDATE actions SET undone=1 WHERE id=?', action.id);
+    return { undone: action.id, restored: before.map((b) => b.id) };
+  }).immediate();
+  res.json(result);
+});
+
+// ------------------------------------------------------------------ card detail and internal notes
+/* Staff-only reads and writes on one application. A candidate asking about an application that
+ * is not theirs is told it does not exist; their own is simply not open to them. */
+function staffOnly(user, id, roles) {
+  if (roles.includes(user.role)) return;
+  if (user.role === 'candidate') {
+    const a = one('SELECT candidate_user_id FROM applications WHERE id=?', id);
+    if (!a || a.candidate_user_id !== user.id) reject('No such application.', 404);
+  }
+  reject('Your role cannot do that.', 403);
+}
+app.get('/api/applications/:id', auth(), (req, res) => {
+  staffOnly(req.user, req.params.id, STAFF);
+  const a = application(req.params.id, req.user);
+  res.json({ id: a.id, notes: all('SELECT n.id,n.body,n.created_at,u.name AS author_name FROM notes n JOIN users u ON u.id=n.author_id WHERE n.application_id=? ORDER BY n.id', a.id) });
+});
+app.post('/api/applications/:id/notes', auth(), (req, res) => {
+  staffOnly(req.user, req.params.id, ['recruiter', 'hiring_manager']);
+  const a = application(req.params.id, req.user);
+  if (req.user.role === 'hiring_manager' && jobOf(a).manager_id !== req.user.id) reject('Only this job\'s own hiring manager can add notes here.', 403);
+  const body = text((req.body || {}).body, 'Note', 2000);
+  const id = run('INSERT INTO notes (application_id,author_id,body,created_at) VALUES (?,?,?,?)', a.id, req.user.id, body, now()).lastInsertRowid;
+  res.json({ id: Number(id) });
+});
+
+// ------------------------------------------------------------------ conversations
+app.get('/api/applications/:id/messages', auth(), (req, res) => {
+  const a = application(req.params.id, req.user, 'read');
+  const boundary = seenBoundary(a, req.user.role === 'candidate');
+  const view = (m) => messageView(m, a, req.user, boundary);
+  const after = Number(req.query.after);
+  if (Number.isSafeInteger(after) && after >= 0 && req.query.after !== undefined) {
+    return res.json({ messages: all('SELECT * FROM messages WHERE application_id=? AND id>? ORDER BY id', a.id, after).map(view), seen_up_to: boundary });
+  }
+  const before = Number(req.query.before);
+  const rows = Number.isSafeInteger(before) && before > 0
+    ? all('SELECT * FROM messages WHERE application_id=? AND id<? ORDER BY id DESC LIMIT ?', a.id, before, PAGE)
+    : all('SELECT * FROM messages WHERE application_id=? ORDER BY id DESC LIMIT ?', a.id, PAGE);
+  rows.reverse();
+  const earlier = rows.length ? one('SELECT COUNT(*) AS c FROM messages WHERE application_id=? AND id<?', a.id, rows[0].id).c : 0;
+  res.json({ messages: rows.map(view), earlier_count: earlier, seen_up_to: boundary, first_unread_id:
+    (one('SELECT MIN(id) AS m FROM messages WHERE application_id=? AND id>? AND sender_id<>?', a.id, lastRead(req.user.id, a.id), req.user.id) || {}).m || null });
+});
+app.post('/api/applications/:id/messages', auth(), (req, res) => {
+  const a = application(req.params.id, req.user, 'write');
+  const body = (req.body || {}).body;
+  if (typeof body !== 'string' || !body.trim()) reject('Write a message before sending.');
+  if (body.length > 4000) reject('That message is too long.');
+  const id = db.transaction(() => {
+    const mid = Number(run('INSERT INTO messages (application_id,sender_id,body,created_at) VALUES (?,?,?,?)', a.id, req.user.id, body.replace(/\s+$/, ''), now()).lastInsertRowid);
+    markRead(req.user.id, a.id, mid);
+    return mid;
+  })();
+  res.json({ id });
+});
+app.post('/api/applications/:id/read', auth(), (req, res) => {
+  const a = application(req.params.id, req.user, 'read');
+  markRead(req.user.id, a.id, (req.body || {}).up_to);
+  res.json({ unread: unread(req.user.id, a.id) });
+});
+
+// ------------------------------------------------------------------ fallthrough
+app.use('/api', (_req, res) => res.status(404).json({ error: 'No such endpoint.' }));
+app.use((req, res, next) => {
+  if (req.method === 'GET') return res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
   next();
 });
-
 app.use((error, _req, res, _next) => {
   const status = error.status && error.status >= 400 && error.status < 500 ? error.status : 500;
-  if (status === 500) console.error('[hireops] operation failed:', error.message);
-  res.status(status).json({ error: status === 500 ? 'Operation failed; no financial changes were committed.' : error.message,
-    ...(status !== 500 && error.details ? error.details : {}) });
+  if (status === 500) console.error('[hireops] request failed:', error.message);
+  res.status(status).json({ error: status === 500 ? 'Something went wrong; nothing was changed.' : error.message, ...(status !== 500 && error.details ? error.details : {}) });
 });
-const server = app.listen(PORT, '127.0.0.1', () => {
-  parentPort.postMessage({ port: server.address().port });
-});
+const server = app.listen(PORT, '127.0.0.1', () => parentPort.postMessage({ port: server.address().port }));
 module.exports = app;
 
 }

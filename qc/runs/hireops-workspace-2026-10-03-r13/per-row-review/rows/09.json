@@ -1,0 +1,33 @@
+{
+  "number": 9,
+  "id": "agent_environment_and_network_posture_are_correct",
+  "reviewer": "row-reviewer-09",
+  "input_sha256": "12bf37abe5ba3152b1255fb9b9531665c432b86e0b0d86562adc7c802940d224",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r13/rules/WebDev Rubrics QC.xlsx (Quality Checks row 9; Internal Quality Checks row 9; read via openpyxl read_only in memory)",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/rules/harbor-webdev-rubric-qc/SKILL.md (Delivery profile, Known false positives)",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/rules/harbor-webdev-rubric-qc/references/quality-checks.md (section 9)",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (task.toml block lines 56-78)",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/rules/projects/webdev-task-template/task.toml",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/rules/projects/webdev-task-template/environment/Dockerfile",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/task/task.toml",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/task/environment/Dockerfile",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/task/environment/instructions/integration.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/task/environment/instructions/hireops_rules.md (lines 9-13, credential line)",
+    ".qc-cache/hireops-workspace-2026-10-03-r13/task/environment/assets/seed_data.json (parsed; scanned for secret-like keys/hex and email domains)",
+    "qc/runs/hireops-workspace-2026-10-03-r13/raw-evidence-index.json (scope statement)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "task.toml:20-24 `[environment] build_timeout_sec = 600.0 / network_mode = \"public\" / cpus = 2 / memory_mb = 4096` is identical to the frozen template task.toml:20-24 and to staged-task-contract.md:56-60. 2 CPUs / 4096 MB is sane for the declared build: one Node 22 process with globally preinstalled express@5.1.0 and better-sqlite3@12.4.1 (environment/Dockerfile:9-12, integration.md:3-5) and a 28.5 KB seed; no in-image browser or compiler-heavy step. `grep docker_image|allow_internet task.toml` returns nothing (rc=1), satisfying the contract (staged-task-contract.md:78). network_mode = \"public\" (task.toml:22, and verifier.environment task.toml:38) is correct per workbook row 9 and SKILL.md Delivery profile, so not flagged. No secret literal under [environment]; the only credential-shaped lines are [verifier.env] ANTHROPIC_AUTH_TOKEN = \"${OPENROUTER_API_KEY}\" (template placeholder, task.toml:34) and ANTHROPIC_API_KEY = \"\" (task.toml:35), both expected per SKILL.md known false positives. Agent image: environment/Dockerfile is byte-identical to the template Dockerfile (diff empty); it contains no ENV/ARG secret, only NODE_PATH; it COPYs only instructions/ and assets/. Image contents scan: seed_data.json has no password/token/secret/key/hash fields and no 32+ hex strings; all emails use reserved .example domains (hireops.example, mail.example, candidates.example). The only password is the documented shared demo credential `Hireops!2026` in hireops_rules.md:11, which the skill profile classifies as intentional, not a finding. Internal annotation conflict recorded: the Internal Quality Checks sheet row 9 still says 'Agent image is no-network ... nothing that secretly needs an install'; the client Quality Checks row 9, SKILL.md delivery profile, and the template all say public, and current lead guidance (public) takes precedence. Even under the 'nothing secretly needs an install' reading, the Dockerfile preinstalls every runtime dependency named in integration.md:3-5, and integration.md forbids other packages, so no hidden install is required. Adversarial consideration: a broken app cannot exploit this row (it is config-only, identical to template); a conforming app could not fail because of it, since resources and dependencies cover the stated contract. This is static config review; no agent image build was performed by me for this candidate, but the Dockerfile and resource settings are unchanged template bytes, so no new measurement is required for this row.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

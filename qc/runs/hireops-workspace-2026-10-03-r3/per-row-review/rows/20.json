@@ -1,0 +1,29 @@
+{
+  "number": 20,
+  "id": "solution_is_frozen_and_deterministic",
+  "reviewer": "row-reviewer-20",
+  "input_sha256": "f53d9ed60d12f2a653d497dc98fac56a662e0d84393cdc5ff130c8a915d956db",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r3/rules/WebDev Rubrics QC.xlsx :: 'Quality Checks' row 21 (#20, block 'D - solution/ (reference coverage)', solution_is_frozen_and_deterministic) and 'Internal Quality Checks' row 21 (same text, no further annotation cells populated); 'Deterministic Checks' rows check-solve-contract.py, check-fixtures.py scanned for overlap",
+    ".qc-cache/hireops-workspace-2026-10-03-r3/rules/harbor-webdev-rubric-qc/SKILL.md (full)",
+    ".qc-cache/hireops-workspace-2026-10-03-r3/rules/harbor-webdev-rubric-qc/references/quality-checks.md ### 20 (lines 87-88)",
+    ".qc-cache/hireops-workspace-2026-10-03-r3/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (layout / must-be-absent list)",
+    ".qc-cache/hireops-workspace-2026-10-03-r3/rules/projects/webdev-task-template (tree; environment/Dockerfile hash identical to task's 0a75419e...)",
+    "qc/REVIEW_POLICY.md (full)",
+    "task/solution/solve.sh, solution/app/package.json, server.js, src/bootstrap.js, src/db.js, src/index.js (full), src/seed_data.json, public/index.html, public/js/*.js (grep for time/random/fetch)",
+    "task/environment/Dockerfile, environment/assets/seed_data.json (hash), instruction.md, environment/instructions/hireops_rules.md, tests/test.sh, task.toml, tests/*/prompt.md (grep for clock/time/date/random)",
+    "qc/runs/hireops-workspace-2026-10-03-r3/manifest.json, raw-evidence-index.json (artifact hashes re-verified for workspace.cjs and results/workspace.json)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Committed static baseline: solve.sh (frozen sha 1df2ed04) only refuses an in-use DB, does `cp -a \"$(dirname \"$0\")/app/.\" /app/` (line 35) and deletes the DB (line 36); no npm install, no network fetch, no generator, no build step. package.json pins express 5.1.0 / better-sqlite3 12.4.1 exactly, matching the global installs in environment/Dockerfile lines 9-12; the app has no node_modules of its own and resolves via NODE_PATH. Front end loads only same-origin /styles.css and /js/*.js (index.html lines 7,31-33); app.js fetch() targets same-origin API only. Seed: solution/app/src/seed_data.json sha256 a1c65c80... is byte-identical to environment/assets/seed_data.json; db.js line 10 reads it from __dirname (not cwd, not /assets). seedIfEmpty (db.js 61-86) inserts fixed ids, positions, and timestamps: applications get the literal '2026-06-15T09:00:00Z' (line 75), messages/notes use the seed's created_at, read markers map to message rowids by deterministic insertion order (lines 77-83); password is a fixed public demo constant. No random ids or wall clock in seeding. Seeding runs only when users is empty (line 62), so a restart never reseeds. Measured: local probe (evidence/20/seed-determinism.txt) ran the frozen db.js against two fresh DBs and a reopen; all three dumps hashed identically 9ef3f482... (users 10, jobs 3, applications 16, messages 127, reads 6, notes 3). Caveat: a node:sqlite shim replaced better-sqlite3, the SQL is unchanged. Runtime nondeterminism is confined to rows created during grading: index.js line 59 `now = () => new Date().toISOString()` and line 60 `uid = (p) => `${p}-${crypto.randomBytes(3)...}`` for new job/application ids, plus random session tokens (line 88). None of these is a pinned or graded value. The brief and rules define no clock-based behaviour; grep of instruction.md, hireops_rules.md, app_context.md and every judge prompt found no timestamp, date or clock criterion. Ordering that is graded uses deterministic keys: board by position (lines 182, 199), activity newest-first by autoincrement id DESC (line 189), messages by id. UI times are formatted in fixed UTC (app.js line 21). Golden observations in raw-evidence-index (workspace.cjs 6c7e97da..., results/workspace.json 7addcbf5..., hashes re-verified) are bound to the same frozen solution hashes as the manifest. Broken-app probe: an app that regenerates seed data or randomizes seeded ids/positions would break the seeded card order and read markers that the functional prompt pins (e.g. Z: Lena's unread count 1). This reference does neither. Conforming-alternative probe: an implementation using UUIDs or wall-clock created_at for new rows is not penalized, because no criterion pins those values. Minor P3 observation, not a defect: the candidate read model orders `ORDER BY created_at, id` (index.js line 173), so a new application's position relative to seeded ones depends on the container clock being after 2026-06-15. The candidate-list order is not specified or graded. Process note: the workspace git status shows the live task's seed/solution files modified and not committed. This row is judged on the hash-frozen snapshot f53d9ed6...; packaging must use these exact bytes.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "CONFIRMED"
+}

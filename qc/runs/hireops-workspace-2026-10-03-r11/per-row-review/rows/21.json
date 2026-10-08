@@ -1,0 +1,30 @@
+{
+  "number": 21,
+  "id": "verifier_entrypoint_is_safe_and_always_scores",
+  "reviewer": "row-reviewer-21",
+  "input_sha256": "4bd1eea4300538bac22f9b8dcda9da2275fa78d20f45231f132076233ce1bf9f",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r11/rules/WebDev Rubrics QC.xlsx (openpyxl read_only, in memory): Quality Checks row 21 'verifier_entrypoint_is_safe_and_always_scores'; Internal Quality Checks row 21 (no extra annotation); Deterministic Checks rows check-verifier-contract.py, check-scoring-policy.py",
+    ".qc-cache/hireops-workspace-2026-10-03-r11/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r11/rules/harbor-webdev-rubric-qc/references/quality-checks.md (section 21)",
+    ".qc-cache/hireops-workspace-2026-10-03-r11/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (tests/test.sh ordered contract, budgets)",
+    ".qc-cache/hireops-workspace-2026-10-03-r11/rules/projects/webdev-task-template/tests/{test.sh,tools/score.py,tools/restart_mcp.py,Dockerfile,scoring.toml}, task.toml",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r11/task/tests/test.sh (all 227 lines)",
+    ".qc-cache/hireops-workspace-2026-10-03-r11/task/tests/tools/score.py, tests/scoring.toml, tests/Dockerfile, tests/*/*/judge.toml timeouts, task.toml",
+    ".qc-cache/hireops-workspace-2026-10-03-r11/task/instruction.md:13, environment/instructions/integration.md:5-10, hireops_rules.md:201-202, solution/app/src/bootstrap.js:20",
+    "qc/runs/hireops-workspace-2026-10-03-r11/raw-evidence-index.json (scope statement)"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": "P3",
+  "evidence": "task/tests/test.sh (sha256 bd68259276ca4b034654efc8a1723a4e702ed62dbe590af6201565f43eabe5aa), tools/score.py, tools/restart_mcp.py, tests/Dockerfile and scoring.toml are byte-identical to the frozen template (diff empty). Contract walk against staged-task-contract.md: (1) write_zero_reward at test.sh:60 before anything else, `trap cleanup EXIT` at :61, cleanup->ensure_reward (:20-23,:33-40); zero record has reward, 5 dims, gates_passed, floors_passed, weighted_score, graded, no_op (:8); no `exec` anywhere. (2) missing /app/server.js -> exit 0 (:68-70); any symlink outside /app/node_modules or resolving outside it -> exit 0 (:72-83). (3) /app copied to /tmp/submission (:90-95); app launched via setsid env -i with only PATH,NODE_PATH,HOME,PORT,DB_PATH and setpriv --reuid=65534 --regid=65534 --clear-groups (:104-111); LOG_DIR is chmod 700 root (:11) and /tests go-rwx (:12) so the unprivileged app cannot write reward files. (4) liveness probe /api/health then / for up to 120x0.25s=30s before RewardKit; not ready -> exit 0 with zero reward (:115-125). (5) restart helper via heredoc + sed, chmod 755, export APP_RESTART_HELPER (:127-193). (6) {app_context} substitution (:195-201). (7) gates suite then score.py: rc0 continue, rc1 exit keeping detailed record, other -> write_zero_reward (:212-222); suite failure/timeout -> exit 0 (zero already on disk). (8) scored suite then score.py `|| write_zero_reward` (:224-227). Budget nesting: gates judges 600+600=1200<1500; scored 9000+900+900=10800<11100 (max-concurrent-agent 1); 1500+11100=12600<verifier 13200. Instruction states every launch fact test.sh relies on (instruction.md:13: node /app/server.js, port 3000, GET /api/health, DB_PATH; hireops_rules.md:201-202 launch env), and golden answers /api/health pre-DB (bootstrap.js:20). Local execution (Git Bash, scratchpad copy, VERIFIER_LOG_DIR in scratchpad): no REWARDKIT env -> exit 0, reward.txt '0.0', zero JSON; env set but no /app/server.js -> exit 0, reward.txt '0.0'. score.py exercised with synthetic suite outputs: gates pass/no scored -> rc0, reward 0.0000; render=0 -> rc1, 0.0000; missing gate dimension -> rc2 (test.sh then writes plain zero); functional 0.04 below floor -> 0.0000; functional 0.5/polish 1/visual 1 -> 0.7000; missing scored dim -> rc2 (-> plain zero). Interim reward between gates and scored is always 0, so an outer SIGKILL mid-scored leaves a valid 0 reward. Adversarial: a broken app returning HTTP 500 on /api/health passes liveness (HTTPError counts as alive) but that only admits it to the gates judges, which is intended; a hostile app cannot touch reward files (uid 65534 vs root 700 LOG_DIR). A conforming alternative without /api/health still passes via '/' fallback; one needing >30s startup would score 0, but the brief (integration.md:9-10) requires health to answer before DB work, so that is a disclosed contract. Risk flag: real test.sh launch under setpriv/rewardkit in the verifier image was not executed for this candidate (raw-evidence-index scope: full configured grading absent; scripted run launched golden as uid 65534 but not through test.sh). No defect found; only the runtime confirmation is missing.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

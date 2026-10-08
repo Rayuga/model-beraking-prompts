@@ -1,0 +1,37 @@
+{
+  "number": 34,
+  "id": "interactive_time_varying_and_viewport_behavior_is_exercised",
+  "reviewer": "row-reviewer-34",
+  "input_sha256": "cefa38a90e730105bedd5082c7d28c322a25773d30a55777d75037f5036618d6",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r6/rules/WebDev Rubrics QC.xlsx (read in memory with openpyxl read_only): 'Quality Checks' row 34 and 'Internal Quality Checks' row 34 (identical wording, no internal annotation on row 34); header rows and other sheets scanned",
+    ".qc-cache/hireops-workspace-2026-10-03-r6/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r6/rules/harbor-webdev-rubric-qc/references/quality-checks.md (section 34 and E block)",
+    ".qc-cache/hireops-workspace-2026-10-03-r6/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md",
+    ".qc-cache/hireops-workspace-2026-10-03-r6/rules/projects/webdev-task-template (tree; staged layout reference)",
+    "qc/REVIEW_POLICY.md",
+    "task/instruction.md",
+    "task/environment/instructions/hireops_rules.md",
+    "task/environment/instructions/integration.md",
+    "task/tests/app_context.md",
+    "task/tests/gates/render/{prompt.md,judge.toml}",
+    "task/tests/gates/constraints/{prompt.md,judge.toml}",
+    "task/tests/scored/functional/{prompt.md,judge.toml}",
+    "task/tests/scored/polish/{prompt.md,judge.toml}",
+    "task/tests/scored/visual/{prompt.md,judge.toml}",
+    "qc/runs/hireops-workspace-2026-10-03-r6/raw-evidence-index.json (sha256 3db0ad64...; entries re-hashed: workspace.cjs 8c362561... and results/workspace.json c73fa342... match the index; solution public/js/app.js, board.js, threads.js hashes match matching_source_files)",
+    "qc/repairs/hireops-2026-10-03-workspace/results/workspace.json (22 scripted golden groups)"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": "P3",
+  "evidence": "Applicability: the product is interactive and time-varying (instruction.md:5 live board within 15 s without reload, preserving open card/note/cursor; instruction.md:7 scrolled-up arrival, drafts, seen marks; hireops_rules.md:132-140, 159-192). It is NOT responsive or themed by request: instruction.md:11 'We don't need theme switching or a special phone layout', and visual/prompt.md:14 'Assess desktop craft at a conventional desktop viewport. No phone layout or theme switching is required.' So no resize/toggle is needed; omitting them is correct, not a gap. Interaction/time coverage in the prompts: (1) Live board: functional/prompt.md:47 protocol V 'Without reloading or clicking in this page, wait up to 15 seconds (a wait-for call, or snapshots...)' with criterion hro_live_board (functional judge.toml:285-291). (2) Live preservation: polish/prompt.md:14 'After that action do not reload, navigate, click or type in the observed page until the update has been seen or 15 seconds have passed. Read document.activeElement, field values and scroll offsets with page.evaluate'; hro_pol_live_board (polish judge.toml:17-24) types an unsaved note, scrolls the page/board container, has another context move a card, then checks details open, note text, activeElement, scroll offset and that further typing appends; hro_pol_live_thread (26-33) same for the message box with focus and stay-at-newest. (3) Scroll geometry: hro_pol_earlier_place (35-42) measures getBoundingClientRect().top before/after loading earlier messages; hro_unread_scrolled_up (functional 338-345) scrolls up, waits for Noor's message, checks place unchanged and notice within 15 s. (4) Unread/seen over time: protocol U (functional/prompt.md:41) 'Every reading in U is made without reloading, navigating or clicking in Rafael's page: wait up to 15 seconds after the other person acts'; hro_unread_counts, hro_seen. (5) Keyboard interaction: hro_msg_compose (Shift+Enter/Enter, box empty and focused), hro_refused_put_back (document.activeElement inside the card after refused Interview move). (6) Failure/session interactions: hro_pol_failed_send aborts one send via route handler/setOffline; hro_pol_session_resume ends session in a second tab and presses Enter. (7) Stale/concurrent: protocol C replays a captured request after another context's move. No criterion scores a still first paint for an interactive behaviour; render gate is intentionally limited to sign-in + first render (render/prompt.md:9) and other behaviours are graded in scored dimensions. Golden runtime support (not judge evidence): results/workspace.json group 14 'live board: another person's move arrives without reload; open card, note draft and focus kept' passed with arrival_ms 802; group 15 conversation place/draft/focus/scroll passed; group 16 seen/unread badges update live passed; group 18 session-ended draft passed. Plausible broken app tried: (a) app that refreshes only on click/focus — defeated because every live row forbids clicking/typing/reloading in the observed page and reads via page.evaluate/snapshot; (b) app that live-updates by full re-render closing the card/resetting scroll/focus — defeated by hro_pol_live_board/live_thread measuring activeElement, value, scroll offset; (c) app that loads earlier messages and jumps to top — defeated by getBoundingClientRect comparison. Residual weakness (P3, why risk stays true together with missing judge runs): functional/prompt.md:41 and :47 say 'accept the first snapshot at or after 15 seconds' / 'accept what is present at the first snapshot at or after 15 seconds' rather than timing a wait from the other context's action; an LLM judge whose first snapshot lands at e.g. 40 s could credit an app that polls every 30-40 s, although the brief requires 15 s. This is a leniency on the upper bound, not a still-first-paint defect, and the policy discourages tight timing distinctions. Conforming alternative that could fail: an app whose board scroll container does not scroll at the default viewport is protected (polish hro_pol_live_board 'add cards until one does, or record that no scroll exists and judge the other legs'); an SSE/socket app is allowed by hireops_rules.md:140; no false-fail path found. Missing evidence: no full configured claude-code/glm judge run exists for these bytes (raw-evidence-index scope: 'Full configured grading/workload ... are absent'), so whether the judge actually executes the waits, scrolls and page.evaluate reads as instructed is NOT EXERCISED.",
+  "counterexample": null,
+  "suggested_fix": "Optional hardening: in protocols U/V and the polish live rows, have the judge start a single browser_run_code_unsafe call that performs the other context's action and then page.waitForFunction(..., {timeout: 15000}) on the observed page, so the 15 s bound is measured from the action rather than from the judge's next snapshot. Then obtain a full configured judge run log showing these waits and reads executed.",
+  "run_verdict": "NOT EXERCISED"
+}

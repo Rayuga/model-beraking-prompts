@@ -1,0 +1,38 @@
+{
+  "number": 10,
+  "id": "verifier_is_isolated_pinned_and_credentialed",
+  "reviewer": "row-reviewer-10",
+  "input_sha256": "8e9a1732929dada061b7ec8f471be452416cb15fa3c35c0af552efa55321e9c6",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r5/rules/WebDev Rubrics QC.xlsx :: 'Quality Checks' row 11 (#10 verifier_is_isolated_pinned_and_credentialed); 'Internal Quality Checks' row 11 (older wording 'pinned image + allowlist, judge model and API key fully wired', no annotation on this row; superseded by the public-network delivery profile); 'Deterministic Checks' rows for check-canonical-shared-files.py, check-dockerfiles.py, check-rubric-schema.py, check-allowlist-matches-provider.py (related mechanical halves)",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/rules/harbor-webdev-rubric-qc/SKILL.md (delivery profile: public network, claude-code + z-ai/glm-5.3-flashx via frozen [verifier.env], judge.toml fallback expected, model in judge.toml is a defect)",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/rules/harbor-webdev-rubric-qc/references/quality-checks.md section '### 10 · verifier_is_isolated_pinned_and_credentialed'",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (task.toml frozen block, judge.toml prohibited keys)",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (canonical-shared-files, rubric-schema, dockerfiles, allowlist sections)",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/hireops-workspace-2026-10-03-r5/per-row-review/prompts/10.md",
+    "qc/runs/hireops-workspace-2026-10-03-r5/manifest.json (hashes for task.toml, tests/Dockerfile, five judge.toml)",
+    "qc/runs/hireops-workspace-2026-10-03-r5/raw-evidence-index.json (scope statements)",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/rules/projects/webdev-task-template/{task.toml,tests/Dockerfile,tests/.dockerignore,tests/test.sh,tests/tools/score.py,tests/tools/restart_mcp.py,environment/Dockerfile,tests/*/*/judge.toml}",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/task/task.toml",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/task/tests/Dockerfile",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/task/tests/.dockerignore",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/task/tests/test.sh (lines 63-64, 207-209)",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/task/tests/gates/{render,constraints}/judge.toml",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/task/tests/scored/{functional,polish,visual}/judge.toml",
+    ".qc-cache/hireops-workspace-2026-10-03-r5/task/environment/Dockerfile"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "ISOLATED: task/task.toml:26-28 '[verifier] timeout_sec = 13200.0 / environment_mode = \"separate\"'; task/tests/Dockerfile:43 'COPY . /tests' then ':44 chmod -R go-rwx /tests' (verifier image carries its own /tests; agent image environment/Dockerfile copies only instructions/ and assets/). PINNED: task/tests/Dockerfile:1-2 'FROM node:22-bookworm-slim AS node-runtime' / 'FROM python:3.12-slim' (version-tagged, not :latest, no --platform); :16-21 npm '@anthropic-ai/claude-code@2.1.281', '@openai/codex@0.151.0', '@playwright/mcp@0.0.79', 'express@5.1.0', 'better-sqlite3@12.4.1'; :31 'harbor-rewardkit==0.1.7'; :33-38 Chromium installed from the pinned @playwright/mcp's bundled playwright CLI and symlinked to /usr/local/bin/chromium; :12-14 apt packages unpinned (NOTE per check-dockerfiles policy, not a defect). tests/Dockerfile sha256 72998ab8...fdd is identical to the frozen template's tests/Dockerfile (manifest.json lines 29 and 65) and matches the frozen bytes I hashed. CREDENTIALED: task/task.toml:30-35 is '[verifier.env] REWARDKIT_JUDGE = \"claude-code\" / REWARDKIT_MODEL = \"z-ai/glm-5.3-flashx\" / ANTHROPIC_BASE_URL = \"https://openrouter.ai/api\" / ANTHROPIC_AUTH_TOKEN = \"${OPENROUTER_API_KEY}\" / ANTHROPIC_API_KEY = \"\"'; lines 30-38 cmp byte-equal to the frozen template task.toml, LF only (0 CR bytes), task.toml sha256 ac664d0e...8f26 matches manifest.json:26. A diff of the whole task.toml against the template differs only in [task]/[metadata] identity fields (lines 5-7, 10-15). Network: [environment] and [verifier.environment] network_mode = \"public\" (lines 22, 37-38); no allowed_hosts, which the workbook row says is not required. JUDGE.TOML: all five (gates/render, gates/constraints, scored/functional, scored/polish, scored/visual) carry 'judge = \"claude-code\"' at line 2 and no model/reasoning_effort/temperature/weight key in [judge] (grep over every *.toml in the frozen task finds model only in task.toml:32); each [judge] header up to [scoring] is identical to the template's. Their hashes match manifest.json lines 30-38. test.sh (template-identical) refuses to grade if REWARDKIT_JUDGE or REWARDKIT_MODEL is empty (lines 63-64) and passes no model override to rewardkit (lines 207-209), so [verifier.env] is the only model source. Adversarial: this row is wiring-only and does not depend on the app. A broken app gains nothing here, and a conforming app cannot be penalised by this configuration because it is the unchanged shared template. The one plausible failure is harness-wide: OPENROUTER_API_KEY being absent at grade time would make every app fail the same way. That cannot be decided from source.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED",
+  "notes": "risk=true because the end-to-end credential path is unmeasured, not because of a source defect. raw-evidence-index.json says its entries are scripted golden observations in hireops-verifier:20261002-permission-repair and are 'Not a configured judge run, Oracle grade, model score or judge-duration measurement'. Its top-level scope says full configured grading is absent. So no record shows the separate verifier, with this [verifier.env], resolving ${OPENROUTER_API_KEY} and reaching z-ai/glm-5.3-flashx. Base images are pinned by version tag, not digest, which matches the shared template and the check-dockerfiles definition; apt is unpinned (NOTE). The Internal sheet's older 'allowlist' wording is superseded by the current public-network profile in the workbook Quality sheet and the skill."
+}

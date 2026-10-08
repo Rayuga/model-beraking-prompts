@@ -1,0 +1,30 @@
+{
+  "number": 15,
+  "id": "dockerfile_builds_the_declared_world",
+  "reviewer": "row-reviewer-15",
+  "input_sha256": "d2912713cc20e12d1c3605e76373f75f766ca522cce13fdf91e93082f6570a7a",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r4/rules/WebDev Rubrics QC.xlsx :: 'Quality Checks' row 16 (#15, block C, 'Agent image is pinned, pre-installs every runtime dependency (no run-time install), and stages the assets.'); 'Internal Quality Checks' row 16 (same text; no annotation in columns E+ for this row); 'Deterministic Checks' rows 9-12, 32, 39, 43 (dockerfile-related checkers, for context only)",
+    ".qc-cache/hireops-workspace-2026-10-03-r4/rules/harbor-webdev-rubric-qc/SKILL.md (full)",
+    ".qc-cache/hireops-workspace-2026-10-03-r4/rules/harbor-webdev-rubric-qc/references/quality-checks.md (blocks A-C incl. '### 15 · dockerfile_builds_the_declared_world', lines 66-68)",
+    ".qc-cache/hireops-workspace-2026-10-03-r4/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (full)",
+    ".qc-cache/hireops-workspace-2026-10-03-r4/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (dockerfile entries, lines 22 and 60)",
+    ".qc-cache/hireops-workspace-2026-10-03-r4/rules/projects/webdev-task-template/environment/Dockerfile, task.toml, tests/Dockerfile, tests/test.sh",
+    "qc/REVIEW_POLICY.md (full)",
+    ".qc-cache/hireops-workspace-2026-10-03-r4/task/environment/Dockerfile (full), environment/instructions/integration.md (full), environment/assets/ listing",
+    ".qc-cache/hireops-workspace-2026-10-03-r4/task/task.toml, instruction.md line 13, solution/solve.sh, solution/app/package.json, require() calls in solution/app/server.js and src/*.js, tests/Dockerfile, tests/test.sh (NODE_PATH/setpriv launch lines)",
+    "qc/runs/hireops-workspace-2026-10-03-r4/raw-evidence-index.json (all 6 artifact hashes re-verified as matching; matching_source_files hashes re-verified against frozen solution bytes)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Frozen task/environment/Dockerfile is byte-identical in content to the frozen template rules/projects/webdev-task-template/environment/Dockerfile (both 26 lines, compared side by side; template-controlled file preserved). Line-by-line against the skill's verification list for check 15: (1) Pinned base: L1 'FROM node:22-bookworm-slim' (major+distro tag, the canonical template base; no --platform). (2) Runtime deps pre-installed: L3 'ENV NODE_PATH=/usr/local/lib/node_modules' and L9-12 'npm install -g --no-audit --no-fund express@5.1.0 better-sqlite3@12.4.1' with exact versions, matching solution/app/package.json dependencies {\"better-sqlite3\":\"12.4.1\",\"express\":\"5.1.0\"}. The golden's only non-built-in requires are 'express' (src/index.js:18) and 'better-sqlite3' (src/db.js:7); all others are fs/path/crypto/node:http/node:worker_threads. solve.sh only copies files (cp -a app/. /app/, rm db) and performs no npm/pip install, so no run-time install is needed. The same pinned globals are in tests/Dockerfile L16-22 with matching NODE_PATH (L9), and test.sh launches with NODE_PATH=\"/usr/local/lib/node_modules\" (L106, L162), so the agent world and the grade-time world agree. apt adds ca-certificates git procps sqlite3 (L5-7). (3) Assets staged: L14 'COPY instructions/ /instructions/', L15 'COPY assets/ /assets/', L16 'chmod -R a+rX /instructions /assets'; environment/assets/seed_data.json exists and environment/instructions/{hireops_rules.md,integration.md} exist. (4) /app created, git-initialised with only .gitkeep committed (L17-23), WORKDIR /app. (5) Defects absent: no COPY of solution/ or tests/; no install step that needs grade-time network. Public-facing contract agrees: instruction.md:13 'Server dependencies are already available, so don't install packages' and integration.md L3-4 'Express and better-sqlite3 already available through NODE_PATH; use only those packages and Node built-ins'. Broken-app probe: an agent that tries to npm-install an extra package would not be helped by this row (out of scope; the brief tells it not to), and a broken app cannot exploit the image because nothing of the answer is staged. Conforming-alternative probe: an app using only Express + better-sqlite3 (or Node built-ins incl. node:sqlite) resolves its modules via NODE_PATH in both images, so it is not failed by the image. Runtime evidence: raw-evidence-index entries (hashes verified) show the golden ran under uid 65534 in a verifier image built from the same pinned globals, which indirectly confirms that the global express@5.1.0/better-sqlite3@12.4.1 install on node:22-bookworm-slim resolves via NODE_PATH; no agent-image (environment/Dockerfile) build log is in the index, but the file is unchanged from the template and every check-15 criterion is source-verifiable. Note (P3, not a defect, template-controlled): the base is a floating '22-bookworm-slim' tag rather than a digest and apt packages are unversioned; the agent and verifier images could resolve different Node 22.x patch levels if built at different times. Per AGENTS.md the template-controlled Dockerfile must be preserved, and the skill's reference treats this template base as the pinned baseline, so this is recorded but not raised.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

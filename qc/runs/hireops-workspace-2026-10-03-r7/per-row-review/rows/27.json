@@ -1,0 +1,38 @@
+{
+  "number": 27,
+  "id": "no_criterion_grades_the_unrequired",
+  "reviewer": "row-reviewer-27",
+  "input_sha256": "88507720804547eb54db2aa2f2467f055d623a9ce90fcb32f9da1d62b6e5d67a",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/hireops-workspace-2026-10-03-r7/rules/WebDev Rubrics QC.xlsx (read in memory with openpyxl read_only; sheets Quality Checks row 27 and Internal Quality Checks row 27 incl. annotation 'Mukesh - We dont specifcally ask for login, we deffault to login page...')",
+    ".qc-cache/hireops-workspace-2026-10-03-r7/rules/harbor-webdev-rubric-qc/SKILL.md (Known false positives: sign-in, checks 23/27)",
+    ".qc-cache/hireops-workspace-2026-10-03-r7/rules/harbor-webdev-rubric-qc/references/quality-checks.md section 27",
+    ".qc-cache/hireops-workspace-2026-10-03-r7/rules/projects/webdev-task-template (file list; staged layout comparison)",
+    "qc/REVIEW_POLICY.md (No hidden requirements; Coverage has two directions)",
+    "task/instruction.md (lines 1-17)",
+    "task/environment/instructions/hireops_rules.md (lines 1-209)",
+    "task/environment/instructions/integration.md",
+    "task/environment/assets/seed_data.json (Platform Engineer order, notes, reads, message counts)",
+    "task/tests/app_context.md",
+    "task/tests/gates/render/{prompt.md,judge.toml}",
+    "task/tests/gates/constraints/{prompt.md,judge.toml}",
+    "task/tests/scored/functional/{prompt.md,judge.toml} (all 43 criteria and protocols Z,S,M,L,C,B,N,T,U,K,R,V,A,D)",
+    "task/tests/scored/polish/{prompt.md,judge.toml} (5 criteria)",
+    "task/tests/scored/visual/{prompt.md,judge.toml} (5 likert criteria)",
+    "task/tests/scoring.toml",
+    "task/solution/app/public/js/threads.js lines 100-160, 205-222 (sha256 72371e86... matches raw-evidence-index)",
+    "qc/runs/hireops-workspace-2026-10-03-r7/raw-evidence-index.json (scope header only: no configured judge run)"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "Built a criterion -> requirement map for all 2 gate, 43 functional, 5 polish and 5 visual criteria. Nearly every criterion traces to an explicit line: one-stage moves/skip refusal (rules 3 'Moving a card'), bottom arrival and manual order (rules 'Order inside a stage'), places 1-50 and hiring-manager accounts (rules 2), interview places/undo overfill (rules 'Interview places', 'Undo'), 409 stale with 'by whom' (rules 'Two people at once'), bulk board order and all-or-none (rules 'Moving several together'), focus on refused card (rules 'Shown at once, put back'), 401/403/404 (rules 1), Activity newest-first/filter/refusals add none (rules 4), 15 s live updates preserving typing/focus/open card/scroll (rules 5, instruction line 5), 30-message pages, remaining count, anchor stays put, unread/seen semantics incl. Observer never counting (rules 6), drafts per person/conversation/browser surviving sign-out (rules 6 Drafts, instruction line 7), candidate wording/team and leak list (rules 7), seeded order/note/Lena=1 unread (seed: APP-301 3 messages, USR-CAN3 read_count 2). Visual likert anchors require no specific layout/label; render gate sign-in is the documented false positive (SKILL.md, workbook internal annotation). Several criteria explicitly waive hidden choices ('Do not require routes, selectors, field names', 'hiding it is optional', 'whether the Observer's screens show such controls is the app's choice').\n\nDEFECT (one instance): hro_seen (tests/scored/functional/judge.toml:353) with protocol U (tests/scored/functional/prompt.md:41) expects Tomas's later message to become seen only when Bill (hiring manager) opens the conversation, and his next one only when Rafael 'opens' it, and says 'Fails if seen is shown too early'. But protocol U keeps Rafael's page open on that same conversation at its newest message throughout ('Every reading in U is made without reloading, navigating or clicking in Rafael's page'; Rafael just sent a message there). Rules 6 'Unread': 'if they are at the newest message, it is shown and counts as read'; 'Seen': 'A candidate's message is seen once a recruiter ... has [had the conversation open at or after that message]'. So a correct app (and the golden: threads.js:151-157 catchUp() calls markRead(id) when the open view is active and at bottom) marks Tomas's message seen by Rafael within one poll, i.e. BEFORE Bill opens. The criterion's implied expectation that it stays unseen until Bill opens (and the 'too early' fail clause) is not required by any public rule and contradicts it, creating false-fail risk on correct apps including the golden. Secondary consequence (other rows' concern): the Bill leg and the 'Rafael opens' leg cannot discriminate an app that ignores hiring-manager reads.\n\nNOTES (not counted as defects): (a) hro_add_candidate (judge.toml:38) 'The entered source is shown wherever the app shows card details' - not explicit in rules, but rules 3 'A card can be opened to show its details' plus rules 2 entering a source makes showing it a defensible professional default. (b) hro_reject_reason (judge.toml:83) requires the rejected-from stage be readable somewhere (card, details, reopen control or Activity line) - rules say only 'The workspace remembers the stage'; justified by reopen-to-that-stage and Activity 'what changed' (rules 4 example names from/to stages), and the criterion offers four surfaces. (c) Replay-based rows assume moves/messages use replayable HTTP requests; instruction line 13 ('serve the UI as well as the API') makes an HTTP API the professional default, so not counted. No configured judge run exists (raw-evidence-index scope: 'Full configured grading ... absent'), so the false-fail is a source-level finding, not observed.",
+  "counterexample": "Correct app per rules 6: in protocol U, Rafael's page stays open at the newest message of Tomas's J2 conversation; Tomas sends a message; within the poll interval the app records Rafael as having read it and Tomas's page shows 'Seen' - before Bill opens the conversation. The judge, following U ('Bill opens the conversation: Tomas's message shows as seen') and hro_seen ('Fails if seen is shown too early'), can score hro_seen 0 (weight 1.5) for showing seen before the hiring manager opened it, although the app is correct. The frozen golden behaves this way (threads.js:151-157). Conversely, a broken app that never counts hiring-manager reads passes the Bill leg because Rafael's open view already marked it seen.",
+  "suggested_fix": "In protocol U, move Rafael's page off Tomas's conversation (open another conversation or the Board) before Tomas sends the Bill-leg message, and state in hro_seen that seen must appear only after Bill (resp. Rafael) opens it, given no other recruiter or that job's manager has it open at its newest.",
+  "run_verdict": "NOT EXERCISED"
+}
