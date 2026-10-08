@@ -1,0 +1,39 @@
+{
+  "number": 35,
+  "id": "core_behavior_is_graded_and_state_is_proven_durable_where_it_must_be",
+  "reviewer": "row-reviewer-35",
+  "input_sha256": "09069072a28c62a6498bd6f03da68fc018f9ccf3fe08b096921b1482f00a2dd0",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r3/rules/WebDev Rubrics QC.xlsx: Quality Checks row 36 (#35, C36/D36) and Internal Quality Checks row 36 (D36); no cell comments on that row",
+    ".qc-cache/kittle-2026-10-09-r3/rules/harbor-webdev-rubric-qc/SKILL.md (delivery profile, verdicts, evidence standard, known false positives)",
+    ".qc-cache/kittle-2026-10-09-r3/rules/harbor-webdev-rubric-qc/references/quality-checks.md section '35 · core_behavior_is_graded_and_state_is_proven_durable_where_it_must_be'",
+    ".qc-cache/kittle-2026-10-09-r3/rules/projects/webdev-task-template/tests/scored/functional/judge.toml (template persistence criterion and verifier MCP wiring)",
+    "qc/REVIEW_POLICY.md (via assignment prompt rules)",
+    ".qc-cache/kittle-2026-10-09-r3/task/instruction.md",
+    ".qc-cache/kittle-2026-10-09-r3/task/environment/instructions/{conversations,integration,walls-and-retention}.md",
+    ".qc-cache/kittle-2026-10-09-r3/task/task.toml",
+    ".qc-cache/kittle-2026-10-09-r3/task/tests/scored/functional/judge.toml (all 16 criteria)",
+    ".qc-cache/kittle-2026-10-09-r3/task/tests/scored/functional/prompt.md",
+    ".qc-cache/kittle-2026-10-09-r3/task/tests/app_context.md",
+    ".qc-cache/kittle-2026-10-09-r3/task/tests/test.sh",
+    ".qc-cache/kittle-2026-10-09-r3/task/tests/tools/restart_mcp.py",
+    ".qc-cache/kittle-2026-10-09-r3/task/tests/gates/render/judge.toml",
+    ".qc-cache/kittle-2026-10-09-r3/task/solution/app/server.js (DB_PATH, seeded-flag import-once)",
+    ".qc-cache/kittle-2026-10-09-r3/task/environment/assets/seed_data.json (read_up_to)",
+    "qc/runs/kittle-2026-10-09-r3/raw-evidence-index.json (all six artifact hashes and all nine matching source hashes re-verified equal with sha256sum)",
+    "qc/repairs/kittle-2026-10-08/run_golden.sh, tests/functional.cjs (persistence before/after legs), results/golden-run.log, functional-before.json, functional-after.json, restart-pids.json",
+    "model-beraking-prompts/handoffs/LESSONS_FROM_COLDERWATER_2026-10-08.md (lessons 15, 16)"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "Defining behaviour is graded directly and heavily: the brief names walls and retention as what matters most (instruction.md para 2), and tests/scored/functional/judge.toml grades walls in signin_and_client_scope, wall_every_route, wall_mentions_and_links and wall_added_live (each 2.0), retention/holds in deleted_and_expired_messages (4.0), timer_changes (2.0) and hold_scope_and_release (2.0), and threaded conversation in nested_replies, each with server-side replays and positive controls. Durability: criterion 'persistence' (judge.toml:250-267, weight 2.0, last in order per prompt.md 'Restart evidence') builds several distinct revisions before a real process restart: a reply nested under an edited parent with an earlier version, a hold on the child, a post-then-delete, a non-default M-12 timer (30 days), a new wall (Sian from M-11), Dev's M-13 unread count, and search baselines for 'Survey booked', 'Probate' and 'Insurer letter'. It then calls restart_app once (restart_mcp.py runs the test.sh-generated app-restart.sh, which kills the process group and relaunches node on the same DB_PATH, test.sh:127-193), opens a fresh page and signs in again (re-auth), and re-reads every item (legs 1-4). This addresses Colderwater lesson 15 (several revisions, real restart, re-read each). State-relative wording ('note ... return exactly what they returned before the restart') satisfies lesson 16 / row 37 and avoids double-grading other features. Re-import sentinel is sound: 'Probate' (deleted earlier by timer_changes, timer then restored to 30 days) and 'Insurer letter' (seeded held message released in hold_scope_and_release) would reappear on any re-import, and the Survey booked count would double with a non-idempotent import. Server-backed: restart of the server process plus separate browser contexts (wall_added_live, unread, live_updates, persistence across fresh contexts) mean browser-only storage (localStorage/IndexedDB) or in-memory server state cannot pass; signed-out replay in signin_and_client_scope proves server enforcement. Network posture is public and not relied on (server-backed is distinguished from same-origin; integration.md permits CDN assets while 'matter data stays in our own server and database'). Measured: raw-evidence-index hashes verified; scripted golden run 2026-10-08 22:24-22:26 UTC with a real kill/relaunch (restart-pids.json old_pid 28 -> new_pid 57) reports 'persistence PASS' (functional-after.json results.persistence=true; functional.cjs after() asserts nesting, hold badge, edited mark, earlier version text, 'Persist gone' absent, M-12 '30 days', Sian 404 on M-11, Dev 404 on M-12, Dev M-13 unread equal to baseline, and the three search baselines equal). Golden server.js:93-126 imports once behind a 'seeded' settings flag into DB_PATH. Broken-app probes: in-memory server state, localStorage-only app, re-import on every boot, versions or read positions kept in memory, timer change not persisted, and walls not persisted are each caught by a named leg. Conforming-alternative probes: an app that invalidates sessions on restart passes (criterion signs in again); any endpoint/route shape is accepted; Dev's unread is compared to the noted baseline, not a fixed number (seed read_up_to plus later JUDGE posts in M-13 make a reset detectable). Residual risk (why risk=true, no defect asserted): (1) the configured judge path for restart_app (rewardkit individual mode spawning the verifier MCP with '$APP_RESTART_HELPER' expanded, judge.toml:23-27, identical to template judge.toml:18) has not been exercised for this candidate; judge.toml:11 itself says 'Not yet measured against a judge run' and raw-evidence-index scope says full configured grading is absent. The scripted golden is not a judge run. (2) restart_mcp.py is single-use via a '.used' marker, while prompt.md allows re-attempts of a criterion ('-2' suffix); if a persistence session is retried after restart_app ran, or an earlier criterion's judge wrongly calls it, a conforming app fails persistence. This is shared harness behaviour (not to be edited here) and unmeasured. Minor: leg 1 says Harriet 'can open its earlier version' without quoting the expected text 'Persist parent JUDGE-S0'; the golden checks that text, and the judge can infer it, so this is wording only.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL"
+}

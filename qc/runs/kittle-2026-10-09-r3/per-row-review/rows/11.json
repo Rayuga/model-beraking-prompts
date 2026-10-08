@@ -1,0 +1,37 @@
+{
+  "number": 11,
+  "id": "timeouts_fit_the_work",
+  "reviewer": "row-reviewer-11",
+  "input_sha256": "09069072a28c62a6498bd6f03da68fc018f9ccf3fe08b096921b1482f00a2dd0",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r3/rules/WebDev Rubrics QC.xlsx :: Quality Checks row 12 (check 11 timeouts_fit_the_work); Internal Quality Checks row 12 ('nest properly (inner < outer, sum of judges < verifier)'); Deterministic Checks rows 29 (check-rubric-schema.py) and 33 (check-scoring-policy.py)",
+    ".qc-cache/kittle-2026-10-09-r3/rules/harbor-webdev-rubric-qc/SKILL.md (verdicts, severity, evidence standard: never upgrade an unmeasured claim to Pass)",
+    ".qc-cache/kittle-2026-10-09-r3/rules/harbor-webdev-rubric-qc/references/quality-checks.md:50-51 (check 11 procedure)",
+    ".qc-cache/kittle-2026-10-09-r3/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (task.toml block; test.sh contract and budgets 1500/11100/13200; restart_mcp 55 s)",
+    ".qc-cache/kittle-2026-10-09-r3/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md:42,44",
+    ".qc-cache/kittle-2026-10-09-r3/rules/projects/webdev-task-template/{task.toml,tests/test.sh,tests/*/*/judge.toml,environment/Dockerfile,tests/Dockerfile}",
+    ".qc-cache/kittle-2026-10-09-r3/task/task.toml",
+    ".qc-cache/kittle-2026-10-09-r3/task/tests/test.sh",
+    ".qc-cache/kittle-2026-10-09-r3/task/tests/{gates/render,gates/constraints,scored/functional,scored/polish,scored/visual}/judge.toml",
+    ".qc-cache/kittle-2026-10-09-r3/task/tests/scored/functional/prompt.md",
+    ".qc-cache/kittle-2026-10-09-r3/task/tests/tools/{score.py,restart_mcp.py}",
+    ".qc-cache/kittle-2026-10-09-r3/task/environment/Dockerfile, task/tests/Dockerfile, task/solution/solve.sh",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/kittle-2026-10-09-r3/raw-evidence-index.json and manifest.json (hashes re-verified)",
+    "qc/repairs/kittle-2026-10-08/results/golden-run.log (sha256 4da6ab5d... matches index)",
+    "harbor-rewardkit 0.1.7 source read (read-only docker run) from cw-editor-verifier:current: rewardkit/judges.py (_arun_agent_individual, _arun_agent_call, _MAX_JUDGE_RETRIES=3), runner.py (_run_all semaphores), reward.py",
+    "model-beraking-prompts/handoffs/LESSONS_FROM_COLDERWATER_2026-10-08.md"
+  ],
+  "verdict": "Not exercised",
+  "risk": true,
+  "severity": "P1",
+  "evidence": "Hashes: frozen task.toml 15b097b6..., test.sh bd682592..., functional judge.toml 1b19fda5..., polish 6eacf662..., visual dde89eef..., render 8cdb93ef..., constraints ec368d99... all equal manifest.json inputs. NESTING ARITHMETIC (passes, strictly): task.toml:18 [agent].timeout_sec=7200.0; :21 build_timeout_sec=600.0; :27 [verifier].timeout_sec=13200.0 (all equal the template). test.sh:207 runs `timeout $budget_sec rewardkit --max-concurrent-agent 1`; test.sh:213 gates budget 1500; test.sh:224 scored budget 11100 (test.sh identical to the frozen template). Gates: render timeout=600 (gates/render/judge.toml:7, batched, 1 criterion) and constraints timeout=600 (gates/constraints/judge.toml:7, batched, 1 criterion); with an agent semaphore of 1 the worst case is 600+600=1200 < 1500, each 600 < 1500. Scored: functional mode=individual, timeout=550 (scored/functional/judge.toml:6,12), 16 criteria. rewardkit 0.1.7 judges.py _arun_agent_individual runs each criterion as its own sequential claude-code subprocess and asyncio.wait_for(timeout=judge.timeout) applies per criterion, so worst case 16 x 550 = 8800; polish batched 900 (5 criteria), visual batched 900 (4 criteria); 8800+900+900 = 10600 < 11100 (500 s slack), matching the comment at functional judge.toml:7-11. Gates + scored budgets 1500+11100 = 12600 < 13200; internal-sheet sum of judges 1200+10600 = 11800 < 13200; liveness loop 120 x 0.25 s (~30 s nominal, test.sh:115-122) fits in the remaining 600 s. Restart: restart_mcp.py:11 HELPER_TIMEOUT_SEC=55 exceeds the helper's 5 s kill wait plus ~30 s readiness loop (test.sh heredoc lines 155-177). Agent/build: environment/Dockerfile identical to template (apt ca-certificates/git/procps/sqlite3 plus npm -g express@5.1.0 and better-sqlite3@12.4.1) - a light cold build plausibly well under 600 s; the template 7200 s agent budget is ample for an Express+SQLite app. LONG-ENOUGH HALF IS UNMEASURED: the template's 9000 s batched functional timeout was replaced by 550 s per criterion (authorized mode change, but the comment itself says 'Not yet measured against a judge run'). raw-evidence-index.json scope: 'Full configured grading/workload ... are absent'; golden-run.log (22:24:34Z-22:26:17Z, all 16 functional PASS) is a scripted Playwright run, explicitly 'Not a configured judge run ... or judge-duration measurement'. Per-session workload is heavy: each individual session must redo the prompt's global browser gate (Gwen sign-in) before its criterion; deleted_and_expired_messages (313 words; Gwen, Harriet and Sian; record a delete request and replay it as Sian; searches; transcript; Part B) and persistence (Harriet setup of 5 writes, timer, wall, 4 noted searches incl. Dev; restart_app up to 55 s; fresh sign-ins as Harriet, Sian and Dev; 4 readbacks; cleanup) each plausibly need 50-80 Playwright MCP turns on z-ai/glm-5.3-flashx via OpenRouter; at 7-10 s per turn that is 350-800 s, straddling the 550 s cap. Consequences read from harness source: a per-criterion timeout records that criterion 0.0 (judges.py _timeout_scores), so a correct app loses its weight; schema-mismatch retries (_MAX_JUDGE_RETRIES=3) re-run the whole subprocess with a fresh 550 s, individual mode gives 16 chances for that, and the slack (500 s) is less than one retry; a scored-suite overrun makes run_suite fail (test.sh:224-225 exit 0) and score.py:42-44 then sets every scored dimension to 0, zeroing a good app's reward. None of this is measured for this candidate, so the row cannot be Pass.",
+  "counterexample": "Conforming alternative that could fail: the golden (or any correct app) graded by the configured claude-code / glm-5.3-flashx judge, where the persistence or deleted_and_expired_messages session needs more than 550 s of browser turns (gate sign-in, 3-4 accounts, recorded-request replay, restart, readbacks); rewardkit kills it and records 0.0, so Oracle < 1.0 for a harness-budget reason, and a persistence timeout before its cleanup step leaves Sian's M-11 wall and M-12's 30-day timer set. Whole-suite variant: one or two schema-retry reruns of long criteria exceed the 500 s slack, `timeout 11100` kills rewardkit and score.py zeroes all scored dimensions. Plausible broken app: none gains from this - a timeout only removes credit - so the risk is false negatives for good apps, not false passes.",
+  "suggested_fix": "Run the full configured verifier (frozen test.sh with the frozen judge) on the golden at least once and record per-criterion functional durations, polish/visual durations and total scored time in the raw evidence index; if any functional session exceeds about 70% of 550 s, rebalance inside the template budgets (lower polish/visual timeouts toward their measured need and give the freed seconds to functional, keeping 16 x t + polish + visual < 11100) or trim redundant steps from the heaviest criteria, recording the reason and authorization per REVIEW_POLICY; do not edit test.sh or rewardkit.",
+  "run_verdict": "NOT EXERCISED"
+}

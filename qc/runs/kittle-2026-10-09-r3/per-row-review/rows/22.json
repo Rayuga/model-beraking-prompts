@@ -1,0 +1,31 @@
+{
+  "number": 22,
+  "id": "verifier_image_can_launch_and_grade",
+  "reviewer": "row-reviewer-22",
+  "input_sha256": "09069072a28c62a6498bd6f03da68fc018f9ccf3fe08b096921b1482f00a2dd0",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r3/rules/WebDev Rubrics QC.xlsx: 'Quality Checks' row 23 (#22 verifier_image_can_launch_and_grade), 'Internal Quality Checks' row 23 (no extra internal annotation beyond the check text), 'Deterministic Checks' rows 32 (check-runtime-deps-in-both-images.py) and 49 (check-verifier-tooling-baked.sh)",
+    ".qc-cache/kittle-2026-10-09-r3/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r3/rules/harbor-webdev-rubric-qc/references/quality-checks.md section '22 · verifier_image_can_launch_and_grade' (lines 96-98)",
+    ".qc-cache/kittle-2026-10-09-r3/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (MCP server block lines 124-127, test.sh launch sequence lines ~105-108, restart helper line 152)",
+    ".qc-cache/kittle-2026-10-09-r3/rules/projects/webdev-task-template/tests/Dockerfile, tests/test.sh, environment/Dockerfile, task.toml (diffed against task)",
+    "qc/REVIEW_POLICY.md",
+    "model-beraking-prompts/handoffs/LESSONS_FROM_COLDERWATER_2026-10-08.md",
+    ".qc-cache/kittle-2026-10-09-r3/task/tests/Dockerfile, tests/.dockerignore, tests/test.sh, tests/tools/restart_mcp.py, tests/gates/*/judge.toml, tests/scored/*/judge.toml (MCP blocks)",
+    ".qc-cache/kittle-2026-10-09-r3/task/environment/Dockerfile, environment/instructions/integration.md line 3, task.toml",
+    ".qc-cache/kittle-2026-10-09-r3/task/solution/solve.sh, solution/app/package.json, solution/app/server.js require lines 7-11",
+    "qc/runs/kittle-2026-10-09-r3/raw-evidence-index.json (hashes of run_golden.sh and golden-run.log re-verified) and qc/repairs/kittle-2026-10-08/run_golden.sh, results/golden-run.log"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "STATIC: task/tests/Dockerfile is byte-identical to the frozen template (sha256 72998ab8...5fdd for both); test.sh and environment/Dockerfile also diff-identical to template. It ships: node runtime copied from node:22-bookworm-slim (line 1/4); pinned @anthropic-ai/claude-code@2.1.281 (judge CLI), @openai/codex@0.151.0, @playwright/mcp@0.0.79, express@5.1.0, better-sqlite3@12.4.1 (lines 16-22); harbor-rewardkit==0.1.7 (line 31); Chromium installed by the Playwright CLI bundled inside the pinned @playwright/mcp and symlinked to /usr/local/bin/chromium (lines 33-39); python3 (base image) for restart_mcp.py; util-linux for setpriv/setsid used by test.sh. App runtime deps match the agent image exactly (environment/Dockerfile lines 7-10: express@5.1.0, better-sqlite3@12.4.1) and the brief (integration.md line 3: Node 22, Express and better-sqlite3 found through NODE_PATH); golden server.js requires only crypto/fs/path/express/better-sqlite3 (lines 7-11). All judge.toml files call command 'playwright-mcp' with --executable-path=/usr/local/bin/chromium, and functional uses /usr/local/bin/python3 /tests/tools/restart_mcp.py, matching the staged contract. MEASURED (this review, 2026-10-09, docker build of the frozen task/tests context, image id sha256:bc302abbc0a5, then removed my tag): Debian 13 trixie, node v22.23.2, Python 3.12.14, 'claude --version' = 2.1.281 (Claude Code), codex-cli 0.151.0, /usr/local/bin/playwright-mcp Version 0.0.79 with bundled playwright 1.63.0-alpha-2026-08-05, /usr/local/bin/chromium -> /opt/playwright-browsers/chromium-1237/chrome-linux64/chrome reporting 'Google Chrome for Testing 152.0.7977.8', harbor-rewardkit Version 0.1.7 with /usr/local/bin/rewardkit and the agents.py bypass patch present (grep count 1); express 5.1.0 + better-sqlite3 12.4.1 load and run a query. Launching the golden (solution/app copied to /app, chown 65534) exactly as test.sh does (setsid env -i ... DB_PATH=/app/app.db setpriv --reuid=65534 node /app/server.js from cwd /tmp) gave /api/health 200, / 4629 bytes, log 'Kittle & Rowe matter chat on port 3000', /app/app.db created by nobody. A headless Chromium launch through the bundled Playwright with --no-sandbox loaded http://localhost:3000/ (title 'Kittle & Rowe · Matter chat', sign-in form rendered). restart_mcp.py answered MCP initialize and tools/list (restart_app) under python3. LIMITS: neither this review nor the raw evidence index contains a full test.sh -> rewardkit -> claude-code judge run in this image (index scope: 'Full configured grading/workload ... absent'); the 8 Oct scripted golden ran the app in cw-editor-agent-r3 and used cw-editor-verifier:current only as a Playwright client, so it does not show the app launching inside the verifier image. The 'grade' half is therefore wired and its tools present but not end-to-end exercised; that missing measurement keeps risk=true. Notes (P3, template-controlled, not task defects): base images are tag- not digest-pinned (python:3.12-slim now resolves to trixie while the agent image is bookworm; forward glibc compatibility makes agent-built native modules in /app/node_modules still load); the agent image has the sqlite3 CLI and git but the verifier does not, which only matters to an app that shells out to sqlite3, which the brief does not invite. Adversarial probes: a broken app cannot gain credit from this image (it contains no task-specific shortcuts; launch failure yields test.sh zero reward); a conforming alternative that uses only Node 22 + Express + better-sqlite3 or its own /app/node_modules launches identically, as the golden did.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL: image contents and app launch as uid 65534 CONFIRMED by docker build/run in this review; full rewardkit + claude-code grading in the verifier image NOT EXERCISED (no configured judge run in the evidence index)."
+}

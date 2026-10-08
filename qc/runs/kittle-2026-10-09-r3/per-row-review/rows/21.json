@@ -1,0 +1,33 @@
+{
+  "number": 21,
+  "id": "verifier_entrypoint_is_safe_and_always_scores",
+  "reviewer": "row-reviewer-21",
+  "input_sha256": "09069072a28c62a6498bd6f03da68fc018f9ccf3fe08b096921b1482f00a2dd0",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r3/rules/WebDev Rubrics QC.xlsx :: Quality Checks row 22 (#21 verifier_entrypoint_is_safe_and_always_scores) and Internal Quality Checks row 22 (no extra annotation columns populated)",
+    ".qc-cache/kittle-2026-10-09-r3/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r3/rules/harbor-webdev-rubric-qc/references/quality-checks.md :: ### 21",
+    ".qc-cache/kittle-2026-10-09-r3/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md :: ## tests/test.sh (ordered contract 1-8, budgets)",
+    ".qc-cache/kittle-2026-10-09-r3/rules/projects/webdev-task-template/tests/{test.sh,tools/score.py,tools/restart_mcp.py,scoring.toml,Dockerfile}",
+    ".qc-cache/kittle-2026-10-09-r3/task/tests/test.sh (sha256 bd68259276ca4b034654efc8a1723a4e702ed62dbe590af6201565f43eabe5aa)",
+    ".qc-cache/kittle-2026-10-09-r3/task/tests/tools/score.py (sha256 13de2b3885967e22aa13ded3bf33c354e3e741e85be871612c04e996eef5c04e)",
+    ".qc-cache/kittle-2026-10-09-r3/task/tests/scoring.toml, tests/Dockerfile, task.toml",
+    ".qc-cache/kittle-2026-10-09-r3/task/instruction.md, environment/instructions/integration.md, solution/solve.sh, solution/app/server.js:519",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/kittle-2026-10-09-r3/raw-evidence-index.json (all 6 entry hashes re-verified as matching)",
+    "model-beraking-prompts/handoffs/LESSONS_FROM_COLDERWATER_2026-10-08.md",
+    "rewardkit 0.1.7 runner.py/_write_outputs and `rewardkit --help` inside cw-editor-verifier:current"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "STATIC: frozen tests/test.sh, tests/tools/score.py, tests/tools/restart_mcp.py, tests/scoring.toml and tests/Dockerfile are byte-identical to rules/projects/webdev-task-template (diff empty), so no task-side drift. test.sh follows the staged-task-contract order: write_zero_reward at line 60 then `trap cleanup EXIT` (line 61) whose cleanup kills the app process group (re-reading app.pid so a restarted app is also killed) and calls ensure_reward; no `exec` anywhere; zero record (line 8) carries reward, all five dimensions, gates_passed, floors_passed, weighted_score, graded, no_op. Refuses missing /app/server.js (68-70) and any symlink whose target leaves /app/node_modules (72-83). Copies /app aside and launches via `setsid env -i PATH NODE_PATH HOME PORT DB_PATH setpriv --reuid=65534 --regid=65534 --clear-groups node` (90-112). Liveness probe /api/health then / for up to 30s before RewardKit (115-125). Restart helper by heredoc+sed, chmod 755, export APP_RESTART_HELPER (127-193). {app_context} substitution (195-201). Gates suite (timeout 1500) then score.py: 0 continue, 1 stop keeping detailed record, else plain zero (212-222); scored suite (timeout 11100) then score.py `|| write_zero_reward` (224-227). Budgets nest: 1500+11100=12600 < verifier timeout_sec 13200 (task.toml). Brief agrees with launch contract (integration.md: Node 22 /app/server.js as ordinary user, 0.0.0.0:3000, DB_PATH, GET /api/health 200, no symbolic links in /app); golden listens on 0.0.0.0 (server.js:519). RUNTIME (this reviewer, 9 Oct 2026, Docker image cw-editor-verifier:current whose tests/Dockerfile template is identical; frozen tests mounted read-only and copied to /tests; golden installed with frozen solve.sh; RewardKit replaced by a local no-provider stub only inside throwaway containers qc-r3-row21-*; real test.sh, real score.py, real app): golden_pass -> reward.txt 0.6500, graded=1 (weighted 0.6*0.5+0.2*1+0.2*0.75 correct), stub saw health=200, no unsubstituted {app_context}, APP_RESTART_HELPER exported; gate_fail (render 0) -> 0.0000 detailed record gates_passed=0, scored skipped; floor_fail (functional 0) -> 0.0000, weighted 0.4, floors_passed=0; gates_crash -> plain zero; scored_crash -> 0.0000 (gate-only record, scored skipped); gates_malformed -> score.py exit 2 -> plain zero; scored_malformed (functional=2) -> plain zero; no_server -> 0.0; symlink_escape (/app/public/leak -> /etc/passwd) -> 0.0; internal node_modules/.bin symlink -> still graded 0.65; never_ready app -> 0.0; app that exits immediately -> 0.0; REWARDKIT_JUDGE unset -> 0.0 with message; tampering app (uid 65534, env only PATH,NODE_PATH,HOME,PORT,DB_PATH) got EACCES writing /logs/verifier/reward.txt and reward.json and reading /tests and judge.toml, reward stayed the scorer's 0.6500. Restart helper exercised from inside the scored stub: restart_rc=0, pid 39->82, app-restart.log ready=1, and no node process remained after test.sh exited (cleanup follows app.pid). test.sh exit code 0 on every path. Real rewardkit 0.1.7 accepts --max-concurrent-agent/--output and run() writes a flat {dimension: score} reward.json for a single tests dir, matching score.py's key reads. LIMITS: no configured LLM-judge run (stubbed RewardKit), suite-timeout (`timeout` exit 124) path reasoned not executed (same `if ! run_suite ...; then exit 0` branch as the crash case, which was executed). Minor template-level wording note: on a scored-suite failure test.sh keeps the gate-stage record (reward 0.0000, graded=1) rather than the plain zero record the contract text step 8 describes; reward is still 0 and this is template-controlled, not a task defect.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "CONFIRMED (entrypoint paths executed with real test.sh/score.py/golden app and a stubbed RewardKit; configured judge not run)"
+}

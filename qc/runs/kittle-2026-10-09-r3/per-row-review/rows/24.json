@@ -1,0 +1,32 @@
+{
+  "number": 24,
+  "id": "grading_wiring_is_structurally_correct",
+  "reviewer": "row-reviewer-24",
+  "input_sha256": "09069072a28c62a6498bd6f03da68fc018f9ccf3fe08b096921b1482f00a2dd0",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r3/rules/WebDev Rubrics QC.xlsx :: Quality Checks row 24 (grading_wiring_is_structurally_correct); Internal Quality Checks row 24; Deterministic Checks rows check-rubric-schema.py, check-scoring-policy.py",
+    ".qc-cache/kittle-2026-10-09-r3/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r3/rules/harbor-webdev-rubric-qc/references/quality-checks.md (### 24)",
+    ".qc-cache/kittle-2026-10-09-r3/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md",
+    ".qc-cache/kittle-2026-10-09-r3/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (check-scoring-policy, check-rubric-schema, check-verifier-contract)",
+    ".qc-cache/kittle-2026-10-09-r3/rules/projects/webdev-task-template/tests/** (scoring.toml, five judge.toml, five prompt.md, test.sh, tools/score.py, tools/restart_mcp.py, Dockerfile, .dockerignore)",
+    ".qc-cache/kittle-2026-10-09-r3/task/tests/scoring.toml",
+    ".qc-cache/kittle-2026-10-09-r3/task/tests/gates/{render,constraints}/{judge.toml,prompt.md}",
+    ".qc-cache/kittle-2026-10-09-r3/task/tests/scored/{functional,polish,visual}/{judge.toml,prompt.md}",
+    ".qc-cache/kittle-2026-10-09-r3/task/tests/test.sh, tests/tools/restart_mcp.py, tests/tools/score.py, tests/Dockerfile, task.toml [verifier]",
+    "qc/REVIEW_POLICY.md; qc/runs/kittle-2026-10-09-r3/raw-evidence-index.json",
+    "harbor-rewardkit 0.1.7 installed in image qc-r3-row19-kittle-verifier:tmp (read-only docker run: judges.py/runner.py/models.py/agents.py), cross-checked against cw-strict-worktree/.../rewardkit-0.1.7-source/judges.py (LF-normalised sha256 bd713494... identical)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Mechanically re-derived with tomllib on the frozen task. scoring.toml:1-11 has [gates] render=0.0, constraints=0.0; [weights] functional 0.6/polish 0.2/visual 0.2 (sum 1.0); [floors] functional=0.05 - byte-equivalent to the template and every name maps to tests/gates/<name> or tests/scored/<name>. All five judge.toml exist in the right suite: gates/render and gates/constraints (aggregation all_pass, 1 binary criterion each: authenticated_render, server_backed_local_application), scored/functional (weighted_mean, 16 binary criteria, weights 1.5-4.0), scored/polish (weighted_mean, 5 binary, weight 1.0), scored/visual (weighted_mean, 4 likert points=5 with 0-5 anchors, weights 2/2/1/1). Every file: [judge] judge='claude-code' fallback (matches REWARDKIT_JUDGE in task.toml [verifier.env]), mode/timeout/isolated=false/prompt_template='prompt.md'; no model/reasoning_effort/temperature/weight keys; ids unique and equal to name; all weights positive; all descriptions non-empty; gates binary-only. Each file declares the playwright stdio MCP server identical to the template (--headless --isolated --executable-path=/usr/local/bin/chromium --no-sandbox). Only scored/functional/judge.toml:23-27 declares the 'verifier' server: command /usr/local/bin/python3, args ['/tests/tools/restart_mcp.py', '$APP_RESTART_HELPER'], identical to template; test.sh:127-193 generates $LOG_DIR/app-restart.sh, clears the .used marker and exports APP_RESTART_HELPER before both run_suite calls (test.sh:213, 224). test.sh, tools/score.py, tools/restart_mcp.py, tests/Dockerfile and .dockerignore are byte-identical to the frozen template (diff empty). Prompts resolve: each prompt.md exists beside its judge.toml and contains {criteria}, {app_context} and http://localhost:3000; test.sh:195-201 substitutes {app_context} into tests/*/*/prompt.md. The one structural deviation from template is functional mode='individual', timeout=550 (template batched/9000; comment at functional/judge.toml:7-11 records lead instruction relayed 8 Oct 2026). I verified it is supported by the installed harness: harbor-rewardkit 0.1.7 in the kittle verifier image has models.py:142 JudgeMode = Literal['batched','individual']; judges.py arun_agent registers MCP servers once via `claude mcp add` with os.path.expandvars (agents.py:66) and then _arun_agent_individual runs each criterion as its own sequential claude -p call with timeout=judge.timeout; ClaudeCodeCLI.cleanup (agents.py:85) is a no-op, so playwright and verifier stay registered for all 16 sessions. restart_mcp.py's single-use marker is a file ($APP_RESTART_HELPER.used, restart_mcp.py:29-32), so single use holds across the separate per-criterion MCP processes. Budget nesting (arithmetic only): gates 2x600=1200 < 1500; scored 16x550+900+900=10600 < 11100; 1500+11100=12600 < [verifier].timeout_sec 13200. Overruns (e.g. schema-retry, _MAX_JUDGE_RETRIES=3) are bounded by the suite `timeout` in test.sh and fail closed to the zero record. Counterexample search: (a) broken app passing via wiring - no path found: a missing/failed verifier server or helper makes restart_app return an error and the persistence criterion fails; a gate-suite timeout/failure exits with the pre-written zero; floors/gates enforced by the unchanged score.py. (b) conforming app failing via wiring - none structural; the only candidate is a slow-but-correct app exceeding 550 s on a heavy functional criterion (e.g. deleted_and_expired_messages, weight 4.0), which is a workload/timeout question owned by the timeout/workload rows, not a structural defect. Not exercised: no full configured RewardKit judge run of this candidate exists (raw-evidence-index.json scope states full configured grading is absent), so per-criterion durations under individual mode and the live expandvars of $APP_RESTART_HELPER in this task are verified by harness source reading, not by a run. That runtime gap belongs to the workload/full-verifier evidence rows and does not leave an unresolved structural defect for row 24.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

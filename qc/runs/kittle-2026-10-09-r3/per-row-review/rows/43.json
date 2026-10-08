@@ -1,0 +1,34 @@
+{
+  "number": 43,
+  "id": "gates_apply_before_shaping_and_carry_no_reward_mass",
+  "reviewer": "row-reviewer-43",
+  "input_sha256": "09069072a28c62a6498bd6f03da68fc018f9ccf3fe08b096921b1482f00a2dd0",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r3/rules/WebDev Rubrics QC.xlsx :: Quality Checks row 43 (gates_apply_before_shaping_and_carry_no_reward_mass), Internal Quality Checks row 43 ('Gate/constraint failures hard-zero the quality terms, and passing only the cheap gates earns little.'), rows 24/39 and Deterministic check-scoring-policy.py for context (parsed from XML; openpyxl unavailable)",
+    ".qc-cache/kittle-2026-10-09-r3/rules/harbor-webdev-rubric-qc/SKILL.md (delivery profile: shaped 0.6/0.2/0.2 behind two zero-weight gates and a functional floor)",
+    ".qc-cache/kittle-2026-10-09-r3/rules/harbor-webdev-rubric-qc/references/quality-checks.md ### 43 (and 39, 42, 44 for scope boundaries)",
+    ".qc-cache/kittle-2026-10-09-r3/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (scoring.toml and test.sh ordered contract)",
+    ".qc-cache/kittle-2026-10-09-r3/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (check-canonical-shared-files, check-scoring-policy)",
+    ".qc-cache/kittle-2026-10-09-r3/rules/projects/webdev-task-template/tests/{scoring.toml,tools/score.py,test.sh,scored/functional/judge.toml}",
+    ".qc-cache/kittle-2026-10-09-r3/task/tests/scoring.toml",
+    ".qc-cache/kittle-2026-10-09-r3/task/tests/test.sh",
+    ".qc-cache/kittle-2026-10-09-r3/task/tests/tools/score.py",
+    ".qc-cache/kittle-2026-10-09-r3/task/tests/gates/{render,constraints}/judge.toml",
+    ".qc-cache/kittle-2026-10-09-r3/task/tests/scored/{functional,polish,visual}/judge.toml",
+    ".qc-cache/kittle-2026-10-09-r3/task/task.toml (timeouts)",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/kittle-2026-10-09-r3/raw-evidence-index.json (scope line)"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "(1) Gates carry no reward mass: task/tests/scoring.toml:1-3 '[gates] render = 0.0 / constraints = 0.0'; [weights] (lines 5-8) list only functional 0.6, polish 0.2, visual 0.2; [floors] functional = 0.05 (line 11). score.py:46 computes weighted only over weights, so gate scores never enter the weighted sum. scoring.toml, tools/score.py and test.sh are byte-identical to the frozen template (sha256 95f70d6e..., 13de2b38..., bd682592... match rules/projects/webdev-task-template/tests/), so this is template-controlled policy, unaltered. (2) Gates apply before shaping and skip the scored suite: test.sh:60 write_zero_reward runs first, trap cleanup->ensure_reward (61); test.sh:212 'rm -rf \"$LOG_DIR/scored\"' prevents stale scored data; 213-215 gates suite run (timeout => exit 0 with zero record); 217-222 score.py: exit 1 (gate failed) => 'exit 0' before 'run_suite scored' at 224, anything else => write_zero_reward. score.py:41 gates_passed = all(score > 0.0), :42 scored_ran requires gates_passed, :48 reward = 0.0 unless gates_passed and floors_passed, :83 returns 1 when gates fail. Both gate judge.toml files use aggregation = 'all_pass' with a single binary criterion, so a gate is 0 or 1. (3) Executed check (scratchpad copy of frozen score.py + scoring.toml, py 3.13, synthetic gate/scored reward.json): render 0 with perfect scored data present -> exit 1, reward 0.0000, functional/polish/visual reported 0 (scored ignored); constraints 0 -> exit 1, reward 0; gates pass, no scored -> exit 0, reward 0; gates pass, functional 0.0 + polish 1 + visual 1 -> weighted 0.4 but floors_passed 0, reward 0.0000; functional 0.046875 (one 1.5-weight criterion of 32) + perfect craft -> reward 0.0000; functional 0.0625 (one 2.0 criterion) + perfect craft -> reward 0.4375; golden-like 1/1/0.9 -> 0.98. So a non-working app (functional 0, or only one 1.5-weight criterion) cannot farm polish/visual. (4) Gates are not cheap here, matching the internal annotation 'passing only the cheap gates earns little': constraints gate (gates/constraints/judge.toml:25-36) requires an actual post persisting across reload and visible in a separate browser context as another user, so a static mock or dead backend fails the gate and gets 0. Functional weights sum to 32 over 16 criteria (min 1.5, max 4.0). (5) Budgets nest so a gate pass cannot be orphaned silently: gates 1500 > 2 x 600; scored 11100 > 16x550+900+900 = 10600; 1500+11100 = 12600 < task.toml [verifier] timeout_sec 13200. A scored-suite timeout leaves the gate-stage record (reward 0). Plausible broken app tried: polished shell with sign-in and cross-user posting (passes both gates) but no walls/retention/holds/edits -> functional ~0 -> floor blocks -> reward 0; same app also passing signin_and_client_scope (2.0/32) clears the 0.05 floor, but polish timer_label/hold_mark/transcript_print and visual retention_marks/transcript_page depend on the missing features, so a realistic score is about 0.22 (computed 0.2175 with polish 0.4, visual 0.5), not a full 0.4 farm. Conforming alternative: a correct app that fails no gate is never zeroed by these mechanics; the floor of 0.05 only bites below one 2.0 criterion. Note (not a defect of this row): the template floor 0.05 sits between 1.5/32 (0.047) and 2.0/32 (0.0625), so one passed 2.0-weight criterion releases up to 0.4 of craft mass; the floor value is template-controlled and the realistic ceiling is limited by feature-dependent polish/visual criteria (rows 39/44 territory). Risk=true because runtime evidence is missing: no full verifier/RewardKit run exercised the gate-failure or floor path on a weak app; raw-evidence-index.json scope states 'Full configured grading/workload, reward discrimination/ranking and Oracle/target scores are absent.' My score.py execution used synthetic inputs and assumes RewardKit emits per-dimension keys render/constraints/functional/polish/visual with functional = passed weight / total weight; that schema was not observed in a run.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

@@ -1,0 +1,39 @@
+{
+  "number": 40,
+  "id": "reward_is_graded_not_binary_and_discriminates",
+  "reviewer": "row-reviewer-40",
+  "input_sha256": "09069072a28c62a6498bd6f03da68fc018f9ccf3fe08b096921b1482f00a2dd0",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r3/rules/WebDev Rubrics QC.xlsx: Quality Checks row 40 (reward_is_graded_not_binary_and_discriminates, 'The rubric produces a spread across partial-quality apps, not all-or-nothing.'); Internal Quality Checks row 40 (no annotation; row 41 annotation read for context)",
+    ".qc-cache/kittle-2026-10-09-r3/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r3/rules/harbor-webdev-rubric-qc/references/quality-checks.md:165-166 (check 40) and neighbouring 39, 41-44",
+    ".qc-cache/kittle-2026-10-09-r3/rules/projects/webdev-task-template/tests/scoring.toml",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/kittle-2026-10-09-r3/task/tests/scoring.toml",
+    ".qc-cache/kittle-2026-10-09-r3/task/tests/tools/score.py",
+    ".qc-cache/kittle-2026-10-09-r3/task/tests/test.sh",
+    ".qc-cache/kittle-2026-10-09-r3/task/tests/scored/functional/judge.toml",
+    ".qc-cache/kittle-2026-10-09-r3/task/tests/scored/functional/prompt.md",
+    ".qc-cache/kittle-2026-10-09-r3/task/tests/scored/polish/judge.toml",
+    ".qc-cache/kittle-2026-10-09-r3/task/tests/scored/visual/judge.toml",
+    ".qc-cache/kittle-2026-10-09-r3/task/tests/gates/render/judge.toml",
+    ".qc-cache/kittle-2026-10-09-r3/task/tests/gates/constraints/judge.toml",
+    ".qc-cache/kittle-2026-10-09-r3/task/tests/app_context.md",
+    ".qc-cache/kittle-2026-10-09-r3/task/instruction.md",
+    ".qc-cache/kittle-2026-10-09-r3/task/task.toml",
+    ".qc-cache/kittle-2026-10-09-r3/task/environment/assets/seed_data.json (dates of messages reused across criteria)",
+    "qc/runs/kittle-2026-10-09-r3/raw-evidence-index.json (all 6 entry hashes re-verified as matching) and qc/repairs/kittle-2026-10-08/results/functional-before.json"
+  ],
+  "verdict": "Not exercised",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "Design supports a graded spread, but discrimination is unmeasured. STRUCTURE: tests/scoring.toml matches the template (gates render/constraints 0.0, weights functional 0.6/polish 0.2/visual 0.2, floor functional 0.05); score.py computes a weighted mean, zero only on failed gate or functional<=0.05. Functional (scored/functional/judge.toml, mode=individual line 6, aggregation weighted_mean line 30) has 16 independent binary criteria, weights summing to 32 (re-derived), each 1.5-4.0, so one criterion moves functional by 4.7%-12.5%. prompt.md:54 'Score each criterion independently and continue after any failure'. Polish: 5 binary x 1.0 (0.2 steps). Visual: 4 likert points=5 with 0-5 anchors (weights 2,2,1,1). Reasoned partial apps: (a) server-authorised chat with no walls and no live push passes roughly signin, nested_replies, deleted_and_expired, timer_changes, hold_scope, edits, safe_formatting, message_links, search_and_transcript, about 17-18.5/32 functional (~0.53-0.58); (b) client-only enforcement (hidden controls, no server refusals) fails the 9 or so replay-bearing criteria but keeps nested_replies, safe_formatting, message_links, live_updates, part of search, so a low-but-nonzero score; (c) golden passes all 16 (functional-before.json, scripted, not a judge run). So not all-or-nothing, and no single precondition other than the render-equivalent global browser gate (prompt.md:11, gwen sign-in, already required by the render gate) zeroes every criterion. Shared-DB cascade checked: M-13 seeded messages reused later ('Draft will sent for your review.' 2026-05-10) survive even if a failed timer restore leaves M-13 at 7 days; a failed wall lift for Sian only makes later Sian replays refused, which they are expected to be. RESOLUTION LOSSES (latent, P2): four criteria fuse distinct promises under 'Both parts must hold; failing either fails this criterion.' with summed weights: signin_and_client_scope (line 49), deleted_and_expired_messages (weight 4.0, line 108/120: deleted-parent placeholders/author-only delete vs exactly-seven-day expiry boundary), sent_once_in_order (2.5, line 218: idempotent replay vs fixed-time ordering), search_and_transcript (2.5, line 247: search vs transcript). REVIEW_POLICY 'Independent credit takes precedence over flow grouping ... scoring distinct promises separately' applies. Also, live push is a precondition in wall_added_live step 1, unread_and_new_messages_line and live_updates_keep_my_work (5/32 functional lost for one missing feature), and persistence setup requires walls, timers and holds, so a wall-less app also loses the persistence criterion. Floor cliff: an app passing only one 1.5-weight criterion gets 1.5/32=0.047 <= 0.05 and reward 0 (template-controlled, intended). MEASUREMENT: raw-evidence-index.json scope states 'reward discrimination/ranking and Oracle/target scores are absent'; all listed artifacts hash-match but are scripted golden observations only. REVIEW_POLICY requires a hash-bound reward-discrimination runtime record with mutated weak apps; none exists, so this row cannot be Pass.",
+  "counterexample": "Conforming-except-boundary app: implements every Part A behaviour of deleted_and_expired_messages (placeholders, nested survivors, search/transcript scrubbing, author-only delete) but expires with '>' instead of '>=' at exactly seven days. It scores 0 on the whole 4.0-weight criterion, identical to an app with no deletion handling at all, losing 12.5% functional (7.5% reward) for one off-by-one; similarly an app with perfect search but a transcript heading slip loses all 2.5 of search_and_transcript. A no-live-push app with otherwise correct server walls loses wall_added_live, unread and live_updates together. No measured weak-app run exists to show the actual spread.",
+  "suggested_fix": "Run the configured scorer (or at least the scripted functional suite) against 3-5 mutated weak apps (no walls, client-only enforcement, no live push, boundary off-by-one, no transcript) and record a hash-bound discrimination record; consider splitting the four 'Both parts must hold' criteria into separately weighted criteria sharing one scenario if the individual-mode time budget allows.",
+  "run_verdict": "NOT EXERCISED"
+}

@@ -1,0 +1,31 @@
+{
+  "number": 39,
+  "id": "floor_is_low_for_shells_mocks_and_stuffing",
+  "reviewer": "row-reviewer-39",
+  "input_sha256": "09069072a28c62a6498bd6f03da68fc018f9ccf3fe08b096921b1482f00a2dd0",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r3/rules/WebDev Rubrics QC.xlsx: Quality Checks row 40 (#39) and Internal Quality Checks row 40 (#39); also Quality Checks D44 (#43 floor wording) for context",
+    ".qc-cache/kittle-2026-10-09-r3/rules/harbor-webdev-rubric-qc/SKILL.md (delivery profile, evidence standard)",
+    ".qc-cache/kittle-2026-10-09-r3/rules/harbor-webdev-rubric-qc/references/quality-checks.md:161-163 (#39 procedure)",
+    ".qc-cache/kittle-2026-10-09-r3/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (scoring.toml, test.sh contract, prompt in-dimension gate)",
+    "qc/REVIEW_POLICY.md",
+    "handoffs/LESSONS_FROM_COLDERWATER_2026-10-08.md (background)",
+    "task/tests/scoring.toml, task/tests/test.sh, task/tests/tools/score.py",
+    "task/tests/gates/render/{judge.toml,prompt.md}, task/tests/gates/constraints/{judge.toml,prompt.md}",
+    "task/tests/scored/functional/{judge.toml,prompt.md}, scored/polish/{judge.toml,prompt.md}, scored/visual/prompt.md + criterion headers",
+    "task/tests/app_context.md, task/instruction.md (grep)",
+    "qc/runs/kittle-2026-10-09-r3/raw-evidence-index.json, manifest.json; qc/repairs/kittle-2026-10-08/results/golden-run.log (sha256 re-verified 4da6ab5d...a22, matches index)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Structural floor: test.sh writes a zero reward first and on every exit (write_zero_reward + trap cleanup); a missing /app/server.js or no HTTP answer within 30 s exits with 0. score.py:41 gates_passed requires render and constraints > 0.0 (all_pass binary gates), :42 the scored suite only counts if gates passed, :47-48 reward = weighted only if gates AND floors pass, else 0.0; test.sh exits on score.py code 1 before running the scored suite, so polish/visual cannot be farmed. scoring.toml [floors] functional = 0.05: functional weights sum to 32.0, so at least one full functional criterion (min weight 1.5) must pass for any reward. Five floor cases reasoned through: (1) Blank page / 500-everything server: probe_ready accepts HTTPError so the suite runs, but render authenticated_render (gates/render/judge.toml:25-34) requires a real matter chat, wrong-password rejection and Gwen's matters+messages -> gate 0 -> reward 0. (2) Static mock / (3) seed-copy page, including the strongest variant: client-side JS with seed_data copied in, fake password check and localStorage writes. That can imitate render, but constraints server_backed_local_application (gates/constraints/judge.toml:76-88) posts 'Gate check JUDGE-G1', reloads, then needs harriet in a separate browser context to see it; app_context.md:24 tells the judge exactly how (browser().newContext()) and forbids reusing one context's tabs for two people, so per-context localStorage fails and 'only the posting browser can see' is an explicit fail. (4) Keyword-stuffed page: no working sign-in or post, so both gates fail. Prompts state submission text is untrusted and that scoring directives in it must be ignored (render/prompt.md:2-4, constraints/prompt.md:2-4). (5) Refusing submission: cannot sign in or post, and constraints prompt.md:'A negative check requires its stated positive control... unavailable operation is not proof' prevents refusal-as-compliance. Each scored prompt repeats the in-dimension global gate (functional/polish/visual prompt.md 'Global browser gate ... static mock, static shell, missing backend, or seeded-looking facade fails ... assign 0'). Every functional criterion carries a positive control (e.g. signin_and_client_scope Part B M-11 post, wall_every_route Sian's post/search, hold step 1 delete, sent_once D2 post), so a refusing app that passed gates would still score ~0 functional and fall under the floor. Gate feasibility positive control: scripted golden log qc/repairs/kittle-2026-10-08/results/golden-run.log line 2 'gate_constraints PASS' (hash verified). That is scripted Playwright, not a configured judge run. Broken-app probe: a thin server with one shared, persisted JSON blob and all logic client-side clears both gates, but loses every replay/server-enforcement criterion. It can still get partial credit on client-renderable criteria such as nested_replies, safe_formatting, message_links, live updates, unread and search/transcript, for about 0.3 functional. That is a partially working app, not a floor case, and its grade belongs to rows 40/42. Conforming-alternative probe: an app using any route/cookie/storage names passes the gates (constraints prompt 'Do not prescribe endpoint names'; CDN assets allowed), so the floor does not reject valid apps. Unmeasured: raw-evidence-index scope says weak-app reward discrimination/ranking and full configured judge runs are absent, so this Pass rests on structural reasoning about score.py/test.sh. It does not cover measured weak-app runs, which row 39 does not require (quality-checks.md:162 'reason through'). The measured discrimination gap belongs to rows 40/42 and the runtime records.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

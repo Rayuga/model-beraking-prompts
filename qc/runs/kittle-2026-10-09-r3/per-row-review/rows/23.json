@@ -1,0 +1,43 @@
+{
+  "number": 23,
+  "id": "verifier_and_instruction_agree_on_the_runtime_contract",
+  "reviewer": "row-reviewer-23",
+  "input_sha256": "09069072a28c62a6498bd6f03da68fc018f9ccf3fe08b096921b1482f00a2dd0",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r3/rules/WebDev Rubrics QC.xlsx: Quality Checks row 23 (verifier_and_instruction_agree_on_the_runtime_contract), Internal Quality Checks row 23 (incl. Mukesh annotation on default login), rows 4/19/49 and Deterministic check-runtime-contract-strings.py for context",
+    ".qc-cache/kittle-2026-10-09-r3/rules/harbor-webdev-rubric-qc/SKILL.md (delivery profile, known false positives incl. sign-in for checks 23/27)",
+    ".qc-cache/kittle-2026-10-09-r3/rules/harbor-webdev-rubric-qc/references/quality-checks.md section 23",
+    ".qc-cache/kittle-2026-10-09-r3/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (tests/test.sh contract, cross-file agreements table)",
+    ".qc-cache/kittle-2026-10-09-r3/rules/projects/webdev-task-template (tests/test.sh diffed: identical; environment/instructions/integration.md diffed)",
+    "qc/REVIEW_POLICY.md",
+    "F:/Documents/turing-workspace/model-beraking-prompts/handoffs/LESSONS_FROM_COLDERWATER_2026-10-08.md",
+    "task/tests/test.sh (all 227 lines)",
+    "task/instruction.md",
+    "task/environment/instructions/integration.md",
+    "task/environment/instructions/walls-and-retention.md (line 3 password)",
+    "task/environment/Dockerfile",
+    "task/tests/Dockerfile",
+    "task/task.toml",
+    "task/tests/app_context.md",
+    "task/tests/gates/render/judge.toml",
+    "task/tests/scoring.toml",
+    "task/solution/solve.sh",
+    "task/solution/app/server.js (lines 13-42, 519)",
+    "task/environment/assets/seed_data.json (accounts, clock; identical to solution/app/seed/seed_data.json)",
+    "qc/runs/kittle-2026-10-09-r3/raw-evidence-index.json (6 entries, all present, sha256 verified; matching_source_files hashes verified against frozen task)",
+    "qc/repairs/kittle-2026-10-08/results/golden-run.log and run_golden.sh line 20 (launch command used)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Every launch assumption in task/tests/test.sh is stated to the agent. (1) Entry: test.sh:68 refuses without /app/server.js and test.sh:97/111 runs `node /app/server.js`; instruction.md:5 'The finished app goes in `/app`, starting from `/app/server.js`' and integration.md:3 'running `/app/server.js`'. (2) Runtime/deps: test.sh:104-106 `env -i PATH=... NODE_PATH=/usr/local/lib/node_modules`; integration.md:3 'Node 22 ... Express and better-sqlite3 are already installed globally and found through `NODE_PATH`'; tests/Dockerfile:1-4,16-22 supplies node:22 /usr/local and express@5.1.0/better-sqlite3@12.4.1 globally, same pins as environment/Dockerfile:9-12. (3) Unprivileged user and cwd: test.sh:110 `setpriv --reuid=65534`, launched with cwd /tests (WORKDIR /tests, chmod go-rwx, test.sh:12) or from the /tmp/submission copy (test.sh:99-102); integration.md:3 'as an ordinary user and not necessarily from inside `/app`, so find your own files relative to `server.js`'. (4) Port/bind: test.sh:108 PORT=3000, probes 127.0.0.1:3000 (test.sh:48); integration.md:3 'listen on 0.0.0.0 port 3000'; app_context.md:4 localhost:3000. (5) Storage: test.sh:98-101,109 DB_PATH=/app/app.db or copy path; integration.md:3 'SQLite at `/app/app.db`, or at the path in `DB_PATH` when that is set'. (6) Liveness: test.sh:48 /api/health then / (any HTTP response counts); integration.md:3 '`GET /api/health` should answer 200 even if the database can't be opened' (stricter than probe). (7) Seed/fresh DB: test.sh does not reset app.db; integration.md:5 'Copy `/assets/seed_data.json` into `/app` and import it once ... hand it over without a database left'; task.toml:2 artifacts include /assets and test.sh:88 makes it readable. (8) Symlinks: test.sh:72-83 zeroes any symlink outside /app/node_modules or escaping it; integration.md:5 'don't put symbolic links anywhere in `/app`; we won't run an app that has them' (stricter than test, safe direction). (9) Restart: test.sh:127-193 restarts on same DB; integration.md:5 restarts keep everything without re-import. (10) Clock/accounts: no env injected for clock; integration.md:7 fixed 2026-05-12T11:00:00Z; walls-and-retention.md:3 password123; seed accounts match app_context.md:10-16. No undisclosed env var (HOME is a neutral value). test.sh is byte-identical to the frozen template test.sh (diff empty), so no task-specific harness drift. Network public per profile; not reported. Runtime check (this review, throwaway container qc-r3-row23-launch from local image cw-editor-verifier:current, Node v22.23.2): copied frozen solution/app to /app and seed to /assets, ran frozen test.sh lines 1-125 verbatim from cwd /tests (drwx------ root): READY=1, APP_ENTRY=/app/server.js, APP_DB=/app/app.db, process user nobody, /api/health -> {\"ok\":true,\"booted\":true,\"clock\":\"2026-05-12T11:00:00Z\"}, / served 4629 bytes, app.db created owned by nobody. Prior golden evidence (raw-evidence-index, hashes verified) used env -i/uid 65534 but cwd /tmp in the agent image, so my run adds the exact test.sh cwd and verifier-image path. Adversarial: a broken app that hard-codes ./public via process.cwd() fails (cwd /tests unreadable) - but the brief explicitly warns, so this is fair. A conforming alternative that ignores DB_PATH still works since the default and injected path are both /app/app.db; one installing extra npm deps under /app/node_modules is carried as /app artifact and its internal .bin links are tolerated. I found no conforming app the launch would reject.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "CONFIRMED (launch block measured on stand-in verifier image; full RewardKit grading not exercised)",
+  "notes": "Limits: cw-editor-verifier:current was built 2026-10-01 and was not rebuilt from the frozen tests/Dockerfile for this check; full configured judge run, Oracle and model scores are absent and are not claimed here (rows 22/38 territory). Minor, non-defect: the brief bans all symlinks in /app while test.sh tolerates in-tree node_modules links - stricter instruction, safe direction."
+}

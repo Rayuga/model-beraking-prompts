@@ -1,0 +1,32 @@
+{
+  "number": 42,
+  "id": "reward_ranking_is_monotone",
+  "reviewer": "row-reviewer-42",
+  "input_sha256": "09069072a28c62a6498bd6f03da68fc018f9ccf3fe08b096921b1482f00a2dd0",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r3/rules/WebDev Rubrics QC.xlsx: 'Quality Checks' row 42 (reward_ranking_is_monotone: 'A worse app never outscores a better one - weights/gates/criteria don't invert the ranking.') and 'Internal Quality Checks' row 42 annotation 'Mukesh - we need to monitor this one.'",
+    ".qc-cache/kittle-2026-10-09-r3/rules/harbor-webdev-rubric-qc/SKILL.md (delivery profile: shaped 0.6/0.2/0.2 behind two zero-weight gates and a functional floor; verdict/severity/evidence rules)",
+    ".qc-cache/kittle-2026-10-09-r3/rules/harbor-webdev-rubric-qc/references/quality-checks.md:172-173 (### 42 verify text) and :175-179 (43/44 boundaries)",
+    ".qc-cache/kittle-2026-10-09-r3/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (scoring.toml rules ~:87-96)",
+    ".qc-cache/kittle-2026-10-09-r3/rules/projects/webdev-task-template/tests/{scoring.toml,tools/score.py,test.sh} (diffed: byte-identical to task copies)",
+    "qc/REVIEW_POLICY.md (runtime records for reward discrimination and reward ordering required before clearance)",
+    ".qc-cache/kittle-2026-10-09-r3/task/tests/scoring.toml, tests/tools/score.py, tests/test.sh",
+    ".qc-cache/kittle-2026-10-09-r3/task/tests/gates/{render,constraints}/judge.toml + constraints/prompt.md",
+    ".qc-cache/kittle-2026-10-09-r3/task/tests/scored/{functional,polish,visual}/judge.toml + functional/prompt.md",
+    ".qc-cache/kittle-2026-10-09-r3/task/environment/assets/seed_data.json; task.toml",
+    "qc/runs/kittle-2026-10-09-r3/raw-evidence-index.json and manifest.json",
+    "model-beraking-prompts/handoffs/LESSONS_FROM_COLDERWATER_2026-10-08.md (grep only for ranking/order lessons)"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "SOURCE ANALYSIS (no inversion found). (1) Policy: tests/scoring.toml:1-11 gates render=0.0/constraints=0.0, weights functional 0.6/polish 0.2/visual 0.2, floor functional=0.05; scoring.toml, tools/score.py and test.sh are byte-identical to the frozen template (diff empty), so the shaping is template-controlled and matches the SKILL delivery profile. Function (0.6) carries more mass than craft (0.4), so the skill's named inversion pattern ('craft carrying more mass than function') is absent. (2) Formula: score.py:41 gates_passed = all(score > 0.0); :46 weighted = sum(w*score)/sum(w); :47 floors_passed = functional > 0.05; :48 reward = weighted if gates and floor else 0. Every term is non-decreasing in every dimension score and every binary/likert criterion result (functional/polish/visual all aggregation='weighted_mean' with positive weights; gates all_pass). Hence for any app A that is at least as good as B on every criterion, reward(A) >= reward(B); the gate and floor are step functions that are themselves monotone. (3) Functional weights sum to 32 (2,2,2,2,1.5,4,2,2,1.5,1.5,1.5,1.5,2.5,1.5,2.5,2); max criterion share 4/32*0.6=0.075 of reward, none dominate. Note the floor cliff: a lone 1.5-weight pass gives functional 0.0469 (< 0.05, reward 0) while a lone 2.0 pass gives 0.0625 (reward > 0); this is monotone (different criteria, higher-weight one ranks higher) and is the template floor. (4) Gates do not demand anything a stronger app would fail: render gate (gates/render/judge.toml criterion authenticated_render) is reachability + sign-in + no pre-sign-in leak + wrong-password refusal; constraints gate (server_backed_local_application) is a save + reload + cross-context readback, all core brief behaviour. Both are all_pass binary with zero reward mass. (5) Shared-DB ordering (functional prompt 'Criteria share one database'; criteria run in listed order) checked for state an earlier criterion leaves that would make a CORRECT app fail later while a broken one passes: timer_changes shortens M-13 to 7 days, which in a correct app deletes only K-13 (4 May, 8 days); K-8 'Draft will sent for your review.' (2026-05-10) survives, so later message_links/live_updates_keep_my_work still find it (seed_data.json M-13). A broken app that wrongly accepts Sian's 1-day timer replay would delete K-8 and lose later criteria - penalises the weaker app, not an inversion. Walls added in wall_added_live/persistence are lifted by the same criterion; hold release of K-17 is consistent with persistence step c. No later criterion depends on a correct app having failed an earlier step. RISKS (why risk=true). (a) qc/runs/kittle-2026-10-09-r3/raw-evidence-index.json 'scope' states: 'Full configured grading/workload, reward discrimination/ranking and Oracle/target scores are absent.' REVIEW_POLICY requires hash-bound reward-ordering and discrimination records; none exist, so ordering of golden vs mutated weak apps under the real judge is unmeasured (run_verdict NOT EXERCISED). Workbook internal annotation for this row says 'we need to monitor this one'. (b) Whole-suite timeout cliff: test.sh:224 'run_suite scored 11100' -> on timeout 'exit 0' leaves the zero reward for the entire run. Functional is individual mode, 16 x 550 s + polish 900 + visual 900 = 10600 s (functional/judge.toml comment says 'Not yet measured against a judge run'). A correct app makes the judge execute every step of every criterion (positive controls succeed, so it continues), while a broken app fails early; if session overheads exceed the 500 s margin, the better app can get reward 0 while a weaker, faster-failing app is scored - a potential ranking inversion that only a full configured run can rule out. (c) Cross-dimension trade-off (template-inherent, not a task defect): an app passing one 2.0 criterion with perfect polish/visual scores 0.6*0.0625+0.4=0.4375, while an app passing 22/32 functional weight with polish and visual both 0 scores 0.4125. These apps are not dominance-ordered, and realistic functional apps earn some polish/visual credit, so this is recorded for monitoring only.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

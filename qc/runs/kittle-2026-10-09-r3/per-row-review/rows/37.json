@@ -1,0 +1,36 @@
+{
+  "number": 37,
+  "id": "later_dimensions_tolerate_earlier_mutations",
+  "reviewer": "row-reviewer-37",
+  "input_sha256": "09069072a28c62a6498bd6f03da68fc018f9ccf3fe08b096921b1482f00a2dd0",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r3/rules/WebDev Rubrics QC.xlsx (Quality Checks row 38 = check 37; Internal Quality Checks row 38, no extra annotation)",
+    ".qc-cache/kittle-2026-10-09-r3/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r3/rules/harbor-webdev-rubric-qc/references/quality-checks.md:153-154",
+    ".qc-cache/kittle-2026-10-09-r3/rules/projects/webdev-task-template (tests/ tree, functional prompt.md)",
+    "qc/REVIEW_POLICY.md",
+    "task/tests/test.sh (gates then scored run, one app process, max-concurrent-agent 1)",
+    "task/tests/scoring.toml",
+    "task/tests/app_context.md",
+    "task/tests/gates/render/judge.toml, task/tests/gates/constraints/judge.toml",
+    "task/tests/scored/functional/judge.toml (all 16 criteria) and prompt.md",
+    "task/tests/scored/polish/judge.toml and prompt.md",
+    "task/tests/scored/visual/judge.toml and prompt.md",
+    "task/environment/assets/seed_data.json (identical to solution/app/seed/seed_data.json)",
+    "task/environment/instructions/walls-and-retention.md, integration.md",
+    "qc/runs/kittle-2026-10-09-r3/raw-evidence-index.json (all 6 artifact hashes and matching source hashes re-verified: match)",
+    "qc/repairs/kittle-2026-10-08/results/golden-run.log, tests/functional.cjs"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "Shared state: test.sh runs gates then scored against ONE app process/DB (run_suite gates, then run_suite scored, --max-concurrent-agent 1); functional is mode=individual with isolated=false so its 16 criteria run sequentially on the same DB, then polish/visual (batched). State-relative wording is explicit at every level: app_context.md:28 'The library of messages grows as criteria run. Do not assume the seed state, and do not delete anything a step does not ask you to.'; functional prompt.md:47 'Criteria share one database; never write something a later criterion does not expect.' and :72-76 (criteria run in listed order, earlier ones changed/restored timers, holds, walls; 'judge it against the state the earlier ones left'); polish prompt.md:32 'Messages, replies, edits, holds, timer changes, walls and deletions left by the functional run are legitimate; do not assume the seed state.'; visual prompt.md:49 'after the functional writes'. Retry collisions handled by the '-2' suffix rule (functional prompt.md:30-31). Each criterion creates its own uniquely-tagged JUDGE-* fixtures, and every destructive step was traced against later seed-dependent reads: (a) timer_changes sets M-13 to 7 days -> only K-13 (4 May, not held) is deleted; K-7 is held and K-8 'Draft will sent for your review.' (10 May, 2 days old) survives, so later message_links and live_updates_keep_my_work (both use K-8) and polish hold_mark / visual retention_marks (K-7) still have their targets; timer is restored to 30 (step 4) before later criteria. (b) hold_scope_and_release step 6 releases/deletes K-17 'Insurer letter'; the only later reader, persistence step c, is explicitly baseline-relative ('Note ... whether searches for \"Probate\" and \"Insurer letter\" return anything' then 'return exactly what they returned before the restart'). (c) wall_added_live walls Dev then lifts, walls Sian then lifts (step 4); persistence walls Sian from M-11 and sets M-12 to 30 days, both reversed at the end ('Finally lift Sian's wall on M-11 and set M-12's timer back to off'); M-12 30-day setting deletes nothing (all M-12 seed messages are 6 May or later). (d) Counts are relative: unread_and_new_messages_line first has Dev read M-13 to its newest message before Harriet posts, then expects 2; Gwen's count is 'at least 2'; persistence compares Dev's M-13 count and search counts with values noted just before restart. (e) Seed-stated preconditions in later criteria (M-11 seven-day timer, M-13 30-day timer, Dev walled from M-12, K-1/K-10 expired, K-2 held with versions, K-3 'Survey booked for Friday.') are untouched by any earlier criterion; the fixed clock 2026-05-12T11:00:00Z means nothing ages during the run. (f) Search expectations of 'finds nothing' (original lease scan, rent review date, Probate/2,400/4,200, Insurer letter, JUDGE-X0, Persist gone, heads of terms from M-12) are not contradicted by any text posted by earlier criteria or gates (gate posts only 'Gate check JUDGE-G1'). Runtime: scripted golden (qc/repairs/kittle-2026-10-08/results/golden-run.log, hashes verified against raw-evidence-index and frozen sources) ran gate_constraints, all 16 functional criteria in listed order, and polish_refusal_in_place on one database with a real restart, all PASS - direct evidence that each later check tolerates earlier mutations for the reference app. Plausible broken app that could pass: an app that resets/reseeds on restart or replays the seed import would be caught by persistence's before/after search counts and 'JUDGE-S2 has not come back'; an app that always shows seed-only state fails because each criterion checks its own new JUDGE fixtures. Conforming alternative that could fail: none found from seed assumptions; e.g. an OR-term search returning '@Dev survey update JUDGE-M2' for 'survey BOOKED' still passes ('is found' is not exclusive). Residual risk (why risk=true): no full configured judge run exists (raw-evidence-index scope: 'Not a configured judge run'); polish rows other than refusal_in_place and all visual rows were not exercised after the functional writes. Unmeasured: if a functional criterion is cut off by its 550 s individual timeout between a mutation and its restoration (e.g. wall_added_live after walling Dev from M-13, or timer_changes after setting M-13 off), a later criterion such as unread_and_new_messages_line (Dev in M-13) could fail for a conforming app; this is a workload/abort cascade, not a seed assumption in the wording, and the visual retention_marks wording ('a thread such as M-13') already tolerates it. Also a conforming app with an aggressive failed-sign-in lockout could be affected by repeated wrong-password probes across render gate, signin_and_client_scope (Harriet) and polish refusal_in_place (Gwen), though the brief does not ask for lockout. Neither is a demonstrated defect.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL"
+}

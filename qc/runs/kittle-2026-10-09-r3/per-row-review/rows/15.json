@@ -1,0 +1,36 @@
+{
+  "number": 15,
+  "id": "dockerfile_builds_the_declared_world",
+  "reviewer": "row-reviewer-15",
+  "input_sha256": "09069072a28c62a6498bd6f03da68fc018f9ccf3fe08b096921b1482f00a2dd0",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r3/rules/WebDev Rubrics QC.xlsx :: Quality Checks row #15 and Internal Quality Checks row #15 (dockerfile_builds_the_declared_world; no extra internal annotation beyond the row text); Deterministic Checks rows check-dockerfiles.py, check-dockerfile-references.sh, check-dockerfile-sanity.sh, check-fixtures.py, check-runtime-deps-in-both-images.py",
+    ".qc-cache/kittle-2026-10-09-r3/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r3/rules/harbor-webdev-rubric-qc/references/quality-checks.md ### 15 (lines 66-67)",
+    ".qc-cache/kittle-2026-10-09-r3/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md line 60",
+    ".qc-cache/kittle-2026-10-09-r3/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (docker/environment lines)",
+    ".qc-cache/kittle-2026-10-09-r3/rules/projects/webdev-task-template/environment/Dockerfile (frozen template)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/kittle-2026-10-09-r3/task/environment/Dockerfile",
+    ".qc-cache/kittle-2026-10-09-r3/task/environment/assets/seed_data.json",
+    ".qc-cache/kittle-2026-10-09-r3/task/environment/instructions/integration.md",
+    ".qc-cache/kittle-2026-10-09-r3/task/instruction.md",
+    ".qc-cache/kittle-2026-10-09-r3/task/task.toml [environment]",
+    ".qc-cache/kittle-2026-10-09-r3/task/solution/solve.sh, solution/app/package.json, solution/app/server.js (require lines 7-11)",
+    ".qc-cache/kittle-2026-10-09-r3/task/tests/Dockerfile (FROM, npm lines), tests/test.sh (NODE_PATH lines 106,162)",
+    "qc/runs/kittle-2026-10-09-r3/raw-evidence-index.json (all 6 entry hashes and matching_source_files re-verified OK against current bytes)",
+    "F:/Documents/turing-workspace/model-beraking-prompts/handoffs/LESSONS_FROM_COLDERWATER_2026-10-08.md (background)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Source: task/environment/Dockerfile is byte-identical to the frozen template rules/projects/webdev-task-template/environment/Dockerfile (diff empty; sha256 0a75419e...67d1). It has 'FROM node:22-bookworm-slim' (tagged base, no 'latest'), 'ENV NODE_PATH=/usr/local/lib/node_modules', 'RUN npm install -g --no-audit --no-fund express@5.1.0 better-sqlite3@12.4.1', 'COPY instructions/ /instructions/', 'COPY assets/ /assets/', 'RUN chmod -R a+rX /instructions /assets && mkdir -p /app && git -C /app init ... commit -m \"Initialize task workspace\"', WORKDIR /app, CMD sleep infinity; no COPY of solution/ or tests/. These match exactly what quality-checks.md #15 requires. The golden's only npm deps (solution/app/package.json: express 5.1.0, better-sqlite3 12.4.1; server.js:10-11 requires) are the pre-installed ones, and solve.sh only copies files (no npm install). Public brief integration.md:3 tells the model 'Express and better-sqlite3 are already installed globally and found through NODE_PATH', instruction.md:5 points at /assets/seed_data.json and /instructions, which the image stages. task.toml [environment] has no docker_image (the Dockerfile is not shadowed). tests/Dockerfile installs the same express@5.1.0/better-sqlite3@12.4.1 with NODE_PATH, and test.sh:106,162 passes the same NODE_PATH, so the declared world is the same at grade time. Runtime evidence from me, 9 Oct 2026: I built a fresh copy of the frozen environment/ directory as the uniquely tagged qc-r3-row15-kittle-agent:tmp. The build succeeded, and I removed the image afterwards. The scripted golden's cw-editor-agent-r3 image is not provably built from these bytes, so I did not rely on it. Results from 'docker run --network none --user 65534:65534': node v22.23.2; NODE_PATH=/usr/local/lib/node_modules; require resolved express 5.1.0 and better-sqlite3 12.4.1, and better-sqlite3 opened :memory: (sqlite 3.50.4), so the native addon loads offline as nobody; /assets/seed_data.json (5701 bytes, same sha256 f69616e2... as solution seed) and the three /instructions/*.md files are present and world-readable (r-x from chmod a+rX); /app contains only .git and an empty .gitkeep. I also ran the frozen solve.sh offline in the image (--network none) and copied /app aside. The app ran as uid 65534 with env -i PATH/NODE_PATH/HOME/PORT/DB_PATH and cwd /tmp: no /app/node_modules was created, /api/health returned 200, / returned 200, and the DB was created with tables matters/messages/users/walls/versions/... So no run-time install is needed. Notes (not defects, template-controlled per AGENTS.md, so they cannot be changed task-locally): the base is tag-pinned, not digest-pinned (node:22 floats patch releases; locally it resolves to node@sha256:83f487e0...); apt packages are unpinned (the workbook's check-dockerfiles.py treats this as a NOTE); /app is 'empty' apart from the template's .gitkeep/.git commit, which is the template's intended git-initialised workspace. Counterexample probes: (a) A broken app that could pass would be one needing an extra npm package (e.g. ws) that the agent installs into /app/node_modules during its public-network phase. That is outside this row: it concerns the submission and verifier (rows 19/22 and the test.sh symlink policy), not whether the agent image builds the declared world. (b) A conforming alternative that could fail would be one using only express plus better-sqlite3 as the brief says. Both resolve offline as uid 65534 in the measured image, so I found no conforming alternative that this image would break.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "CONFIRMED"
+}
