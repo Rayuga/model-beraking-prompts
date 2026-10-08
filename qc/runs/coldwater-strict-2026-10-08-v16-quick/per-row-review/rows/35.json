@@ -1,0 +1,39 @@
+{
+  "number": 35,
+  "id": "core_behavior_is_graded_and_state_is_proven_durable_where_it_must_be",
+  "reviewer": "row-reviewer-35",
+  "input_sha256": "54e6414b29eacdd715bacc835d9d72f36ae21db8d66c675e58f8a7f386b5f0c7",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-08-v16-quick/rules/WebDev Rubrics QC.xlsx (Quality Checks row 35; Internal Quality Checks row 35)",
+    ".qc-cache/coldwater-strict-2026-10-08-v16-quick/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-08-v16-quick/rules/harbor-webdev-rubric-qc/references/quality-checks.md (row 35)",
+    ".qc-cache/coldwater-strict-2026-10-08-v16-quick/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (restart helper, restart_app single-use)",
+    ".qc-cache/coldwater-strict-2026-10-08-v16-quick/rules/projects (template tree listing)",
+    "qc/REVIEW_POLICY.md",
+    "task/instruction.md",
+    "task/environment/instructions/behaviour.md (line 9 durability, line 13 history)",
+    "task/environment/instructions/integration.md (lines 7, 9: SQLite, DB_PATH, revisions survive restarts)",
+    "task/environment/instructions/ui.md (line 17)",
+    "task/environment/instructions/overview.md",
+    "task/tests/scored/functional/judge.toml (criterion ids; cw_save_reload_restart lines 339-345; verifier MCP lines 14-18)",
+    "task/tests/scored/functional/prompt.md (Restart evidence section lines 31-33)",
+    "task/tests/gates/constraints/judge.toml (line 32 save + storage-clear + reload gate)",
+    "task/tests/app_context.md (lines 27-30)",
+    "task/tests/test.sh (lines 95-193 launch, DB_PATH, restart helper)",
+    "task/solution/app/server.js (lines 8, 61, 93, 142-170 SQLite schema)",
+    "git diff 0829983e..f2e52393 (judge.toml, persist.cjs)",
+    "qc/repairs/coldwater-2026-10-02-strict/results/{persist-before,persist-after,restart}.json, restart.log"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": "low",
+  "evidence": "Defining behaviour is graded extensively in tests/scored/functional/judge.toml (editor typing/undo/multi-caret/find/format criteria lines 24-204; run/output/error/stop/recovery lines 213-312; save/conflict/history/live-update lines 339-402). Durability: the constraints gate (gates/constraints/judge.toml:32) saves, clears all origin storage per app_context.md:28, reloads and re-reads exact fields, so localStorage-only/same-origin fakes fail the gate. cw_save_reload_restart (judge.toml:344, weight 1.5) now saves twice with different sources, requires >=2 revisions before restart, clears browser storage and reloads, then calls restart_app once (test.sh:127-193 kills the process group and relaunches node on the same DB_PATH) and requires on a fresh page the same single record, same current revision, title, filename, source, the same list of revisions, and the first revision's exact original source. The flagged v15 defect (one snippet saved once, so an app that rebuilds a single history entry at boot from the current row would pass) is fixed: such an app would show one history entry and/or the v2 source for revision 1 after restart and fail; an app holding history only in memory fails likewise; an app keeping only the current row in SQLite fails the first-revision source check. Requirement is public (behaviour.md:9 'saved snippets and their history need to survive a full server restart'; integration.md:7,9). No new defect for this row found: restart_app is still named in only this criterion and prompt.md:33 forbids inferring restart from reload/health. Golden: server.js stores revisions in SQLite snippet_revisions (boot INSERT OR IGNORE backfill does not duplicate); scripted golden persist suite (results/persist-before.json, persist-after.json, restart.json at 2026-10-08 09:12-09:13, pid 37->66) passed with the new per-revision codes assertion and history [2,1]. Risk=true because (a) no full configured LLM judge run on v16 bytes exercises this criterion (raw-evidence-index.json absent; scripted golden is API-assisted and does not type the HTML-tag/ampersand/eval source or mid-line marker), so judge feasibility of the stricter wording is unmeasured; (b) minor wording risk: 'if the history held fewer than two revisions before the restart' could be read literally against a conforming app whose history panel lists only prior snapshots and shows the current revision separately.",
+  "counterexample": null,
+  "suggested_fix": "Optional tightening without loosening: change the fail clause to 'if the record did not have two revisions (the current one plus the earlier one, whether or not the history list includes the current revision) before the restart'. Obtain a full configured judge run on v16 before claiming this criterion scores 1 on the golden.",
+  "run_verdict": "NOT EXERCISED"
+}

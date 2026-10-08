@@ -1,0 +1,33 @@
+{
+  "number": 26,
+  "id": "dimensions_cover_every_graded_requirement",
+  "reviewer": "row-reviewer-26",
+  "input_sha256": "54e6414b29eacdd715bacc835d9d72f36ae21db8d66c675e58f8a7f386b5f0c7",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-08-v16-quick/rules/WebDev Rubrics QC.xlsx (Quality Checks row 26 C27; Internal Quality Checks row 26 annotation: flows may combine verifiers)",
+    ".qc-cache/coldwater-strict-2026-10-08-v16-quick/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-08-v16-quick/rules/harbor-webdev-rubric-qc/references/quality-checks.md (#26, #23, #27)",
+    ".qc-cache/coldwater-strict-2026-10-08-v16-quick/rules/projects/webdev-task-template (layout)",
+    "qc/REVIEW_POLICY.md",
+    "task/instruction.md",
+    "task/environment/instructions/{overview,ui,behaviour,security,integration,policy}.md",
+    "task/tests/gates/render/judge.toml, task/tests/gates/constraints/judge.toml",
+    "task/tests/scored/functional/judge.toml (39 criteria), scored/polish/judge.toml (6), scored/visual/judge.toml (3)",
+    "task/tests/app_context.md",
+    "task/tests/test.sh (DB_PATH, health launch)",
+    "task/solution/app/server.js:16 (CSP)",
+    "git show f2e52393 (app_context.md and cw_preview_isolation diff)"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "Built the requirement->criterion map over instruction.md and all six notes against the 2 gate + 39 functional + 6 polish + 3 visual criteria. Nearly everything maps: custom surface (cw_custom_document_surface); typing/Backspace/Delete/arrows/Home/End/readout/sticky column (cw_custom_typing_and_line_join, cw_caret_navigation_and_line_numbers); Ctrl+Home/End and scroll-into-view (cw_caret_kept_in_view); graphemes; mouse gestures/copy; replace-selection and one-step paste undo; Tab/Shift+Tab incl. next-line exclusion and in-line selection; both modifier-clicks, same-line carets, slow-burst atomic undo/redo; undo restores caret; Undo/Redo greyed after New/open (cw_undo_redo_availability); format idempotence with no extra undo step (one Undo after second Format must restore the original in cw_js_format_semantics_and_undo); find/replace incl. self-containing text and redo cleared; JS/HTML colouring; format JS/HTML/error; run/HTML preview/errors+line numbers/unhandled rejections/console order/output kept/fresh document/last-good incl. fields and canvas/time budget/interaction budget/Stop/newer run supersedes; dynamic-eval refusal with string control; save exactness, storage-cleared reload, restart with two revisions; stale save refused + draft kept; live library, editing-state preserved, newer-revision notice; history inspect/restore/stale restore/repeat-safe restore; polish keyboard/focus/escape hint/feedback/focus return/unsaved marker/390px. Runtime contract (port, DB_PATH, health) is exercised by test.sh; SQLite is not browser-observable, which REVIEW_POLICY says not to force. GAP introduced by f2e52393: security.md:3 states 'fetch requests to outside addresses or to this app's own routes must fail'. The previous cw_preview_isolation graded the outside-address leg ('repeat the no-cors fetch from the preview against [a public https address]'); the fix deleted it and replaced it with http://127.0.0.1:3000/api/health, which is the same server (still an own-route/loopback probe), and app_context.md:27 now says 'No criterion needs any address outside this machine.' So the outside-network half of the security requirement is now ungraded. Minor additional gaps (not individually blocking, listed for completeness): behaviour.md:3 'the text ... of the rejected value' is only tested with Error rejections (cw_promise_rejection_message_and_line), never a rejected string/plain value; behaviour.md:5 'Promise callbacks still pending' within the budget is only tested with loops and self-rescheduling timers, never an endless microtask/Promise chain; behaviour.md:13 'make saves and restores ordinary HTTP requests' is checked only for restores (cw_restore_request_repeat_safe), not saves. No runtime run was used for this row; this is a static coverage finding.",
+  "counterexample": "A preview whose fetch is blocked only for loopback/same-server hosts, e.g. a runner iframe with CSP connect-src https: (to let user code reach CDNs) or a fetch wrapper that rejects URLs whose host is localhost/127.0.0.1. Both probes in cw_preview_isolation (http://localhost:3000/api/health and http://127.0.0.1:3000/api/health) reject, so the criterion passes, yet fetch('https://example.com',{mode:'no-cors'}) from user code resolves and can exfiltrate data, violating security.md:3. No other criterion probes an outside address.",
+  "suggested_fix": "Restore an outside-address leg in cw_preview_isolation using one fixed public address named in the criterion and app_context (e.g. 'if https://example.com/ loads in a normal tab, a no-cors fetch to it from the preview must reject'), which keeps row 25's 'of its choice' concern fixed; the golden's connect-src 'self' CSP (solution/app/server.js:16) rejects it so Oracle is unaffected. Optionally add a rejected string value to the promise criterion.",
+  "run_verdict": "NOT EXERCISED"
+}
