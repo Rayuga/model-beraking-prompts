@@ -110,12 +110,22 @@ async function before() {
     assert.ok(titles.some(t => t.includes('Pryce lease dispute')) && titles.some(t => t.includes('Pryce will')));
     assert.ok(!titles.some(t => t.includes('Marsh')));
     gwen.requests.length = 0;
-    await openMatter(gwen, 'M-13');
-    const load = lastReq(gwen, 'GET', /\/api\/matters\/M-13$/);
+    await openMatter(gwen, 'M-11');
+    const load = lastReq(gwen, 'GET', /\/api\/matters\/M-11$/);
+    await gwen.click('#mentions-link'); await sleep(500);
+    const mreq = lastReq(gwen, 'GET', /\/api\/mentions/);
+    await search(gwen, 'Survey');
+    const sreq = lastReq(gwen, 'GET', /\/api\/search/);
+    const tOk = await gwen.request.get(`${B}/transcripts/M-11`); assert.equal(tOk.status(), 200);
+    await home(gwen);
     await gwen.click('#signout'); await gwen.waitForSelector('#signin:not([hidden])');
     assert.ok(!(await gwen.locator('body').innerText()).includes('Pryce'));
-    const r = await replay(gwen, load);
-    assert.equal(r.status, 401); assert.ok(!JSON.stringify(r.data).includes('Pryce'));
+    for (const q of [load, mreq, sreq]) {
+      const r = await replay(gwen, q);
+      assert.equal(r.status, 401); assert.ok(!/Pryce|Survey|Gwen|Harriet/.test(JSON.stringify(r.data)), q.url);
+    }
+    const tOut = await gwen.request.get(`${B}/transcripts/M-11`);
+    assert.ok(tOut.status() >= 400 && !(await tOut.text()).includes('Survey booked'));
     await gwen.fill('#email', 'harriet@kittle.test'); await gwen.fill('#password', 'wrong'); await gwen.click('#signin-form button[type=submit]');
     await gwen.waitForSelector('#signin-error:not([hidden])');
     assert.ok(await gwen.locator('#signin:not([hidden])').count());
@@ -124,7 +134,8 @@ async function before() {
     await post(gwen, 'Lease question JUDGE-CS1');
     const req = lastReq(gwen, 'POST', /\/api\/matters\/M-11\/messages$/);
     assert.equal((await replay(gwen, { ...req, url: req.url.replace('M-11', 'M-12') })).status, 404);
-    assert.equal((await replay(gwen, { ...load, url: load.url.replace('M-13', 'M-12') })).status, 404);
+    assert.equal((await replay(gwen, { ...load, url: load.url.replace('M-11', 'M-12') })).status, 404);
+    const gt = await gwen.request.get(`${B}/transcripts/M-12`); assert.equal(gt.status(), 404); assert.ok(!(await gt.text()).includes('Marsh'));
     assert.ok(!JSON.stringify((await api(harriet, 'GET', '/api/matters/M-12')).data).includes('JUDGE-CS1'));
   });
 
@@ -135,6 +146,7 @@ async function before() {
     await openMatter(sian, 'M-11'); await openMatter(sian, 'M-12');
     const load = lastReq(sian, 'GET', /\/api\/matters\/M-12$/);
     const tr = { url: `${B}/transcripts/M-12`, method: 'GET' };
+    assert.ok((await (await sian.request.get(tr.url)).text()).includes('Wall check JUDGE-W0'));
     assert.ok((await search(sian, 'JUDGE-W0')).some(t => t.includes('Wall check JUDGE-W0')));
     const sreq = lastReq(sian, 'GET', /\/api\/search/);
     await signIn(dev, 'dev@kittle.test');
@@ -152,7 +164,7 @@ async function before() {
     await openMatter(harriet, 'M-12');
     const link = await copyLink(harriet, 'Draft heads of terms ready for comment.');
     await openMatter(harriet, 'M-11');
-    await post(harriet, 'See the M-12 terms JUDGE-L1 ' + link);
+    await post(harriet, 'See the linked terms JUDGE-L1 ' + link);
     assert.ok((await msgLi(harriet, 'JUDGE-L1').locator('.preview').innerText()).includes('heads of terms'));
     await harriet.goto(link);
     await harriet.waitForFunction(() => location.pathname === '/matters/M-12' && document.querySelector('.message.focused'));
@@ -309,6 +321,7 @@ async function before() {
     await harriet.waitForFunction(() => !document.querySelector('#thread').textContent.includes('Insurer letter'));
     const rreq = lastReq(harriet, 'POST', /\/hold$/);
     assert.deepEqual(await search(harriet, 'Insurer letter'), []);
+    assert.ok((await search(harriet, 'Hold child JUDGE-H1')).some(t => t.includes('Hold child JUDGE-H1')));
     assert.equal((await replay(sian, { ...rreq, url: rreq.url.replace(/K-\d+(?=\/hold$)/, h1) })).status, 403);
     assert.equal((await api(harriet, 'GET', '/api/matters/M-11')).data.messages.find(m => m.id === h1).hold, true);
   });

@@ -27,6 +27,8 @@ dimension.
   you actually saw. A step you skipped, replaced with a different test, or could not perform fails
   the criterion; never pass a criterion on a general impression or on a substitute fixture.
 - Two failed attempts at the same control fail that criterion; continue.
+- A criterion passes only if every numbered leg and every listed positive control holds; its
+  "Fails if" line names the main failures but never excuses a leg it does not mention.
 - If messages this criterion is about to post already exist from an earlier attempt at the same
   criterion, add "-2" to every JUDGE text in this attempt and check those instead.
 - Quote the matter titles, message text, hold marks, timer settings and refusal reasons you observed.
@@ -43,7 +45,7 @@ dimension.
   refused. A refusal writes nothing and a re-read matches the previous state.
   A response that applies the change, even behind a redirect, is not a refusal.
 - Every refusal pairs with a success of the same kind on an eligible target,
-  in the same criterion or an earlier one, while that target was eligible.
+  in the same criterion, while that target was eligible.
 - Criteria share one database; never write something a later criterion does not expect.
 - Never repair the app or run shell or install commands. Retry a browser tool
   error once, then fail that criterion.
