@@ -1,0 +1,100 @@
+[judge]
+# Judge agent and model are set once for all dimensions by REWARDKIT_JUDGE /
+# REWARDKIT_MODEL in task.toml [verifier.env]; the value here is only the
+# fallback agent type for local runs.
+judge = "claude-code"
+mode = "individual"
+# Individual mode grades each criterion in its own sequential session; this timeout
+# applies per criterion. Keep criteria x timeout + polish + visual within the
+# 11100 s scored budget in test.sh.
+timeout = 1200
+isolated = false
+prompt_template = "prompt.md"
+
+[[judge.mcp_servers]]
+name = "playwright"
+transport = "stdio"
+command = "playwright-mcp"
+args = ["--headless", "--isolated", "--executable-path=/usr/local/bin/chromium", "--no-sandbox"]
+
+# Verifier-only tool for the persistence criterion's process restart.
+[[judge.mcp_servers]]
+name = "verifier"
+transport = "stdio"
+command = "/usr/local/bin/python3"
+args = ["/tests/tools/restart_mcp.py", "$APP_RESTART_HELPER"]
+
+[scoring]
+aggregation = "weighted_mean"
+
+[[criterion]]
+id = "client_signin"
+name = "client_signin"
+type = "binary"
+weight = 1.0
+description = """
+1. Sign in as gwen@kittle.test. Confirm she sees "Pryce lease dispute" and "Pryce will", and not "Marsh Holdings acquisition".
+2. Sign out. Confirm no matter title, name or message remains visible.
+3. Try harriet@kittle.test with a wrong password. Confirm it is rejected.
+Pass only if all legs hold.
+"""
+
+[[criterion]]
+id = "ethical_wall"
+name = "ethical_wall"
+type = "binary"
+weight = 3.0
+description = """
+1. As dev@kittle.test confirm the matter list holds M-11 and M-13 only.
+2. Post "Survey report uploaded JUDGE-K2" in M-11 and record the request. Replay it with M-12 as the target. Confirm the refusal; as harriet@kittle.test M-12 has no JUDGE-K2.
+3. As dev@kittle.test search for "heads of terms". Confirm no result. As sian@kittle.test the same search finds the M-12 message.
+Pass only if all legs hold.
+"""
+
+[[criterion]]
+id = "timers"
+name = "timers"
+type = "binary"
+weight = 3.0
+description = """
+1. As gwen@kittle.test open M-11. Confirm "Here is the original lease scan." is absent, "Landlord's notice received and filed." is shown marked On hold, and "Survey booked for Friday." is shown.
+2. As harriet@kittle.test set the M-13 timer to 1 day and record the request. Confirm M-13 no longer shows "Draft will sent for your review." and still shows "My executor will be my sister." marked On hold and "Received, reading it tonight."
+3. As dev@kittle.test replay that timer change with M-11 as the target and the timer off. Confirm the refusal and that M-11 still reads 7 days.
+4. As harriet@kittle.test turn the M-13 timer off. Confirm the draft will message is still absent.
+Pass only if all legs hold.
+"""
+
+[[criterion]]
+id = "hold_release"
+name = "hold_release"
+type = "binary"
+weight = 3.0
+description = """
+1. As harriet@kittle.test release the hold on "Landlord's notice received and filed." in M-11 and record the request.
+2. As gwen@kittle.test confirm that message is gone from M-11.
+3. As sian@kittle.test replay the release with the M-13 executor message as the target. Confirm the refusal; as gwen@kittle.test it is still shown with On hold.
+Pass only if all legs hold.
+"""
+
+[[criterion]]
+id = "transcripts"
+name = "transcripts"
+type = "binary"
+weight = 3.0
+description = """
+1. As gwen@kittle.test open the M-11 transcript and record the request. Confirm the heading names M-11, Pryce lease dispute and the generated time 2026-05-12 11:00, and the lines are "Survey booked for Friday.", "Thanks, Friday works." and JUDGE-K2 in that order, with neither the lease scan nor the landlord's notice.
+2. Replay the transcript request with M-12. Confirm the refusal and that no M-12 text comes back.
+3. As dev@kittle.test replay it with M-12. Confirm the refusal.
+Pass only if all legs hold.
+"""
+
+[[criterion]]
+id = "matters_persist"
+name = "matters_persist"
+type = "binary"
+weight = 2.0
+description = """
+1. Call restart_app once.
+2. Sign in as gwen@kittle.test. Confirm M-11 still lacks the lease scan and the landlord's notice and shows JUDGE-K2, and M-13 shows the executor message On hold without the draft will message. Sign in as dev@kittle.test and confirm M-12 is still absent.
+Pass only if both legs hold.
+"""
