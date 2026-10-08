@@ -1,0 +1,34 @@
+{
+  "number": 28,
+  "id": "criteria_are_independent_and_noncontradictory",
+  "reviewer": "row-reviewer-28",
+  "input_sha256": "630de5b632feb235ad52f1edaa3a7d12779046200a4049a1da8bd11419811377",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-08-v16-full/rules/WebDev Rubrics QC.xlsx (sha256 6d44970b...; sheet1 row 29 and sheet4 row 29 incl. internal note E29: 'we usually combine the multiple verifiers in one flow')",
+    ".qc-cache/coldwater-strict-2026-10-08-v16-full/rules/harbor-webdev-rubric-qc/SKILL.md (line 64, whole-flow bundling vs independence)",
+    ".qc-cache/coldwater-strict-2026-10-08-v16-full/rules/harbor-webdev-rubric-qc/references/quality-checks.md (check 28, lines 120-121; checks 30, 38)",
+    ".qc-cache/coldwater-strict-2026-10-08-v16-full/rules/projects/webdev-task-template (layout reviewed)",
+    "qc/REVIEW_POLICY.md (Independent credit takes precedence over flow grouping; preserve valid observations rather than inheriting a sibling verdict)",
+    ".qc-cache/coldwater-strict-2026-10-08-v16-full/task/tests/scoring.toml",
+    ".qc-cache/coldwater-strict-2026-10-08-v16-full/task/tests/gates/render/judge.toml",
+    ".qc-cache/coldwater-strict-2026-10-08-v16-full/task/tests/gates/constraints/judge.toml + prompt.md",
+    ".qc-cache/coldwater-strict-2026-10-08-v16-full/task/tests/scored/functional/judge.toml (all 39 criteria, sha256 32470320...) + prompt.md",
+    ".qc-cache/coldwater-strict-2026-10-08-v16-full/task/tests/scored/polish/judge.toml",
+    ".qc-cache/coldwater-strict-2026-10-08-v16-full/task/tests/scored/visual/judge.toml",
+    ".qc-cache/coldwater-strict-2026-10-08-v16-full/task/tests/app_context.md (lines 29-33)",
+    ".qc-cache/coldwater-strict-2026-10-08-v16-full/task/environment/instructions/behaviour.md (lines 5, 9, 13), integration.md (lines 7, 9)",
+    ".qc-cache/coldwater-strict-2026-10-08-v16-full/task/solution/app/server.js (lines 95-116, restore_operations persisted in SQLite)"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "Medium",
+  "evidence": "Pairwise review of all 52 criteria (render 1, constraints 2, functional 39, polish 6, visual 3) found no incompatible products, and most overlaps are deliberately deduplicated: multi_caret_delete and same_line_carets defer modifier coverage to multi_caret_typing_atomic, basic_run_output defers stale preview output to run_starts_fresh_document, last_good_recovery and time_limit_recovery defer to each other, and stale_save_keeps_draft defers the conflict message to stale_save_refused, so the only overlap left there is the necessary refused-save precondition. Visual likerts are explicitly separated. One subsumption remains. functional/judge.toml:339-345 cw_save_reload_restart (weight 1.5) is the persistence/restart criterion (behaviour.md:9, integration.md:7,9), but it also fails 'if the record did not have ... a restored third revision before the restart' and 'if the replayed restore after the restart adds a revision'. Those are the same observables graded by cw_history_restore_adds_revision (lines 366-371: restore adds a new revision) and cw_restore_request_repeat_safe (lines 375-380: a replayed restore request must not add a revision; it also requires the restore to add the third revision as its control). The persistence criterion therefore inherits sibling verdicts on restore and idempotency instead of scoring its own promise. The only distinct leg is idempotency surviving a restart, and the criterion does not isolate that leg: it never replays before the restart, so it cannot tell 'no dedup at all' apart from 'dedup lost on restart'. The workbook E29 note and SKILL.md:64 permit bundling legs inside one flow, but quality-checks.md:121 forbids grading one observable in two criteria, and REVIEW_POLICY says to share the browser scenario while scoring distinct promises separately. The golden (server.js:95-116, restore_operations table in SQLite) passes all three, so this is a discrimination and double-penalty defect, not a golden failure.",
+  "counterexample": "Weak-but-conforming-on-persistence app: snippets and the full revision history are stored correctly in SQLite at DB_PATH and survive storage clearing and restart_app exactly, and restore adds a revision, but the server has no restore-request deduplication, so every replay adds a revision. Expected: cw_restore_request_repeat_safe fails (correct) and cw_save_reload_restart passes, because persistence works. Actual rubric: cw_save_reload_restart also fails on its post-restart replay leg, so 2.5 weight is lost for one idempotency defect and perfect restart persistence earns nothing. Likewise, an app whose restore overwrites the current revision instead of adding one fails cw_history_restore_adds_revision, cw_restore_request_repeat_safe and cw_save_reload_restart (4.0 total weight) for the single defect, even when its save persistence across restart is flawless.",
+  "suggested_fix": "Rescope cw_save_reload_restart to its own promise. Build the multi-revision history from saves; restore is optional setup, and the criterion should say 'whether restore adds a revision is scored elsewhere'. Keep restart durability of history, fields and the record count. If idempotency durability across restart is to stay graded, make it relative: replay the recorded restore request once before the restart, then once after. Fail only when the pre-restart replay added no revision but the post-restart replay does. Say that whether a pre-restart replay adds a revision is scored by cw_restore_request_repeat_safe. Alternatively, drop the post-restart replay leg and the restored-third-revision fail clause. Recheck the workload, feasibility and golden behaviour for the new candidate afterwards.",
+  "run_verdict": "NOT EXERCISED"
+}

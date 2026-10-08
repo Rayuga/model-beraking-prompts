@@ -1,0 +1,42 @@
+{
+  "number": 19,
+  "id": "solution_honors_the_runtime_contract_and_is_self_contained",
+  "reviewer": "row-reviewer-19",
+  "input_sha256": "630de5b632feb235ad52f1edaa3a7d12779046200a4049a1da8bd11419811377",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-08-v16-full/rules/WebDev Rubrics QC.xlsx :: Quality Checks row 20 (#19), Internal Quality Checks row 20 (#19), Deterministic Checks row 34 (check-solve-contract.py)",
+    ".qc-cache/coldwater-strict-2026-10-08-v16-full/rules/harbor-webdev-rubric-qc/SKILL.md (delivery profile: network public)",
+    ".qc-cache/coldwater-strict-2026-10-08-v16-full/rules/harbor-webdev-rubric-qc/references/quality-checks.md ### 19 (lines 83-85)",
+    ".qc-cache/coldwater-strict-2026-10-08-v16-full/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (closed file list; cross-file contract table lines 173-175)",
+    "qc/REVIEW_POLICY.md",
+    "task/solution/solve.sh (all 39 lines)",
+    "task/solution/app/server.js",
+    "task/solution/app/package.json",
+    "task/solution/app/public/index.html",
+    "task/solution/app/public/{runner.html,assets/}",
+    "task/solution/app/static/runner.html",
+    "task/environment/Dockerfile",
+    "task/environment/assets/seed_data.json",
+    "task/environment/instructions/integration.md",
+    "task/instruction.md",
+    "task/tests/test.sh",
+    "task/tests/Dockerfile",
+    "task/task.toml",
+    "qc/runs/coldwater-strict-2026-10-08-v16-full/raw-evidence-index.json (all 19 artifact hashes re-verified on LF-normalised bytes: all match)",
+    "qc/repairs/coldwater-2026-10-02-strict/run_golden.sh",
+    "scripts/build_colderwater_golden.sh",
+    "Own Docker run: image rr19-cw-agent:v16 built from frozen task/environment, frozen solution mounted read-only at /solution"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Static: solve.sh is LF-only (0 CR bytes), '#!/bin/bash' + 'set -euo pipefail' (solve.sh:1-2); it copies solution/app into /app (solve.sh:39 'cp -a \"$source_app/.\" \"$target/\"') and writes nothing to /tests, /logs/verifier or /solution; grep finds no pkill, NODE_ENV, npm, curl or wget. The app needs only express and better-sqlite3 (server.js:4-5), both supplied globally via NODE_PATH in environment/Dockerfile:3,9-11 and tests/Dockerfile:9,16-21, matching integration.md:5; the frontend is a prebuilt bundle (public/assets/index.js, index.css), so no install or build step is needed, as integration.md:5 requires. It honours DB_PATH and falls back to __dirname/app.db (server.js:8), resolves files from __dirname (server.js:7,130-131), and listens on PORT/0.0.0.0 with GET /api/health (server.js:12,142). Schema creation is idempotent (CREATE TABLE IF NOT EXISTS / INSERT OR IGNORE), and the seed has no snippets (seed_data.json). Measured on 2026-10-08 in a fresh image built from the frozen environment/ with the frozen solution mounted read-only: solve.sh exited 0, /app has no node_modules or symlinks, and /tests and /logs are absent. Launched the way test.sh:104-111 does (env -i, setpriv uid 65534, cwd /tmp, DB_PATH=/app/app.db), it logged 'Colderwater ready on port 3000'. Results: /api/health 200, / 200, /assets/index.js 200, /assets/index.css 200, /runner.html 200, POST /api/snippets 201, and the database was created at /app/app.db. After a real process kill and relaunch, the history still held revision 1. The read-only-/app copy fallback (test.sh:90-102: /tmp/submission, chmod u+rwX, DB_PATH=/tmp/submission/app.db) also served, saved (201) and persisted across restart, creating the database only under /tmp/submission. Rerunning solve.sh after the app stopped exited 0 and removed the stale database (solve.sh:38). Latent P3 note, not a contract defect: rerunning solve.sh while the app runs refuses with exit 1, but the message is misleading ('EACCES: permission denied, stat /proc/<pid>/fd/0') instead of 'is open'. The /proc scan runs only when an app.db already exists, so a fresh Oracle install never reaches it. Weak-app and alternative probe: a broken solve that left a CDN- or npm-dependent app without node_modules would fail the same launch, because NODE_PATH supplies only express and better-sqlite3. A conforming agent app vendoring node_modules (symlinks confined to /app/node_modules) is allowed by test.sh:72-83, so the contract does not penalise valid alternatives. Workbook conflict noted: the Internal Quality Checks text for row 19 says 'no network / no run-time install', but the public sheet and SKILL delivery profile say network is public. This does not matter here because solve.sh performs no fetch or install. Not measured by this row: the full test.sh/RewardKit configured-judge run on v16 bytes (raw-evidence-index says none exists; v15 Oracle 1.0 used different brief and criteria bytes). That is evidence for rows 18 and 22, not for this install/runtime-contract row.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "CONFIRMED"
+}

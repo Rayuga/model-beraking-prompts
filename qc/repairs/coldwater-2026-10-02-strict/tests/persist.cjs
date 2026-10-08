@@ -70,6 +70,8 @@ const stateFile = '/state/restart.json';
     const restoreBody = { sourceRevision: 1, operationId: 'restart-op-' + stamp, revision: 2 };
     const restored = await a.evaluate(async ([id, body]) => (await fetch('/api/snippets/' + id + '/restore', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })).json(), [record.id, restoreBody]);
     assert.equal(restored.revision, 3, 'restore makes a third revision');
+    const preReplay = await a.evaluate(async ([id, body]) => (await fetch('/api/snippets/' + id + '/restore', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })).json(), [record.id, restoreBody]);
+    assert.equal(preReplay.revision, 3, 'replay before the restart adds no revision');
     const head = await api(a, '/api/snippets/' + record.id);
     const history = await api(a, '/api/snippets/' + record.id + '/history');
     assert.equal(head.revision, 3);

@@ -1,0 +1,33 @@
+{
+  "number": 20,
+  "id": "solution_is_frozen_and_deterministic",
+  "reviewer": "row-reviewer-20",
+  "input_sha256": "630de5b632feb235ad52f1edaa3a7d12779046200a4049a1da8bd11419811377",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-08-v16-full/rules/WebDev Rubrics QC.xlsx (Quality Checks row 20 and Internal Quality Checks row 20: 'The reference is a committed, static baseline - not regenerated, fetched, or nondeterministic on any pinned value.'; no further internal annotation on that row)",
+    ".qc-cache/coldwater-strict-2026-10-08-v16-full/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-08-v16-full/rules/harbor-webdev-rubric-qc/references/quality-checks.md (### 20, line 87)",
+    ".qc-cache/coldwater-strict-2026-10-08-v16-full/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md",
+    "qc/REVIEW_POLICY.md",
+    "task/solution/solve.sh",
+    "task/solution/app/server.js",
+    "task/solution/app/package.json, vite.config.mjs, index.html, public/index.html, public/runner.html, static/runner.html, public/assets/index.js, public/assets/index.css",
+    "task/solution/app/src/app.tsx, runtime.ts, custom-editor.js (grep for randomness/time/fetch)",
+    "task/instruction.md, task/environment/instructions/*.md, task/environment/assets/seed_data.json, task/environment/Dockerfile, task/task.toml",
+    "task/tests/scored/functional/judge.toml (criteria touching ordering, times, revisions), tests/scored/*/prompt.md, tests/app_context.md",
+    "qc/runs/coldwater-strict-2026-10-08-v16-full/raw-evidence-index.json (hashes of run_golden.sh, results/persist-after.json, results/restart.json re-verified: match)",
+    "qc/repairs/coldwater-2026-10-02-strict/run_golden.sh, scripts/build_colderwater_golden.sh"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "The reference is a committed, prebuilt baseline: solution/solve.sh (LF, #!/bin/bash) only checks that the old DB is not held open, removes app.db/-wal/-shm and does `cp -a \"$source_app/.\" \"$target/\"`; it runs no npm install, vite build, git clone or network fetch. The served bundle public/assets/index.js (sha256 40677f4c...) is committed, byte-identical to projects/colderwater-playground-devtools/solution (diff -rq empty), and is fresh relative to src (distinctive src strings such as 'No saved snippets yet. Save your first experiment above.' and the 2000 ms library refresh `setInterval(quiet, 2000)` from app.tsx:138 occur in the bundle; public/assets/index.css is byte-identical to src/style.css; public/runner.html equals static/runner.html). Dependencies are exact-pinned in package.json plus package-lock.json, and runtime deps (express 5.1.0, better-sqlite3 12.4.1) are pinned in environment/Dockerfile. Seeding: environment/assets/seed_data.json has `\"snippets\": []`, and server.js:142-169 only creates tables idempotently (CREATE TABLE IF NOT EXISTS, INSERT OR IGNORE backfill), so every fresh start produces the same empty state with no random ids (INTEGER PRIMARY KEY AUTOINCREMENT from 1). No boot-time fetch: index.html loads only /assets/index.js and /assets/index.css; the bundle's only absolute URLs are XML namespaces and library doc links, and the CSP (server.js:16) is connect-src 'self'. Nondeterministic values that exist are not pinned/graded: updated_at/created_at use new Date().toISOString() (server.js:71,84,111), but the brief defines no fixed clock, the seed has no dated rows, and the persistence criterion says 'how times or dates are displayed does not matter'; list order (updated_at DESC, id DESC) is not graded by any criterion I found; crypto.randomUUID() is used only for console-entry React keys, preview nonces/tokens and restore operationIds (app.tsx:45,85; runtime.ts:27,317-335,386), none of which a criterion pins. Run evidence: raw-evidence-index cites run_golden.sh on these bytes (hash a94328b9... re-verified), which rebuilds via `npm ci` + `vite build` into the same path and the frozen bundle still matches the project bundle, so the rebuilt output equals the committed baseline.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PASS (source inspection + hash-verified scripted golden evidence; no configured-judge run on v16 bytes, which is not required for this row)"
+}

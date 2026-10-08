@@ -1,0 +1,37 @@
+{
+  "number": 35,
+  "id": "core_behavior_is_graded_and_state_is_proven_durable_where_it_must_be",
+  "reviewer": "row-reviewer-35",
+  "input_sha256": "630de5b632feb235ad52f1edaa3a7d12779046200a4049a1da8bd11419811377",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-08-v16-full/rules/WebDev Rubrics QC.xlsx (sheet1 row 36, #35 core_behavior_is_graded_and_state_is_proven_durable_where_it_must_be; no comments/threaded notes on that row)",
+    ".qc-cache/coldwater-strict-2026-10-08-v16-full/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-08-v16-full/rules/harbor-webdev-rubric-qc/references/quality-checks.md (lines 145-147)",
+    ".qc-cache/coldwater-strict-2026-10-08-v16-full/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (restart contract lines 106, 142-163, 174-180)",
+    "qc/REVIEW_POLICY.md",
+    "task/instruction.md, task/environment/instructions/{behaviour,integration,overview,policy,security,ui}.md, task/environment/assets/seed_data.json",
+    "task/task.toml",
+    "task/tests/test.sh (app launch with DB_PATH, generated app-restart.sh that kills the process group and relaunches on the same DB)",
+    "task/tests/tools/restart_mcp.py (single-use restart_app, isError on failure)",
+    "task/tests/app_context.md (storage-clearing script scope, fresh pages after restart)",
+    "task/tests/gates/constraints/{judge.toml,prompt.md} (cw_shared_saved_record)",
+    "task/tests/gates/render/judge.toml",
+    "task/tests/scored/functional/{judge.toml,prompt.md} (cw_save_reload_restart, cw_stale_save_refused, cw_stale_save_keeps_draft, cw_history_restore_adds_revision, cw_restore_request_repeat_safe, cw_live_library_update, cw_newer_revision_notice_keeps_draft, run/editor criteria)",
+    "task/tests/scoring.toml",
+    "task/solution/app/server.js (SQLite tables snippets/snippet_revisions/restore_operations, DB_PATH)",
+    "qc/runs/coldwater-strict-2026-10-08-v16-full/raw-evidence-index.json (all 19 artifact hashes re-verified, LF-normalised, all match)",
+    "qc/repairs/coldwater-2026-10-02-strict/results/restart.json, persist-after.json"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": "low",
+  "evidence": "Defining behaviour is graded directly: 43 functional criteria cover typing/caret/multi-caret/undo/find/format/coloring, Run output, HTML preview, errors with line numbers, Stop/time-limit/supersede and isolation (tests/scored/functional/judge.toml lines 24-330), and the save/conflict/history/live-library flows (lines 339-405). Durability is proven at two levels with real operations and readbacks, not health or static JSON: (1) the constraints gate cw_shared_saved_record (gates/constraints/judge.toml lines 27-33, aggregation all_pass, gate weight 0.0 in scoring.toml) saves through the UI, then clears localStorage, sessionStorage, IndexedDB, Cache Storage, OPFS, service workers and cookies (app_context.md storage note) and reloads twice, so a browser-only store fails and the record must be server-backed; (2) scored cw_save_reload_restart (weight 1.5) uses the single-use restart_app tool, which test.sh's generated app-restart.sh implements as a real process-group kill and relaunch on the same DB_PATH, and then requires a fresh page to show the same record, current revision, history and each revision's exact source; the prompt forbids inferring a restart from a reload or health response. Shared server state across independent pages is separately exercised by cw_stale_save_refused (third-page fresh read), cw_history_restore_adds_revision (freshly loaded page), cw_restore_request_repeat_safe and cw_live_library_update (second tab/context). All of these trace to public requirements in behaviour.md and integration.md (survive reloads and complete process restarts; library shared between independent browser contexts). Counterexample attempts: a localStorage/IndexedDB-only app fails the gate; an in-memory server store passes the gate but fails cw_save_reload_restart after the real restart; a third-party hosted store (network is public) would legitimately be server-backed and survive restart, consistent with the workbook note that server-backed is not same-origin; a conforming app that refuses a replayed restore via base-revision check or a persisted operation id passes, so no hidden mechanism is required. Runtime: raw-evidence-index hashes all match; scripted golden restart.json shows 3 revisions (save, save, restore) intact after a real restart and persist-after.json cw_save_reload_restart true. Residual risk (why risk=true): no full configured-judge run exists on these v16 bytes (index scope says hosted runs are v15 only with different functional criteria), so whether the configured judge actually executes the clear-storage gate and the single-use restart correctly on v16 is unmeasured; scripted Playwright evidence is not judge evidence. Minor design note: SQLite itself cannot be proven by a browser judge (a JSON-file store would pass), which is a technology-mandate coverage question for another row, not a durability defect here.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PASS (static design + scripted golden); configured-judge run on v16 bytes NOT MEASURED"
+}
