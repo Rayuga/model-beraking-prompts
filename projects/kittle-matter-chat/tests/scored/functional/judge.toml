@@ -6,8 +6,9 @@ judge = "claude-code"
 mode = "individual"
 # Individual mode grades each criterion in its own sequential session; this timeout
 # applies per criterion. Keep criteria x timeout + polish + visual within the
-# 11100 s scored budget in test.sh.
-timeout = 1200
+# 11100 s scored budget in test.sh: 17 x 520 + 900 + 900 = 10640 s. Lowered from
+# 1200 on 2026-10-08 when the criteria grew from 6 to 17 (6 x 1200 no longer fits).
+timeout = 520
 isolated = false
 prompt_template = "prompt.md"
 
@@ -28,23 +29,18 @@ args = ["/tests/tools/restart_mcp.py", "$APP_RESTART_HELPER"]
 aggregation = "weighted_mean"
 
 [[criterion]]
-id = "signin_and_signed_out"
-name = "signin_and_signed_out"
+id = "signin_and_client_scope"
+name = "signin_and_client_scope"
 type = "binary"
-weight = 1.0
+weight = 2.0
 description = """
+Part A.
 Sign in as gwen@kittle.test and confirm her matter list shows "Pryce lease dispute" and "Pryce will" and not "Marsh Holdings acquisition". While signed in, open one of her matters and record the request the page makes to load its messages. Sign out: no matter title, name or message stays visible. Then, signed out, replay that recorded request from the app page: it must return no matter, message or name data. Try harriet@kittle.test with a wrong password: sign-in is refused and the reason is shown.
 Fails if Gwen sees M-12, if anything private remains after sign-out, if the signed-out replay returns matter or message data, or if the wrong password signs in.
-"""
-
-[[criterion]]
-id = "client_scope"
-name = "client_scope"
-type = "binary"
-weight = 1.0
-description = """
+Part B.
 As gwen@kittle.test, post "Lease question JUDGE-CS1" in M-11 and record the posting request; it must appear in M-11 (positive control). Replay that request from the app page with M-12 as the target instead, and also replay the message-loading request with M-12 as the target.
 Fails if the M-11 post did not work, if either replay returns or writes anything in M-12 (check as harriet@kittle.test that M-12 has no JUDGE-CS1), or if the refusal is not a plain not-available answer.
+Both parts must hold; failing either fails this criterion.
 """
 
 [[criterion]]
@@ -96,26 +92,21 @@ Fails if any reply is shown at the wrong level, loses its quote, or is placed by
 """
 
 [[criterion]]
-id = "deleted_parent_placeholder"
-name = "deleted_parent_placeholder"
+id = "deleted_and_expired_seed_messages"
+name = "deleted_and_expired_seed_messages"
 type = "binary"
-weight = 1.5
+weight = 3.0
 description = """
+Part A.
 As gwen@kittle.test open M-11. The seeded message "Here is the original lease scan, clause 14 is the problem." was sent on 1 May on a seven-day matter, so it is gone, but Harriet's reply "Clause 14 noted, we will raise it with the landlord." and Gwen's held reply under it survive.
 1. The surviving reply is shown with a placeholder saying the original message was deleted, in place of a quote, and Gwen's held reply stays nested under Harriet's reply.
 2. Searching "original lease scan" finds nothing; searching "Clause 14 noted" finds Harriet's reply (positive control).
 3. The M-11 transcript shows the placeholder and both replies, and does not contain "original lease scan".
 Fails if the deleted text appears anywhere (thread, quote, search, transcript), if the surviving replies are missing or lose their nesting, or if no placeholder marks the deleted parent.
-"""
-
-[[criterion]]
-id = "timer_boundary"
-name = "timer_boundary"
-type = "binary"
-weight = 1.5
-description = """
+Part B.
 As harriet@kittle.test open M-11 (seven-day timer; the clock is 2026-05-12T11:00:00Z). The seeded "Boundary note: rent review date is 5 June." was sent exactly seven days ago and must be gone; "Rent review meeting moved to the afternoon." was sent one second later and must be shown (positive control). Search "rent review date" finds nothing, and the M-11 transcript does not contain it.
 Fails if the exactly-seven-day message is shown anywhere, or if the one-second-younger message is missing.
+Both parts must hold; failing either fails this criterion.
 """
 
 [[criterion]]
@@ -158,7 +149,7 @@ name = "edits_and_stale_edit"
 type = "binary"
 weight = 1.5
 description = """
-As gwen@kittle.test in M-13 post "Version one JUDGE-E1". Open M-13 as gwen@kittle.test in a second tab or context too. In the first tab edit the message to "Version two JUDGE-E1": it shows "edited", and as harriet@kittle.test its earlier version "Version one JUDGE-E1" can be opened. Then, in the second tab, which still shows the old text and has not reloaded, edit the same message to "Version stale JUDGE-E1" and save: the edit must be refused with a reason, the typed "Version stale JUDGE-E1" stays in the edit box, and after a reload the message reads "Version two JUDGE-E1".
+As gwen@kittle.test in M-13 post "Version one JUDGE-E1". Open M-13 as gwen@kittle.test in a second tab or context too, and in that second tab open the edit box for the message so it holds "Version one JUDGE-E1"; leave it open. In the first tab edit the message to "Version two JUDGE-E1" and save: it shows "edited", and as harriet@kittle.test its earlier version "Version one JUDGE-E1" can be opened. Then, in the second tab's still-open edit box, change the text to "Version stale JUDGE-E1" and save: the edit must be refused with a reason, the typed "Version stale JUDGE-E1" stays in the edit box, and after a reload the message reads "Version two JUDGE-E1".
 Fails if the edit lacks the edited mark or the earlier version, if the stale edit overwrites the newer one, or if the stale edit's typed text is thrown away.
 """
 
@@ -173,16 +164,6 @@ As gwen@kittle.test in M-13 post this exact text: "Notes JUDGE-F1 *bold part* `c
 2. The img, script and javascript: parts show literally as text; no image element, script or dialog is created, and the javascript: text is not a working link. Check the thread, the reply's quote, a search for "JUDGE-F1" (the snippet), and the M-13 transcript.
 3. The seeded M-11 message beginning "Pasted from the lease:" shows its markup literally in the thread and transcript, its "On hold" words do not show a hold badge, and its javascript: text is not a link.
 Fails if any markup is interpreted, any dialog appears, any javascript: link is clickable, or the simple formatting does not render.
-"""
-
-[[criterion]]
-id = "nothing_loaded_from_outside"
-name = "nothing_loaded_from_outside"
-type = "binary"
-weight = 1.0
-description = """
-Open the app, sign in as harriet@kittle.test, open each matter and a transcript, and watch the browser's network requests throughout. Every request must go to http://localhost:3000. Then post a message containing the link https://example.org/terms in M-13: the link is shown, but the page makes no request to example.org while displaying it (no preview fetched from outside).
-Fails if any font, script, stylesheet, image or other request goes to another host.
 """
 
 [[criterion]]
@@ -206,23 +187,18 @@ Fails if counts are wrong or differ between Dev's tabs, if the new-messages line
 """
 
 [[criterion]]
-id = "no_duplicate_send"
-name = "no_duplicate_send"
+id = "sent_once_in_order"
+name = "sent_once_in_order"
 type = "binary"
-weight = 1.5
+weight = 2.5
 description = """
+Part A.
 As sian@kittle.test in M-11, post "Sent once JUDGE-D1" and record the request. Replay exactly the same request twice from the app page, as if the reply had been lost. Reload: JUDGE-D1 appears exactly once in M-11, once in search for "JUDGE-D1" and once in the M-11 transcript. Then post "Sent once JUDGE-D2" normally through the box: it appears once (positive control that sending still works).
 Fails if JUDGE-D1 appears more than once anywhere, or if normal sending stops working.
-"""
-
-[[criterion]]
-id = "stable_order"
-name = "stable_order"
-type = "binary"
-weight = 1.0
-description = """
+Part B.
 As harriet@kittle.test post three top-level messages in M-11 in this order, quickly: "Order A JUDGE-O", "Order B JUDGE-O", "Order C JUDGE-O". All carry the same clock time. In the M-11 thread for harriet@kittle.test and for gwen@kittle.test, after reloads, in a search for "JUDGE-O" and in the M-11 transcript, they appear in the order A, B, C every time.
 Fails if the order differs in any of these places or between reloads.
+Both parts must hold; failing either fails this criterion.
 """
 
 [[criterion]]
@@ -236,27 +212,22 @@ Fails if the new message or edit does not appear without a reload, or if the dra
 """
 
 [[criterion]]
-id = "search_behaviour"
-name = "search_behaviour"
+id = "search_and_transcript"
+name = "search_and_transcript"
 type = "binary"
-weight = 1.0
+weight = 3.0
 description = """
+Part A.
 As gwen@kittle.test search "survey BOOKED": the M-11 message "Survey booked for Friday." is found, regardless of case. Clicking that result opens M-11 at that message. Search "Version one JUDGE-E1" (an earlier version from the edits check) finds nothing, while "Version two JUDGE-E1" finds the edited message. Gwen's search never returns anything from M-12.
 Fails if case matters, if clicking does not open the message, or if earlier versions or other clients' matters appear in results.
-"""
-
-[[criterion]]
-id = "transcript_record"
-name = "transcript_record"
-type = "binary"
-weight = 2.0
-description = """
+Part B.
 As harriet@kittle.test open the M-11 transcript.
 1. It is headed with "M-11", "Pryce lease dispute" and the generated time 2026-05-12 11:00 (any clear date-time format), and has no message box, send, reply, edit or delete controls.
 2. Messages are oldest first and in their threads: the held reply under the deleted-original placeholder, replies under their parents, each with author and sent time.
 3. "Landlord's notice received and filed." is marked On hold and shows both its versions, including "Landlords notice recieved."; JUDGE-E1 is not in this matter.
 4. As dev@kittle.test, opening the M-12 transcript by its address shows not-available (positive control: Dev can open the M-11 transcript).
 Fails if any heading part, thread order, hold mark, version or placeholder is wrong or missing, if chat controls appear, or if Dev gets anything from M-12.
+Both parts must hold; failing either fails this criterion.
 """
 
 [[criterion]]

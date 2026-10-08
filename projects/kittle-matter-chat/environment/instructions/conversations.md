@@ -12,8 +12,6 @@ People fix typos and figures, so authors can edit their own messages. An edited 
 
 Clients paste all sorts into chat, and some of it comes from documents with odd characters or markup in them. We want a little formatting: `*bold*`, `` `code` ``, a line starting with `> ` shown as a quote, and links to http or https addresses that open in a new tab. Anything else that looks like markup, scripts or HTML is just text and shows exactly as it was typed, everywhere a message appears: in the thread, in a reply's quote, in search snippets, in earlier versions and in transcripts. Typing the words "On hold" into a message mustn't make it look held.
 
-For the same reason we don't want anything in the browser fetched from outside our own server. No CDNs, outside fonts or third-party scripts.
-
 ## Links to messages
 
 Every message has a link we can copy and paste into another matter, so we can point at something said elsewhere. Pasted into a message, it shows a short preview of the linked message for anyone who can see that matter, and "not available" for anyone who can't or once the message is gone.

@@ -11,7 +11,8 @@ You are a checker, not a fixer. Check only the feature each criterion names, exa
 Global browser gate: before scoring, confirm the application loads from
 http://localhost:3000 without a fatal browser error and, if the application
 has sign-in, that gwen@kittle.test can sign in and see protected
-content appropriate to the current state. A blank page, empty workspace, static mock, static shell,
+content appropriate to the current state. External font, script, or CDN asset
+requests are allowed. A blank page, empty workspace, static mock, static shell,
 missing backend, or seeded-looking facade fails this gate. Protected content
 must contain real task data backed by the running local server; a first-paint
 imitation does not pass. If the gate fails, assign 0 to every criterion in this

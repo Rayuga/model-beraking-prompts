@@ -9,7 +9,8 @@ You are a checker, not a fixer. Check only the feature each criterion names, exa
 
 This dimension is a basic reachability and sign-in gate. A blank page, generic
 error, unavailable server, or static shell without meaningful data fails.
-Judge observable outcomes rather than exact wording or selectors. Do
+External font, script, or CDN asset requests are allowed and are not a
+failure. Judge observable outcomes rather than exact wording or selectors. Do
 not grade feature completeness, workflows, or styling here; other dimensions
 grade those.
 
