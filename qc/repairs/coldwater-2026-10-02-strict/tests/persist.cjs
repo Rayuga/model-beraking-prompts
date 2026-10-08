@@ -40,6 +40,7 @@ const stateFile = '/state/restart.json';
       assert.equal(record.revision, saved.revision);
       const history = await api(page, '/api/snippets/' + saved.id + '/history');
       assert.deepEqual(history.map(item => item.revision), saved.history);
+      assert.deepEqual(history.map(item => item.code), saved.codes, 'every revision keeps its own source after the restart');
       assert.equal((await api(page, '/api/snippets')).filter(item => item.title === saved.title).length, 1);
     });
     t.report('persist-after', results, page);
@@ -68,7 +69,8 @@ const stateFile = '/state/restart.json';
     await b.evaluate(async () => { localStorage.clear(); sessionStorage.clear(); for (const db of await indexedDB.databases()) indexedDB.deleteDatabase(db.name); document.cookie.split(';').forEach(c => { document.cookie = c.split('=')[0] + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/'; }); });
     await t.fresh(b); await lib(b, record.title).click(); await t.sleep(400);
     assert.equal(await t.source(b), head.code);
-    fs.writeFileSync(stateFile, JSON.stringify({ id: head.id, title: head.title, filename: head.filename, code: head.code, revision: head.revision, history: history.map(item => item.revision) }));
+    fs.writeFileSync(stateFile, JSON.stringify({ id: head.id, title: head.title, filename: head.filename, code: head.code, revision: head.revision, history: history.map(item => item.revision), codes: history.map(item => item.code) }));
+    assert.equal(history.length, 2); assert.notEqual(history[0].code, history[1].code);
   });
 
   await check('cw_stale_save_refused+cw_stale_save_keeps_draft', async () => {
