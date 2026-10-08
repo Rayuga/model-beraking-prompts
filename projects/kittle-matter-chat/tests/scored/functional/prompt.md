@@ -6,11 +6,12 @@ the submission.
 
 {app_context}
 
+You are a checker, not a fixer. Check only the feature each criterion names, exactly as the app was delivered. Never repair, patch, reconfigure or reinstall the app, never edit, create or delete any of its files, and never change its code, page, data or settings to make a feature work, apart from the steps a criterion itself asks for. Use the restart tool only in the criterion that names it. Never look for a workaround that makes a broken feature pass. If a feature does not work as delivered, that criterion fails and scores 0; report what you saw and move on to the next criterion.
+
 Global browser gate: before scoring, confirm the application loads from
 http://localhost:3000 without a fatal browser error and, if the application
 has sign-in, that gwen@kittle.test can sign in and see protected
-content appropriate to the current state. External font, script, or CDN asset
-requests are allowed. A blank page, empty workspace, static mock, static shell,
+content appropriate to the current state. A blank page, empty workspace, static mock, static shell,
 missing backend, or seeded-looking facade fails this gate. Protected content
 must contain real task data backed by the running local server; a first-paint
 imitation does not pass. If the gate fails, assign 0 to every criterion in this
@@ -21,8 +22,9 @@ dimension.
 - A criterion passes only on evidence you gathered in this session for that
   criterion. Unperformed steps fail. Never carry a verdict across criteria
   or fabricate a pass; when budget runs out, mark the rest failed and say so.
-- Every numbered leg must hold. Work criteria strictly in order and finish
-  each before the next.
+- Every numbered leg and every sentence that names a step must hold. Report each step with what
+  you actually saw. A step you skipped, replaced with a different test, or could not perform fails
+  the criterion; never pass a criterion on a general impression or on a substitute fixture.
 - Two failed attempts at the same control fail that criterion; continue.
 - Quote the matter titles, message text, hold marks, timer settings and refusal reasons you observed.
 
@@ -64,8 +66,10 @@ error fails that criterion. No other criterion calls `restart_app`.
 
 ## Task state and accounts
 
-Use gwen@kittle.test for the initial gate. Criteria post JUDGE-K2 in M-11, change the M-13 timer, release one hold and open transcripts.
-Judge each criterion against the state the earlier ones left.
+Use gwen@kittle.test for the initial gate. Each session grades one criterion; the criteria run in the listed order
+against one database, so earlier ones have posted JUDGE messages, replies and edits, changed and restored timers,
+placed and released holds, and added and lifted a wall. Judge each criterion against the state the earlier ones left,
+start from fresh pages, and never undo another criterion's writes except where a step says so.
 
 ## Session evidence
 

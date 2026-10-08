@@ -1,0 +1,158 @@
+KITTLE MATTER CHAT: BUILD CONTEXT
+Written 8 Oct 2026 from the Colderwater experience (v5 to v17), the QC rules and messaging-app research.
+Use this file as the working context while hardening projects/kittle-matter-chat.
+
+======================================================================
+0. GOAL AND HARD LIMITS
+======================================================================
+- GPT-5.6 Luna scores between 0.10 and 0.70 (ideally 0.40-0.55). Oracle (golden) 1.0, at least 0.95. Nop 0.
+  Rubric QC: all 53 quality rows and 48 deterministic rows pass.
+- Reward = 0.6 Functional + 0.2 Polish + 0.2 Visual. It is 0 if a gate fails or Functional <= 0.05.
+- Do not edit shared harness or reward policy: tests/test.sh, tests/scoring.toml, tests/tools/*, the Dockerfiles.
+- Keep task.toml category = "Messaging & Chat Interfaces" (as in v1).
+- Never promise a portal, Oracle or model score without a measured run. Do not upload, send messages
+  outside, or spend on provider runs without the user's OK.
+- Functional judging is mode = "individual" (lead request). Each criterion is a separate sequential agent
+  session, and [judge].timeout applies per criterion. Scored suites have a HARD 11100 s budget in test.sh,
+  and functional, polish and visual run one after another (--max-concurrent-agent 1). So keep
+  Functional at about 22 criteria or fewer, with one criterion per feature carrying several legs.
+  Per-criterion timeout is 1200 s. Exceeding the budget gives a reward of 0 for everyone.
+- Keep the assembled judge prompt (prompt.md + app_context + criteria) well under 128 KB.
+
+======================================================================
+1. WRITING THE BRIEF AND NOTES (QC rows 1, 2, 5, 6, 26, 27)
+======================================================================
+- instruction.md and the /instructions notes are written by the client, a small law firm, in the first
+  person, with reasons. Examples: "We often…", "Our clients…", "A partner once…", "so please…".
+- Do not write an acceptance checklist. No "must / must not" lists that mirror criteria one-to-one, no
+  bullets of pass conditions, no tables of rules (an accounts table is fine). Prose paragraphs with
+  motives. One plain "must" sentence is acceptable; dozens are not.
+- Never tell the builder HOW to build something just so the grader can test it (a route, a header,
+  a transport). If the grader needs it, give a genuine user reason ("I keep the network panel open
+  while debugging, so…") or design the check so it doesn't need it.
+- Every graded behaviour must be stated in the notes. Every stated behaviour must be graded. If you
+  add a criterion, add the sentence. If a criterion relies on a keyboard shortcut, an ordering or a
+  boundary, the notes must say so (Colderwater failed on Ctrl+A and on backwards Find wrap not being
+  stated).
+- No grader words in public text: judge, rubric, criteria, score, test, verifier, Playwright, probe.
+- Make it tougher by adding REQUIREMENTS to the brief, never by changing weights or hiding demands.
+- Self-check line at the end of instruction.md (it helped Luna avoid shipping broken apps):
+  "Before you hand it over, please try it the way we'll use it: sign in as different people, post,
+  reply, search and open a transcript, and make sure nothing breaks."
+
+======================================================================
+2. GATES AND CRITERIA DESIGN
+======================================================================
+- Gates stay simple. Render: loads, reloads, shows the sign-in page. Constraints: server-backed data
+  (survives clearing browser storage), and nothing in the browser loads from outside the server. Put all
+  strictness in scored criteria. Hard gates made Luna score 0 twice.
+- Every criterion has explicit "Fails if …" conditions and a positive control before any negative
+  claim. Use judge-chosen distinctive markers.
+- One criterion owns one promise. Do not let a criterion re-grade another feature's behaviour
+  (Colderwater row 28 double penalty). If you must touch another feature, say "scored elsewhere" or
+  grade relative to a baseline.
+- Outcome-based and browser-decidable only. No source reading, no exact wording or selectors, no
+  golden-specific labels.
+- Durability: one restart criterion using the restart_app tool. Build several records (with replies,
+  edits and holds), note their exact contents, really restart, then re-read every one. Persistence only.
+- Replays: the judge may replay a request it recorded from the app's own network activity, from an
+  in-page fetch, where a criterion asks. Say so in app_context.
+- Timing: any step with a time window runs in ONE Playwright code-runner action. Wait for a visible
+  start marker, use a visible marker to decide a "void" attempt, allow up to two repeats, and fail only
+  if every attempt is void.
+- Modifier clicks: tell the judge to hold the key DURING the click (click tool modifiers, or
+  keyboard.down / mouse.click / keyboard.up).
+- Judge addresses are localhost only. Never "a public address of your choice".
+- Every prompt.md carries the checker-not-fixer rule: check only the named feature as delivered,
+  never repair or work around it, a feature that doesn't work scores 0.
+- The functional prompt also says: report each numbered step with what you saw; a skipped, replaced or
+  impossible step fails the criterion. (The batched judge over-passed Luna on 4 to 6 steps on Colderwater.)
+- The judge is an AI that writes its own fixtures. Give exact fixtures where shape matters (Oracle lost
+  points when the judge improvised a requestAnimationFrame loop).
+- Weights: one documented scheme, 1.0 / 1.5 / 2.0 by importance. Never tune weights to hit the band.
+  The customer audit recomputes with equal weights and compares failed and passed weight averages.
+
+======================================================================
+3. GOLDEN, HARNESS AND PROCESS
+======================================================================
+- The golden implements every stated behaviour, robustly, including judge improvisations (for example
+  count every async mechanism, not just the one in the fixture).
+- Keep a scripted golden harness: Docker, install with solve.sh, launch as test.sh does (uid 65534,
+  env -i, DB_PATH, cwd outside /app), a REAL process restart between phases, and Playwright checks
+  for every criterion leg. Rerun it after EVERY change. Extend it with every new leg.
+- Reproduce model failures on the exported artifacts/app (run it in Docker and probe it). This shows
+  whether a 0 is the model, the judge or the task, and gives the evidence the customer audit wants.
+- Before any upload, run a full QC round: scripts/qc_pipeline.py prepare --mode single-per-row, one
+  fresh reviewer per quality row (53) plus the deterministic reviewer. Fix confirmed defects and
+  re-review the rows each fix touches. Fixes create new issues; Colderwater's v16 fixes introduced three.
+- When a row flags a pattern, fix every instance of that pattern in the task, not only the one flagged.
+- Never rerun an unchanged task hoping for a better roll.
+- After portal runs, audit them the customer's way (two independent reviewers plus adjudication):
+  rewards recomputed, every GPT failure genuine or not, heavy passes spot-checked for false passes,
+  weights fair, no reward hacking, verifier not biased to golden, Oracle genuine.
+
+======================================================================
+4. WHAT MAKES MESSAGING APPS HARD (research, with sources)
+======================================================================
+- Threads are called Slack's hardest UI problem. Reply ordering and context break when parents change.
+- Matrix: deleting a message must also delete its edits, or the old text leaks through edit history
+  (MSC3912). A deleted message keeps its reply relation so the thread structure survives (MSC3389).
+- Mattermost CVE-2023-2792: permalink previews showed private-channel messages to non-members.
+- Rocket.Chat CVE-2021-22886 / CVE-2020-8291 / CVE-2026-47733: stored XSS via nested markdown, link
+  previews and javascript: links in hand-written formatting.
+- Unread counts: per-user "last read" marker per conversation; unread = latest - last read.
+- Idempotent sends: a client-made message id lets the server deduplicate retries after a lost reply.
+- Signal: disappearing-timer changes and devices disagreeing were real bugs.
+
+======================================================================
+5. KITTLE HARDENING PLAN (law-firm voice; about 20-22 functional criteria)
+======================================================================
+Existing core: sign-in, ethical walls (Dev walled from M-12), disappearing timers (off/1/7/30 days),
+legal hold, search, transcript, persistence. Fixed clock 2026-05-12T11:00:00Z.
+
+A. Nested replies.
+   - Reply to any message, and to replies, at least three levels deep. Each reply shows a short
+     quote of its parent.
+   - When a timer deletes a parent, its surviving replies stay and show that the original was deleted.
+   - The deleted text never reappears through a quote, search, edit history or transcript.
+   - A hold on a reply protects only that reply. Replies stay with their parent in order.
+B. Edits with history.
+   - Authors edit their own messages, which then show "edited". Firm staff can see earlier versions.
+   - A held message keeps every version, and its transcript shows them.
+   - When a timer deletes a message, every version goes with it.
+   - An edit made from an out-of-date page is refused without losing the typed text.
+C. Walls across every side channel.
+   - Walled staff get nothing from the walled matter via: matter list, thread, search snippets,
+     reply quotes, unread counts, @mentions, message links pasted elsewhere, transcripts, or API
+     requests replayed with its ids.
+   - A message link to a walled matter shows "not available".
+   - A partner can add or remove a wall. Adding it takes effect immediately, including for a tab
+     that is already open.
+D. Safe formatting written in-house, no outside scripts.
+   - *bold*, `code`, > quote and links (http/https only).
+   - Hostile text (nested markup, <img onerror>, javascript: links, fake "On hold" text) shows as
+     harmless text in the thread, quotes, search snippets, edit history and transcript.
+   - The browser loads nothing from outside the firm's server.
+E. Unread and "new messages" line.
+   - Unread counts per matter per person, consistent across tabs.
+   - A "new messages" line where you stopped reading, and mark-unread-from-here.
+   - Deleted messages leave the counts. Walled matters show nothing.
+F. No duplicate sends, stable order.
+   - Re-sending the same message after a lost reply adds nothing.
+   - Messages with the same time keep one stable order everywhere: thread, search, transcript.
+G. Live updates.
+   - New messages, edits and timer deletions appear in open tabs within a few seconds.
+   - A half-typed reply, the scroll position and an open thread all stay as they were.
+H. Retention edges.
+   - Boundary rule stated: a message exactly at the timer age.
+   - Shortening a timer deletes immediately. Lengthening never restores.
+   - Releasing an overdue hold deletes immediately.
+   - The author can't delete a held message.
+I. Transcript as a legal record.
+   - Threads in order, with "edited" and "On hold" marks and deleted-parent placeholders.
+   - Generated at the fixed clock. Walled users get nothing even by direct address.
+J. Restart durability (persistence only).
+Not doing: WebSockets or typing indicators, presence, file uploads, reactions.
+
+Build order: notes and criteria draft (user review) -> golden -> scripted harness -> static checks ->
+full QC round -> package -> portal.

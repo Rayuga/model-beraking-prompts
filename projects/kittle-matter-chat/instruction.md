@@ -1,7 +1,9 @@
-Kittle & Rowe is a small law firm, and clients keep emailing documents to whoever answered last. We want a secure chat where each client talks to the firm inside their legal matter, with the conversation kept matter by matter.
+Kittle & Rowe is a small law firm, and our clients keep emailing documents to whoever answered last. We want a secure chat where each client talks to us inside their legal matter, with every conversation kept matter by matter and in proper threads, so a question and its answers stay together.
 
-Two things matter more than anything else. First, ethical walls: when someone at the firm has a conflict on a matter, they must not be able to see it at all, not in the list, not in search and not in a transcript. Second, retention: some matters use disappearing messages so old chat doesn't pile up, but anything a partner has put on legal hold must survive whatever the timer says.
+Two things matter more than anything else. First, ethical walls: when someone here has a conflict on a matter, they must not learn anything about it, from any corner of the app. Second, retention: some matters use disappearing messages so old chat doesn't pile up, but anything a partner has put on legal hold has to survive whatever the timer says, and what has gone must stay gone.
 
-The people, matters and messages are in `/assets/kittle.json`. Who sees which matter, how timers and holds behave and what a transcript holds are in `/instructions/walls-and-retention.md`; the stack and clock are in `/instructions/chambers-runtime.md`.
+The people, matters and messages we start with are in `/assets/kittle.json`. The notes in `/instructions` explain how walls, timers, holds and transcripts work for us, how we talk in a matter (replies, edits, formatting, unread messages) and how we run the app.
 
 Until somebody signs in they see only the sign-in page, with no matter titles, names or messages.
+
+Before you hand it over, please try it the way we'll use it: sign in as different people, post, reply, edit, search and open a transcript, and make sure nothing breaks.
