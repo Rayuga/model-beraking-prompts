@@ -18,7 +18,7 @@ Every message has a link we can copy and paste into another matter, so we can po
 
 ## Mentions
 
-Typing `@` and a name mentions someone who can see the matter. They see it on their own list of mentions. Nobody can be mentioned in a matter they can't see: the message still posts, but a walled person never hears about it.
+Typing `@` and a name (a first name is enough) mentions someone who can see the matter. They see it on their own list of mentions. Nobody can be mentioned in a matter they can't see: the message still posts, but a walled person never hears about it.
 
 ## Unread messages
 
@@ -26,7 +26,7 @@ Each of us has our own unread count per matter, and it is the same in every tab 
 
 ## Sending and live updates
 
-Our internet in court is patchy. If the same message is sent twice because the first reply got lost, it must appear only once. Messages sent at the same time stay in one consistent order wherever you see them: the thread, search and the transcript.
+Our internet in court is patchy. If the same message is sent twice because the first reply got lost, it must appear only once. Messages sent at the same time stay in the order they were sent wherever you see them: the thread, search and the transcript.
 
 When someone else posts, replies, edits or a message disappears, every open tab should show it within about five seconds without reloading. That must not disturb what I'm doing: a half-typed reply, where I've scrolled to and an open thread all stay as they are.
 

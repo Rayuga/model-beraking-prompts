@@ -176,13 +176,18 @@ async function before() {
     await post(sian, 'Before wall JUDGE-WL0');
     const preq = lastReq(sian, 'POST', /\/messages$/);
     await openMatter(harriet, 'M-13'); harriet.requests.length = 0;
+    await harriet.selectOption('#wall-select', 'dev@kittle.test'); await harriet.click('#wall-add');
+    await harriet.waitForFunction(() => document.querySelector('#wall-list').textContent.includes('Dev'));
+    await harriet.locator('#wall-list button', { hasText: 'Lift wall' }).click();
+    await harriet.waitForFunction(() => !document.querySelector('#wall-list').textContent.includes('Dev'));
+    const liftReq = lastReq(harriet, 'POST', /\/walls$/);
     await harriet.selectOption('#wall-select', 'sian@kittle.test'); await harriet.click('#wall-add');
     await harriet.waitForFunction(() => document.querySelector('#wall-list').textContent.includes('Sian'));
-    const wreq = lastReq(harriet, 'POST', /\/walls$/);
     await sian.waitForFunction(() => !document.querySelector('#matter-list').textContent.includes('M-13') && /Not available/.test(document.querySelector('#main').innerText), null, { timeout: 10000 });
     assert.equal((await replay(sian, { ...preq, body: JSON.stringify({ body: 'Too late JUDGE-WL1', client_key: 'wl1' }) })).status, 404);
     assert.ok(!JSON.stringify((await api(harriet, 'GET', '/api/matters/M-13')).data).includes('JUDGE-WL1'));
-    const lift = { ...wreq, body: JSON.stringify({ ...JSON.parse(wreq.body), walled: false }) };
+    const lift = { ...liftReq, body: liftReq.body.replace('dev@kittle.test', 'sian@kittle.test') };
+    assert.equal(JSON.parse(liftReq.body).email, 'dev@kittle.test');
     assert.ok([403, 404].includes((await replay(sian, lift)).status));
     assert.equal((await api(sian, 'GET', '/api/matters/M-13')).status, 404);
     await harriet.locator('#wall-list button', { hasText: 'Lift wall' }).click();
@@ -243,9 +248,11 @@ async function before() {
     await openMatter(harriet, 'M-13');
     let text = await harriet.locator('#thread').innerText();
     assert.ok(text.includes('Probate estimate is 4,200 pounds.') && text.includes('My executor will be my sister.'));
+    harriet.requests.length = 0;
     await msgLi(harriet, 'Probate estimate').locator('button', { hasText: 'Versions' }).click();
     await harriet.waitForSelector('.versions');
     assert.ok((await harriet.locator('.versions').innerText()).includes('Probate estimate is 2,400 pounds.'));
+    const vreq = lastReq(harriet, 'GET', /\/versions$/);
     harriet.requests.length = 0;
     await setTimer(harriet, '7');
     const treq = lastReq(harriet, 'POST', /\/timer$/);
@@ -253,6 +260,8 @@ async function before() {
     text = await harriet.locator('#thread').innerText();
     assert.ok(!text.includes('Probate estimate'));
     assert.equal(await msgLi(harriet, 'My executor').locator('.hold-badge').count(), 1);
+    const vr = await replay(harriet, vreq);
+    assert.equal(vr.status, 404); assert.ok(!/2,400|4,200/.test(JSON.stringify(vr.data)));
     for (const q of ['Probate', '2,400', '4,200']) assert.deepEqual(await search(harriet, q), []);
     assert.ok((await search(harriet, 'executor')).some(s => s.includes('My executor')));
     const t = (await transcript(harriet, 'M-13')).html;
@@ -295,9 +304,13 @@ async function before() {
     assert.equal(await msgLi(harriet, 'JUDGE-H2').locator('.hold-badge').count(), 0);
     await sleep(2500);
     assert.ok((await msgLi(harriet, 'Hold child JUDGE-H1').locator('.action-error').innerText()).trim().length > 0, 'refusal kept after re-render');
+    harriet.requests.length = 0;
     await msgLi(harriet, 'Insurer letter acknowledged.').locator('button', { hasText: 'Release hold' }).click();
     await harriet.waitForFunction(() => !document.querySelector('#thread').textContent.includes('Insurer letter'));
+    const rreq = lastReq(harriet, 'POST', /\/hold$/);
     assert.deepEqual(await search(harriet, 'Insurer letter'), []);
+    assert.equal((await replay(sian, { ...rreq, url: rreq.url.replace(/K-\d+(?=\/hold$)/, h1) })).status, 403);
+    assert.equal((await api(harriet, 'GET', '/api/matters/M-11')).data.messages.find(m => m.id === h1).hold, true);
   });
 
   await check('edits_and_stale_edit', async () => {
@@ -415,14 +428,17 @@ async function before() {
     await post(sian, 'Sent once JUDGE-D2');
     assert.equal(await sian.locator('#thread li.message .body', { hasText: 'JUDGE-D2' }).count(), 1);
     await home(harriet); await openMatter(harriet, 'M-11');
-    for (const k of ['A', 'B', 'C']) await post(harriet, `Order ${k} JUDGE-O`);
+    for (const k of ['C', 'A', 'B']) await post(harriet, `Order ${k} JUDGE-O`);
     const order = async p => (await p.locator('#thread li.message .body').allTextContents()).map(t => (t.match(/Order ([ABC]) JUDGE-O/) || [])[1]).filter(Boolean).join('');
     await harriet.reload(); await harriet.waitForSelector('.matter-link'); await openMatter(harriet, 'M-11');
-    assert.equal(await order(harriet), 'ABC');
-    await home(gwen); await openMatter(gwen, 'M-11'); assert.equal(await order(gwen), 'ABC');
-    assert.equal((await search(gwen, 'JUDGE-O')).map(s => s.match(/Order (\w)/)[1]).join(''), 'ABC');
+    assert.equal(await order(harriet), 'CAB');
+    for (const k of ['A', 'B', 'C']) assert.ok((await msgLi(harriet, `Order ${k} JUDGE-O`).locator('time').innerText()).includes('2026-05-12 11:00'));
+    await home(gwen); await openMatter(gwen, 'M-11'); assert.equal(await order(gwen), 'CAB');
+    assert.equal((await search(gwen, 'JUDGE-O')).map(s => s.match(/Order (\w)/)[1]).join(''), 'CAB');
     const t = (await transcript(gwen, 'M-11')).html;
-    assert.ok(t.indexOf('Order A') < t.indexOf('Order B') && t.indexOf('Order B') < t.indexOf('Order C'));
+    assert.ok(t.indexOf('Order C') < t.indexOf('Order A') && t.indexOf('Order A') < t.indexOf('Order B'));
+    const oc = t.slice(t.lastIndexOf('<li', t.indexOf('Order C')), t.indexOf('Order C'));
+    assert.ok(oc.includes('2026-05-12 11:00'), 'transcript sent time');
   });
 
   await check('live_updates_keep_my_work', async () => {
@@ -486,7 +502,8 @@ async function before() {
   await harriet.selectOption('#wall-select', 'sian@kittle.test'); await harriet.click('#wall-add');
   await harriet.waitForFunction(() => document.querySelector('#wall-list').textContent.includes('Sian'));
   await home(dev);
-  fs.writeFileSync(STATE, JSON.stringify({ devUnread13: await unreadOf(dev, 'M-13') }));
+  const baseline = { survey: (await search(harriet, 'Survey booked')).length, probate: (await search(harriet, 'Probate')).length, insurer: (await search(harriet, 'Insurer letter')).length };
+  fs.writeFileSync(STATE, JSON.stringify({ devUnread13: await unreadOf(dev, 'M-13'), baseline }));
 }
 
 async function after() {
@@ -507,8 +524,10 @@ async function after() {
     assert.equal((await api(sian, 'GET', '/api/matters/M-11')).status, 404);
     assert.equal((await api(dev, 'GET', '/api/matters/M-12')).status, 404);
     assert.equal(await unreadOf(dev, 'M-13'), note.devUnread13);
-    for (const q of ['Persist gone', 'Probate', 'Insurer letter', 'Boundary note', 'Temp JUDGE-P2']) assert.deepEqual(await search(harriet, q), [], q);
-    assert.equal((await api(harriet, 'GET', '/api/matters/M-11')).data.messages.filter(m => m.body === 'Survey booked for Friday.').length, 1);
+    assert.ok((await search(harriet, 'Persist child JUDGE-S1')).some(t => t.includes('Persist child JUDGE-S1')));
+    assert.deepEqual(await search(harriet, 'Persist gone'), []);
+    const now = { survey: (await search(harriet, 'Survey booked')).length, probate: (await search(harriet, 'Probate')).length, insurer: (await search(harriet, 'Insurer letter')).length };
+    assert.deepEqual(now, note.baseline);
     await home(harriet); await openMatter(harriet, 'M-11');
     await harriet.locator('#wall-list button', { hasText: 'Lift wall' }).click();
     await harriet.waitForFunction(() => !document.querySelector('#wall-list').textContent.includes('Sian'));

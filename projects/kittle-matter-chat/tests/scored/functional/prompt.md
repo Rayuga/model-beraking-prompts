@@ -27,6 +27,8 @@ dimension.
   you actually saw. A step you skipped, replaced with a different test, or could not perform fails
   the criterion; never pass a criterion on a general impression or on a substitute fixture.
 - Two failed attempts at the same control fail that criterion; continue.
+- If messages this criterion is about to post already exist from an earlier attempt at the same
+  criterion, add "-2" to every JUDGE text in this attempt and check those instead.
 - Quote the matter titles, message text, hold marks, timer settings and refusal reasons you observed.
 
 ## Replays and refusals

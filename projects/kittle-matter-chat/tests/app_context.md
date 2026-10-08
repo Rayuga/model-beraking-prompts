@@ -9,7 +9,7 @@ Every password is `password123`.
 
 | Email | Role |
 |---|---|
-| `harriet@kittle.test` | Harriet Rowe, Partner (timers and holds) |
+| `harriet@kittle.test` | Harriet Rowe, Partner (timers, holds and walls) |
 | `dev@kittle.test` | Dev Anand, Associate (walled from M-12) |
 | `sian@kittle.test` | Sian Lloyd, Associate |
 | `gwen@kittle.test` | Gwen Pryce, Client (M-11, M-13) |

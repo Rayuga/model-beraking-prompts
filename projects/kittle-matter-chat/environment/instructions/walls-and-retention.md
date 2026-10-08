@@ -26,7 +26,7 @@ When a message goes, everything about it goes with it: its text, its earlier ver
 
 ## Legal hold
 
-A partner places or releases a hold on any message, including a reply. A hold covers exactly that message, not its parent or its replies. A message on hold is never deleted by a timer, keeps all of its versions, and is marked "On hold" for everyone who can see it. Nobody, including its author, can delete a held message. When a hold is released, the timer applies straight away, so an overdue message disappears at once.
+Only a partner places or releases a hold, on any message, including a reply. A hold covers exactly that message, not its parent or its replies. A message on hold is never deleted by a timer, keeps all of its versions, and is marked "On hold" for everyone who can see it. Nobody, including its author, can delete a held message. When a hold is released, the timer applies straight away, so an overdue message disappears at once.
 
 ## Search and transcripts
 
