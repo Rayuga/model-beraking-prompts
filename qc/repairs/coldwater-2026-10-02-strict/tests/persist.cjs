@@ -100,14 +100,17 @@ const stateFile = '/state/restart.json';
 
   await check('cw_history_restore_adds_revision', async () => {
     const record = await create(a, 'hist-' + stamp, 'hist.js', 'let rev = 1;');
+    await t.setFile(a, 'hist-two.js', 'hist2-' + stamp);
     await t.setSource(a, 'let rev = 2;'); await save(a).click(); await t.sleep(600);
     await t.setSource(a, 'let rev = 3;'); await save(a).click(); await t.sleep(600);
     await a.getByRole('button', { name: /^Revision 1/ }).click();
     assert.equal(await a.getByLabel('Historical source').innerText(), 'let rev = 1;');
+    assert.ok((await a.locator('.revision-preview strong').innerText()).includes('hist-' + stamp + ' · hist.js'), 'snapshot shows its own title and filename');
     assert.equal((await api(a, '/api/snippets/' + record.id)).revision, 3);
     await a.getByRole('button', { name: 'Restore selected revision' }).click(); await t.sleep(800);
     let head = await api(a, '/api/snippets/' + record.id);
     assert.equal(head.revision, 4); assert.equal(head.code, 'let rev = 1;');
+    assert.equal(head.title, 'hist-' + stamp); assert.equal(head.filename, 'hist.js');
     assert.deepEqual((await api(a, '/api/snippets/' + record.id + '/history')).map(item => item.revision), [4, 3, 2, 1]);
     await t.fresh(b); await lib(b, record.title).click(); await t.sleep(400);
     await t.setSource(a, 'let rev = 5;'); await save(a).click(); await t.sleep(600);

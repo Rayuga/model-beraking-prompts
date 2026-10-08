@@ -1,0 +1,35 @@
+{
+  "number": 35,
+  "id": "core_behavior_is_graded_and_state_is_proven_durable_where_it_must_be",
+  "reviewer": "row-reviewer-35",
+  "input_sha256": "efb8ef42f7f51d97abdfc5113dac4b982073a039d2c11638c28b091c72227f84",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-08-v16-quick5/rules/WebDev Rubrics QC.xlsx: 'Quality Checks' row 36 (#35) and 'Internal Quality Checks' row 36 (#35); no comments/drawing annotations present",
+    ".qc-cache/coldwater-strict-2026-10-08-v16-quick5/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-08-v16-quick5/rules/harbor-webdev-rubric-qc/references/quality-checks.md:145-147",
+    ".qc-cache/coldwater-strict-2026-10-08-v16-quick5/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (restart helper sections)",
+    ".qc-cache/coldwater-strict-2026-10-08-v16-quick5/rules/projects/webdev-task-template (test.sh, restart_mcp.py, score.py, scoring.toml, tests/Dockerfile byte-compared)",
+    "qc/REVIEW_POLICY.md",
+    "task/instruction.md; task/environment/instructions/{behaviour,integration,overview,policy,security,ui}.md",
+    "task/tests/scored/functional/judge.toml (all 43 criteria ids/weights; full text of cw_save_reload_restart:339-345, cw_stale_save_refused, cw_stale_save_keeps_draft, cw_history_restore_adds_revision, cw_restore_request_repeat_safe, cw_live_library_update, cw_newer_revision_notice_keeps_draft)",
+    "task/tests/scored/functional/prompt.md:1-35",
+    "task/tests/app_context.md:1-34",
+    "task/tests/gates/constraints/judge.toml (cw_shared_saved_record); task/tests/gates/render/judge.toml",
+    "task/tests/tools/restart_mcp.py; task/tests/test.sh:90-193",
+    "task/solution/app/server.js:40-175; task/solution/app/src/app.tsx history/restore lines 85,123,159-160",
+    "git show 24c4a77e (judge.toml diff)",
+    "qc/runs/coldwater-strict-2026-10-08-v16-quick5/{manifest.json,preflight.json}; raw-evidence-index.json is absent"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "Defining behaviour (custom editor + run/preview/console + saved snippets with history) is graded by dozens of functional criteria, e.g. cw_custom_typing_and_line_join, cw_multi_caret_typing_atomic, cw_js_format_semantics_and_undo, cw_basic_run_output, cw_last_good_recovery, cw_stop_cancels_pending_work, cw_stale_save_refused, cw_history_restore_adds_revision. Durability: the constraints gate cw_shared_saved_record saves a typed snippet, clears all origin storage per app_context.md:28 and reloads, so a localStorage-only app fails the gate. The scored cw_save_reload_restart (functional/judge.toml:339-345) builds revisions 1 and 2 (distinct second marker) and a restored revision 3 via a recorded HTTP request, notes all three revisions' exact sources, clears storage and reloads, then calls the single-use restart_app tool, which (test.sh:127-193, byte-identical to the template) kills the node process group and relaunches it on the same DB_PATH, waiting for HTTP; the prompt forbids inferring a restart from a reload/health (prompt.md:31-33). After restart a fresh page must show the same single record, current revision, fields and revision list, and each of the three revisions must show its noted source, with revision 2 the only one carrying the second marker; then the recorded restore is replayed and must add no revision. Broken apps tried: (a) in-memory store or localStorage cache -> fails storage-clear or restart; (b) app that persists only current snippet row and rebuilds history from it or loses old snapshot bodies on restart -> revision 2's unique marker is missing, fails (this closes the previous round's hole where only revision 1, equal to current revision 3, was re-read); (c) idempotency kept only in memory with no base-revision check -> replay after restart adds revision 4, fails, consistent with behaviour.md's unconditioned 'if the same restore request arrives again ... it shouldn't create another revision'. Conforming alternatives: a server-durable app using base-revision checks or a persisted operation id passes (golden server.js persists restore_operations and snapshots in SQLite; replay also hits the stale-revision 409). Server-backed is proven by storage clearing plus real process restart, not by same-origin assumptions. Compared to the pre-24c4a77e text, the change only adds the requirement to note and re-verify revisions 2 and 3; nothing became looser for the model. Residual risks (why risk=true): (1) no measured full configured judge run or scripted golden run on this v16 candidate is cited (raw-evidence-index.json absent), so the golden passing the tightened restart flow and its added browser workload within the 9000s budget are unmeasured; (2) minor wording ambiguity: the parenthetical 'whether or not the history list also shows the current one' tolerates a history list without the current revision, but the new step says 'open each of the three revisions in history', so a strict judge could fail a conforming app whose history panel lists only past revisions (golden lists all, app.tsx:159-160).",
+  "counterexample": null,
+  "suggested_fix": "Optional: say 'open each of the three revisions in history (or the current snippet, if the history list omits the current revision)'; and record a scripted golden run of the restart flow on this candidate.",
+  "run_verdict": "NOT EXERCISED"
+}
