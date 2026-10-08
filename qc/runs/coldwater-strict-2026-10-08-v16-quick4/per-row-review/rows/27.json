@@ -1,0 +1,37 @@
+{
+  "number": 27,
+  "id": "no_criterion_grades_the_unrequired",
+  "reviewer": "row-reviewer-27",
+  "input_sha256": "f4a130560930351d986a1084635accda2381bec1e98958d2e0bc7519ffad8304",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-08-v16-quick4/rules/WebDev Rubrics QC.xlsx :: Quality Checks row 28 (check 27) and Internal Quality Checks row 28 (annotation: login default is not grading the unrequired)",
+    ".qc-cache/coldwater-strict-2026-10-08-v16-quick4/rules/harbor-webdev-rubric-qc/SKILL.md (Known false positives; Evidence standard)",
+    ".qc-cache/coldwater-strict-2026-10-08-v16-quick4/rules/harbor-webdev-rubric-qc/references/quality-checks.md:116-118 (### 27)",
+    ".qc-cache/coldwater-strict-2026-10-08-v16-quick4/rules/projects/webdev-task-template/environment/instructions/integration.md (compared with task integration.md)",
+    "qc/REVIEW_POLICY.md (No hidden requirements; Coverage has two directions)",
+    "task/instruction.md",
+    "task/environment/instructions/{behaviour,integration,overview,policy,security,ui}.md",
+    "task/tests/app_context.md",
+    "task/tests/gates/render/{prompt.md,judge.toml}",
+    "task/tests/gates/constraints/{prompt.md,judge.toml}",
+    "task/tests/scored/functional/{prompt.md,judge.toml} (all 42 criteria)",
+    "task/tests/scored/polish/{prompt.md,judge.toml}",
+    "task/tests/scored/visual/judge.toml",
+    "task/tests/scoring.toml",
+    "task/tests/test.sh:60-125 (launch, symlink rule, readiness)",
+    "task/solution/app/server.js:95-116,161-163 (restore_operations persisted in SQLite)",
+    "git show 5e036ba0 (diff of notes, cw_newer_run_supersedes, cw_save_reload_restart, persist.cjs); diff -r projects/colderwater-playground-devtools vs frozen task: identical"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Built the criterion -> requirement map for all 54 criteria (render 1, constraints 2, functional 42, polish 6, visual 3 likert). Every binary leg traces to an explicit public sentence: e.g. cw_custom_document_surface -> ui.md 'rather than putting it in a textarea, an input or a contenteditable element ... A small hidden input ... is fine'; cw_caret_navigation_and_line_numbers -> ui.md 'line 1, column 1' and 'come back out at the column I started from'; cw_block_indent_undo (third line untouched, inside-line selection) -> ui.md Tab paragraph; cw_multi_caret_typing_atomic (both modifiers, slow burst one Undo) -> ui.md 'Alt+Click and Ctrl/Cmd+Click should both add a caret', 'however slowly I type'; cw_replace_current (moves to last) -> 'then moves on to the next one'; cw_js/html_format (two-space nesting, idempotent, one Undo) -> ui.md Format paragraph (quote-style change explicitly tolerated, more lenient than brief); cw_error_message_and_line / cw_promise_rejection (1-based, whole-file HTML line) -> behaviour.md para 1; cw_last_good_recovery (typed field + canvas) -> behaviour.md para 2; cw_stop_cancels_pending_work / cw_newer_run_supersedes -> para 3, and the newer-run keyboard select-all is now backed by ui.md 'Ctrl+A (Cmd+A on a Mac) selects the whole file'; cw_preview_isolation fetch legs -> security.md 'whether it is called localhost or 127.0.0.1'; cw_dynamic_code_refused -> security.md para 2; cw_restore_request_repeat_safe and the network-visible restore -> behaviour.md 'make restores ordinary HTTP requests ... it shouldn't create another revision'; cw_undo_redo_availability, cw_unsaved_marker, cw_focus_returns_to_code, cw_narrow_width_usable, cw_controls_keyboard_and_focus -> ui.md last two paragraphs (keyboard reachability of the library is a professional accessibility default). No criterion names an exact label, route, selector, colour, indent width beyond the stated two spaces, timing finer than the brief, or a reference-only rule; prompts say 'Do not guess URL paths or API routes' and 'Match controls by purpose and label'. Health route and port are in integration.md. New in 5e036ba0: cw_save_reload_restart now requires a restored third revision and that a replay of the recorded restore after restart adds no revision. That is required: behaviour.md states the repeat-safe restore unconditionally and integration.md says revisions 'need to survive ... complete process restarts'; the leg only asserts 'adds a revision or changes the record', so a 200 dedupe, a 409 stale-base refusal, or a session/CSRF rejection after restart all pass; only an in-memory dedupe that forgets across restart fails, which breaks the literal requirement. Golden persists restore_operations in SQLite (server.js:102-115) and the updated scripted persist.cjs asserts replay-after-restart adds no revision (results not re-inspected by me; NOT EXERCISED). Hosted patterns, task-wide: (25) no prompt, criterion or app_context line sends the judge to an outside address; app_context says 'No criterion needs any address outside this machine' and the only off-origin mention is allowing the app's own CDN assets. (32) every Stop/race leg - cw_output_before_failure_kept, cw_last_good_recovery, cw_stop_cancels_pending_work, cw_newer_run_supersedes - now carries the same bounded rule (void attempt, up to two more, fail only if all void); no other criterion has an unbounded repeat (cw_preview_isolation 'repeat it once', modifier fallbacks 'try the other'). Residual wording tension for row 32: functional prompt 'Fail fast: after two failed attempts at the same control or step, stop and fail' could be misread as capping void attempts at two, though each criterion says 'void, not a failure'. (35) the only restart criterion re-reads current revision, all three revisions, revision-one source and replays the restore; the constraints gate's storage-clear+double-reload is not presented as restart evidence. (1) notes are now in the requester's voice throughout (overview/policy/security/integration rewritten; behaviour/ui already first person), but ui.md and behaviour.md still enumerate edge cases almost one-to-one with criteria (e.g. 'if my selection ends at the very start of the next line, leave that next line alone', 'Replace current should never land on text it has just put in'); whether a portal reviewer still reads that density as a checklist is row 1's judgment and remains a risk there, not a row-27 defect. Looser for the model? No product bar was relaxed: notes changed 'must' to 'need to/should/please' without dropping any requirement; cw_newer_run_supersedes allows more void retries (harness timing only, product assertions unchanged); cw_save_reload_restart became stricter. Counterexample attempts: a conforming app using Cmd-free Linux Ctrl keys, refusing replay with 409, or showing no history entry for the current revision all pass (criterion explicitly tolerates the last); a broken app with in-memory-only restore dedupe fails, correctly.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

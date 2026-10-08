@@ -1,0 +1,31 @@
+{
+  "number": 35,
+  "id": "core_behavior_is_graded_and_state_is_proven_durable_where_it_must_be",
+  "reviewer": "row-reviewer-35",
+  "input_sha256": "f4a130560930351d986a1084635accda2381bec1e98958d2e0bc7519ffad8304",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/coldwater-strict-2026-10-08-v16-quick4/rules/WebDev Rubrics QC.xlsx: Quality Checks row 36 (#35) and Internal Quality Checks row 36 (#35); no cell comments present",
+    ".qc-cache/coldwater-strict-2026-10-08-v16-quick4/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/coldwater-strict-2026-10-08-v16-quick4/rules/harbor-webdev-rubric-qc/references/quality-checks.md (#32, #35)",
+    ".qc-cache/coldwater-strict-2026-10-08-v16-quick4/rules/projects/webdev-task-template (layout)",
+    "qc/REVIEW_POLICY.md",
+    "task/instruction.md; task/environment/instructions/{overview,behaviour,integration,policy,security,ui}.md",
+    "task/tests/app_context.md; task/tests/gates/{render,constraints}/{judge.toml,prompt.md}; task/tests/scored/functional/{judge.toml,prompt.md}; polish and visual judge/prompt (grep for Stop, restart, external URLs); task/tests/scoring.toml; task/tests/tools/restart_mcp.py; task/tests/test.sh (restart helper lines 127-193); task/task.toml verifier block",
+    "task/solution/app/server.js lines 90-120 (restore endpoint, restore_operations table)",
+    "git show 5e036ba0 (diff of notes and functional judge.toml)",
+    "qc/repairs/coldwater-2026-10-02-strict/tests/persist.cjs; results/ timestamps; qc/repairs/golden16.log",
+    "qc/runs/coldwater-strict-2026-10-08-v16-quick4/manifest.json (43 task hashes re-verified: frozen snapshot == projects/colderwater-playground-devtools, 0 mismatches)"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "Core behaviour is graded broadly (editor typing/undo, Run output, HTML preview, Save) and server-backed durability is proven three ways: constraints gate cw_shared_saved_record saves, clears all origin storage per app_context.md:28 and re-reads exact title/filename/source twice; cw_live_library_update proves the library is shared across independent contexts; functional cw_save_reload_restart (judge.toml:339-346) uses the single-use restart_app MCP tool (restart_mcp.py:25-47, test.sh:127-193) and a fresh page. That part meets the row. Pattern check across the whole task: (2) no URL other than localhost/127.0.0.1/openrouter appears anywhere under tests/, and app_context.md:27 says no criterion needs an outside address - closed. (3) All four Stop/supersede races (cw_output_before_failure_kept, cw_last_good_recovery, cw_stop_cancels_pending_work, cw_newer_run_supersedes) now carry the same defined void rule (up to two more attempts, fail only if all void); no other criterion has an un-bounded timing race - closed, and the extra retries are not exploitable by a weak app because an all-void outcome fails. (1) The only remaining 'must' in the notes is behaviour.md:13; overview/policy/security/integration are now first-person, but behaviour.md and ui.md were not touched by 5e036ba0 and remain dense edge-case lists (residual portal-reading risk outside this row). (4) NOT fully closed: the restart criterion is again weaker than the scripted test. persist.cjs (after phase) asserts every revision's code after restart, and the commit message claims all three revisions are re-read, but the criterion text only re-reads the current source, the revision-number list and 'opening the first revision in history must show its exact original source'. Because the new restore makes revision 3's source equal revision 1's, that revision-1 re-read is now satisfied by the current source; revision 2, the only one whose source differs, is never opened after the restart. Also: the post-restart replay leg demands restart-durable restore de-duplication; defensible from behaviour.md:13 + :9 (no time limit stated, history must survive restart) and the golden stores restore_operations in SQLite, but it is a stricter reading a portal reviewer could call implicit. It also couples restart-durability credit to a working, network-visible restore (already graded by two other criteria). Nothing else got looser; the notes moved from 'must' to 'should/need to' with the same requirements. No runtime evidence: golden results predate 5e036ba0 (results/ 09:13-10:54 vs commit 11:06), golden16.log shows Docker unavailable, and Docker is still down, so the new restart/replay leg is unmeasured.",
+  "counterexample": "Broken app: snippets and revision-number rows are in SQLite, but each history entry's source is kept in an in-memory map and the history viewer falls back to the current source when the map is empty. Before restart it behaves correctly. After restart_app, the current record, revision list [3,2,1] and revision 1 (shown as current source = revision 1's source, since revision 3 restored it) all match, the replayed restore is refused or de-duplicated, so cw_save_reload_restart passes even though revision 2's source was lost. Under the pre-5e036ba0 wording (two revisions, no restore) the same app failed because revision 1 would show revision 2's source.",
+  "suggested_fix": "In cw_save_reload_restart, before the restart note the exact source of every revision in history, and after the restart open each of the three revisions and require each source to match (naming revision two, whose source differs from the others), matching what persist.cjs already asserts; then rerun the scripted restart test and a full judged run on the new bytes.",
+  "run_verdict": "NOT EXERCISED"
+}
