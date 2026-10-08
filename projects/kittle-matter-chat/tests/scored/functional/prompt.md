@@ -27,6 +27,8 @@ dimension.
   you actually saw. A step you skipped, replaced with a different test, or could not perform fails
   the criterion; never pass a criterion on a general impression or on a substitute fixture.
 - Two failed attempts at the same control fail that criterion; continue.
+- Use only identifiers you observed on screen or in recorded requests. A not-found answer to an
+  identifier you guessed is not a refusal.
 - A criterion passes only if every numbered leg and every listed positive control holds; its
   "Fails if" line names the main failures but never excuses a leg it does not mention.
 - If messages this criterion is about to post already exist from an earlier attempt at the same

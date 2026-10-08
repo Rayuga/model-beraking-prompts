@@ -10,7 +10,7 @@ People fix typos and figures, so authors can edit their own messages. An edited 
 
 ## Formatting
 
-Clients paste all sorts into chat, and some of it comes from documents with odd characters or markup in them. We want a little formatting: `*bold*`, `` `code` ``, a line starting with `> ` shown as a quote, and links to http or https addresses that open in a new tab. Anything else that looks like markup, scripts or HTML is just text and shows exactly as it was typed, everywhere a message appears: in the thread, in a reply's quote, in search snippets, in earlier versions and in transcripts. Typing the words "On hold" into a message mustn't make it look held.
+Clients paste all sorts into chat, and some of it comes from documents with odd characters or markup in them. We want a little formatting: `*bold*`, `` `code` ``, a line starting with `> ` shown as a quote, and any http or https address typed in a message shown as a link that opens in a new tab. Anything else that looks like markup, scripts or HTML is just text and shows exactly as it was typed, everywhere a message appears: in the thread, in a reply's quote, in search snippets, in earlier versions and in transcripts. Typing the words "On hold" into a message mustn't make it look held.
 
 ## Links to messages
 

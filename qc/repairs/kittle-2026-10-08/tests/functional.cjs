@@ -106,6 +106,11 @@ async function before() {
   });
 
   await check('signin_and_client_scope', async () => {
+    await home(harriet); await openMatter(harriet, 'M-11');
+    await post(harriet, '@Gwen please check JUDGE-CS0');
+    gwen.requests.length = 0;
+    await home(gwen);
+    const lreq = lastReq(gwen, 'GET', /\/api\/matters$/);
     const titles = await gwen.locator('.matter-link').allTextContents();
     assert.ok(titles.some(t => t.includes('Pryce lease dispute')) && titles.some(t => t.includes('Pryce will')));
     assert.ok(!titles.some(t => t.includes('Marsh')));
@@ -113,14 +118,15 @@ async function before() {
     await openMatter(gwen, 'M-11');
     const load = lastReq(gwen, 'GET', /\/api\/matters\/M-11$/);
     await gwen.click('#mentions-link'); await sleep(500);
+    assert.ok((await gwen.locator('#mentions-view').innerText()).includes('JUDGE-CS0'), 'mention shown');
     const mreq = lastReq(gwen, 'GET', /\/api\/mentions/);
-    await search(gwen, 'Survey');
+    assert.ok((await search(gwen, 'Survey')).some(t => t.includes('Survey booked for Friday.')));
     const sreq = lastReq(gwen, 'GET', /\/api\/search/);
     const tOk = await gwen.request.get(`${B}/transcripts/M-11`); assert.equal(tOk.status(), 200);
     await home(gwen);
     await gwen.click('#signout'); await gwen.waitForSelector('#signin:not([hidden])');
     assert.ok(!(await gwen.locator('body').innerText()).includes('Pryce'));
-    for (const q of [load, mreq, sreq]) {
+    for (const q of [lreq, load, mreq, sreq]) {
       const r = await replay(gwen, q);
       assert.equal(r.status, 401); assert.ok(!/Pryce|Survey|Gwen|Harriet/.test(JSON.stringify(r.data)), q.url);
     }
@@ -134,7 +140,9 @@ async function before() {
     await post(gwen, 'Lease question JUDGE-CS1');
     const req = lastReq(gwen, 'POST', /\/api\/matters\/M-11\/messages$/);
     assert.equal((await replay(gwen, { ...req, url: req.url.replace('M-11', 'M-12') })).status, 404);
-    assert.equal((await replay(gwen, { ...load, url: load.url.replace('M-11', 'M-12') })).status, 404);
+    harriet.requests.length = 0; await openMatter(harriet, 'M-12');
+    const h12 = lastReq(harriet, 'GET', /\/api\/matters\/M-12$/);
+    assert.equal((await replay(gwen, h12)).status, 404);
     const gt = await gwen.request.get(`${B}/transcripts/M-12`); assert.equal(gt.status(), 404); assert.ok(!(await gt.text()).includes('Marsh'));
     assert.ok(!JSON.stringify((await api(harriet, 'GET', '/api/matters/M-12')).data).includes('JUDGE-CS1'));
   });
@@ -143,7 +151,8 @@ async function before() {
     await signIn(sian, 'sian@kittle.test'); await openMatter(sian, 'M-12');
     await post(sian, 'Wall check JUDGE-W0');
     sian.requests.length = 0;
-    await openMatter(sian, 'M-11'); await openMatter(sian, 'M-12');
+    await home(sian); await openMatter(sian, 'M-11'); await openMatter(sian, 'M-12');
+    const slist = lastReq(sian, 'GET', /\/api\/matters$/);
     const load = lastReq(sian, 'GET', /\/api\/matters\/M-12$/);
     const tr = { url: `${B}/transcripts/M-12`, method: 'GET' };
     assert.ok((await (await sian.request.get(tr.url)).text()).includes('Wall check JUDGE-W0'));
@@ -154,6 +163,8 @@ async function before() {
     assert.ok(list.includes('M-11') && list.includes('M-13') && !list.includes('M-12') && !list.includes('Marsh'));
     for (const q of ['JUDGE-W0', 'heads of terms', 'Fenwick']) assert.deepEqual(await search(dev, q), []);
     assert.equal((await replay(dev, load)).status, 404);
+    const dl = JSON.stringify((await replay(dev, slist)).data);
+    assert.ok(!dl.includes('M-12') && !dl.includes('Marsh'), 'matter list replay');
     assert.ok(!JSON.stringify((await replay(dev, sreq)).data).includes('M-12'));
     const t = await dev.request.get(tr.url); assert.equal(t.status(), 404); assert.ok(!(await t.text()).includes('Marsh'));
     await dev.goto(B + '/transcripts/M-12'); assert.ok((await dev.locator('body').innerText()).includes('Not available'));
@@ -545,6 +556,13 @@ async function after() {
     await harriet.locator('#wall-list button', { hasText: 'Lift wall' }).click();
     await harriet.waitForFunction(() => !document.querySelector('#wall-list').textContent.includes('Sian'));
     await openMatter(harriet, 'M-12'); await setTimer(harriet, 'off');
+  });
+  await check('polish_transcript_phone', async () => {
+    const p = await ctx(); await p.setViewportSize({ width: 390, height: 844 });
+    await signIn(p, 'gwen@kittle.test');
+    await p.goto(B + '/transcripts/M-11');
+    assert.ok(await p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'no sideways scroll');
+    await p.context().close();
   });
   await check('polish_refusal_in_place', async () => {
     const p = await ctx(); await p.goto(B + '/'); await p.waitForSelector('#email');
