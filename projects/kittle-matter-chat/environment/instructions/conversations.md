@@ -18,7 +18,7 @@ Every message has a link we can copy and paste into another matter, so we can po
 
 ## Mentions
 
-Typing `@` and a name mentions someone who can see the matter. They see it on their own list of mentions. Nobody can be mentioned in a matter they can't see, and a walled person never hears about one.
+Typing `@` and a name mentions someone who can see the matter. They see it on their own list of mentions. Nobody can be mentioned in a matter they can't see: the message still posts, but a walled person never hears about it.
 
 ## Unread messages
 

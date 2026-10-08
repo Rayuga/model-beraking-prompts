@@ -26,7 +26,7 @@ function firstFile(candidates) {
   }
   return null;
 }
-const seedPath = firstFile([process.env.SEED_PATH, path.join(__dirname, "seed", "kittle.json"), path.join(__dirname, "kittle.json"), "/assets/kittle.json"].filter(Boolean));
+const seedPath = firstFile([process.env.SEED_PATH, path.join(__dirname, "seed", "seed_data.json"), path.join(__dirname, "seed_data.json"), "/assets/seed_data.json"].filter(Boolean));
 if (!seedPath) throw new Error("Kittle seed data not found");
 const seed = JSON.parse(fs.readFileSync(seedPath, "utf8"));
 const CLOCK = String(seed.clock);

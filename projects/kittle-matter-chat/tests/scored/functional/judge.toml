@@ -6,11 +6,10 @@ judge = "claude-code"
 mode = "individual"
 # Individual mode grades each criterion in its own sequential session; this timeout
 # applies per criterion. Keep criteria x timeout + polish + visual within the
-# 11100 s scored budget in test.sh: 17 x 520 + 900 + 900 = 10640 s. Lowered from
-# 1200 on 2026-10-08 when the criteria grew from 6 to 17 (6 x 1200 no longer fits).
-# Template default is batched/9000; individual mode is the lead's instruction, relayed
-# by the task owner on 8 Oct 2026 (same exception as HireOps and Colderwater).
-timeout = 520
+# 11100 s scored budget in test.sh: 16 x 550 + 900 + 900 = 10600 s, leaving 500 s.
+# The template default is batched/9000; individual mode is the lead's instruction,
+# relayed by the task owner on 8 Oct 2026. Not yet measured against a judge run.
+timeout = 550
 isolated = false
 prompt_template = "prompt.md"
 
@@ -30,6 +29,11 @@ args = ["/tests/tools/restart_mcp.py", "$APP_RESTART_HELPER"]
 [scoring]
 aggregation = "weighted_mean"
 
+# Weight rule: each part of a criterion is weighted by what it protects. Core legal
+# behaviour (walls, retention, holds, persistence) is 2.0, ordinary chat behaviour is
+# 1.5 and a single small behaviour is 1.0; a criterion with parts takes their sum.
+# Each observable is graded in exactly one criterion.
+
 [[criterion]]
 id = "signin_and_client_scope"
 name = "signin_and_client_scope"
@@ -37,7 +41,7 @@ type = "binary"
 weight = 2.0
 description = """
 Part A.
-Sign in as gwen@kittle.test and confirm her matter list shows "Pryce lease dispute" and "Pryce will" and not "Marsh Holdings acquisition". While signed in, open one of her matters and record the request the page makes to load its messages. Sign out: no matter title, name or message stays visible. Then, signed out, replay that recorded request from the app page: it must return no matter, message or name data. Try harriet@kittle.test with a wrong password: sign-in is refused and the reason is shown.
+Sign in as gwen@kittle.test and confirm her matter list shows "Pryce lease dispute" and "Pryce will" and not "Marsh Holdings acquisition". While signed in, open one of her matters and record the request the page makes to load its messages. Sign out: no matter title, name or message stays visible. Then, signed out, replay that recorded request from the app page: it must return no matter, message or name data. Try harriet@kittle.test with a wrong password: sign-in is refused.
 Fails if Gwen sees M-12, if anything private remains after sign-out, if the signed-out replay returns matter or message data, or if the wrong password signs in.
 Part B.
 As gwen@kittle.test, post "Lease question JUDGE-CS1" in M-11 and record the posting request; it must appear in M-11 (positive control). Replay that request from the app page with M-12 as the target instead, and also replay the message-loading request with M-12 as the target.
@@ -51,9 +55,9 @@ name = "wall_every_route"
 type = "binary"
 weight = 2.0
 description = """
-As sian@kittle.test (not walled), open M-12 and record the requests the page makes to load the thread, to open its transcript and to search for "heads of terms"; note that Sian sees the M-12 messages and the search finds "Draft heads of terms ready for comment." (positive control). Then sign in as dev@kittle.test, who is walled from M-12.
+As sian@kittle.test (not walled), open M-12 and post "Wall check JUDGE-W0" there. Record the requests the page makes to load the M-12 thread, to open the M-12 transcript and to search for "JUDGE-W0". Sian sees JUDGE-W0 in the thread and her search finds it (positive control). Then sign in as dev@kittle.test, who is walled from M-12.
 1. Dev's matter list shows M-11 and M-13 and nothing from M-12, not even its title or number.
-2. Searching "heads of terms", "Fenwick" and "Schedule 4" returns nothing, with no snippet, count or matter name from M-12.
+2. Searching "JUDGE-W0", "heads of terms" and "Fenwick" returns nothing, with no snippet, count or matter name from M-12.
 3. Replaying, as Dev, the recorded thread, transcript and search requests returns nothing from M-12; the thread and transcript answers are a plain not-available.
 4. Opening the M-12 transcript address directly in Dev's browser shows not-available.
 Fails if any M-12 title, number, message text, author or count reaches Dev by any of these routes, or if Sian's positive control did not work.
@@ -65,26 +69,30 @@ name = "wall_mentions_and_links"
 type = "binary"
 weight = 2.0
 description = """
-As harriet@kittle.test, open M-12, use the app's control to copy the link of the message "Draft heads of terms ready for comment.", then in M-11 post "See the M-12 terms JUDGE-L1 " followed by that link. As harriet@kittle.test, M-11 shows a short preview of the linked message (positive control). In M-12, post "@Dev please review JUDGE-M1" using the mention feature, and in M-11 post "@Dev survey update JUDGE-M2".
+As harriet@kittle.test, open M-12, use the app's control to copy the link of the message "Draft heads of terms ready for comment.", then in M-11 post "See the M-12 terms JUDGE-L1 " followed by that link. As Harriet, M-11 shows a short preview of the linked message, and following the link opens M-12 at that message (positive controls). In M-12, post "@Dev please review JUDGE-M1" using the mention feature (it posts normally; Dev must simply never hear of it), and in M-11 post "@Dev survey update JUDGE-M2".
 Then as dev@kittle.test: in M-11, the JUDGE-L1 message shows "not available" where the preview would be, with no text, author or title from M-12; following the link shows not-available; Dev's mentions list shows the JUDGE-M2 mention and nothing about JUDGE-M1 or M-12.
-Fails if Harriet's preview did not appear, if Dev sees any part of the linked M-12 message or its matter, if Dev's mentions reveal JUDGE-M1, or if the M-11 mention JUDGE-M2 is missing for Dev.
+Fails if Harriet's preview or link did not work, if Dev sees any part of the linked M-12 message or its matter, if Dev's mentions reveal JUDGE-M1, or if the M-11 mention JUDGE-M2 is missing for Dev.
 """
 
 [[criterion]]
 id = "wall_added_live"
 name = "wall_added_live"
 type = "binary"
-weight = 1.5
+weight = 2.0
 description = """
-Sign in as sian@kittle.test in one tab and open M-13; keep it open. In a second tab or browser context sign in as harriet@kittle.test and wall Sian from M-13 using the app's control. Back in Sian's tab, without reloading, wait up to ten seconds: M-13 must disappear from her list and its thread must stop showing messages or clearly say it is not available. From Sian's tab try to post "Too late JUDGE-WL1" in M-13 (if the box is gone, replay a posting request recorded earlier in this criterion before the wall from Sian's M-13 thread): it must be refused and, as Harriet, M-13 has no JUDGE-WL1. As Harriet, lift the wall again: after a reload Sian sees M-13 and its messages.
-Fails if Sian keeps seeing M-13 messages after the wall, if her post reaches M-13, or if lifting the wall does not give her M-13 back. Record the posting request before the wall is added so the replay has something to send.
+In one browser context sign in as sian@kittle.test, open M-13, post "Before wall JUDGE-WL0" and record that posting request; keep the page open. In a separate browser context sign in as harriet@kittle.test, open M-13 and wall Sian from M-13 with the app's control, recording that request.
+1. In Sian's page, without reloading, within about ten seconds M-13 disappears from her list and its thread stops showing messages or says it is not available.
+2. From Sian's session, replay her recorded posting request with the text "Too late JUDGE-WL1": it is refused, and as Harriet M-13 has no JUDGE-WL1.
+3. From Sian's session, replay Harriet's recorded wall request changed to lift Sian's own wall: it is refused, and Sian still gets not-available for M-13.
+4. As Harriet lift the wall with the app's control: after a reload Sian sees M-13 again, including JUDGE-WL0.
+Fails if Sian keeps seeing M-13 messages after the wall, if her post reaches M-13, if she can lift her own wall, or if lifting the wall does not give her M-13 back.
 """
 
 [[criterion]]
 id = "nested_replies"
 name = "nested_replies"
 type = "binary"
-weight = 2.0
+weight = 1.5
 description = """
 As harriet@kittle.test in M-13, post "Root question JUDGE-R0". Reply to it with "Level one JUDGE-R1", reply to that with "Level two JUDGE-R2", and reply to that with "Level three JUDGE-R3". Then post a separate top-level message "Unrelated JUDGE-RX", and after it add a second reply to JUDGE-R0: "Another level one JUDGE-R1B".
 1. JUDGE-R1, JUDGE-R2 and JUDGE-R3 each sit under the message they answer, nested three levels deep, each with a short quote of its parent's text.
@@ -94,17 +102,18 @@ Fails if any reply is shown at the wrong level, loses its quote, or is placed by
 """
 
 [[criterion]]
-id = "deleted_and_expired_seed_messages"
-name = "deleted_and_expired_seed_messages"
+id = "deleted_and_expired_messages"
+name = "deleted_and_expired_messages"
 type = "binary"
 weight = 3.0
 description = """
 Part A.
 As gwen@kittle.test open M-11. The seeded message "Here is the original lease scan, clause 14 is the problem." was sent on 1 May on a seven-day matter, so it is gone, but Harriet's reply "Clause 14 noted, we will raise it with the landlord." and Gwen's held reply under it survive.
-1. The surviving reply is shown with a placeholder saying the original message was deleted, in place of a quote, and Gwen's held reply stays nested under Harriet's reply.
-2. Searching "original lease scan" finds nothing; searching "Clause 14 noted" finds Harriet's reply (positive control).
-3. The M-11 transcript shows the placeholder and both replies, and does not contain "original lease scan".
-Fails if the deleted text appears anywhere (thread, quote, search, transcript), if the surviving replies are missing or lose their nesting, or if no placeholder marks the deleted parent.
+1. Harriet's reply is shown with a placeholder saying the original message was deleted, in place of a quote, and Gwen's held reply stays nested under it. Searching "original lease scan" finds nothing; searching "Clause 14 noted" finds Harriet's reply.
+2. As Gwen post "Delete parent JUDGE-X0" in M-11; as harriet@kittle.test reply to it with "Reply stays JUDGE-X1". As Gwen delete JUDGE-X0 with the app's control, recording the request: JUDGE-X1 stays, shown under the same kind of deleted-message placeholder, and searching "JUDGE-X0" finds nothing while "JUDGE-X1" finds the reply.
+3. As sian@kittle.test replay Gwen's recorded delete request against JUDGE-X1, which is not Sian's: it is refused and JUDGE-X1 stays.
+4. The M-11 transcript shows the placeholder in place of both deleted parents with their replies under it, and contains neither "original lease scan" nor "Delete parent JUDGE-X0".
+Fails if deleted text appears anywhere (thread, quote, search, transcript), if a surviving reply is missing or loses its nesting, if no placeholder marks a deleted parent, or if Sian can delete someone else's message.
 Part B.
 As harriet@kittle.test open M-11 (seven-day timer; the clock is 2026-05-12T11:00:00Z). The seeded "Boundary note: rent review date is 5 June." was sent exactly seven days ago and must be gone; "Rent review meeting moved to the afternoon." was sent one second later and must be shown (positive control). Search "rent review date" finds nothing, and the M-11 transcript does not contain it.
 Fails if the exactly-seven-day message is shown anywhere, or if the one-second-younger message is missing.
@@ -117,21 +126,13 @@ name = "timer_changes"
 type = "binary"
 weight = 2.0
 description = """
-As harriet@kittle.test open M-13 (30-day timer). Note that "Probate estimate is 4,200 pounds." (sent 4 May, not held) and the held "My executor will be my sister." (sent 4 May) are shown. As sian@kittle.test try to change the M-13 timer and record the request if a control exists, otherwise record Harriet's own timer-change request in step 1 and replay it as Sian: an associate's change must be refused and the timer stays at 30 days.
-1. As Harriet change the M-13 timer to 7 days: "Probate estimate is 4,200 pounds." disappears at once and the held executor message stays, marked On hold. The thread shows 7 days beside the title.
-2. Change the timer to off: the probate message does not come back, and searching "Probate estimate" finds nothing.
-3. Set the timer back to 30 days for later checks.
-Fails if Sian's change is accepted, if shortening does not delete the eight-day-old message at once, if the held message is deleted, or if turning the timer off or lengthening it brings anything back.
-"""
-
-[[criterion]]
-id = "deleted_message_takes_its_versions"
-name = "deleted_message_takes_its_versions"
-type = "binary"
-weight = 1.5
-description = """
-Before the M-13 timer was shortened, "Probate estimate is 4,200 pounds." was an edited message whose earlier version read "Probate estimate is 2,400 pounds.". Now that it has been deleted, check as harriet@kittle.test that neither "4,200" nor "2,400" appears anywhere: the M-13 thread, any edit history the app shows, search for "Probate" or "2,400", and the M-13 transcript. As a positive control, the held edited message "Landlord's notice received and filed." in M-11 still offers its earlier version "Landlords notice recieved." to staff.
-Fails if any version of the deleted message survives anywhere, or if the held message's earlier version is not available to staff.
+As harriet@kittle.test open M-13 (30-day timer). "Probate estimate is 4,200 pounds." (sent 4 May, not held) and the held "My executor will be my sister." (sent 4 May) are shown. Open the probate message's earlier versions: "Probate estimate is 2,400 pounds." is listed (positive control).
+1. Change the M-13 timer to 7 days with the app's control, recording the request: the probate message disappears at once, the held executor message stays marked On hold, and the thread shows 7 days beside the title.
+2. Searching "Probate", "2,400" and "4,200" finds nothing, while searching "executor" finds the held message; the M-13 transcript contains neither "2,400" nor "4,200" but does contain the executor message.
+3. Change the timer to off: the probate message does not come back.
+4. Set the timer back to 30 days.
+5. As sian@kittle.test, an associate, replay the recorded timer request with 1 day: it is refused, and as Harriet after a reload M-13 still shows 30 days.
+Fails if shortening does not delete the eight-day-old message and its earlier version at once, if the held message is deleted, if turning the timer off brings anything back, or if Sian's change is accepted.
 """
 
 [[criterion]]
@@ -140,19 +141,28 @@ name = "hold_scope_and_release"
 type = "binary"
 weight = 2.0
 description = """
-As harriet@kittle.test in M-11, post "Hold parent JUDGE-H0", reply to it with "Hold child JUDGE-H1", and place a hold on JUDGE-H1 only: JUDGE-H1 is marked On hold for gwen@kittle.test as well, and JUDGE-H0 is not. As harriet@kittle.test try to delete JUDGE-H1 with the app's control, recording the request if one is sent, and as its author also replay that request: deleting a held message must be refused and JUDGE-H1 stays. Typing the words "On hold" into a message (post "Not really On hold JUDGE-H2") must not make it look held: it shows as ordinary text without the hold badge.
-Then release the hold on the seeded held message "Insurer letter acknowledged." (sent 3 May on the seven-day M-11): as soon as it is released it disappears, because it is already older than seven days, and searching "Insurer letter" finds nothing.
-Fails if the hold spreads to the parent, if a held message can be deleted, if typed "On hold" text looks like a hold badge, or if the overdue message survives its release.
+As harriet@kittle.test in M-11:
+1. Post "Delete me JUDGE-H3" and delete it with the app's control, recording the delete request: it disappears (positive control for deleting).
+2. Post "Hold parent JUDGE-H0", reply to it with "Hold child JUDGE-H1", and reply to JUDGE-H1 with "Hold grandchild JUDGE-H1C". Place a hold on JUDGE-H1 only, recording the hold request. For gwen@kittle.test after a reload, JUDGE-H1 is marked On hold and JUDGE-H0 and JUDGE-H1C are not.
+3. As Harriet try to delete JUDGE-H1 with the app's control if it offers one, and replay the recorded delete request against JUDGE-H1: deletion is refused and JUDGE-H1 stays.
+4. As sian@kittle.test replay the recorded hold request against JUDGE-H0: it is refused and JUDGE-H0 is still not on hold.
+5. As Harriet post "Not really On hold JUDGE-H2": it shows as ordinary text without the hold mark.
+6. Release the hold on the seeded "Insurer letter acknowledged." (sent 3 May on the seven-day M-11): it disappears at once, and searching "Insurer letter" finds nothing.
+Fails if the first delete did not work, if the hold spreads to the parent or the reply, if a held message can be deleted, if Sian can place a hold, if typed "On hold" text looks like a hold mark, or if the overdue message survives its release.
 """
 
 [[criterion]]
 id = "edits_and_stale_edit"
 name = "edits_and_stale_edit"
 type = "binary"
-weight = 1.5
+weight = 2.0
 description = """
-As gwen@kittle.test in M-13 post "Version one JUDGE-E1". Open M-13 as gwen@kittle.test in a second tab or context too, and in that second tab open the edit box for the message so it holds "Version one JUDGE-E1"; leave it open. In the first tab edit the message to "Version two JUDGE-E1" and save: it shows "edited", and as harriet@kittle.test its earlier version "Version one JUDGE-E1" can be opened. Then, in the second tab's still-open edit box, change the text to "Version stale JUDGE-E1" and save: the edit must be refused with a reason, the typed "Version stale JUDGE-E1" stays in the edit box, and after a reload the message reads "Version two JUDGE-E1".
-Fails if the edit lacks the edited mark or the earlier version, if the stale edit overwrites the newer one, or if the stale edit's typed text is thrown away.
+As gwen@kittle.test in M-13 post "Version one <i>JUDGE-E1</i>" exactly as written. Open M-13 as gwen@kittle.test in a second, separate browser context too, and there open the edit box for that message so it holds that text; leave it open. In the first context edit the message to "Version two JUDGE-E1" and save, recording the edit request.
+1. It shows "edited"; as harriet@kittle.test its earlier version can be opened and reads "Version one <i>JUDGE-E1</i>" with the angle-bracket text shown literally, not as italics.
+2. In the second context's still-open edit box, change the text to "Version stale JUDGE-E1" and save: the edit is refused, "Version stale JUDGE-E1" stays in the edit box, and after a reload the message reads "Version two JUDGE-E1".
+3. As sian@kittle.test replay Gwen's recorded edit request with the text "Hijack JUDGE-E1": it is refused and the message still reads "Version two JUDGE-E1".
+4. The M-13 transcript shows the message as "Version two JUDGE-E1" marked edited.
+Fails if the edit lacks the edited mark or its literal earlier version, if the stale edit overwrites the newer one or throws the typed text away, if Sian can edit Gwen's message, or if the transcript does not mark the edit.
 """
 
 [[criterion]]
@@ -164,7 +174,7 @@ description = """
 As gwen@kittle.test in M-13 post this exact text: "Notes JUDGE-F1 *bold part* `code part` <img src=x onerror=alert(7)> <script>alert(8)</script> [click](javascript:alert(9)) https://example.org/lease". Then reply to it with "> quoted line JUDGE-F2" on its own line.
 1. "bold part" appears bold, "code part" appears in a code style, the https address is a link that opens in a new tab, and the reply's line starting with "> " is shown as a quote (positive controls).
 2. The img, script and javascript: parts show literally as text; no image element, script or dialog is created, and the javascript: text is not a working link. Check the thread, the reply's quote, a search for "JUDGE-F1" (the snippet), and the M-13 transcript.
-3. The seeded M-11 message beginning "Pasted from the lease:" shows its markup literally in the thread and transcript, its "On hold" words do not show a hold badge, and its javascript: text is not a link.
+3. The seeded M-11 message beginning "Pasted from the lease:" shows its tags such as <b>Schedule 2</b> literally, as typed, in the thread and the transcript.
 Fails if any markup is interpreted, any dialog appears, any javascript: link is clickable, or the simple formatting does not render.
 """
 
@@ -184,8 +194,12 @@ name = "unread_and_new_messages_line"
 type = "binary"
 weight = 2.0
 description = """
-Sign in as dev@kittle.test in two tabs or contexts. Note M-13's unread count in Dev's matter list, then as harriet@kittle.test post two messages in M-13, "Unread one JUDGE-U1" and "Unread two JUDGE-U2". Within about ten seconds and without reloading, Dev's count for M-13 rises by two in both of his tabs. In one tab Dev opens M-13: a "new messages" line sits just above JUDGE-U1, and the count goes to zero in both tabs. Then Dev marks JUDGE-U2 unread from that message: the count shows one and, on reopening, the line sits above JUDGE-U2. Dev's list shows no count or entry for M-12 at any point. As gwen@kittle.test, her M-13 count is her own and was not cleared by Dev.
-Fails if counts are wrong or differ between Dev's tabs, if the new-messages line is missing or misplaced, if mark-unread does not move it, or if Dev sees anything for M-12.
+Sign in as dev@kittle.test in two separate browser contexts. In the first, open M-13 so it is read up to its newest message, then open M-11; within about ten seconds M-13 shows no unread count in either context. Then as harriet@kittle.test post three messages in M-13, "Unread one JUDGE-U1", "Unread two JUDGE-U2" and "Unread gone JUDGE-U3", and delete JUDGE-U3 with the app's control.
+1. Within about ten seconds, without reloading, Dev's M-13 count shows 2 in both contexts; the deleted message does not count.
+2. In the first context Dev opens M-13: a "new messages" line sits just above JUDGE-U1, and within about ten seconds, without reloading, the second context shows no unread count for M-13.
+3. Dev marks JUDGE-U2 unread from that message: within about ten seconds both contexts show 1 for M-13, and on reopening M-13 the line sits just above JUDGE-U2.
+4. As gwen@kittle.test, M-13 shows her own unread count of at least 2, which Dev's reading did not clear.
+Fails if a count is wrong, differs between Dev's contexts after the wait, or counts the deleted message, if the new-messages line is missing or misplaced, if mark-unread does not move it, or if Gwen's count follows Dev's.
 """
 
 [[criterion]]
@@ -209,26 +223,26 @@ name = "live_updates_keep_my_work"
 type = "binary"
 weight = 2.0
 description = """
-Sign in as gwen@kittle.test in one tab, open M-13, scroll the thread so it is not at the very bottom, open the reply box on "Draft will sent for your review." and type "Half typed JUDGE-LV" without sending. In a second tab or context as harriet@kittle.test, post "Live arrival JUDGE-LA" in M-13 and edit any message of Harriet's to add "JUDGE-LE". Back in Gwen's tab, without reloading, within about ten seconds JUDGE-LA and the JUDGE-LE edit appear, and "Half typed JUDGE-LV" is still in the reply box, the reply box is still open on the same message, and the thread has not jumped to a different place.
-Fails if the new message or edit does not appear without a reload, or if the draft, open reply box or scroll position is lost.
+As harriet@kittle.test post "Live base JUDGE-LB" and "Live gone JUDGE-LG" in M-13. In a separate browser context sign in as gwen@kittle.test, open M-13, scroll the thread so it is not at the very bottom, open the reply box on "Draft will sent for your review." and type "Half typed JUDGE-LV" without sending. Then as Harriet: post "Live arrival JUDGE-LA", reply to JUDGE-LB with "Live reply JUDGE-LR", edit JUDGE-LB to "Live base JUDGE-LB JUDGE-LE", and delete JUDGE-LG.
+Back in Gwen's page, without reloading, within about ten seconds: JUDGE-LA appears, JUDGE-LR appears under JUDGE-LB, the JUDGE-LE edit shows, and JUDGE-LG is gone. "Half typed JUDGE-LV" is still in the reply box, the reply box is still open on the same message, and the thread has not jumped to a different place.
+Fails if any of the four changes does not appear without a reload, or if the draft, open reply box or scroll position is lost.
 """
 
 [[criterion]]
 id = "search_and_transcript"
 name = "search_and_transcript"
 type = "binary"
-weight = 3.0
+weight = 2.5
 description = """
 Part A.
-As gwen@kittle.test search "survey BOOKED": the M-11 message "Survey booked for Friday." is found, regardless of case. Clicking that result opens M-11 at that message. Search "Version one JUDGE-E1" (an earlier version from the edits check) finds nothing, while "Version two JUDGE-E1" finds the edited message. Gwen's search never returns anything from M-12.
+As gwen@kittle.test search "survey BOOKED": the M-11 message "Survey booked for Friday." is found, regardless of case, and clicking that result opens M-11 at that message. Searching "notice recieved" (the earlier version of the held "Landlord's notice received and filed.") finds nothing, while "notice received and filed" finds the message. Gwen's search for "heads of terms" returns nothing from M-12.
 Fails if case matters, if clicking does not open the message, or if earlier versions or other clients' matters appear in results.
 Part B.
-As harriet@kittle.test open the M-11 transcript.
+As harriet@kittle.test in M-11 post "Transcript parent JUDGE-T0" and reply to it with "Transcript child JUDGE-T1". Then open the M-11 transcript.
 1. It is headed with "M-11", "Pryce lease dispute" and the generated time 2026-05-12 11:00 (any clear date-time format), and has no message box, send, reply, edit or delete controls.
-2. Messages are oldest first and in their threads: the held reply under the deleted-original placeholder, replies under their parents, each with author and sent time.
-3. "Landlord's notice received and filed." is marked On hold and shows both its versions, including "Landlords notice recieved."; JUDGE-E1 is not in this matter.
-4. As dev@kittle.test, opening the M-12 transcript by its address shows not-available (positive control: Dev can open the M-11 transcript).
-Fails if any heading part, thread order, hold mark, version or placeholder is wrong or missing, if chat controls appear, or if Dev gets anything from M-12.
+2. Messages are oldest first and in their threads: JUDGE-T1 sits under JUDGE-T0, and each message shows its author and sent time.
+3. "Landlord's notice received and filed." is marked On hold and edited, and shows both its versions, including "Landlords notice recieved.".
+Fails if any heading part, thread placement, author, time, hold mark, edited mark or version is wrong or missing, or if chat controls appear.
 Both parts must hold; failing either fails this criterion.
 """
 
@@ -236,8 +250,16 @@ Both parts must hold; failing either fails this criterion.
 id = "persistence"
 name = "persistence"
 type = "binary"
-weight = 1.5
+weight = 2.0
 description = """
-Before restarting, as harriet@kittle.test note: M-13's timer, the M-12 wall on Dev, the nested JUDGE-R0 to JUDGE-R3 replies in M-13, the edited JUDGE-E1 message with its earlier version, the hold on JUDGE-H1 in M-11, Dev's unread count for M-13, and that "Survey booked for Friday." and the deleted "Here is the original lease scan" are as checked earlier. Then call restart_app once. After it reports success, open a fresh page and sign in again: every noted item is unchanged, nothing deleted came back, no seeded message is duplicated, and Dev is still walled from M-12.
-Fails if anything noted changed, if a deleted message returned, if seed data was imported again (duplicates), or if the restart tool reports an error.
+Before restarting, as harriet@kittle.test:
+a. In M-11 post "Persist parent JUDGE-S0", reply to it with "Persist child JUDGE-S1", edit JUDGE-S0 to "Persist parent JUDGE-S0 edited", place a hold on JUDGE-S1, and post and then delete "Persist gone JUDGE-S2".
+b. Set M-12's timer to 30 days, and wall sian@kittle.test from M-11.
+c. As dev@kittle.test note his M-13 unread count.
+Then call restart_app once. After it reports success, open a fresh page and sign in again.
+1. JUDGE-S1 is still nested under the edited JUDGE-S0, JUDGE-S0 shows edited and Harriet can open its earlier version, JUDGE-S1 is On hold, and JUDGE-S2 has not come back.
+2. M-12 shows 30 days; Sian gets not-available for M-11; Dev gets not-available for M-12; Dev's M-13 count is unchanged.
+3. Searching as Harriet finds nothing for "Persist gone", "Probate", "Insurer letter", "Boundary note" or "Temp JUDGE-P2", and "Survey booked for Friday." appears exactly once in M-11, so nothing was imported again.
+Finally lift Sian's wall on M-11 and set M-12's timer back to off.
+Fails if anything noted changed, if a deleted message returned, if seed data was imported again, or if the restart tool reports an error.
 """

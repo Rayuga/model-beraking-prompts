@@ -49,15 +49,15 @@ dimension.
 ## Guardrails
 
 - Grade only the listed steps; extra probes must not fail a criterion whose
-  steps passed. Score each criterion independently and return a verdict for
-  every one.
+  steps passed. Score each criterion independently and continue after any
+  failure; return a verdict for every criterion.
 - Any endpoint path, payload shape or cookie name is acceptable.
 - Signing in with a real account's own credentials is never a vulnerability.
 
 ## Restart evidence
 
-The persistence criterion is last. Its first leg calls the `restart_app` tool
-of the `verifier` MCP server exactly once. The tool stops the application
+The persistence criterion is last. After its setup steps it calls the
+`restart_app` tool of the `verifier` MCP server exactly once. The tool stops the application
 server process, relaunches it on the same database and waits for HTTP
 readiness. Only after it reports success, open a fresh page, sign in and
 re-read. A reload or re-sign-in in the same process is not a restart. A tool
@@ -69,8 +69,9 @@ error fails that criterion. No other criterion calls `restart_app`.
 
 Use gwen@kittle.test for the initial gate. Each session grades one criterion; the criteria run in the listed order
 against one database, so earlier ones have posted JUDGE messages, replies and edits, changed and restored timers,
-placed and released holds, and added and lifted a wall. Judge each criterion against the state the earlier ones left,
-start from fresh pages, and never undo another criterion's writes except where a step says so.
+placed and released holds, and added and lifted walls. Each criterion creates the messages it checks; judge it against
+the state the earlier ones left, start from fresh pages, and never undo another criterion's writes except where a step
+says so.
 
 ## Session evidence
 

@@ -16,7 +16,7 @@ Our staff see every matter except the ones they are walled from, and clients see
 
 A wall has to be airtight, because a leak is a professional-conduct problem for us. A walled person gets nothing from that matter, by any route: not in the matter list, the thread, search results or their snippets, the quote shown above a reply, unread counts, mentions, a link to one of its messages pasted somewhere they can see, or a transcript. If they reach for something in it directly, for example by following an old link or asking the server for it, they get nothing back but a plain "not available". The same goes for clients asking about matters that aren't theirs.
 
-Conflicts come up mid-matter, so Harriet can add or lift a wall for any of our staff on any matter. A new wall takes effect at once, including for someone who already has the matter open: the next time their screen refreshes it is gone, and nothing they do after that reaches it.
+Conflicts come up mid-matter, so Harriet can add or lift a wall for any of our staff on any matter. A new wall takes effect at once, including for someone who already has the matter open: within a few seconds, without them reloading, it is gone from their screen, and nothing they do after that reaches it.
 
 ## Disappearing messages
 

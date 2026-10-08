@@ -7,7 +7,7 @@ const $ = id => document.getElementById(id);
 const newKey = () => (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random());
 const state = {
   me: null, matters: [], current: null, thread: [], newLineSeq: null,
-  replyTo: null, editing: null, clientKey: newKey(), focusMessage: null, threadSig: "", listSig: ""
+  replyTo: null, editing: null, clientKey: newKey(), focusMessage: null, threadSig: "", listSig: "", messageErrors: {}
 };
 
 async function api(path, options = {}) {
@@ -343,19 +343,29 @@ function renderMessage(msg) {
   li.appendChild(actions);
   const err = document.createElement("p");
   err.className = "error action-error";
-  err.hidden = true;
+  const kept = state.messageErrors[msg.id];
+  err.textContent = kept || "";
+  err.hidden = !kept;
   li.appendChild(err);
   return li;
 }
 
 /* ---------- actions ---------- */
 
+// A refusal on a message stays until that person does something else with the message.
+function clearMessageError(msg) {
+  delete state.messageErrors[msg.id];
+  const el = document.querySelector(`#msg-${CSS.escape(msg.id)} .action-error`);
+  if (el) { el.textContent = ""; el.hidden = true; }
+}
 function messageError(msg, text) {
+  state.messageErrors[msg.id] = text;
   const el = document.querySelector(`#msg-${CSS.escape(msg.id)} .action-error`);
   if (el) { el.textContent = text; el.hidden = false; }
 }
 
 function startReply(msg) {
+  clearMessageError(msg);
   state.editing = null;
   state.replyTo = { id: msg.id };
   $("composer-context-text").textContent = `Replying to ${msg.author_name}: ${msg.body.slice(0, 80)}`;
@@ -365,6 +375,7 @@ function startReply(msg) {
   $("composer-input").focus();
 }
 function startEdit(msg) {
+  clearMessageError(msg);
   state.replyTo = null;
   state.editing = { id: msg.id, version: msg.version };
   $("composer-context-text").textContent = "Editing your message";
@@ -409,16 +420,19 @@ $("composer").addEventListener("submit", async event => {
 });
 
 async function deleteMessage(msg) {
+  clearMessageError(msg);
   const r = await api(`/api/messages/${encodeURIComponent(msg.id)}`, { method: "DELETE" });
   if (!r.ok) return messageError(msg, r.data.error || "That message can't be deleted.");
   reloadCurrent();
 }
 async function setHold(msg, hold) {
+  clearMessageError(msg);
   const r = await api(`/api/messages/${encodeURIComponent(msg.id)}/hold`, { method: "POST", body: JSON.stringify({ hold }) });
   if (!r.ok) return messageError(msg, r.data.error || "That didn't go through.");
   reloadCurrent();
 }
 async function markUnread(msg) {
+  clearMessageError(msg);
   const r = await api(`/api/matters/${encodeURIComponent(state.current)}/read`, { method: "POST", body: JSON.stringify({ unread_from: msg.id }) });
   if (!r.ok) return messageError(msg, r.data.error || "That didn't go through.");
   state.newLineSeq = msg.seq;
@@ -427,6 +441,7 @@ async function markUnread(msg) {
   reloadCurrent();
 }
 function copyLink(msg) {
+  clearMessageError(msg);
   const url = `${location.origin}/messages/${msg.id}`;
   $("link-value").value = url;
   $("link-box").hidden = false;
