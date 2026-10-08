@@ -1,21 +1,22 @@
-# Colderwater strict candidate v16, 8 October 2026
+# Colderwater strict candidate v16, 8 October 2026 (final build)
 
 - Archive: colderwater-playground-devtools.zip
-- SHA256: 29e5edc1816f4b9d5a3183818acf2b8ddc1d086161826b2d87298f7a6888a844
-- Source commit: 501d01af on task/colderwater-editor-strict; 43 files, LF, byte-identical to the committed task. Category: programming (unchanged since v1).
+- SHA256: f407efa0b0f84c52fec97564c0426ade6598fdddae012d33eced400ec8cc2422
+- Source commit: 7a606512 on task/colderwater-editor-strict; 43 files, LF, byte-identical to the committed task. Category: programming (unchanged since v1).
+- Supersedes the earlier v16 build of this folder (29e5edc1...), which must not be uploaded.
 
 Why: hosted portal QC on v15 failed rows 1, 25, 32 and 35.
 
 Changes from v15 (golden solution unchanged):
-- Row 1: ui.md and behaviour.md rewritten in the requester's voice with the same requirements; the HTTP line now gives a user reason and covers restores only (what is graded).
-- Row 25: no public internet address; cw_preview_isolation probes http://localhost:3000/api/health and http://127.0.0.1:3000/api/health. security.md states the boundary as the playground's own address under both names.
-- Row 32: Stop legs (cw_stop_cancels_pending_work, cw_last_good_recovery, cw_output_before_failure_kept) click Run, wait for a start line, then Stop in one code-runner action; a visible timer marker decides void attempts; up to two repeats.
-- Row 35: cw_save_reload_restart needs two revisions with different sources and re-reads the first revision's source after the real restart.
-- Row 6 (found in our review): ui.md now states Ctrl/Cmd+A select-all and backwards Find wrap, which a criterion relies on.
+- Row 1: all six notes rewritten in the requester's voice with the same requirements; the HTTP line asks only for restores (what is graded), with a user reason.
+- Row 25: no address outside the machine anywhere; preview isolation probes localhost and 127.0.0.1; security.md states that boundary.
+- Row 32: every Stop or newer-run leg runs in one code-runner action, waits for a start line before Stop, uses a visible timer marker to decide void attempts, and allows up to two repeats.
+- Row 35: cw_save_reload_restart builds three revisions (save, save, restore), re-reads every revision's source after the real restart, and grades restore idempotency only relative to a replay before the restart (no double penalty with the restore criteria).
+- Also from our own review: Ctrl/Cmd+A and backwards Find wrap stated in ui.md; history check gives revision one its own title and filename.
 
 Checks on these bytes:
-- Scripted golden 53 of 53, including new legs: 127.0.0.1 fetch blocked from the preview, both revisions' sources survive a real restart.
-- Five static checks pass.
-- Quick QC rounds v16-quick, v16-quick2, v16-quick3 (rows 1, 2, 5, 6, 25, 26, 27, 32, 35): every row Pass in its latest round; fails found along the way (6, 26, 32, then 26) were fixed and re-reviewed.
+- Scripted golden 53 of 53, including: 127.0.0.1 preview fetch blocked; three revisions and their sources surviving a real restart; snapshot shows its own title and filename; replay before and after restart adds no revision.
+- Five static checks pass. Largest assembled judge prompt (functional) is about 51 KB, under half the 128 KB limit.
+- Full QC round coldwater-strict-2026-10-08-v16-full (53 rows one after another plus deterministic): 49 Pass, 3 Note (rows 2, 26, 31; P3), 1 Fail (row 28, double penalty in the restart check) fixed in 7a606512 and golden-verified; deterministic 35 Pass, 9 Note, 4 N-A, 0 Fail. The row 28 fix was not re-reviewed by a fresh QC round, by the owner's decision.
 
-Not measured: Oracle and Luna on v16. Trade-off: the brief no longer asks the preview to block the whole internet, only the playground's own server, because an internet probe made grading depend on an outside site.
+Not measured: Oracle and Luna on v16.
