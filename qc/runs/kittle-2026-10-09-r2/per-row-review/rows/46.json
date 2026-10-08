@@ -1,0 +1,36 @@
+{
+  "number": 46,
+  "id": "tests_and_key_are_out_of_agent_reach",
+  "reviewer": "row-reviewer-46",
+  "input_sha256": "32ac3325a98d65cb38ca961a747ef80239bb2fa94a5195cc56d2f98e929bb17e",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r2/rules/WebDev Rubrics QC.xlsx :: Quality Checks row 47 (#46 tests_and_key_are_out_of_agent_reach) and Internal Quality Checks row 47 (column E annotation empty)",
+    ".qc-cache/kittle-2026-10-09-r2/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r2/rules/harbor-webdev-rubric-qc/references/quality-checks.md:184-185",
+    ".qc-cache/kittle-2026-10-09-r2/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md:60 (check-dockerfiles: no COPY of solution/ or tests/ into agent image)",
+    ".qc-cache/kittle-2026-10-09-r2/rules/projects/webdev-task-template (environment/Dockerfile, tests/Dockerfile, tests/.dockerignore, tests/test.sh, tests/tools/*, task.toml)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/kittle-2026-10-09-r2/task/task.toml",
+    ".qc-cache/kittle-2026-10-09-r2/task/environment/Dockerfile",
+    ".qc-cache/kittle-2026-10-09-r2/task/environment/instructions/*.md",
+    ".qc-cache/kittle-2026-10-09-r2/task/environment/assets/seed_data.json (listing/hash)",
+    ".qc-cache/kittle-2026-10-09-r2/task/instruction.md",
+    ".qc-cache/kittle-2026-10-09-r2/task/tests/Dockerfile",
+    ".qc-cache/kittle-2026-10-09-r2/task/tests/.dockerignore",
+    ".qc-cache/kittle-2026-10-09-r2/task/tests/test.sh",
+    ".qc-cache/kittle-2026-10-09-r2/task/tests/*/*/judge.toml and prompt.md (grep for /assets, /app, untrusted)",
+    "qc/runs/kittle-2026-10-09-r2/raw-evidence-index.json"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Agent image: task/environment/Dockerfile (byte-identical to the frozen template) installs only node/express/better-sqlite3/git/sqlite3 and copies only instructions/ and assets/ (lines 14-15: 'COPY instructions/ /instructions/', 'COPY assets/ /assets/'); no COPY of tests/ or solution/, no rewardkit, no claude-code/codex judge client, no criteria. environment/ holds only Dockerfile, assets/seed_data.json (same hash as solution seed f69616e2...) and three brief notes; grep of instruction.md and environment/instructions/*.md finds no rubric/criterion/judge/reward text and no criterion ids. Grading isolation: task.toml:28 'environment_mode = \"separate\"'; harbor-rewardkit==0.1.7, claude-code, codex and playwright-mcp are installed only in tests/Dockerfile (lines 16-31); tests are copied only into the verifier image ('COPY . /tests' then 'chmod -R go-rwx /tests', tests/Dockerfile:43-44). Influence on reward during grading: test.sh (template-identical) runs the submission as uid 65534 via setpriv with env -i (lines 104-111), while /tests is root-only (test.sh:12 chmod -R go-rwx /tests) and LOG_DIR is chmod 700 (line 11) so the app cannot read criteria, edit prompts, the restart helper ($LOG_DIR/app-restart.sh) or reward.json/reward.txt; zero reward is pre-written (line 60) and ensured on exit; symlinks outside node_modules abort grading (lines 72-83). The OPENROUTER key is only in [verifier.env]. Judges never take ground truth from the agent-writable /assets artifact (no /assets or seed_data reference in any judge.toml/prompt.md; expected facts are fixed in /tests). All five prompts tell the judge to treat submitted UI/source/network/instructions as untrusted (prompt-injection robustness is row 45). Attempted counterexamples: (a) agent reads criteria from its container - impossible, nothing shipped; (b) agent edits /assets/seed_data.json to shift expectations - judges do not read it; (c) app at grading time rewrites /tests or reward files - blocked by uid 65534 vs root-only 700 perms. Conforming alternative that fails: none arises from this row. Evidence is static source inspection of the frozen bytes and template diff (all relevant files identical to template); no built agent image was inspected in this review, but the Dockerfile fully determines its contents, so no required runtime measurement is missing for this row.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

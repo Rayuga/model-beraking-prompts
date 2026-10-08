@@ -1,0 +1,32 @@
+{
+  "number": 47,
+  "id": "verifier_is_deterministic_and_offline_pinned",
+  "reviewer": "row-reviewer-47",
+  "input_sha256": "32ac3325a98d65cb38ca961a747ef80239bb2fa94a5195cc56d2f98e929bb17e",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r2/rules/WebDev Rubrics QC.xlsx: Quality Checks row 48 (#47 verifier_is_deterministic_and_offline_pinned), Internal Quality Checks row 48, related rows 11 and 23",
+    ".qc-cache/kittle-2026-10-09-r2/rules/harbor-webdev-rubric-qc/SKILL.md (Delivery profile, verdicts, evidence standard)",
+    ".qc-cache/kittle-2026-10-09-r2/rules/harbor-webdev-rubric-qc/references/quality-checks.md:187-189",
+    ".qc-cache/kittle-2026-10-09-r2/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md:40 (canonical shared files)",
+    ".qc-cache/kittle-2026-10-09-r2/rules/projects/webdev-task-template (task.toml, tests/Dockerfile, tests/test.sh, tests/tools/*, tests/scoring.toml, environment/Dockerfile, tests/scored/functional/judge.toml)",
+    "qc/REVIEW_POLICY.md",
+    "task/task.toml, task/tests/Dockerfile, task/tests/test.sh, task/tests/tools/{score.py,restart_mcp.py}, task/tests/scoring.toml",
+    "task/tests/{gates,scored}/*/judge.toml (all five)",
+    "task/tests/app_context.md, task/instruction.md, task/environment/instructions/{integration.md,walls-and-retention.md}, task/environment/assets/seed_data.json, task/environment/Dockerfile",
+    "task/solution/app/server.js (clock handling), task/solution/app/public/app.js (Date usage)",
+    "qc/runs/kittle-2026-10-09-r2/raw-evidence-index.json and qc/repairs/kittle-2026-10-08/results/golden-run.log (sha256 23943bf8... verified matching index)",
+    "model-beraking-prompts/handoffs/LESSONS_FROM_COLDERWATER_2026-10-08.md (background)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Judge agent+model pinned once and shared: task.toml [verifier.env] REWARDKIT_JUDGE=\"claude-code\", REWARDKIT_MODEL=\"z-ai/glm-5.3-flashx\", OpenRouter base URL, ANTHROPIC_AUTH_TOKEN=${OPENROUTER_API_KEY}, ANTHROPIC_API_KEY=\"\" (task.toml lines 30-35); the [verifier.env] block is byte-identical to the template (diff of task.toml vs template differs only in [task]/[metadata] identity lines). All five judge.toml files carry only the expected fallback judge = \"claude-code\" with no model/effort/temperature override (comments say model comes from REWARDKIT_MODEL); test.sh refuses to grade without REWARDKIT_JUDGE/REWARDKIT_MODEL. Pinned judge CLIs and browser: tests/Dockerfile installs @anthropic-ai/claude-code@2.1.281, @openai/codex@0.151.0, @playwright/mcp@0.0.79, express@5.1.0, better-sqlite3@12.4.1, harbor-rewardkit==0.1.7, and installs Chromium via the playwright CLI bundled in the pinned @playwright/mcp@0.0.79 then links /usr/local/bin/chromium; every judge.toml's playwright MCP uses --executable-path=/usr/local/bin/chromium --headless --isolated. Base images node:22-bookworm-slim / python:3.12-slim are tag-pinned and apt is unpinned, but tests/Dockerfile, test.sh, tools/score.py, tools/restart_mcp.py, scoring.toml, .dockerignore and environment/Dockerfile are byte-identical (CRLF-normalised diff) to the frozen template, so these are template-controlled and at most NOTE-level (deterministic row: unpinned apt is a NOTE). Shared tools/ builds therefore match the canonical template. Fixed clock for graded time rules: brief states it publicly (environment/instructions/integration.md:7 'The firm runs on a fixed clock, 2026-05-12T11:00:00Z ... timers are measured against it'; walls-and-retention.md:23 defines the exactly-as-old boundary); seed_data.json:2 carries \"clock\": \"2026-05-12T11:00:00Z\"; app_context.md tells the judge the clock is fixed. Every graded time rule (deleted_and_expired_messages Part B boundary 2026-05-05T11:00:00Z gone vs 11:00:01Z shown, timer_changes 8-day-old probate message, hold release of 3 May message, transcript generated time 2026-05-12 11:00, same-time ordering in sent_once_in_order) is phrased against that fixed clock, not the run date. Golden server.js:32-33,143 derives CLOCK from seed.clock and compares stored times to it; no Date.now() in retention logic (app.js Date.now only for an idempotency key fallback). The scripted golden run (8 Oct 2026, run date ~5 months after the fixed clock; golden-run.log sha256 23943bf8... matches raw-evidence-index) recorded PASS for deleted_and_expired_messages, timer_changes, hold_scope_and_release and search_and_transcript, showing the graded time rules hold under a run date far from the fixed clock. Weak app that could pass: an app using real Date.now() for retention would, on any run date after mid-June 2026, delete the M-11 positive-control 'Rent review meeting moved to the afternoon.' and the 30-day M-13 messages, failing deleted_and_expired_messages Part B and timer_changes positive controls - so run-date apps are excluded. Conforming alternative that could fail: an app rendering times in another display format/timezone; app_context.md and the transcript criterion accept 'any clear date-time format', and the verifier container defaults to UTC, so a correct fixed-clock app is not penalised. The 'within about ten seconds' waits are real-time liveness checks, not graded time rules on the clock. Interpretation: the Internal Quality Checks annotation (row 48) still says 'temperature 0, versioned prompt, no unpinned network'; the public row, skill note (quality-checks.md:189) and assignment explicitly say temperature/prompt-version markers are not required and an open network is not a defect, so their absence is not reported. LLM judge output is inherently non-deterministic; this row only asks that the agent/model/CLIs/browser be pinned, which they are. Limit: I did not rebuild the verifier image this round, and no full configured judge run exists (raw-evidence-index scope says so); this does not affect this static pinning row but full-run grading evidence remains owned by other rows.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL"
+}

@@ -1,0 +1,35 @@
+{
+  "number": 21,
+  "id": "verifier_entrypoint_is_safe_and_always_scores",
+  "reviewer": "row-reviewer-21",
+  "input_sha256": "32ac3325a98d65cb38ca961a747ef80239bb2fa94a5195cc56d2f98e929bb17e",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r2/rules/WebDev Rubrics QC.xlsx: 'Quality Checks' row 22 (#21 verifier_entrypoint_is_safe_and_always_scores) and 'Internal Quality Checks' row 22; Deterministic Checks rows on test.sh lifecycle/scoring policy/runtime contract (shared strings 228, 232, 238)",
+    ".qc-cache/kittle-2026-10-09-r2/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r2/rules/harbor-webdev-rubric-qc/references/quality-checks.md (#21-#24)",
+    ".qc-cache/kittle-2026-10-09-r2/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (tests/test.sh contract, budgets, tools)",
+    ".qc-cache/kittle-2026-10-09-r2/rules/projects/webdev-task-template/tests/{test.sh,tools/score.py,tools/restart_mcp.py,scoring.toml,Dockerfile} (diffed: identical)",
+    ".qc-cache/kittle-2026-10-09-r2/task/tests/test.sh",
+    ".qc-cache/kittle-2026-10-09-r2/task/tests/tools/score.py",
+    ".qc-cache/kittle-2026-10-09-r2/task/tests/scoring.toml",
+    ".qc-cache/kittle-2026-10-09-r2/task/tests/{gates,scored}/*/judge.toml (timeouts, modes, restart server wiring)",
+    ".qc-cache/kittle-2026-10-09-r2/task/task.toml",
+    ".qc-cache/kittle-2026-10-09-r2/task/environment/instructions/integration.md",
+    ".qc-cache/kittle-2026-10-09-r2/task/tests/scored/functional/prompt.md (restart section)",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/kittle-2026-10-09-r2/raw-evidence-index.json",
+    "F:/Documents/turing-workspace/model-beraking-prompts/handoffs/LESSONS_FROM_COLDERWATER_2026-10-08.md"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "VERDICT BASIS (source + partial local execution; no full configured verifier launch exists).\nFrozen tests/test.sh (sha256 bd68259276ca4b034654efc8a1723a4e702ed62dbe590af6201565f43eabe5aa), tests/tools/score.py (13de2b38...), scoring.toml, tools/restart_mcp.py and tests/Dockerfile are byte-identical (diff) to rules/projects/webdev-task-template/tests/*, i.e. template-controlled; nothing task-specific was altered.\nContract check against references/staged-task-contract.md 'tests/test.sh' ordered contract and quality-checks.md #21, line by line:\n(1) zero first + always: test.sh:60 write_zero_reward runs before any grading; :61 trap cleanup EXIT -> ensure_reward (:20-23) on every exit; ZERO_REWARD_JSON (:8) carries reward, all 5 dims, gates_passed, floors_passed, weighted_score, graded, no_op. No `exec` builtin (only `find -exec` at :86). set -euo pipefail failures still trip the EXIT trap.\n(2) refusal paths: missing judge env :63-66, missing /app/server.js :68-70, symlink whose target escapes /app/node_modules or symlink outside node_modules :72-83 -> exit 0 with zero reward. Brief tells agent both: integration.md:3 (/app/server.js, ordinary user, port 3000, NODE_PATH, DB_PATH, GET /api/health 200) and integration.md:5 (no symlinks in /app outside node_modules).\n(3) safe launch: copy aside :90-95, setsid env -i with only PATH/NODE_PATH/HOME/PORT/DB_PATH and setpriv --reuid/--regid=65534 --clear-groups :104-111; pid recorded :113; cleanup kills the process group via app.pid (updated by restart helper) :33-40.\n(4) liveness gate: probe /api/health then / for up to 120x0.25s=30s :115-125; not ready -> exit 0 (zero reward). Probe runs before any rewardkit call.\n(5) restart helper heredoc + sed substitution + chmod 755 + export APP_RESTART_HELPER :127-193 (wired in scored/functional/judge.toml:26-27).\n(6) {app_context} substitution :195-201.\n(7) gates then score.py: run_suite gates 1500 :213 (failure/timeout -> exit 0, zero already on disk); score.py exit 0 continue, 1 stop keeping detailed record, other -> write_zero_reward :216-222.\n(8) scored then score.py: run_suite scored 11100 :224; score.py failure -> write_zero_reward :227.\nBudget nesting: gates 2x600=1200<1500; scored functional individual mode 16 criteria x 550 = 8800 + polish 900 + visual 900 = 10600 < 11100 (--max-concurrent-agent 1); 1500+11100=12600 < verifier 13200 (task.toml:27).\nLOCAL EXECUTION (scratchpad, Git Bash/Python 3.12): bash -n test.sh OK, no CRLF. Ran test.sh with REWARDKIT_JUDGE unset -> exit 0, reward.txt 0.0 and full zero reward.json; with judge env set but no /app/server.js -> exit 0, reward.txt 0.0, reward.json, ctrf.json written. Ran frozen score.py on synthetic suite outputs: gate fail -> exit 1 reward 0.0000; gates only (scored missing) -> exit 0 reward 0.0000; full {f .5,p 1,v .8} -> exit 0 reward 0.6600 (correct 0.6*.5+.2*1+.2*.8); functional 0 (floor) -> 0.0000; non-numeric gate dim -> exit 2 (test.sh then writes plain zero); missing scored dim -> exit 2 (zero).\nNOT EXERCISED: no run of test.sh inside the verifier image with the golden app (launch as uid 65534, liveness, rewardkit gates/scored, score.py, restart helper). raw-evidence-index.json (input sha matches) states 'Full configured grading/workload ... absent'; the golden-run.log scripted harness mimics the launch (uid 65534, env -i, DB_PATH, real restart) but is not test.sh. The 10600 s scored worst case leaves 500 s headroom for 18 sequential judge sessions' startup overhead; unmeasured. A scored-suite timeout exits at :224 leaving the gates-phase record (reward 0.0) - always scored, but would zero a correct app, so workload measurement matters.\nADVERSARIAL: Broken app that could pass this row's gate: an app whose /api/health returns 500 or that only serves '/' passes liveness (HTTPError counts as up, :50-52), but liveness is only a precondition; render/constraints gates then judge it. Latent template-level P3: restart helper sends only SIGTERM to the old group and waits 5 s without SIGKILL; an app that ignores SIGTERM keeps port 3000, the new process dies EADDRINUSE and the probe sees the old process as 'ready', so an in-memory app could survive a 'restart'. Implausible for a model-built Express app and template-controlled (must not be edited per AGENTS.md); not a task defect. Conforming alternative that could fail: an app needing >30 s to boot is zeroed; the brief does not state a startup deadline, but a fast Node/Express start is a professional default and the golden starts under the scripted harness. No conforming app was found that test.sh would wrongly refuse: every refusal condition (entry file, symlinks, health path, DB_PATH, ordinary user) is stated in integration.md.\nCONCLUSION: test.sh/score.py satisfy every element of row 21 and are template-identical; risk=true only because the full configured verifier launch and scored-suite duration are unmeasured (required runtime evidence missing), not because of a found defect.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL"
+}

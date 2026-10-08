@@ -1,0 +1,32 @@
+{
+  "number": 38,
+  "id": "batched_criteria_are_scored_independently",
+  "reviewer": "row-reviewer-38",
+  "input_sha256": "32ac3325a98d65cb38ca961a747ef80239bb2fa94a5195cc56d2f98e929bb17e",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r2/rules/WebDev Rubrics QC.xlsx (Quality Checks row 39 / #38; Internal Quality Checks row 39 incl. column D annotation; Deterministic Checks row 5 check-batched-independence-wording.py)",
+    ".qc-cache/kittle-2026-10-09-r2/rules/harbor-webdev-rubric-qc/SKILL.md (line 64 whole-flow bundling note)",
+    ".qc-cache/kittle-2026-10-09-r2/rules/harbor-webdev-rubric-qc/references/quality-checks.md lines 156-159 (#38), 120-121 (#28)",
+    ".qc-cache/kittle-2026-10-09-r2/rules/projects/webdev-task-template/tests/scored/{functional,polish,visual}/prompt.md",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/kittle-2026-10-09-r2/task/tests/scored/functional/prompt.md (sha256 a114fa5d...)",
+    ".qc-cache/kittle-2026-10-09-r2/task/tests/scored/polish/prompt.md (sha256 563c898b...)",
+    ".qc-cache/kittle-2026-10-09-r2/task/tests/scored/visual/prompt.md (sha256 ec0350ed...)",
+    ".qc-cache/kittle-2026-10-09-r2/task/tests/scored/{functional,polish,visual}/judge.toml (functional sha256 bc2a7954...)",
+    ".qc-cache/kittle-2026-10-09-r2/task/tests/gates/{render,constraints}/judge.toml and prompt.md (exempt, all_pass)",
+    ".qc-cache/kittle-2026-10-09-r2/task/tests/scoring.toml, app_context.md",
+    "qc/runs/kittle-2026-10-09-r2/raw-evidence-index.json (scope: scripted golden only; no configured judge run)"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "medium",
+  "evidence": "Wording leg holds: every scored prompt carries the independence instruction and none says stop at first failure. functional/prompt.md:51-53 'Score each criterion independently and continue after any failure; return a verdict for every criterion' (plus :29 'Two failed attempts ... fail that criterion; continue', :9 'move on to the next criterion'); functional/judge.toml:6 mode='individual' so each criterion is a separate session; polish/prompt.md:20-26 and visual/prompt.md:38-43 'Score each criterion independently ... One failed criterion does not zero the others ... continue'. Gates render/constraints use aggregation='all_pass' and are exempt. grep over tests/ for stop/abort/halt/first failure finds no stop-on-failure instruction. However the row's stated purpose ('one miss can't zero the rest', workbook Quality Checks #38) is defeated by a cross-criterion dependency in the functional rubric: persistence (judge.toml ~line 250-266, weight 2.0) step 3 requires that Harriet's search finds nothing for 'Probate', 'Insurer letter', 'Boundary note' and 'Temp JUDGE-P2'. Those absences are produced and already graded by earlier criteria: 'Probate' by timer_changes step 1-2 (purge on shortening), 'Insurer letter' by hold_scope_and_release step 6 (purge on release), 'Boundary note' by deleted_and_expired_messages Part B (exact seven-day boundary), 'Temp JUDGE-P2' by message_links (delete). They are not established inside the persistence session, and no pre-restart baseline is taken for them, so the check is absolute rather than state-relative. functional/prompt.md:23-25 says 'A criterion passes only on evidence you gathered in this session ... Never carry a verdict across criteria', and :71-73 says to judge against the state earlier criteria left, which conflicts with step 3's absolute expectation. Not exercised at runtime: raw-evidence-index.json covers scripted golden observations only; no configured judge run exists to show how a judge resolves this.",
+  "counterexample": "(1) Broken-elsewhere app: timer shortening changes the label but never purges overdue messages (or the boundary is off by one second). It correctly fails timer_changes (2.0) / deleted_and_expired Part B (3.0), and then also fails persistence (2.0) because 'Probate'/'Boundary note' are still found after restart, although its storage survives restart perfectly. One miss zeros a second, independent criterion. (2) Conforming app, evaluator miss: the 550 s individual timer_changes session times out or a tool error occurs before step 1 changes the timer; 'Probate' is never purged, so the later persistence session finds it and fails an app whose persistence and retention both work. Likewise if the message_links session fails before deleting Temp JUDGE-P2.",
+  "suggested_fix": "Make persistence step 3 state-relative and self-contained: before restart, as Harriet, search 'Persist gone', 'Probate', 'Insurer letter', 'Boundary note', 'Temp JUDGE-P2' and 'Survey booked for Friday.' and note the results; after restart the results must be unchanged (no deleted or expired message reappears relative to the noted state, and the seed message still appears exactly once). Keep 'Persist gone JUDGE-S2' absolute since it is created and deleted inside the criterion. Alternatively drop the earlier-criterion terms and rely on the in-criterion delete plus the seed-duplication check. Recheck criteria weights/workload after the change; task-specific criteria may change without touching template prompts.",
+  "run_verdict": "NOT EXERCISED"
+}

@@ -1,0 +1,42 @@
+{
+  "number": 19,
+  "id": "solution_honors_the_runtime_contract_and_is_self_contained",
+  "reviewer": "row-reviewer-19",
+  "input_sha256": "32ac3325a98d65cb38ca961a747ef80239bb2fa94a5195cc56d2f98e929bb17e",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r2/rules/WebDev Rubrics QC.xlsx: Quality Checks row 20 (#19), Internal Quality Checks row 20 (#19), Deterministic Checks row 34 (check-solve-contract.py)",
+    ".qc-cache/kittle-2026-10-09-r2/rules/harbor-webdev-rubric-qc/SKILL.md (Delivery profile, verdicts, evidence standard)",
+    ".qc-cache/kittle-2026-10-09-r2/rules/harbor-webdev-rubric-qc/references/quality-checks.md section 19",
+    ".qc-cache/kittle-2026-10-09-r2/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md check-solve-contract.py",
+    ".qc-cache/kittle-2026-10-09-r2/rules/projects/webdev-task-template (tree, solve.sh layout)",
+    "qc/REVIEW_POLICY.md",
+    "task/solution/solve.sh",
+    "task/solution/app/server.js",
+    "task/solution/app/package.json",
+    "task/solution/app/seed/seed_data.json (byte-identical to environment/assets/seed_data.json)",
+    "task/environment/Dockerfile",
+    "task/tests/Dockerfile",
+    "task/tests/test.sh",
+    "task/task.toml",
+    "task/instruction.md",
+    "task/environment/instructions/integration.md",
+    "qc/runs/kittle-2026-10-09-r2/raw-evidence-index.json (all 6 artifact hashes and all source-file hashes re-verified against current bytes: match)",
+    "qc/repairs/kittle-2026-10-08/run_golden.sh",
+    "qc/repairs/kittle-2026-10-08/results/golden-run.log",
+    "qc/repairs/kittle-2026-10-08/results/restart-pids.json",
+    "docker history of image cw-editor-agent-r3 (read-only inspect)",
+    "model-beraking-prompts/handoffs/LESSONS_FROM_COLDERWATER_2026-10-08.md"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Static: task/solution/solve.sh is 4 lines, '#!/bin/bash' shebang, 'set -euo pipefail', LF only (0 CR bytes), body 'mkdir -p /app; cp -a \"$(dirname \"$0\")/app/.\" /app/'. It writes only /app; nothing to /tests, /logs/verifier or /solution; no pkill, no NODE_ENV (grep empty over solve.sh and server.js). No symlinks and no *.db under solution/ (find), so test.sh's symlink refusal and the brief's 'hand it over without a database' are respected. server.js: entry /app/server.js (what test.sh requires), PORT from env default 3000 and listen on 0.0.0.0 (server.js:13, :519); DB_PATH honoured with fallback path.join(__dirname,'app.db') (server.js:14, :57-60, mkdir of parent); files resolved via __dirname (PUBLIC_DIR, seed candidates server.js:29 incl. /assets fallback), so cwd /tmp and the test.sh /tmp/submission copy branch both work; /api/health answers 200 even if DB init fails (server.js:42, init() try/catch :152-161). Seeding idempotent: 'seeded' settings flag checked before a single transaction (server.js:93-127). Fixed clock read from seed (server.js:32), matching integration.md:7. Runtime deps express 5.1.0 / better-sqlite3 12.4.1 are installed globally in both environment/Dockerfile and tests/Dockerfile and resolved via NODE_PATH, which test.sh passes in its env -i launch; no solve-time install or network fetch is needed (public network would make that only a NOTE anyway). The Internal sheet's 'no network / no run-time install' wording is superseded by the client sheet and the skill delivery profile (public network); the golden satisfies even the stricter reading. Runtime: raw-evidence-index hashes verified against current bytes (all match, incl. solve.sh f7c17a01..., server.js 03b52651...). qc/repairs/kittle-2026-10-08/run_golden.sh installed via the frozen solve.sh with /solution mounted read-only (so solve.sh provably did not write /solution), launched exactly like test.sh (cd /tmp, env -i, NODE_PATH, PORT=3000, DB_PATH=/app/app.db, setpriv uid 65534), killed and restarted on the same DB (restart-pids.json old 28 -> new 57); golden-run.log shows gate_constraints, all 16 functional checks incl. persistence, and polish_refusal_in_place PASS, exit 0. The image used, cw-editor-agent-r3, is not named after this task, but docker history shows layers identical to task/environment/Dockerfile (node:22-bookworm-slim NODE_VERSION 22.23.2, same apt line, same npm -g express@5.1.0 better-sqlite3@12.4.1, same /app git init) with /assets overridden by a mount of this task's assets, so the runtime is equivalent. Adversarial: a broken app that resolves seed/static from process.cwd() or ignores DB_PATH would fail under test.sh's cwd and copy branch; this golden does not. A conforming alternative (seed copied to /app root rather than /app/seed, or reading /assets) is accepted by both test.sh and the brief; nothing in this row would penalise it. Caveats (not defects for this row): the test.sh non-writable-/app fallback branch (/tmp/submission) was not exercised at runtime, only by source reading; no full configured test.sh/rewardkit judge run, Oracle or model score exists, and none is claimed here.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "CONFIRMED"
+}

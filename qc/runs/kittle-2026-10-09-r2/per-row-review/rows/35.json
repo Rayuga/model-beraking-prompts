@@ -1,0 +1,32 @@
+{
+  "number": 35,
+  "id": "core_behavior_is_graded_and_state_is_proven_durable_where_it_must_be",
+  "reviewer": "row-reviewer-35",
+  "input_sha256": "32ac3325a98d65cb38ca961a747ef80239bb2fa94a5195cc56d2f98e929bb17e",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r2/rules/WebDev Rubrics QC.xlsx: Quality Checks row 35 and Internal Quality Checks row 35 (no cell comments; annotation columns empty)",
+    ".qc-cache/kittle-2026-10-09-r2/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r2/rules/harbor-webdev-rubric-qc/references/quality-checks.md section 35",
+    ".qc-cache/kittle-2026-10-09-r2/rules/projects/webdev-task-template/tests (test.sh, scored/functional/judge.toml persistence skeleton, tools/restart_mcp.py)",
+    "qc/REVIEW_POLICY.md",
+    "task/instruction.md, task/environment/instructions/{conversations,integration,walls-and-retention}.md",
+    "task/environment/assets/seed_data.json (identical to solution/app/seed/seed_data.json)",
+    "task/task.toml",
+    "task/tests/{app_context.md,test.sh,scoring.toml,tools/restart_mcp.py}",
+    "task/tests/gates/{render,constraints}/{prompt.md,judge.toml}",
+    "task/tests/scored/functional/{prompt.md,judge.toml}",
+    "qc/runs/kittle-2026-10-09-r2/raw-evidence-index.json and the hashed artifacts it cites under qc/repairs/kittle-2026-10-08 (run_golden.sh, tests/functional.cjs, results/golden-run.log, functional-before.json, functional-after.json, restart-pids.json)"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "Core behaviour: the brief names ethical walls and retention/holds as the two defining promises (instruction.md para 2). They are graded directly and repeatedly in tests/scored/functional/judge.toml: wall_every_route, wall_mentions_and_links, wall_added_live (walls on list/search/replay/transcript/links/mentions/live), deleted_and_expired_messages, timer_changes, hold_scope_and_release (exact 7-day boundary, shortening deletes at once, hold overrides timer, release deletes overdue message), plus threads/edits/search/transcript/unread criteria. Server-backed (not same-origin): gates/constraints/judge.toml server_backed_local_application requires post as Gwen, reload, then readback in a separate browser context as Harriet ('A message that never saves, or that only the posting browser can see, fails this gate'); functional/prompt.md global gate rejects 'static mock, ... missing backend, or seeded-looking facade'; many criteria use cross-account/cross-context readbacks and replayed requests that must be refused server-side (e.g. signin_and_client_scope Part B, timer_changes step 5, unread counts identical in two contexts). No same-origin requirement is imposed (constraints prompt allows external CDN assets). Durability: integration.md requires restarts to keep 'messages, replies, edits and their versions, timers, holds, walls, unread positions and deletions, without importing again'. The last criterion 'persistence' (weight 2.0) performs setup for every one of those (post+reply, edit with earlier version, hold, delete, M-12 timer to 30 days, new wall on Sian for M-11, Dev's M-13 unread count), then calls verifier restart_app (a real process kill and relaunch on the same DB via tests/test.sh app-restart.sh, identical to the template test.sh), opens a fresh page, re-signs in and re-reads; it also checks timer/hold-release deletions from earlier criteria stay gone ('Probate', 'Insurer letter', 'Boundary note', 'Temp JUDGE-P2') and seed idempotency ('Survey booked for Friday.' exactly once). Reload/re-auth durability is also exercised in nested_replies step 3, edits_and_stale_edit step 2, sent_once_in_order Part B. Weak-app probes: an in-memory server passes the gates but fails persistence; an app that re-applies seed walls/timers on boot fails via Sian's M-11 wall and M-12 30 days; an app that re-imports seed resurrects Probate/Insurer letter or duplicates Survey booked; an app that resets read pointers changes Dev's M-13 count (nonzero by then, since live_updates posts in M-13 after the unread criterion). Conforming-alternative probe: all M-12 seed messages (from 2026-05-06) survive the 30-day setting; no step depends on a route, storage engine or a specific unread representation, so I found no conforming app that would fail. Runtime: raw-evidence-index hashes verified (run_golden.sh b61aa378..., functional.cjs 63858133..., golden-run.log 23943bf8..., functional-after.json 2177dcb4...) and frozen solution/seed hashes match the index; golden-run.log line 18 'persistence PASS' after a real kill/relaunch (restart-pids.json old_pid 28, new_pid 57). Risk=true only because required runtime evidence is missing: no full configured judge run shows the GLM judge actually invoking restart_app via the verifier MCP (args '$APP_RESTART_HELPER') and completing the persistence criterion within the 550 s per-criterion budget; scripted Playwright is not judge evidence. Also note (harness, template-controlled, not a task defect): score.py does not verify the restart marker, so a judge that skips the tool relies on prompt discipline alone.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL"
+}

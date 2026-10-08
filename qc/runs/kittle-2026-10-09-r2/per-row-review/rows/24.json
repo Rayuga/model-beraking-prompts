@@ -1,0 +1,34 @@
+{
+  "number": 24,
+  "id": "grading_wiring_is_structurally_correct",
+  "reviewer": "row-reviewer-24",
+  "input_sha256": "32ac3325a98d65cb38ca961a747ef80239bb2fa94a5195cc56d2f98e929bb17e",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r2/rules/WebDev Rubrics QC.xlsx (Quality Checks row 25 / check 24; Deterministic Checks check-rubric-schema.py, check-required-files.py; Internal Quality Checks row 25)",
+    ".qc-cache/kittle-2026-10-09-r2/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r2/rules/harbor-webdev-rubric-qc/references/quality-checks.md (check 24)",
+    ".qc-cache/kittle-2026-10-09-r2/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (check-rubric-schema, check-verifier-contract)",
+    ".qc-cache/kittle-2026-10-09-r2/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (scoring.toml, test.sh, judge.toml, prompts)",
+    ".qc-cache/kittle-2026-10-09-r2/rules/projects/webdev-task-template/tests/ (scoring.toml, all five judge.toml, test.sh via diff)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/kittle-2026-10-09-r2/task/tests/scoring.toml",
+    ".qc-cache/kittle-2026-10-09-r2/task/tests/gates/{render,constraints}/judge.toml and prompt.md",
+    ".qc-cache/kittle-2026-10-09-r2/task/tests/scored/{functional,polish,visual}/judge.toml and prompt.md",
+    ".qc-cache/kittle-2026-10-09-r2/task/tests/test.sh, tests/tools/restart_mcp.py, tests/Dockerfile, task.toml [verifier]/[verifier.env]",
+    "qc/runs/kittle-2026-10-09-r2/preflight.json, raw-evidence-index.json, manifest.json; scripts/qc_pipeline.py:178-196",
+    "model-beraking-prompts/deliverables/colderwater-playground-devtools/final-cross-check-2026-09-27/harness/rewardkit-0.1.7-source/{models,judges,runner,agents}.py",
+    "model-beraking-prompts/handoffs/LESSONS_FROM_COLDERWATER_2026-10-08.md"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "Structure verified by parsing the frozen files with Python tomllib (scratchpad r24/tchk.py). (1) tests/scoring.toml:1-11 has [gates] render=0.0, constraints=0.0; [weights] functional 0.6/polish 0.2/visual 0.2 (sum 1.0); [floors] functional=0.05, byte-identical to the frozen template's scoring.toml; every name has its directory (tests/gates/{render,constraints}, tests/scored/{functional,polish,visual}). (2) All five judge.toml files have [judge] judge=\"claude-code\" (matches task.toml [verifier.env] REWARDKIT_JUDGE=\"claude-code\", task.toml:31), mode, timeout, isolated=false, prompt_template=\"prompt.md\"; no model/reasoning_effort/temperature/weight keys. Gates use aggregation all_pass; scored dims use weighted_mean. (3) Every dimension declares the playwright stdio MCP server (playwright-mcp --headless --isolated --executable-path=/usr/local/bin/chromium --no-sandbox), identical to the template. Only tests/scored/functional/judge.toml:22-27 declares the verifier server: command /usr/local/bin/python3, args [\"/tests/tools/restart_mcp.py\", \"$APP_RESTART_HELPER\"]. tests/test.sh:193 exports APP_RESTART_HELPER=\"$LOG_DIR/app-restart.sh\" (after generating it by heredoc+sed, chmod 755, removing the .used marker at :192) before run_suite (:205-210); test.sh is byte-identical to the template (diff -r brief listed no difference). RewardKit 0.1.7 (pinned in tests/Dockerfile:31) expands it: archived source agents.py:66 os.path.expandvars on MCP args. restart_mcp.py:29-32 single-use .used marker is a file next to the helper, so it holds across individual-mode sessions. Only the persistence criterion (functional judge.toml:255-264) calls restart_app; functional prompt.md:9,57-64 restricts the tool to that criterion; gates/polish/visual prompts say 'Never restart the app'. (4) Criteria: render 1 binary, constraints 1 binary (gates binary as required); functional 16 binary (weights 1.5-3.0); polish 5 binary (1.0); visual 4 likert points=5 (weights 2,2,1,1) with 0-5 anchors. All ids unique, id==name, weights positive, descriptions non-empty. (5) Prompts resolve: each prompt_template prompt.md exists beside its judge.toml and contains {criteria}, {app_context} and localhost:3000; tests/app_context.md exists and test.sh substitutes it. RewardKit runner.py:143 requires {criteria}; satisfied. Largest prompt (functional 4.9 KB + context + criteria) far below the 128 KB limit. (6) Deviation: functional [judge] mode=\"individual\", timeout=550 vs template batched/9000 (judge.toml:6-12, commented as the lead's instruction relayed 8 Oct 2026, 16x550+900+900=10600 < 11100 scored budget). \"individual\" is a valid RewardKit 0.1.7 JudgeMode (archived source models.py:142 Literal[\"batched\",\"individual\"]; judges.py:460-461 runs criteria sequentially with build_prompt([c], template), MCP servers registered once at judges.py:451-459). So the wiring is structurally valid, but qc/runs/kittle-2026-10-09-r2/preflight.json reports 'judge header:functional' passed=false because scripts/qc_pipeline.py:178 compares [judge] to the template header; this is a recorded, lead-authorised template-setting change, not a broken structure, but it remains an open owner disposition. Adversarial: a broken app cannot exploit wiring (gates all_pass, binary, zero-weight with floors in score.py); a conforming app could be falsely zeroed only if the verifier MCP/expansion or individual-mode loading fails at runtime, or a 550 s per-criterion budget is too short. Runtime: raw-evidence-index.json (golden-run.log sha 23943bf8... verified, 'persistence PASS' line 18) is a scripted Playwright golden with a real kill/restart, explicitly 'Not a configured judge run'; no RewardKit load or configured judge run of this candidate exercised the MCP registration, $APP_RESTART_HELPER expansion or individual-mode timing. The archived RewardKit source was not hash-verified against the PyPI 0.1.7 wheel. Hence Pass on structure with risk=true for the missing runtime evidence and the open preflight header failure.",
+  "counterexample": null,
+  "suggested_fix": "No structural fix required. Before clearance: have the owner formally dispose of the preflight 'judge header:functional' failure as the recorded lead-authorised individual-mode change, and obtain one configured RewardKit judge run of the functional suite showing the verifier MCP server registered, restart_app succeeding once in persistence, and per-criterion durations under 550 s.",
+  "run_verdict": "NOT EXERCISED"
+}

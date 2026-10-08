@@ -1,0 +1,32 @@
+{
+  "number": 20,
+  "id": "solution_is_frozen_and_deterministic",
+  "reviewer": "row-reviewer-20",
+  "input_sha256": "32ac3325a98d65cb38ca961a747ef80239bb2fa94a5195cc56d2f98e929bb17e",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r2/rules/WebDev Rubrics QC.xlsx: Quality Checks row 21 (#20 solution_is_frozen_and_deterministic, cols A-D) and Internal Quality Checks row 21 (same text, no extra annotation columns); parsed via raw XML because openpyxl is not installed locally",
+    ".qc-cache/kittle-2026-10-09-r2/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r2/rules/harbor-webdev-rubric-qc/references/quality-checks.md section '20 · solution_is_frozen_and_deterministic' (and neighbouring 19/47 for scope)",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/kittle-2026-10-09-r2/per-row-review/prompts/20.md",
+    "qc/runs/kittle-2026-10-09-r2/manifest.json (input hashes)",
+    "qc/runs/kittle-2026-10-09-r2/raw-evidence-index.json (6 artifact hashes re-verified OK)",
+    "task/task.toml, task/instruction.md, task/environment/Dockerfile, task/environment/instructions/{integration,walls-and-retention,conversations}.md",
+    "task/environment/assets/seed_data.json, task/solution/app/seed/seed_data.json",
+    "task/solution/solve.sh, task/solution/app/package.json, task/solution/app/server.js (full), task/solution/app/public/app.js (grep for time/random/fetch), task/solution/app/public/index.html",
+    "task/tests/Dockerfile",
+    "../model-beraking-prompts/handoffs/LESSONS_FROM_COLDERWATER_2026-10-08.md not read (optional background)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "STATIC BASELINE: solution/solve.sh is only `mkdir -p /app; cp -a \"$(dirname \"$0\")/app/.\" /app/` - no npm install, no build, no download, no generation. All 8 solution files are git-tracked (git ls-files projects/kittle-matter-chat/solution) and byte-identical to the frozen cache (sha256 server.js 03b52651..., app.js 8fc558c9..., solve.sh f7c17a01..., seed f69616e2...). solution/app/seed/seed_data.json is byte-identical to environment/assets/seed_data.json (cmp). No app.db, node_modules or symlinks ship in solution/. Deps pinned: package.json express 5.1.0 / better-sqlite3 12.4.1, matching pinned global installs in both Dockerfiles. CLOCK: server.js derives `const CLOCK = String(seed.clock); const CLOCK_MS = Date.parse(CLOCK);` from the seed ('2026-05-12T11:00:00Z', matching integration.md). grep finds no Date.now, new Date or Math.random in server.js; sweep() uses `CLOCK_MS - Date.parse(r.at) >= limit`; new messages/edits store CLOCK; transcript 'Generated' uses fmt(CLOCK). Client app.js formats times by string replace (fmtTime, line 56), no locale/TZ dependence; its only randomness is crypto.randomUUID for the idempotency client_key, which is never displayed or graded. IDS/ORDER: new message ids are sequential 'K-'+n from settings.next_id = max(seed id)+1 (=18); seed insert order sorts by Date.parse(at) with stable Array sort, and the seed has no duplicate `at` values (checked), so seq is fixed; thread/search/mentions use ORDER BY seq / rowid / id. Only random values are password salts and session tokens (crypto.randomBytes), which are not graded figures. No boot-time fetch: server reads only local seed via firstFile(); index.html loads only /styles.css and /app.js. MEASURED (this review, 2026-10-09, container qc-r2-row20-det from cw-editor-agent-r3:latest with frozen task mounted read-only, solve.sh install, server run as uid 65534 via env -i from cwd /tmp): two fresh databases booted under TZ=UTC and TZ=Pacific/Kiritimati, each receiving the same login + two posts, produced identical DB dumps (salts/hashes excluded) md5 95da836ada8bd6ece0f528f6ca9a2126, identical API+transcript digest 8a2d4afede4eb0dda9d2eee0afdb3b5a, new ids K-18,K-19, next_id=20, same M-11 thread order 'K-1(del),K-14,K-15(hold),K-2(hold),K-17(hold),K-11,K-3,K-4,K-16,K-18,K-19'; a restart under TZ=America/Los_Angeles left the dump unchanged (RESTART_IDENTICAL). Boundary is clock-determined: K-10 at 2026-05-05T11:00:00Z (exactly 7 days) deleted, K-11 at +1s kept. COUNTEREXAMPLES TRIED: (a) a golden using Date.now() for timers/sent times would drift with the real date and could flip graded deletions - not present; (b) random UUID message ids would make id-dependent links/order vary - ids are sequential; (c) tie-ordering of same-time posts under SQLite - fixed by AUTOINCREMENT seq. A conforming alternative (e.g. a model app with a different id scheme) is not affected by this row, which concerns only the reference. LIMITS: The scripted test used the cw-editor-agent-r3 image (as the indexed golden run did), not a freshly built task environment image; this row needs no configured judge run, Oracle or model score, and none is claimed.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "CONFIRMED"
+}

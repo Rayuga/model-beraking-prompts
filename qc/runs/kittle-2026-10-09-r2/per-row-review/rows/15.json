@@ -1,0 +1,35 @@
+{
+  "number": 15,
+  "id": "dockerfile_builds_the_declared_world",
+  "reviewer": "row-reviewer-15",
+  "input_sha256": "32ac3325a98d65cb38ca961a747ef80239bb2fa94a5195cc56d2f98e929bb17e",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r2/rules/WebDev Rubrics QC.xlsx :: Quality Checks row 16 (#15 dockerfile_builds_the_declared_world) and Internal Quality Checks row 16 (identical text, no extra annotation column); Deterministic Checks rows 9-12, 32 (check-dockerfile-references.sh, check-dockerfile-sanity.sh, check-dockerfiles.py, check-fixtures.py, check-runtime-deps-in-both-images.py)",
+    ".qc-cache/kittle-2026-10-09-r2/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r2/rules/harbor-webdev-rubric-qc/references/quality-checks.md:66-68 (check 15)",
+    ".qc-cache/kittle-2026-10-09-r2/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md:60",
+    ".qc-cache/kittle-2026-10-09-r2/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (docker_image rule, line 78)",
+    ".qc-cache/kittle-2026-10-09-r2/rules/projects/webdev-task-template/environment/Dockerfile",
+    ".qc-cache/kittle-2026-10-09-r2/task/environment/Dockerfile:1-26",
+    ".qc-cache/kittle-2026-10-09-r2/task/environment/assets/seed_data.json; environment/instructions/{conversations,integration,walls-and-retention}.md (listing; integration.md:3,5)",
+    ".qc-cache/kittle-2026-10-09-r2/task/task.toml",
+    ".qc-cache/kittle-2026-10-09-r2/task/instruction.md:5",
+    ".qc-cache/kittle-2026-10-09-r2/task/solution/app/package.json; solution/app/server.js require() list and :29; solution/solve.sh",
+    ".qc-cache/kittle-2026-10-09-r2/task/tests/Dockerfile:1-45",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/kittle-2026-10-09-r2/raw-evidence-index.json; qc/repairs/kittle-2026-10-08/run_golden.sh (sha256 b61aa378... verified)",
+    "docker image inspect / docker history of local image cw-editor-agent-r3 (read-only)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Agent Dockerfile (task/environment/Dockerfile, sha256 0a75419e...) is byte-identical to the frozen template rules/projects/webdev-task-template/environment/Dockerfile (diff empty, same sha256), so it is template-controlled. Pinned base: line 1 'FROM node:22-bookworm-slim' (tag-pinned major+distro, no --platform; no digest, which the workbook's check-dockerfiles.py definition does not require). npm installs are version-pinned: lines 9-12 'npm install -g ... express@5.1.0 better-sqlite3@12.4.1' with line 3 'ENV NODE_PATH=/usr/local/lib/node_modules' matching the global prefix. apt packages (ca-certificates git procps sqlite3, lines 5-7) are unpinned, which the workbook marks NOTE-only. Every runtime dependency pre-installed: the golden's only non-builtin requires are 'express' and 'better-sqlite3' (server.js), matching solution/app/package.json dependencies 'better-sqlite3': '12.4.1', 'express': '5.1.0' exactly; solve.sh only copies files (no npm install), so nothing is installed at run time. The public brief tells the agent the same contract (environment/instructions/integration.md:3 'Express and better-sqlite3 are already installed globally and found through NODE_PATH'). tests/Dockerfile:16-22 installs the same two pinned versions plus NODE_PATH, and test.sh:106,162 launches with NODE_PATH=/usr/local/lib/node_modules, so the app starts at grade time without network installs. Assets staged: line 14 'COPY instructions/ /instructions/', line 15 'COPY assets/ /assets/', line 16 'chmod -R a+rX /instructions /assets'; both source dirs exist (assets/seed_data.json; three instructions/*.md), and instruction.md:5 points at /assets/seed_data.json and /instructions. /app is created, git-initialised and contains only .gitkeep (lines 17-23); WORKDIR /app, CMD sleep infinity. No COPY/ADD of solution/ or tests/. task.toml has no [environment].docker_image, so the Dockerfile is not shadowed. Runtime proxy: the local image cw-editor-agent-r3 (built 2026-10-01) has docker history layers byte-for-byte equal to Dockerfile lines 3-26 (Node 22.23.2, NODE_PATH set), and the scripted golden (qc/repairs/kittle-2026-10-08/run_golden.sh, hash verified against raw-evidence-index) installed and ran the Kittle app in that image with the Kittle assets bind-mounted, under env -i as uid 65534, with a kill/restart. That shows the declared dependency set suffices. Limitation (Note, not a defect): no record shows a build of the Kittle-specific image; that proxy image's /instructions and /assets came from another task. Build-time differences are limited to the two COPY sources, which exist and are plain files. Adversarial probes: (a) Weak app that could pass: an app that runs 'npm install <other pkg>' into /app/node_modules at agent time would still ship with /app (artifacts=['/app','/assets']). That is the agent's choice, not an image gap, and the brief permits node_modules. (b) Conforming alternative that could fail: an app using only express plus better-sqlite3 via NODE_PATH, run from a different cwd, is exactly what both images provide, so it would not fail on missing dependencies. No failing counterexample was found for this row.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL"
+}

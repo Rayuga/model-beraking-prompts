@@ -1,0 +1,36 @@
+{
+  "number": 40,
+  "id": "reward_is_graded_not_binary_and_discriminates",
+  "reviewer": "row-reviewer-40",
+  "input_sha256": "32ac3325a98d65cb38ca961a747ef80239bb2fa94a5195cc56d2f98e929bb17e",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r2/rules/WebDev Rubrics QC.xlsx: Quality Checks A41 (row 40) and Internal Quality Checks A41 (no internal annotation on row 40; the neighbouring row 42 note reads 'Mukesh - we need to monitor this one.')",
+    ".qc-cache/kittle-2026-10-09-r2/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r2/rules/harbor-webdev-rubric-qc/references/quality-checks.md section '### 40 · reward_is_graded_not_binary_and_discriminates' (line 165)",
+    ".qc-cache/kittle-2026-10-09-r2/rules/projects/webdev-task-template/tests/scoring.toml and tests/*/*/judge.toml (template: functional batched/9000, polish binary, visual likert)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/kittle-2026-10-09-r2/task/tests/scoring.toml",
+    ".qc-cache/kittle-2026-10-09-r2/task/tests/tools/score.py",
+    ".qc-cache/kittle-2026-10-09-r2/task/tests/test.sh",
+    ".qc-cache/kittle-2026-10-09-r2/task/tests/gates/render/judge.toml",
+    ".qc-cache/kittle-2026-10-09-r2/task/tests/gates/constraints/judge.toml",
+    ".qc-cache/kittle-2026-10-09-r2/task/tests/scored/functional/judge.toml",
+    ".qc-cache/kittle-2026-10-09-r2/task/tests/scored/functional/prompt.md",
+    ".qc-cache/kittle-2026-10-09-r2/task/tests/scored/polish/judge.toml and prompt.md (gate lines)",
+    ".qc-cache/kittle-2026-10-09-r2/task/tests/scored/visual/judge.toml and prompt.md (gate lines)",
+    ".qc-cache/kittle-2026-10-09-r2/task/environment/instructions/integration.md (restart/import paragraph)",
+    "qc/runs/kittle-2026-10-09-r2/raw-evidence-index.json and manifest.json (hashes re-verified for the task files above and for qc/repairs/kittle-2026-10-08/results/functional-before.json / functional-after.json)"
+  ],
+  "verdict": "Not exercised",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "STATIC DESIGN (supports a graded reward): tests/scoring.toml has render/constraints gates at 0.0 (no reward mass), weights functional 0.6 / polish 0.2 / visual 0.2 and a functional floor 0.05; score.py computes a weighted mean of the three dimensions (reward = round(weighted,4) only when gates and floors pass). Functional (tests/scored/functional/judge.toml) is aggregation='weighted_mean' over 16 independent binary criteria graded in mode='individual' (line 6) with weights 1.5-3.0 summing to 33 (signin 2, wall_every_route 2, wall_mentions 2, wall_added_live 2, nested 1.5, deleted_and_expired 3, timer 2, hold 2, edits 2, safe_formatting 2, message_links 1.5, unread 2, sent_once 2.5, live 2, search_and_transcript 2.5, persistence 2), so the smallest functional step is 1.5/33 = 0.045 (0.027 of reward). Polish is 5 equal binaries (0.04 of reward each) and visual is 4 likert-5 criteria with described anchors at every level (weights 2,2,1,1). The only all-or-nothing rules are the two simple gates (reachable render + sign-in; one persisted, cross-context-visible post) and the per-dimension 'global browser gate' (polish/prompt.md:25 and visual/prompt.md:43 say it is the only all-or-nothing rule), plus the 0.05 functional floor (an app passing only one 1.5-weight criterion scores 0). Criteria do not all hang on one precondition beyond sign-in/posting, which the gates already require. Static reasoning on partial apps gives a spread: (a) UI-only enforcement app (features work in the UI but replays are not refused) fails signin_and_client_scope, wall_every_route, wall_added_live, deleted_and_expired (A3), timer_changes (5), hold (4), edits (3) = 15/33 lost, keeps roughly the other 18/33 -> functional ~0.55, reward ~0.33 + polish/visual share; (b) plain threaded chat with no walls/timers/holds keeps roughly nested_replies, safe_formatting, sent_once, live_updates (~8/33) -> functional ~0.24; (c) golden -> near 1. So the rubric is structurally graded, not binary.\n\nMISSING MEASUREMENT: raw-evidence-index.json states 'Full configured grading/workload, reward discrimination/ranking and Oracle/target scores are absent.' The only runtime evidence (qc/repairs/kittle-2026-10-08 scripted golden, hashes verified) covers the golden only and is explicitly not a judge run; no weak/mutated app has been scored. REVIEW_POLICY.md requires a hash-bound reward-discrimination runtime record before clearance. The spread above is therefore reasoning, not a measured result; this row cannot be upgraded to Pass.\n\nDEFECTS THAT REDUCE DISCRIMINATION: (1) Cross-criterion coupling in persistence (functional/judge.toml:250-266). Leg 3 (line 262) requires search to find nothing for 'Probate', 'Insurer letter', 'Boundary note' and 'Temp JUDGE-P2' - observables already graded by timer_changes (line 131), hold_scope_and_release leg 6 (line 150), deleted_and_expired Part B (line 118) and message_links (line 187). Setup steps a-b also require working edit history, holds, delete, timers and walls. So persistence (weight 2) is lost by any app that fails any of ~6 other features even if its storage survives restarts perfectly, contradicting the file's own comment 'Each observable is graded in exactly one criterion' (line 35). The re-import goal is already met by '\"Survey booked for Friday.\" appears exactly once'. This piles penalties onto partially working apps instead of grading persistence separately. (2) Harness collapse to 0: test.sh:224 'if ! run_suite scored 11100; then exit 0' leaves the gates-only reward (scored dims 0 -> floor fails -> reward 0.0) if the 16x550 + 900 + 900 = 10600 s individual-mode workload (judge.toml:7-12 says 'Not yet measured against a judge run') overruns the 11100 s budget. A suite overrun would score every app 0 whatever its quality. Workload is unmeasured, so this remains a risk, not a confirmed defect.",
+  "counterexample": "Conforming-but-penalised app: stores everything durably in SQLite and survives restart_app exactly, but its timer-shortening only hides messages older than the new timer on the next scheduled sweep (fails timer_changes leg 1 'disappears at once') so 'Probate estimate is 4,200 pounds.' is still searchable at persistence time. It loses timer_changes (2/33) AND persistence (2/33) for the same single bug, although its persistence is correct. Likewise an app with no edit-version UI loses edits_and_stale_edit and persistence leg 1. Broken-but-scoring check: a seeded-looking facade or an app that saves posts only in the posting browser is stopped by the constraints gate (reload plus second-context readback), so no all-pass weak app was found.",
+  "suggested_fix": "In persistence, drop 'Probate', 'Insurer letter', 'Boundary note' and 'Temp JUDGE-P2' from leg 3 and check only persistence-specific items it created itself (JUDGE-S0/S1/S2, its own timer/wall changes and 'Survey booked for Friday.' exactly once), so persistence is graded independently. Then record a measured reward-discrimination run (golden, a UI-only-enforcement mutant and a no-retention mutant through the full configured judge) and a workload timing run before clearing this row.",
+  "run_verdict": "NOT EXERCISED"
+}

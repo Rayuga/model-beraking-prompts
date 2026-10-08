@@ -1,0 +1,32 @@
+{
+  "number": 37,
+  "id": "later_dimensions_tolerate_earlier_mutations",
+  "reviewer": "row-reviewer-37",
+  "input_sha256": "32ac3325a98d65cb38ca961a747ef80239bb2fa94a5195cc56d2f98e929bb17e",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    "F:/Documents/turing-workspace/kittle-worktree/.qc-cache/kittle-2026-10-09-r2/rules/WebDev Rubrics QC.xlsx: 'Quality Checks' row 38 (#37 later_dimensions_tolerate_earlier_mutations, block E) and 'Internal Quality Checks' row 38 (same text; no extra annotation on this row)",
+    ".qc-cache/kittle-2026-10-09-r2/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r2/rules/harbor-webdev-rubric-qc/references/quality-checks.md lines 153-154 (#37)",
+    ".qc-cache/kittle-2026-10-09-r2/rules/projects/webdev-task-template/tests (template prompts have no task-state section; that section is task-specific)",
+    "qc/REVIEW_POLICY.md",
+    "task/tests/test.sh (one app process, one DB, gates suite then scored suite, rewardkit --max-concurrent-agent 1)",
+    "task/tests/scoring.toml; task/tests/app_context.md",
+    "task/tests/gates/{render,constraints}/{judge.toml,prompt.md}",
+    "task/tests/scored/{functional,polish,visual}/{judge.toml,prompt.md}",
+    "task/environment/assets/seed_data.json (identical to solution/app/seed/seed_data.json); task/solution/app/server.js (expiry line 143)",
+    "qc/runs/kittle-2026-10-09-r2/raw-evidence-index.json + qc/repairs/kittle-2026-10-08/{run_golden.sh,tests/functional.cjs,results/golden-run.log} (sha256 re-verified: b61aa378..., 6385813..., 23943bf8...; server.js 03b52651..., app.js 8fc558c9..., seed f69616e2... match index)",
+    "background: model-beraking-prompts/handoffs/LESSONS_FROM_COLDERWATER_2026-10-08.md"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "medium",
+  "evidence": "All dimensions share one app process and DB (test.sh 602-611, 701-725: gates then scored, serial). Most of the rubric is state-relative and I traced the full sequence against the seed: app_context.md line 28 and functional prompt.md 68-72 ('judge it against the state the earlier ones left'), polish prompt.md 32 and visual prompt.md 49 explicitly accept earlier writes. Every functional criterion creates its own JUDGE-* probes; seeded targets used by later criteria survive earlier mutations (timer_changes sets M-13 to 7 days at clock 2026-05-12T11:00Z, which deletes only K-13 (4 May); K-8 'Draft will sent for your review.' (10 May), which message_links and live_updates_keep_my_work use later, survives; held K-7 survives for polish hold_mark/visual retention_marks; persistence's M-12 30-day timer deletes nothing because M-12 messages are dated 6-11 May). Walls and timers are restored in-criterion (wall_added_live step 4, timer_changes step 4, persistence final line). Unread checks are relative ('read up to its newest message', Gwen 'at least 2'; Dev's count 'noted' before restart). The constraints gate's JUDGE-G1 in M-11 collides with nothing. Polish/visual work on seed or post-functional state, so dimension order inside a suite does not matter. The scripted golden run (golden-run.log, hashes verified) passes the 16 functional criteria in listed order plus gate_constraints and polish_refusal_in_place on one DB with a real restart. That covers the reference path only. It is not a configured judge run. DEFECT: persistence step 3 (functional judge.toml line 262) is not state-relative. It requires Harriet's search to find nothing for 'Probate', 'Insurer letter' and 'Temp JUDGE-P2', which are absent only if earlier criteria FINISHED their mutations: timer_changes step 1 (line ~130), hold_scope_and_release step 6 (line 150) and message_links' delete of JUDGE-P2 (line 187). The prompt allows earlier sessions to stop partway ('when budget runs out, mark the rest failed', prompt.md 25; 'Two failed attempts at the same control fail that criterion; continue', prompt.md 29), and each criterion runs in a 550 s individual session that has not been measured (judge.toml lines 93-98). Persistence also never records these searches before the restart, so it cannot tell 'came back after the restart' from 'was never removed'. Secondary risk: if timer_changes stops after step 3 (timer off) and before step 4, M-13 is left with no timer, and visual retention_marks ('the disappearing-timer notice' in M-13) and polish see a state the rubric does not anticipate. Not measured: no configured judge run shows that rewardkit individual mode keeps the listed criterion order and finishes each session, so the ordering assumptions are still unproven.",
+  "counterexample": "Conforming alternative that fails: an app whose restart persistence is fully correct, where the functional judge's timer_changes session hits its unmeasured 550 s budget, or fails twice to find a non-standard but working timer control, before step 1 shortens M-13. Then 'Probate estimate is 4,200 pounds.' is still present when persistence runs, so step 3 fails persistence (weight 2.0) even though nothing changed across the restart. The same applies if hold_scope_and_release stops before step 6 ('Insurer letter') or message_links stops before deleting JUDGE-P2. One judge-side or UI-discoverability miss is charged twice, and the later charge lands on a behaviour that worked.",
+  "suggested_fix": "Make persistence step 3 state-relative. Before calling restart_app, as Harriet search 'Persist gone', 'Probate', 'Insurer letter', 'Boundary note' and 'Temp JUDGE-P2', note which return nothing, and count 'Survey booked for Friday.' in M-11. After the restart, every term that returned nothing still returns nothing, and the Survey count is unchanged (exactly once). Fail on any term that reappears. Optionally add to timer_changes that M-13 must be set back to 30 days before the session ends, even after a failed step. This is a task-specific criterion edit only; it does not change the harness or the timeouts.",
+  "run_verdict": "FAIL"
+}
