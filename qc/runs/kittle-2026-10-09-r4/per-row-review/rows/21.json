@@ -1,0 +1,35 @@
+{
+  "number": 21,
+  "id": "verifier_entrypoint_is_safe_and_always_scores",
+  "reviewer": "row-reviewer-21",
+  "input_sha256": "449a87e1985395c14d92e6f46060d9901104ca8c775300532b35bcf708f2b1c0",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r4/rules/WebDev Rubrics QC.xlsx (Quality Checks row 22 = #21; Internal Quality Checks row 22 = #21, no extra annotation beyond shorter wording)",
+    ".qc-cache/kittle-2026-10-09-r4/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r4/rules/harbor-webdev-rubric-qc/references/quality-checks.md (#21)",
+    ".qc-cache/kittle-2026-10-09-r4/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (tests/test.sh contract, budgets)",
+    ".qc-cache/kittle-2026-10-09-r4/rules/projects/webdev-task-template/tests/{test.sh,tools/score.py,tools/restart_mcp.py,scoring.toml,Dockerfile} and task.toml (diffed)",
+    ".qc-cache/kittle-2026-10-09-r4/task/tests/test.sh",
+    ".qc-cache/kittle-2026-10-09-r4/task/tests/tools/score.py",
+    ".qc-cache/kittle-2026-10-09-r4/task/tests/scoring.toml",
+    ".qc-cache/kittle-2026-10-09-r4/task/tests/*/*/judge.toml (timeouts, modes, criterion counts)",
+    ".qc-cache/kittle-2026-10-09-r4/task/task.toml",
+    ".qc-cache/kittle-2026-10-09-r4/task/environment/instructions/integration.md",
+    ".qc-cache/kittle-2026-10-09-r4/task/solution/app/server.js (health, listen)",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/kittle-2026-10-09-r4/raw-evidence-index.json and manifest.json",
+    "model-beraking-prompts/handoffs/LESSONS_FROM_COLDERWATER_2026-10-08.md (grep for test.sh/reward lessons)"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "Static review of frozen .qc-cache/kittle-2026-10-09-r4/task/tests/test.sh (sha256 bd682592...aa5, matches manifest) against references/staged-task-contract.md 'tests/test.sh' ordered contract (items 1-8) and quality-checks.md #21. test.sh, tools/score.py (13de2b38...), scoring.toml (95f70d6e...), tools/restart_mcp.py and tests/Dockerfile are byte-identical to rules/projects/webdev-task-template (diff empty, same sha256), so the template-controlled entrypoint is preserved.\nContract items: (1) write_zero_reward at test.sh:60 runs before any grading step, trap cleanup EXIT at :61 calls ensure_reward (:20-23, :39); no exec anywhere; ZERO_REWARD_JSON (:8) carries reward, all five dimensions, gates_passed, floors_passed, weighted_score, graded, no_op. Only mkdir/chmod of LOG_DIR (:10-12) precede it, which is unavoidable. (2) missing /app/server.js -> exit 0 (:68-70); any symlink outside /app/node_modules or whose readlink -f target escapes it -> exit 0 (:72-83); brief integration.md:5 already forbids symlinks in /app. (3) /app copied aside (:90-95), launched via setsid env -i with only PATH, NODE_PATH, HOME, PORT, DB_PATH and setpriv --reuid=65534 --regid=65534 --clear-groups (:104-111); LOG_DIR chmod 700 and /tests go-rwx (:11-12) keep the unprivileged app away from rubric and reward files. (4) probe_ready /api/health then / (:42-58), 120 x 0.25 s loop, exit 0 with zero reward if never ready (:115-125), before any rewardkit call. (5) restart helper by heredoc + sed placeholders, chmod 755, export APP_RESTART_HELPER (:127-193). (6) {app_context} substitution (:195-201). (7) gates suite (:213) then score.py: 0 continue, 1 stop keeping detailed record, else write_zero_reward (:216-222). (8) scored suite (:224) then score.py || write_zero_reward (:227). Budgets nest: gates 1500 + scored 11100 = 12600 < verifier 13200 (task.toml); gate judges 2 x 600 < 1500; scored 16 x 550 + 900 + 900 = 10600 < 11100 (functional/judge.toml:12 comment).\nMeasured in my scratchpad (not a container run): score.py on synthetic reward.json files -> no gates file exit 2; gate render=0 exit 1 reward 0.0000; gates pass/no scored exit 0 reward 0; full 0.9/0.5/0.5 -> 0.68; functional=0.05 floor -> 0; missing dimension, NaN, boolean, malformed JSON -> exit 2. Also ran a path-rewritten copy of test.sh under Git Bash with stubbed setpriv/setsid/node/rewardkit (port 3921, proxy disabled): full pass reward 0.7400 graded=1; gate failure reward 0.0000 with detailed record; gates rewardkit failure, scored rewardkit failure, scored reward.json missing a dimension, missing REWARDKIT_* env, missing server.js and a dead app all ended with a reward.txt/reward.json present at 0 (dead app was killed by my outer timeout and the pre-written zero survived). Every exit path observed left a reward.\nAdversarial: a broken app returning HTTP 500 everywhere passes liveness (HTTPError counts as up, :50-52) but only reaches the browser gates, which must then fail it - liveness is not meant to grade; a conforming app binding 0.0.0.0:3000 as integration.md:3 requires is probed on 127.0.0.1 and passes. Latent P3 notes only: a malformed reward-details.json after a valid scored suite would make score.py exit 2 after writing reward.txt and test.sh would zero it (conservative, template code); urllib in probe_ready honours proxy env vars, so an HTTP_PROXY without no_proxy in the verifier env could make a dead app look live (observed in my Windows sim only; task.toml [verifier.env] sets none).\nRisk=true because no real Linux verifier execution of this candidate's test.sh (setpriv, setsid process-group kill, real RewardKit, Playwright judges) is in raw-evidence-index.json, whose scope states full configured grading is absent; whether the 16-session individual functional suite finishes inside 11100 s is also unmeasured (a scored-suite timeout would still write reward 0 via :224-225, so it does not break this row, but it would zero a correct submission - workload rows own that).",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL"
+}

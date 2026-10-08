@@ -1,0 +1,39 @@
+{
+  "number": 32,
+  "id": "criteria_are_outcome_based_and_browser_decidable",
+  "reviewer": "row-reviewer-32",
+  "input_sha256": "449a87e1985395c14d92e6f46060d9901104ca8c775300532b35bcf708f2b1c0",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r4/rules/WebDev Rubrics QC.xlsx (sha256 6d44970b...; 'Quality Checks' row 32 and 'Internal Quality Checks' row 32, identical text, no extra annotation or cell comments in the package)",
+    ".qc-cache/kittle-2026-10-09-r4/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r4/rules/harbor-webdev-rubric-qc/references/quality-checks.md (### 32, lines 134-136)",
+    ".qc-cache/kittle-2026-10-09-r4/rules/projects/webdev-task-template/tests/scored/functional/judge.toml",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/kittle-2026-10-09-r4/task/instruction.md",
+    ".qc-cache/kittle-2026-10-09-r4/task/environment/instructions/conversations.md",
+    ".qc-cache/kittle-2026-10-09-r4/task/environment/instructions/walls-and-retention.md",
+    ".qc-cache/kittle-2026-10-09-r4/task/environment/instructions/integration.md",
+    ".qc-cache/kittle-2026-10-09-r4/task/environment/assets/seed_data.json",
+    ".qc-cache/kittle-2026-10-09-r4/task/tests/app_context.md",
+    ".qc-cache/kittle-2026-10-09-r4/task/tests/gates/render/{prompt.md,judge.toml}",
+    ".qc-cache/kittle-2026-10-09-r4/task/tests/gates/constraints/{prompt.md,judge.toml}",
+    ".qc-cache/kittle-2026-10-09-r4/task/tests/scored/functional/{prompt.md,judge.toml}",
+    ".qc-cache/kittle-2026-10-09-r4/task/tests/scored/polish/{prompt.md,judge.toml}",
+    ".qc-cache/kittle-2026-10-09-r4/task/tests/scored/visual/{prompt.md,judge.toml}",
+    ".qc-cache/kittle-2026-10-09-r4/task/tests/scoring.toml",
+    ".qc-cache/kittle-2026-10-09-r4/task/solution/app/server.js (route list, lines 42-515)",
+    "qc/runs/kittle-2026-10-09-r4/raw-evidence-index.json (scope header: scripted golden only, no configured judge run)"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "Overall the rubric is strongly outcome-based: all 24 criteria (1 render, 1 constraints, 16 functional, 5 polish, 4 visual likert) name browser-observable outcomes with distinctive JUDGE-* probes (seed contains no 'JUDGE'; grep count 0 in seed, server.js, app.js), durable readbacks (reload, second browser context, independent account, search, transcript, restart_app), and positive controls paired with refusals (functional/prompt.md:44-48). Examples: constraints gate posts 'Gate check JUDGE-G1', reloads and reads back as Harriet in a separate context (gates/constraints/judge.toml:97-101); timer_changes checks deletion via thread, replayed versions request, search and transcript (functional/judge.toml:129-135); persistence compares self-recorded step-c observables across a real restart_app (functional/judge.toml:256-265); polish phone_matter uses a numeric scrollWidth test (polish/judge.toml:76); visual likert rows carry 0-5 anchors (visual/judge.toml:170-225), which is the shipped craft format, not a 'looks right' defect. Every instance of a non-distinctive probe found: (1) signin_and_client_scope Part B, functional/judge.toml:47: 'Replay that request from the app page with M-12 as the target instead, replay the message-loading request with M-12 as the target, and open the M-12 transcript address in Gwen's browser.' Gwen cannot see M-12, so she never observes its real identifier; the criterion assumes the literal seed id 'M-12' is the app's route key (true only of the golden: server.js:331 '/api/matters/:id', :488 '/transcripts/:id'). The public brief does not require seed ids as URL keys. For an app using opaque/integer matter ids, substituting 'M-12' hits a nonexistent resource, whose 404/'not available' is indistinguishable from a correct authorization refusal, and line 48's only fail conditions ('returns or writes anything in M-12', 'refusal is not a plain not-available') are then satisfied by a leaking app. The write leg is backed by Harriet's readback, but the read leg (message load) and the transcript-address leg have no durable discriminating evidence. (2) wall_added_live leg 3, functional/judge.toml:86: 'replay Harriet's recorded wall-lifting request with Sian as the person instead of Dev'. Sian's person identifier is not given; the seed keys people by email but an app may use opaque user ids. A wrong identifier yields a not-found refusal and 'Sian still gets not-available', so an app with no partner check on wall lifting passes. Harriet's own request walling Sian (line 83) is the natural source of the correct identifier but is not recorded. Other replays (deleted_and_expired step 3, timer_changes step 5, hold steps 4/7, edits step 3, wall_every_route step 3, wall_added_live step 2) reuse identifiers the actor or recorder genuinely observed, so they are distinctive. Runtime: raw-evidence-index.json scope states only scripted golden observations exist; no configured judge run shows how the judge resolved these identifiers, and the golden uses M-12 literally so it cannot expose the gap.",
+  "counterexample": "A plausible broken app keys matters by integer id (M-11 -> /api/matters/1, M-12 -> /api/matters/2, transcript /transcripts/2), filters the matter list by client but has no per-matter access check on GET /api/matters/:id or /transcripts/:id. Gwen could read all of M-12 at /api/matters/2. The judge follows line 47 literally, replays /api/matters/M-12 and opens /transcripts/M-12, receives 404 'not available', Harriet confirms no JUDGE-CS1 in M-12, and signin_and_client_scope (weight 3.0) passes. Likewise an app with integer user ids and no partner check on wall changes passes wall_added_live leg 3 when the judge substitutes 'sian@kittle.test' or a guessed id and receives 'person not found'.",
+  "suggested_fix": "In signin_and_client_scope Part B, have harriet@kittle.test open M-12 first and record its message-loading request, posting request and transcript address, then replay exactly those (and open that address) from Gwen's session; in wall_added_live, record Harriet's request that walls Sian and replay the lift with the person identifier taken from that request, adding 'a not-found answer for a wrong identifier is not a refusal'.",
+  "run_verdict": "NOT EXERCISED"
+}

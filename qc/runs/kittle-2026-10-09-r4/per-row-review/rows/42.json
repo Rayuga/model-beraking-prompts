@@ -1,0 +1,32 @@
+{
+  "number": 42,
+  "id": "reward_ranking_is_monotone",
+  "reviewer": "row-reviewer-42",
+  "input_sha256": "449a87e1985395c14d92e6f46060d9901104ca8c775300532b35bcf708f2b1c0",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r4/rules/WebDev Rubrics QC.xlsx - Quality Checks row 43 (#42 reward_ranking_is_monotone) and Internal Quality Checks row 43 note 'Mukesh - we need to monitor this one' (also rows 42/45 notes)",
+    ".qc-cache/kittle-2026-10-09-r4/rules/harbor-webdev-rubric-qc/SKILL.md (lines 27-28 judge/reward shape)",
+    ".qc-cache/kittle-2026-10-09-r4/rules/harbor-webdev-rubric-qc/references/quality-checks.md ### 42 (line 172) and neighbouring 39-44",
+    ".qc-cache/kittle-2026-10-09-r4/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (scoring.toml, test.sh flow, budgets)",
+    ".qc-cache/kittle-2026-10-09-r4/rules/projects/webdev-task-template/tests/{scoring.toml,tools/score.py,test.sh} (diffed: identical)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/kittle-2026-10-09-r4/task/tests/scoring.toml, tests/tools/score.py, tests/test.sh, tests/Dockerfile",
+    ".qc-cache/kittle-2026-10-09-r4/task/tests/gates/{render,constraints}/judge.toml",
+    ".qc-cache/kittle-2026-10-09-r4/task/tests/scored/{functional,polish,visual}/judge.toml and prompt.md",
+    ".qc-cache/kittle-2026-10-09-r4/task/instruction.md, environment/instructions/*.md, environment/assets/seed_data.json, task.toml",
+    "rewardkit 0.1.7 source copy (cw-strict-worktree/.../rewardkit-0.1.7-source: models.py, reward.py, judges.py, runner.py) for aggregation/likert/timeout/order semantics",
+    "qc/runs/kittle-2026-10-09-r4/raw-evidence-index.json and its six artifacts (hashes re-verified), qc/repairs/kittle-2026-10-08/results/golden-run.log"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "STATIC/STRUCTURAL REVIEW (no ranking run). (1) Reward formula: frozen tests/tools/score.py (byte-identical to rules/projects/webdev-task-template/tests/tools/score.py; test.sh also identical to template) computes reward = weighted mean of functional/polish/visual with weights 0.6/0.2/0.2 (tests/scoring.toml [weights], identical to template), zeroed only when a zero-weight gate (render, constraints) is not >0 or functional <= floor 0.05. Each term is non-decreasing in its dimension score and gates/floor are upper-sets, so reward is componentwise monotone: an app that is at least as good in every dimension can never score lower. Function (0.6) outweighs craft (0.4); the floor stops a functionally dead app farming polish/visual. (2) Within dimensions: rewardkit 0.1.7 (pinned tests/Dockerfile:31) weighted_mean (reward.py _weighted_mean) is monotone in criterion passes; likert normalize=(raw-1)/(points-1) clamped (models.py:47), so visual anchors 0 and 1 tie at 0.0 - a tie, not an inversion. Functional criterion weights (tests/scored/functional/judge.toml lines 41-254, total 33.0) put the core promises highest (deleted_and_expired 4.0, signin_and_client_scope 3.0, sent_once/search_transcript 2.5, walls/timers/holds/persistence 2.0, the rest 1.5); no craft criterion outweighs a core behaviour. (3) Gates a stronger app could fail: render (gates/render/judge.toml:25-34) checks only sign-in, wrong-password refusal and nothing private before sign-in (instruction.md:7, walls-and-retention.md:45); constraints (gates/constraints/judge.toml:25-37) has Gwen post in M-11 (her matter, 7-day timer, posted at the fixed clock so it cannot expire) and Harriet (partner, not walled per seed) read it in a separate context. Both are public requirements a conforming app satisfies; neither depends on a golden-only default. (4) Mutation-order inversions checked (rewardkit runs suites sorted functional->polish->visual with --max-concurrent-agent 1; individual mode runs criteria sequentially in listed order, judges.py:467-494): timer_changes shortening M-13 to 7 days deletes only K-13 (4 May) in a correct app; K-8 'Draft will sent for your review.' (10 May) survives, so later message_links and live_updates_keep_my_work do not penalise a correct timer implementation relative to a broken one. hold release deletes only K-17; persistence step c is state-relative; Sian/Dev walls are lifted at criterion end and polish/visual use only Gwen; polish hold_mark relies on K-7 which no criterion releases. A per-criterion judge timeout scores only that criterion 0 (judges.py timeout path -> _timeout_scores), so a slow-to-verify strong app ties, not trails, a fast-failing weak one on that criterion. (5) Tried broken-but-passing and conforming-but-failing apps: a static/seed facade fails the constraints gate (cross-context readback); a polished app with near-dead function is capped by the 0.05 floor and by polish/visual needing real timer label/hold mark/transcript; a conforming app with long pasted message links must still meet the public 390 px no-sideways-scroll requirement (integration-independent, conversations.md:33), not a hidden demand. Minor non-blocking edge: the single 2.0 persistence criterion grades durability of whatever exists (functional judge.toml:251-266, 'a feature that did not work before the restart is graded in its own criterion'), so an app with edits that work in-session but revert on restart (edits +1.5, persistence -2.0) can trail an app with no edit feature at all by 0.5/33 x 0.6 = 0.009 reward; that app breaks the public 'restarts keep ... edits and their versions' rule (integration.md:38), so I do not count it as a credible inversion of a better app. (6) Required measurement MISSING: qc/runs/kittle-2026-10-09-r4/raw-evidence-index.json scope states 'Full configured grading/workload, reward discrimination/ranking and Oracle/target scores are absent'; its six indexed artifacts re-hash to the listed SHA256 and contain only scripted golden PASS observations (golden-run.log: 16 functional + gate_constraints + polish_refusal_in_place PASS), with no mutated weak app or ordered reward run. The workbook Internal Quality Checks row 42 note reads 'Mukesh - we need to monitor this one', and qc/REVIEW_POLICY.md requires a hash-bound runtime reward-ordering record before clearance. Design is monotone on inspection, but ranking is unmeasured, so risk stays true.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

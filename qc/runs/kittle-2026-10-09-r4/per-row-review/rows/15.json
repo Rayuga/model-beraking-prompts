@@ -1,0 +1,33 @@
+{
+  "number": 15,
+  "id": "dockerfile_builds_the_declared_world",
+  "reviewer": "row-reviewer-15",
+  "input_sha256": "449a87e1985395c14d92e6f46060d9901104ca8c775300532b35bcf708f2b1c0",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r4/rules/WebDev Rubrics QC.xlsx :: Quality Checks row 15 dockerfile_builds_the_declared_world; Internal Quality Checks row 15 (same text, no extra annotation); Deterministic Checks rows check-dockerfiles.py, check-dockerfile-references.sh, check-fixtures.py, check-runtime-deps-in-both-images.py (context)",
+    ".qc-cache/kittle-2026-10-09-r4/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r4/rules/harbor-webdev-rubric-qc/references/quality-checks.md:66-68 (check 15 Verify/Defect)",
+    ".qc-cache/kittle-2026-10-09-r4/rules/projects/webdev-task-template/environment/Dockerfile, task.toml, tests/Dockerfile, tests/test.sh",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/kittle-2026-10-09-r4/task/environment/Dockerfile:1-26",
+    ".qc-cache/kittle-2026-10-09-r4/task/environment/{assets/seed_data.json, instructions/*.md} (file list), instructions/integration.md:3-5",
+    ".qc-cache/kittle-2026-10-09-r4/task/task.toml:17-24",
+    ".qc-cache/kittle-2026-10-09-r4/task/instruction.md",
+    ".qc-cache/kittle-2026-10-09-r4/task/solution/solve.sh, solution/app/package.json, require() calls across solution/",
+    ".qc-cache/kittle-2026-10-09-r4/task/tests/Dockerfile:1-45, tests/test.sh:55-110",
+    "qc/runs/kittle-2026-10-09-r4/raw-evidence-index.json; qc/repairs/kittle-2026-10-08/run_golden.sh; qc/repairs/kittle-2026-10-08/results/golden-run.log (hashes re-verified)",
+    "docker image inspect / docker history cw-editor-agent-r3 (read-only)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "environment/Dockerfile (sha256 0a75419e...67d1) is byte-identical to the frozen template rules/projects/webdev-task-template/environment/Dockerfile (diff empty), so it is template-controlled and unchanged. Against each Verify item of quality-checks.md:67: (1) base pinned to the template tag `FROM node:22-bookworm-slim` (line 1); apt packages unpinned (lines 5-7), which the workbook's check-dockerfiles.py row treats as a NOTE only. (2) runtime deps preinstalled at build time: `npm install -g ... express@5.1.0 better-sqlite3@12.4.1` (lines 9-12) with `ENV NODE_PATH=/usr/local/lib/node_modules` (line 3). The golden needs exactly these plus Node builtins: the only require() targets across solution/ are better-sqlite3, express, crypto, fs, path, and solution/app/package.json pins the same two versions. solve.sh only copies (`cp -a \"$(dirname \"$0\")/app/.\" /app/`); it runs no npm install. integration.md:3 tells the agent 'Express and better-sqlite3 are already installed globally and found through NODE_PATH', which matches the image. The verifier image installs the same two pinned packages (tests/Dockerfile:16-22) and test.sh launches with NODE_PATH=/usr/local/lib/node_modules, so nothing needs network at grade time. (3) assets staged: `COPY instructions/ /instructions/` and `COPY assets/ /assets/` (lines 14-15) plus `chmod -R a+rX /instructions /assets` (line 16). Both sources exist in the frozen task (assets/seed_data.json; instructions/conversations.md, integration.md, walls-and-retention.md), and instruction.md references /assets/seed_data.json and /instructions. (4) /app is created, git-initialised and holds only .gitkeep (lines 17-23); WORKDIR /app; CMD sleep infinity. Defect side: there is no COPY of solution/ or tests/, and no install step depends on grade-time network. Runtime evidence: the run_golden.sh/golden-run.log hashes match raw-evidence-index.json, and the indexed solution hashes match the frozen bytes. That run (2026-10-08 22:56-22:58Z) used image cw-editor-agent-r3. docker history shows that image was built from the identical recipe (same ENV NODE_PATH, same npm -g pins, same COPY/chmod/git-init layers) and Config.Env has NODE_PATH=/usr/local/lib/node_modules. The golden server started under uid 65534 with env -i and all 18 scripted checks passed, which confirms that the preinstalled globals are enough to run the reference app. Limitation: that image was built from another task's build context (Colderwater); the run mounted Kittle's assets and solution as volumes. A docker build of this exact Kittle environment/ context was not observed, so the staging half rests on source inspection (the COPY sources exist and the recipe built successfully elsewhere), not on a run. I do not count this as required missing evidence for this source-level row, because the recipe is template-identical and every COPY source is present. Adversarial probes. A broken app cannot pass because of this image: an app needing an extra npm package must vendor it into /app/node_modules, which test.sh:72-81 allows and copies, and anything it fails to vendor fails at grade time, which correctly grades the submission. A conforming alternative fails only if it relies on a package the brief does not promise. Node builtins such as node:sqlite are available, and a native module built in the bookworm agent image matches the Debian-based verifier runtime, so I found no conforming design that this image would wrongly break.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL"
+}

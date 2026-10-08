@@ -1,0 +1,37 @@
+{
+  "number": 51,
+  "id": "everything_parses_and_would_run",
+  "reviewer": "row-reviewer-51",
+  "input_sha256": "449a87e1985395c14d92e6f46060d9901104ca8c775300532b35bcf708f2b1c0",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r4/rules/WebDev Rubrics QC.xlsx :: 'Quality Checks'!A52:D52 (51 everything_parses_and_would_run) and 'Internal Quality Checks'!A52:D52 ('both TOML families, the shell scripts (bash -n, no CRLF), and the reference/app entry'); 'Deterministic Checks' rows check-solve-contract.py, check-app-manifest.py (no workbook cell comments present)",
+    ".qc-cache/kittle-2026-10-09-r4/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r4/rules/harbor-webdev-rubric-qc/references/quality-checks.md:204-206 (### 51)",
+    ".qc-cache/kittle-2026-10-09-r4/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (file list, cross-file table)",
+    ".qc-cache/kittle-2026-10-09-r4/rules/projects/webdev-task-template/** (byte comparison)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/kittle-2026-10-09-r4/task/task.toml",
+    ".qc-cache/kittle-2026-10-09-r4/task/tests/scoring.toml",
+    ".qc-cache/kittle-2026-10-09-r4/task/tests/{gates/render,gates/constraints,scored/functional,scored/polish,scored/visual}/judge.toml and prompt.md",
+    ".qc-cache/kittle-2026-10-09-r4/task/tests/test.sh (incl. embedded app-restart.sh heredoc lines 127-184)",
+    ".qc-cache/kittle-2026-10-09-r4/task/solution/solve.sh",
+    ".qc-cache/kittle-2026-10-09-r4/task/tests/tools/score.py, restart_mcp.py, tests/Dockerfile, environment/Dockerfile",
+    ".qc-cache/kittle-2026-10-09-r4/task/solution/app/{server.js,package.json,public/app.js,public/index.html,seed/seed_data.json}, environment/assets/seed_data.json",
+    ".qc-cache/kittle-2026-10-09-r4/task/instruction.md, environment/instructions/integration.md",
+    "qc/runs/kittle-2026-10-09-r4/manifest.json and raw-evidence-index.json (hashes re-verified)",
+    "qc/repairs/kittle-2026-10-08/results/golden-run.log",
+    "deliverables/colderwater-playground-devtools/final-cross-check-2026-09-27/harness/rewardkit-0.1.7-source/{runner.py,models.py,judges.py} (loader contract: JudgeMode Literal['batched','individual'], prompt_template must contain {criteria})"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "All gating files in the frozen task parse and load. Measured on the frozen bytes (all 32 files re-hashed equal to manifest.json inputs; input_sha256 449a87e1...): (1) tomllib parses task.toml (tables schema_version, artifacts, task, metadata, agent, environment, verifier incl. [verifier.env]/[verifier.environment]), tests/scoring.toml ([gates] render/constraints 0.0, [weights] 0.6/0.2/0.2, [floors] functional 0.05) and all five judge.toml files; criteria counts render 1, constraints 1, functional 16 (binary, mode=individual, timeout 550), polish 5 (binary), visual 4 (likert, points=5); no duplicate criterion names. (2) Actual loader run: `docker run --rm --network none -e REWARDKIT_JUDGE=claude-code -e REWARDKIT_MODEL=z-ai/glm-5.3-flashx cw-editor-verifier:current` with a read-only copy of tests/ and rewardkit 0.1.7 (same version pinned at tests/Dockerfile:31) called rewardkit.runner.discover on /t/gates and /t/scored without error, yielding AgentJudge for constraints (batched 600, n=1), render (batched 600, n=1), functional (individual 550, n=16), polish (batched 900, n=5), visual (batched 900, n=4). This exercises MCPServerConfig validation (stdio+command) and the '{criteria}' placeholder check; every prompt.md contains exactly one {criteria} and one {app_context}. (3) bash -n passes for tests/test.sh, solution/solve.sh and the app-restart.sh heredoc extracted from test.sh:127-184; all three start with #!/bin/bash. Every file in the task has 0 CR bytes, no BOM, valid UTF-8 and a trailing newline. test.sh, solve.sh, score.py, restart_mcp.py, tests/Dockerfile, tests/.dockerignore, tests/scoring.toml and environment/Dockerfile are byte-identical to the frozen template. (4) Reference entry: `node --check` (v24.19.0) passes for solution/app/server.js and public/app.js; package.json, both seed_data.json copies (identical sha f69616e2...) parse as JSON; seed.clock '2026-05-12T11:00:00Z' parses to a valid date (server.js:32-33 depends on it); server.js:29 resolves seed via SEED_PATH/app seed/assets fallbacks and server.js:519 listens on 0.0.0.0:PORT, matching test.sh:97-111 and integration.md. score.py and restart_mcp.py parse with ast. (5) Runtime boot evidence: qc/repairs/kittle-2026-10-08/results/golden-run.log (sha b2fb05f4..., matches raw-evidence-index; matching_source_files equal current bytes) shows the app installed by the frozen solve.sh, run as uid 65534 with env -i, printing 'Kittle & Rowe matter chat on port 3000' twice (start and real restart) and 'exit 0'. Worst-case judge timeouts fit the frozen budgets: gates 600+600=1200 < 1500 (test.sh:213); scored 16*550+900+900=10600 < 11100 (test.sh:224, rewardkit --max-concurrent-agent 1 and sequential individual agent calls per judges.py _arun_agent_individual); 1500+11100=12600 < verifier timeout_sec 13200. Adversarial: a broken app cannot benefit from this row (it concerns task files only); a conforming alternative app (different internal layout, entry still /app/server.js as instruction.md:5 requires) is not blocked by any parse defect. Not measured here and not claimed: a full configured verifier launch (test.sh with a live judge), Oracle score or portal checker run; raw-evidence-index scope states those are absent and they belong to the workload/full-verifier rows, not to this parse/loadability row.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "CONFIRMED"
+}

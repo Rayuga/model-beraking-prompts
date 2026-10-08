@@ -1,0 +1,33 @@
+{
+  "number": 31,
+  "id": "plural_asks_are_checked_across_all_matches",
+  "reviewer": "row-reviewer-31",
+  "input_sha256": "449a87e1985395c14d92e6f46060d9901104ca8c775300532b35bcf708f2b1c0",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r4/rules/WebDev Rubrics QC.xlsx: Quality Checks row 32 (#31) and Internal Quality Checks row 32 (#31, no extra annotation beyond the check text)",
+    ".qc-cache/kittle-2026-10-09-r4/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r4/rules/harbor-webdev-rubric-qc/references/quality-checks.md (### 31, plus neighbouring 30/32)",
+    ".qc-cache/kittle-2026-10-09-r4/rules/projects/webdev-task-template (file list compared with the task's staged layout)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/kittle-2026-10-09-r4/task/instruction.md",
+    ".qc-cache/kittle-2026-10-09-r4/task/environment/instructions/conversations.md, integration.md, walls-and-retention.md",
+    ".qc-cache/kittle-2026-10-09-r4/task/environment/assets/seed_data.json (identical bytes to solution/app/seed/seed_data.json)",
+    ".qc-cache/kittle-2026-10-09-r4/task/tests/scored/functional/judge.toml (all 16 criteria) and prompt.md",
+    ".qc-cache/kittle-2026-10-09-r4/task/tests/scored/polish/judge.toml, tests/scored/visual/judge.toml, tests/gates/*/judge.toml (plural wording grep)",
+    ".qc-cache/kittle-2026-10-09-r4/task/tests/app_context.md",
+    ".qc-cache/kittle-2026-10-09-r4/task/solution/app/server.js lines 40-47, 280-390 (route list and per-route auth)",
+    "qc/runs/kittle-2026-10-09-r4/raw-evidence-index.json; qc/repairs/kittle-2026-10-08/results/golden-run.log (sha256 b2fb05f4... verified) and tests/functional.cjs (sha256 980c6095... verified; lines 85-140, 406-442, 519-539); server.js 03b52651... and app.js 8fc558c9... match frozen task"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "Most plural/exclusive asks ARE graded over the whole collection: Gwen's list (only her matters, 3-matter seed so M-12 absence covers all), Dev's list 'shows M-11 and M-13 and nothing from M-12' (every non-walled matter), nested_replies 'JUDGE-R1, JUDGE-R2 and JUDGE-R3 each ... with a short quote', hold scope checks parent AND grandchild unheld (exactly-one), sent_once 'exactly once in M-11, once in search ... and once in the M-11 transcript' (every place the brief names, conversations.md:38), order C,A,B checked in thread for two users, search and transcript, 'each message shows its author and sent time' in the transcript, the held message 'shows both its versions', safe-formatting literal text checked across thread, reply quote, search snippet and transcript with earlier versions covered by edits_and_stale_edit, and persistence covers every category integration.md:47 lists (messages, replies, edits/versions, timers, holds, walls, unread positions, deletions). Unchanged/side-effect guards are sound: setting M-13 to 7 days (timer_changes step 1) legitimately deletes only K-13 because K-7 is held and K-8 (2026-05-10) is younger than the 2026-05-05T11:00 cutoff, so later criteria that use 'Draft will sent for your review.' are not broken; Gwen's unread uses 'at least 2'; exact Dev counts (2, then 1) are isolated by Dev reading M-13 first; persistence compares against values noted after its own setup; M-12 at 30 days deletes nothing (seed dates 2026-05-06/11). The scripted golden run executed the 16 criteria sequentially on one database with a real restart and logged all PASS (golden-run.log lines 3-18; functional.cjs:414,421,427,539), so no cross-criterion side effect punished the conforming golden (scripted, not a configured judge run). DEFECT (two instances of a universal ask sampled on routes that omit the matter list): (1) integration.md:51 'Anyone who isn't signed in gets no matter, message, mention or transcript data from the server' and instruction.md:7 'no matter titles, names or messages'; signin_and_client_scope Part A (functional/judge.toml:44) records and replays signed out only the M-11 message-loading request, the mentions request, the search request and the transcript address. The matter-list request (golden GET /api/matters, server.js:326, guarded per-route by requireUser, with no global auth middleware, server.js:43-47) is never replayed signed out; functional.cjs:122-125 confirms only [load, mreq, sreq] are replayed. (2) walls-and-retention.md:68 'A walled person gets nothing from that matter, by any route: not in the matter list ... unread counts ...'; wall_every_route item 1 checks only Dev's rendered list and item 3 replays only thread, transcript and search requests, so the matter-list/unread payload Dev's browser receives is never inspected or replayed. Other notes (not blocking): 'Only a partner changes a timer / places or releases a hold / Harriet can add or lift a wall' are negatively tested only with an associate (Sian), never a client; the brief's 'without the page scrolling sideways' (conversations.md:42) is checked only on the M-11 thread (polish phone_matter, visual phone_chambers); 'When something you try is refused, the reason appears next to what you did' (walls-and-retention.md:88) is checked only for sign-in (polish refusal_in_place). These are reasonable samples of an open-ended surface rather than a whole-collection miss, but are recorded per 'Reports every instance'. No configured functional judge run exists (raw-evidence-index scope: 'Full configured grading ... absent').",
+  "counterexample": "Broken app: auth is enforced per route (as in the golden's own style) but GET /api/matters forgets requireUser and, with no user, returns every matter with title, number, client name and unread count (or, signed in as Dev, returns M-12 flagged walled:true which the client-side list filters out). Signed out, the page shows only the sign-in form, and the recorded M-11 load, mentions, search and transcript replays all return 401/not-available, so signin_and_client_scope passes; Dev's rendered list hides M-12 and his thread/transcript/search replays are refused, so wall_every_route passes. Both violate integration.md:51 and walls-and-retention.md:68 ('not in the matter list'), yet earn full credit.",
+  "suggested_fix": "In signin_and_client_scope Part A also record the request that loads Gwen's matter list and replay it signed out (it must return no matter title, number or name), and in wall_every_route record Sian's matter-list request and replay it as Dev, failing if any M-12 title, number or count appears in the response.",
+  "run_verdict": "NOT EXERCISED"
+}

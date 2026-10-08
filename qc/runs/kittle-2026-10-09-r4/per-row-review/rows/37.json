@@ -1,0 +1,38 @@
+{
+  "number": 37,
+  "id": "later_dimensions_tolerate_earlier_mutations",
+  "reviewer": "row-reviewer-37",
+  "input_sha256": "449a87e1985395c14d92e6f46060d9901104ca8c775300532b35bcf708f2b1c0",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r4/rules/WebDev Rubrics QC.xlsx: Quality Checks row 37 and Internal Quality Checks row 37 (both: 'A later dimension doesn't assume a pristine seed after an earlier dimension mutated the shared running app.'; no further internal annotation on this row)",
+    ".qc-cache/kittle-2026-10-09-r4/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r4/rules/harbor-webdev-rubric-qc/references/quality-checks.md:153-154 (check 37 procedure)",
+    ".qc-cache/kittle-2026-10-09-r4/rules/projects/webdev-task-template/tests/scored/visual/prompt.md (diffed against task)",
+    "qc/REVIEW_POLICY.md",
+    "model-beraking-prompts/handoffs/LESSONS_FROM_COLDERWATER_2026-10-08.md",
+    "task/instruction.md, task/environment/instructions/{conversations,integration,walls-and-retention}.md",
+    "task/environment/assets/seed_data.json (== solution/app/seed/seed_data.json)",
+    "task/tests/test.sh:203-227 (gates suite then scored suite, one app process and one DB, --max-concurrent-agent 1)",
+    "task/tests/scoring.toml",
+    "task/tests/app_context.md:117",
+    "task/tests/gates/render/{judge.toml,prompt.md}, task/tests/gates/constraints/{judge.toml,prompt.md}",
+    "task/tests/scored/functional/prompt.md (lines 32-33, 49, 72-78) and judge.toml (all 16 criteria)",
+    "task/tests/scored/polish/{judge.toml,prompt.md}",
+    "task/tests/scored/visual/{judge.toml,prompt.md}",
+    "task/solution/app/public/app.js:146-195 (badge only when unread>0; openMatter POSTs read)",
+    "qc/runs/kittle-2026-10-09-r4/raw-evidence-index.json plus all cited artifacts (sha256 re-verified: run_golden.sh b61aa378..., functional.cjs 980c6095..., golden-run.log b2fb05f4..., functional-before.json 4329fca7..., functional-after.json 2177dcb4..., restart-pids.json b0c412c9...; all frozen source hashes match)",
+    "qc/repairs/kittle-2026-10-08/results/golden-run.log and tests/functional.cjs:1-15,96-120"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "Ordering: test.sh:213-227 runs the gates suite (render, then constraints which posts 'Gate check JUDGE-G1' in M-11) and then the scored suite against the same running app and DB. Functional is individual mode with 16 sequential sessions on one DB. What the task does well: functional is written state-relatively throughout. prompt.md:72-78 says earlier criteria 'posted JUDGE messages... changed and restored timers, placed and released holds, and added and lifted walls... judge it against the state the earlier ones left'. prompt.md:32-33 adds a '-2' suffix rule for retries, and prompt.md:49 says 'never write something a later criterion does not expect'. app_context.md:117 reaches every prompt and says 'Do not assume the seed state'. Writes are restored: wall_added_live lifts both walls, timer_changes step 4 returns M-13 to 30 days, and persistence ends by lifting Sian's M-11 wall and setting M-12 back to off. The only seeded data the checks rely on are messages that no earlier criterion can remove in a conforming app. Examples: K-1 and K-10 expire by seed, K-14 and K-15 survive, K-17 is released only in hold_scope, K-8 'Draft will sent' is 2 days old under a timer of at most 7 days, K-7 executor stays held, and K-2 notice stays held with its versions. Counts are relative: unread step 4 says 'at least 2', Dev's counts are reset by opening M-13 inside the criterion, and persistence step c records the pre-restart observations. Each probe text is unique to its criterion, so the search and order checks (JUDGE-O, JUDGE-D1) are not polluted by the gate's JUDGE-G1 or by other criteria. Runtime: golden-run.log (hash verified) shows gate_constraints, all 16 functional criteria in order and polish_refusal_in_place PASS on one database with a real restart. That run is a scripted golden run, not a judge run. Polish (timer_label, hold_mark, phone_matter, transcript_print) and visual (retention_marks, transcript_page, phone_chambers) read only state that survives functional, and polish/prompt.md:32 explicitly accepts functional's leftovers. The defect is visual matter_sidebar (visual/judge.toml:27-28, weight 2.0). Its 5 anchor requires that 'unread counts stand out without crowding the list', which assumes unread badges are on screen for Gwen as they are in the seed (Gwen read M-11 only up to K-3). Earlier and same-run steps clear those badges. Polish timer_label and phone_matter open M-11 as Gwen, polish hold_mark opens M-13, and the visual prompt itself (visual/prompt.md:49) tells the judge to review M-11 and M-13. In the golden, openMatter POSTs /read (app.js:190) and renderMatterList draws a badge only when m.unread is truthy (app.js:161). So a correct app can reach matter_sidebar with no unread counts shown. Whether counts are visible then depends on dimension order and on where the judge clicks first. The criterion and prompt give no rule for that case, and the 4 anchor ('one weak selection state') does not cover it, so a strict judge can score a conforming app 4 or lower. Run verdict PARTIAL: the functional half is CONFIRMED tolerant by the scripted golden sequence. The polish/visual half is NOT EXERCISED: no configured judge run, and rewardkit's ordering within the scored suite was not measured.",
+  "counterexample": "Golden app, conforming. Functional runs, then polish (Gwen opens M-11 for timer_label and phone_matter and M-13 for hold_mark, which marks both matters read), then visual. Gwen's sidebar now has no unread badges because app.js:161 shows a badge only when unread > 0. The visual judge cannot see 'unread counts stand out' (matter_sidebar 5 anchor), assigns 4 or 3, and the reference app loses up to 2/5 on a weight-2.0 visual criterion. That is about 0.03-0.05 of total reward, purely from earlier-dimension state. A weak app with poorly styled badges escapes the unread part of the same anchor for the same reason.",
+  "suggested_fix": "Make matter_sidebar state-tolerant. Either say 'if no matter currently shows an unread count, judge identification and selection only and do not lower the score for absent counts', or have the visual prompt assess the sidebar first, before opening any matter, as dev@kittle.test, who has unread messages left by functional. Then confirm with a visual judge run on the golden.",
+  "run_verdict": "PARTIAL"
+}

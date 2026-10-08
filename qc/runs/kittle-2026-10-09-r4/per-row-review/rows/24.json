@@ -1,0 +1,35 @@
+{
+  "number": 24,
+  "id": "grading_wiring_is_structurally_correct",
+  "reviewer": "row-reviewer-24",
+  "input_sha256": "449a87e1985395c14d92e6f46060d9901104ca8c775300532b35bcf708f2b1c0",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r4/rules/WebDev Rubrics QC.xlsx :: Quality Checks row 25 (check 24) and Internal Quality Checks row 25 annotation ('pinned judge, browser MCP server, well-typed criteria with weights, valid aggregate')",
+    ".qc-cache/kittle-2026-10-09-r4/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r4/rules/harbor-webdev-rubric-qc/references/quality-checks.md :: 24 grading_wiring_is_structurally_correct",
+    ".qc-cache/kittle-2026-10-09-r4/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md :: scoring.toml, test.sh, judge.toml, tools sections",
+    ".qc-cache/kittle-2026-10-09-r4/rules/projects/webdev-task-template/tests/** and task.toml (diffed)",
+    ".qc-cache/kittle-2026-10-09-r4/task/task.toml",
+    ".qc-cache/kittle-2026-10-09-r4/task/tests/scoring.toml",
+    ".qc-cache/kittle-2026-10-09-r4/task/tests/test.sh",
+    ".qc-cache/kittle-2026-10-09-r4/task/tests/{gates/render,gates/constraints,scored/functional,scored/polish,scored/visual}/judge.toml and prompt.md",
+    ".qc-cache/kittle-2026-10-09-r4/task/tests/app_context.md",
+    ".qc-cache/kittle-2026-10-09-r4/task/tests/tools/restart_mcp.py and tools/score.py",
+    ".qc-cache/kittle-2026-10-09-r4/task/tests/Dockerfile (harbor-rewardkit==0.1.7, claude-code, playwright mcp)",
+    "model-beraking-prompts/deliverables/colderwater-playground-devtools/final-cross-check-2026-09-27/harness/rewardkit-0.1.7-source/{runner.py,judges.py,agents.py,models.py} (reference copy of the pinned RewardKit)",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/kittle-2026-10-09-r4/raw-evidence-index.json (golden-run.log hash b2fb05f4... re-verified)"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "Structure verified by parsing every TOML with tomllib and diffing against the frozen template. tests/scoring.toml:1-11 is byte-identical to the template ([gates] render=0.0, constraints=0.0; [weights] functional 0.6/polish 0.2/visual 0.2, sum 1; [floors] functional=0.05); every name maps to an existing directory (tests/gates/{render,constraints}, tests/scored/{functional,polish,visual}). test.sh, tools/score.py and tools/restart_mcp.py are identical to the template (diff clean); test.sh:185-193 generates app-restart.sh and exports APP_RESTART_HELPER before both rewardkit suites (test.sh:203-227). score.py resolves scoring.toml at parent.parent (tests/). All five judge.toml [judge] tables: judge='claude-code' fallback, isolated=false, prompt_template='prompt.md', no model/reasoning_effort/temperature/weight key; model pinned only in task.toml [verifier.env] (REWARDKIT_JUDGE=claude-code, REWARDKIT_MODEL=z-ai/glm-5.3-flashx), identical to the template block. Every dimension declares the playwright stdio server (playwright-mcp --headless --isolated --executable-path=/usr/local/bin/chromium --no-sandbox). Only scored/functional/judge.toml:21-26 adds name='verifier', command=/usr/local/bin/python3, args=['/tests/tools/restart_mcp.py','$APP_RESTART_HELPER']; RewardKit 0.1.7 agents.py:66 applies os.path.expandvars to MCP add args, and judges.py builds --allowedTools from mcp__playwright + mcp__verifier for functional only, so polish/visual cannot call restart. restart_mcp.py enforces single use via a .used marker beside the helper (cross-process, so it also holds under individual mode); test.sh:192 clears it. Gates: aggregation all_pass, one binary criterion each (authenticated_render, server_backed_local_application), weight 1.0. Functional: weighted_mean, 16 binary criteria, positive weights 1.5-4.0, unique ids, id==name, persistence last and the only criterion told to call restart_app (functional/prompt.md:61-68; judge.toml persistence description). Polish: weighted_mean, 5 binary weight 1.0. Visual: weighted_mean, 4 likert points=5 weights 2/2/1/1. All descriptions non-empty. Prompts resolve: each prompt.md contains exactly one {app_context} (substituted by test.sh:195-201 from tests/app_context.md, which has ## Application/## Accounts/## Key screens) and one {criteria} (runner.py:143 requires it; judges.py build_prompt uses str.replace); no other {placeholder} tokens exist. Deviation from template: functional mode='individual', timeout=550 (template: batched, 9000). models.py:142 accepts 'individual'; judges.py _arun_agent_individual runs each criterion sequentially in its own CLI call with the full per-call timeout, and the prompt was adapted ('Each session grades one criterion; the criteria run in the listed order'). Nesting: 16x550=8800 + polish 900 + visual 900 = 10600 < scored budget 11100; gates 2x600 < 1500; 1500+11100=12600 < verifier 13200. Counterexample probes: a broken app cannot exploit the wiring (gates binary all_pass, zero gate weights, functional floor, restart helper sanitized and outside /app); a conforming app is not structurally penalized except via the latent notes below. Notes (not defects of this row): (1) Likert normalization is (raw-1)/(points-1) clamped (models.py:47), so the template-inherited 0-5 anchors in visual make anchors 0 and 1 both 0.0 - template-controlled, same text in template visual/prompt.md:34-48. (2) A schema-mismatch retry (judges.py _MAX_JUDGE_RETRIES=3) of the persistence call after restart_app already ran would see the single-use marker and fail the criterion; this is template-inherited and unmeasured. Risk=true because no full configured verifier launch/grading run exists for this candidate: raw-evidence-index.json scope states 'Full configured grading/workload ... are absent'; the only runtime evidence is a scripted golden (golden-run.log sha256 b2fb05f4... re-verified), which does not exercise RewardKit discovery, mcp add/env expansion, the individual-mode path or a real restart_app call. Structural wiring is source-verified only.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

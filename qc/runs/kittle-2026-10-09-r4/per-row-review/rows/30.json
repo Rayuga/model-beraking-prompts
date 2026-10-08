@@ -1,0 +1,32 @@
+{
+  "number": 30,
+  "id": "negative_checks_have_positive_controls",
+  "reviewer": "row-reviewer-30",
+  "input_sha256": "449a87e1985395c14d92e6f46060d9901104ca8c775300532b35bcf708f2b1c0",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r4/rules/WebDev Rubrics QC.xlsx (sheet1 and sheet4 row 31: #30 negative_checks_have_positive_controls; column E annotation empty)",
+    ".qc-cache/kittle-2026-10-09-r4/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r4/rules/harbor-webdev-rubric-qc/references/quality-checks.md lines 127-129",
+    "qc/REVIEW_POLICY.md ('A negative needs a successful control')",
+    ".qc-cache/kittle-2026-10-09-r4/task/tests/scored/functional/judge.toml (all 16 criteria, lines 37-266)",
+    ".qc-cache/kittle-2026-10-09-r4/task/tests/scored/functional/prompt.md lines 26-48",
+    ".qc-cache/kittle-2026-10-09-r4/task/tests/gates/constraints/judge.toml + prompt.md; tests/gates/render/judge.toml + prompt.md",
+    ".qc-cache/kittle-2026-10-09-r4/task/tests/scored/polish/judge.toml; tests/scored/visual/judge.toml",
+    ".qc-cache/kittle-2026-10-09-r4/task/tests/app_context.md; tests/scoring.toml",
+    ".qc-cache/kittle-2026-10-09-r4/task/environment/assets/seed_data.json; environment/instructions/conversations.md line 21; integration.md line 9",
+    ".qc-cache/kittle-2026-10-09-r4/task/solution/app/server.js lines 205-221, 320-373",
+    "qc/runs/kittle-2026-10-09-r4/raw-evidence-index.json; qc/repairs/kittle-2026-10-08/tests/functional.cjs lines 108-135 (sha256 980c6095... matches index)"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "minor",
+  "evidence": "Most negative legs are properly paired in-criterion: wall_every_route (Sian positive controls, Dev list shows M-11/M-13), wall_mentions_and_links (Harriet preview/link, Dev sees JUDGE-M2), wall_added_live (WL0 post works, wall lift restores), deleted_and_expired_messages (Clause 14 noted / JUDGE-X1 found; one-second-younger message shown), timer_changes (2,400 version listed first; executor found), hold_scope_and_release (H3 delete works, hold mark on H1, Insurer release works, H1 search found), edits_and_stale_edit, safe_formatting (bold/code/link/quote positives), message_links, unread (count 2), sent_once (D2 positive), search_and_transcript (survey BOOKED / notice received and filed found), persistence (S1 found), render gate (Gwen signs in) and polish refusal_in_place (right password signs in). functional/prompt.md:30 and :47-48 also require every refusal to pair with a same-kind success. Defect: signin_and_client_scope Part A (functional/judge.toml line 44) has the judge record Gwen's mentions-list request and 'Survey' search request, then requires that signed-out replays return no mention/message data. The only stated positive control is the M-11 transcript; nothing requires the signed-in mentions or search response to have contained data. Gwen has no mentions at this point: seed_data.json has no '@' mention in any body and no mentions data (grep), signin_and_client_scope is the first functional criterion and the constraints gate post 'Gate check JUDGE-G1' mentions nobody, so the reference's signed-in GET /api/mentions (server.js:370-373) returns an empty list. The signed-out mentions leg is therefore passed by absence of evidence. The golden script (functional.cjs:115-125) likewise only asserts 401 and absence of names, never a non-empty signed-in mentions response. The search leg is similarly unpaired in the criterion text (seed has 'Survey booked for Friday.' so a working app returns data, but the judge is not told to confirm it). This conflicts with quality-checks.md #30 ('paired inside the same criterion with the matching success case') and REVIEW_POLICY 'A negative needs a successful control'. Not a total-broken-app exploit (the criterion's other legs require a working list, transcript, posting and Harriet sign-in), hence minor, but it is a demonstrated unpaired absence leg. No runtime/judge run was performed by this reviewer; findings are from source review.",
+  "counterexample": "An app whose GET mentions endpoint ignores the session and serves mentions for a user named in a query/cookie that is not cleared on sign-out (violating integration.md:9 'Anyone who isn't signed in gets no ... mention ... data'), or whose mentions endpoint is simply dead and always returns []. With Gwen having zero mentions, the signed-in recording and the signed-out replay both return an empty list, so the 'no mention data' leg passes for the leaky app and for the dead feature alike. Likewise an app with a broken search returning [] passes the signed-out search replay leg.",
+  "suggested_fix": "In signin_and_client_scope Part A add explicit positive controls before sign-out: e.g. first, as harriet@kittle.test, post '@Gwen survey note JUDGE-CS0' in M-11 using the mention feature (or reorder so a mention of Gwen exists), then require that Gwen's mentions list shows JUDGE-CS0 and her 'Survey' search shows 'Survey booked for Friday.' (positive controls), and that the signed-out replays return neither JUDGE-CS0, 'Survey booked' nor any name. Mirror this in the golden script by asserting the signed-in mentions/search responses are non-empty. Recheck later criteria (Dev mentions in wall_mentions_and_links) are unaffected by the extra message.",
+  "run_verdict": "FAIL"
+}

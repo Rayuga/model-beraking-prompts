@@ -1,0 +1,32 @@
+{
+  "number": 22,
+  "id": "verifier_image_can_launch_and_grade",
+  "reviewer": "row-reviewer-22",
+  "input_sha256": "449a87e1985395c14d92e6f46060d9901104ca8c775300532b35bcf708f2b1c0",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r4/rules/WebDev Rubrics QC.xlsx :: Quality Checks row 22 (verifier_image_can_launch_and_grade), Internal Quality Checks row 22 (no extra annotation beyond the check text), Deterministic Checks rows check-dockerfiles.py / check-runtime-deps-in-both-images.py / check-dockerfile-sanity.sh",
+    ".qc-cache/kittle-2026-10-09-r4/rules/harbor-webdev-rubric-qc/SKILL.md (verdicts, evidence standard, workflow step 3)",
+    ".qc-cache/kittle-2026-10-09-r4/rules/harbor-webdev-rubric-qc/references/quality-checks.md ### 22",
+    ".qc-cache/kittle-2026-10-09-r4/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (test.sh contract, judge.toml MCP server wiring)",
+    ".qc-cache/kittle-2026-10-09-r4/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md:60",
+    ".qc-cache/kittle-2026-10-09-r4/rules/projects/webdev-task-template/tests/Dockerfile, tests/.dockerignore, environment/Dockerfile (diffed against task)",
+    ".qc-cache/kittle-2026-10-09-r4/task/tests/Dockerfile, tests/.dockerignore, tests/test.sh, tests/*/*/judge.toml (mcp_servers), tests/tools/",
+    ".qc-cache/kittle-2026-10-09-r4/task/environment/Dockerfile, environment/instructions/integration.md, task.toml",
+    ".qc-cache/kittle-2026-10-09-r4/task/solution/app/package.json, solution/app/server.js (requires), solution/solve.sh",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/kittle-2026-10-09-r4/raw-evidence-index.json and qc/repairs/kittle-2026-10-08/run_golden.sh, results/golden-run.log (hashes re-verified)",
+    "Actual run: docker build of frozen task/tests -> qc-r4-row22-verifier:tmp (sha256:438b8ffb6a5a...), plus docker run --rm component and app-launch checks"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Static: task/tests/Dockerfile is byte-identical to the frozen template rules/projects/webdev-task-template/tests/Dockerfile (diff empty; .dockerignore also identical), so it is template-controlled. It pins every grading component: node:22-bookworm-slim runtime copied into python:3.12-slim (lines 1-4), npm -g @anthropic-ai/claude-code@2.1.281, @openai/codex@0.151.0, @playwright/mcp@0.0.79, express@5.1.0, better-sqlite3@12.4.1 (lines 16-22), pip harbor-rewardkit==0.1.7 (line 31), Chromium installed through the Playwright CLI bundled with @playwright/mcp and symlinked to /usr/local/bin/chromium (lines 33-39), procps/util-linux for setpriv/pkill used by test.sh (line 13), COPY . /tests (line 43). The app's only npm dependencies (solution/app/package.json: better-sqlite3 12.4.1, express 5.1.0; server.js:10-11 requires) match the agent image environment/Dockerfile:9-12 exactly and are present in the verifier image; integration.md:3 tells the agent these are global via NODE_PATH, which test.sh:106 passes. All five judge.toml files call playwright-mcp with --executable-path=/usr/local/bin/chromium; functional also calls /usr/local/bin/python3 /tests/tools/restart_mcp.py. Runtime (this review, 2026-10-09): built the frozen tests/ context to image sha256:438b8ffb6a5a (cached, Debian 13 trixie, glibc 2.41). In a --rm container: node v22.23.2; npm ls -g shows the five pinned packages at the pinned versions; harbor-rewardkit 0.1.7; claude --version '2.1.281 (Claude Code)'; playwright-mcp 'Version 0.0.79'; /usr/local/bin/chromium -> /opt/playwright-browsers/chromium-1237/chrome-linux64/chrome, 'Google Chrome for Testing 152.0.7977.8'; rewardkit --help lists --max-concurrent-agent and --output used by test.sh:207-208; rewardkit agents.py:251 carries the codex bypass patch (build-time assert passed); restart_mcp.py parses under python3. Ran the frozen solve.sh, then launched the golden exactly as test.sh:104-111 does (setsid env -i, NODE_PATH, DB_PATH=/app/app.db, setpriv uid 65534, cwd /): /api/health answered 200 {\"ok\":true,\"booted\":true,\"clock\":\"2026-05-12T11:00:00Z\"} after 2 probes and /app/app.db was created as nobody. Playwright Chromium (--no-sandbox, headless) loaded http://localhost:3000/ with title 'Kittle & Rowe · Matter chat'. A stdio MCP initialize + tools/list against 'playwright-mcp --headless --isolated --executable-path=/usr/local/bin/chromium --no-sandbox' returned server 'Playwright 1.63.0-alpha' with 24 browser tools. Counterexample search: (a) broken app passing because of the image - none; the image only adds express/better-sqlite3, which the brief already promises, and nothing that would mask a missing app. (b) conforming alternative failing - an ESM server.js doing `import express from 'express'` gets ERR_MODULE_NOT_FOUND in the verifier image (measured), but NODE_PATH does not serve ESM in the agent image either, so the agent observes the same failure while building; not a verifier/agent mismatch. The agent image has the sqlite3 and git CLIs while the verifier does not; an app shelling out to the sqlite3 CLI would fail at grade time, but the brief (integration.md:3) names better-sqlite3 and such a design is implausible - P3 latent only. Agent-built native addons in /app/node_modules (bookworm glibc 2.36) run on the verifier's newer glibc 2.41 (forward compatible). Limits (not waived, owned by other rows): base images are pinned by version tag, not digest (template-controlled; check-dockerfiles accepts tags). No full configured rewardkit run with the claude-code/GLM judge through OpenRouter was executed here (my containers had no DNS: LiteLLM cost-map fetch failed name resolution), so end-to-end judge reachability and judge duration remain unmeasured; the raw-evidence-index golden run used cw-editor-agent-r3/cw-editor-verifier:current images rather than this task's built images (hashes of run_golden.sh b61aa378..., golden-run.log b2fb05f4... re-verified). Those gaps concern full grading/judge rows, not whether this image ships and can start the pinned browser, Playwright, judge CLI, RewardKit and the app runtime, which was measured directly.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "CONFIRMED"
+}

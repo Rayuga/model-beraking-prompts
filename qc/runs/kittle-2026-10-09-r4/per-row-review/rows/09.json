@@ -1,0 +1,30 @@
+{
+  "number": 9,
+  "id": "agent_environment_and_network_posture_are_correct",
+  "reviewer": "row-reviewer-09",
+  "input_sha256": "449a87e1985395c14d92e6f46060d9901104ca8c775300532b35bcf708f2b1c0",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r4/rules/WebDev Rubrics QC.xlsx :: 'Quality Checks' row 10 (#9 agent_environment_and_network_posture_are_correct) and 'Internal Quality Checks' row 10 annotation",
+    ".qc-cache/kittle-2026-10-09-r4/rules/harbor-webdev-rubric-qc/SKILL.md (lines 24-29 project overrides, line 26 public network; line 74 structure step)",
+    ".qc-cache/kittle-2026-10-09-r4/rules/harbor-webdev-rubric-qc/references/quality-checks.md lines 43-45 (#9)",
+    ".qc-cache/kittle-2026-10-09-r4/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md lines 56-78",
+    ".qc-cache/kittle-2026-10-09-r4/rules/projects/webdev-task-template/task.toml and environment/Dockerfile",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/kittle-2026-10-09-r4/task/task.toml",
+    ".qc-cache/kittle-2026-10-09-r4/task/environment/Dockerfile, environment/instructions/*.md (integration.md full), environment/assets listing",
+    ".qc-cache/kittle-2026-10-09-r4/task/instruction.md, solution/solve.sh, solution/app/package.json, solution/app require() scan",
+    "qc/runs/kittle-2026-10-09-r4/raw-evidence-index.json (hashes of run_golden.sh and golden-run.log re-verified), qc/repairs/kittle-2026-10-08/run_golden.sh; docker history of cw-editor-agent-r3"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "task.toml [environment] (lines 20-24): build_timeout_sec=600.0, network_mode=\"public\", cpus=2, memory_mb=4096 - byte-identical to the frozen template task.toml lines 20-24 and to staged-task-contract.md lines 56-60; `diff` of task.toml vs template differs only in [task] name/description/keywords and [metadata] (lines 5-15). No docker_image and no allow_internet anywhere in task.toml (grep returned none), satisfying quality-checks.md #9 and staged-task-contract.md line 78. No secret literal under [environment]; the only credential-shaped values are in [verifier.env] (line 34 ANTHROPIC_AUTH_TOKEN = \"${OPENROUTER_API_KEY}\" interpolation, line 35 empty ANTHROPIC_API_KEY) which is the frozen template block, not the agent environment. environment/Dockerfile (sha256 0a75419e...) is byte-identical to the template Dockerfile (diff empty): node:22-bookworm-slim, NODE_PATH, apt ca-certificates/git/procps/sqlite3, npm -g express@5.1.0 better-sqlite3@12.4.1, COPY instructions/assets, /app git init; no ENV/ARG secret. grep for key/secret/token/password across environment/ found only walls-and-retention.md line 3 'Everyone signs in with `password123`' - a public seed demo login the brief intends the agent to use, not a credential. Nothing secretly needs an install (internal-sheet annotation): integration.md line 3 publicly states Node 22, Express and better-sqlite3 preinstalled globally via NODE_PATH; golden requires only express, better-sqlite3 and Node built-ins (crypto, fs, path); solve.sh only copies files. 2 CPU / 4 GB is ample for a Node+SQLite server and agent tooling. Runtime: raw-evidence-index hashes for run_golden.sh (b61aa378...) and golden-run.log (b2fb05f4...) re-verified; run_golden.sh line 20 runs the frozen golden as uid 65534 with env -i NODE_PATH=/usr/local/lib/node_modules in image cw-editor-agent-r3, whose docker history shows the same apt/npm -g layers as this Dockerfile, so the preinstalled-dependency premise held in practice. Internal sheet text 'no-network' is superseded by the project override (SKILL.md line 26; Quality Checks D10 'network_mode = \"public\" is correct - do not flag it'), so public posture is not flagged. Counterexample search: (a) conforming alternative that fails - an agent that runs `npm install` locally (including better-sqlite3 prebuild download) still works because network is public and 4 GB suffices; an app run from a different cwd is covered publicly by integration.md. (b) weak app that passes - not applicable to this structural row. Minor evidence note (not a defect for this row): the golden image was built from the identical template Dockerfile under a different environment context (colderwater assets/instructions), not a build of this exact environment folder; only the COPY payload differs and the golden mounts Kittle's assets explicitly.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL"
+}

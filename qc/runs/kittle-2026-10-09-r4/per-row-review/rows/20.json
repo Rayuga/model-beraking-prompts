@@ -1,0 +1,29 @@
+{
+  "number": 20,
+  "id": "solution_is_frozen_and_deterministic",
+  "reviewer": "row-reviewer-20",
+  "input_sha256": "449a87e1985395c14d92e6f46060d9901104ca8c775300532b35bcf708f2b1c0",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r4/rules/WebDev Rubrics QC.xlsx (Quality Checks row 21 = check #20; Internal Quality Checks row 21 = same text, no extra annotation)",
+    ".qc-cache/kittle-2026-10-09-r4/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r4/rules/harbor-webdev-rubric-qc/references/quality-checks.md (### 20, lines 87-88)",
+    ".qc-cache/kittle-2026-10-09-r4/rules/projects/webdev-task-template/solution/solve.sh and task.toml",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/kittle-2026-10-09-r4/task/solution/solve.sh, solution/app/{server.js,package.json,seed/seed_data.json,public/app.js,public/index.html}",
+    ".qc-cache/kittle-2026-10-09-r4/task/instruction.md, environment/Dockerfile, environment/instructions/{integration.md,walls-and-retention.md,conversations.md}, environment/assets/seed_data.json",
+    ".qc-cache/kittle-2026-10-09-r4/task/tests/test.sh (lines 80-115), tests/app_context.md line 28",
+    "qc/runs/kittle-2026-10-09-r4/manifest.json and raw-evidence-index.json (all 6 artifact hashes and matching_source_files hashes re-verified OK)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Workbook row #20: 'The reference is a committed, static baseline - not regenerated, fetched, or nondeterministic on any pinned value.' Skill quality-checks.md:88 adds: same seeded rows every run, no random ids, no wall-clock-derived values, no boot-time fetch, fixed clock is the only time source graded rules use. (1) Committed/static: frozen solution/ is byte-identical (diff -r) to projects/kittle-matter-chat/solution, all 8 files are git-tracked (git ls-files) and the path is clean in git status; solve.sh is byte-identical to the template's (mkdir -p /app; cp -a \"$(dirname \"$0\")/app/.\" /app/) - no build, codegen, npm install or network step; no app.db is shipped (**/*.db gitignored, absent from snapshot), matching integration.md:5 'hand it over without a database'. Dependencies are pinned exactly (package.json express 5.1.0, better-sqlite3 12.4.1; environment/Dockerfile installs the same pinned versions). solution/app/seed/seed_data.json is byte-identical to environment/assets/seed_data.json. (2) No fetch: server.js has no outbound network calls; index.html loads only /styles.css and /app.js; app.js header says 'No outside libraries' and its only fetch is same-origin api() (app.js:14). (3) Time: server.js:32-33 CLOCK = seed.clock ('2026-05-12T11:00:00Z'); every graded time uses it - new messages at=CLOCK (server.js:409), edit versions (430), retention sweep CLOCK_MS - Date.parse(at) (143), transcript 'Generated' fmt(CLOCK) (508). grep finds no Date.now/new Date/toLocale/Intl in server.js; client fmtTime (app.js:56) is pure string formatting. This matches integration.md:7 fixed-clock rule. (4) Ids/order: message ids are sequential K-n from settings.next_id seeded as max seed id + 1 (server.js:87-91,125,130-134); seed insertion sorted by Date.parse(at) with a stable sort and all 17 seed timestamps are distinct; ordering uses AUTOINCREMENT seq. The only randomness is password salts (server.js:98), session tokens (301) and the client idempotency key (app.js:7) - none is a pinned or graded value. (5) Measured: in an isolated ephemeral container (cw-editor-agent-r3:latest, --rm, own name, read-only mounts of a scratch copy) I ran the frozen solve.sh, booted server.js twice on two fresh DB_PATHs, and dumped settings/matters/walls/messages/versions/mentions/reads/users(email,name,role). Both dumps were byte-identical (sha256 b7ba0056242b2f6f303c33bc11a06fbc30e266995e920ad736aff6904719e395); health reported clock 2026-05-12T11:00:00Z; 17 messages with 2 swept at boot, next_id=18. Adversarial probes: a reference using Date.now() for message times or nanoid ids would fail this row - not present; a conforming alternative app (different id scheme, own clock formatting) is not affected by this row because it concerns only the reference. Limits: the run image is the owner's prebuilt cw-editor-agent-r3, not rebuilt here from the frozen environment/Dockerfile; this is not a configured judge run, Oracle or model score. Run verdict CONFIRMED refers to the measured pass observation (identical seeded dumps across two fresh boots), not to a defect.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "CONFIRMED"
+}

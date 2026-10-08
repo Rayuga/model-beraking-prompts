@@ -1,0 +1,34 @@
+{
+  "number": 23,
+  "id": "verifier_and_instruction_agree_on_the_runtime_contract",
+  "reviewer": "row-reviewer-23",
+  "input_sha256": "449a87e1985395c14d92e6f46060d9901104ca8c775300532b35bcf708f2b1c0",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r4/rules/WebDev Rubrics QC.xlsx :: Quality Checks row 24 (#23) and Internal Quality Checks row 24 (#23) incl. annotation",
+    ".qc-cache/kittle-2026-10-09-r4/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r4/rules/harbor-webdev-rubric-qc/references/quality-checks.md (#4, #19, #21, #23, #49)",
+    ".qc-cache/kittle-2026-10-09-r4/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (test.sh contract, cross-file agreements)",
+    ".qc-cache/kittle-2026-10-09-r4/rules/projects/webdev-task-template/tests/test.sh, tests/Dockerfile, environment/Dockerfile, environment/instructions/integration.md",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/kittle-2026-10-09-r4/task/instruction.md",
+    ".qc-cache/kittle-2026-10-09-r4/task/environment/instructions/integration.md, conversations.md, walls-and-retention.md",
+    ".qc-cache/kittle-2026-10-09-r4/task/environment/Dockerfile",
+    ".qc-cache/kittle-2026-10-09-r4/task/environment/assets/seed_data.json (clock key)",
+    ".qc-cache/kittle-2026-10-09-r4/task/task.toml",
+    ".qc-cache/kittle-2026-10-09-r4/task/tests/test.sh, tests/Dockerfile, tests/app_context.md, tests/tools/restart_mcp.py, judge prompt URLs",
+    ".qc-cache/kittle-2026-10-09-r4/task/solution/solve.sh, solution/app/server.js (runtime lines)",
+    "qc/runs/kittle-2026-10-09-r4/raw-evidence-index.json"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Mapped every launch assumption in frozen tests/test.sh (byte-identical to rules/projects/webdev-task-template/tests/test.sh; tests/Dockerfile also identical) to the public brief. (1) Entry: test.sh L68 requires /app/server.js and L97/L111 run `node /app/server.js` (or the /tmp/submission copy, L99-101) -> instruction.md L5 'starting from /app/server.js'; integration.md L3 'running /app/server.js'. (2) Unprivileged user + unknown cwd: test.sh L110 setpriv uid 65534, launched from the verifier cwd (/tests, mode go-rwx) or a copy path -> integration.md L3 'as an ordinary user and not necessarily from inside /app, so find your own files relative to server.js'. (3) Port/bind: PORT=3000 (L108) and probes on 127.0.0.1:3000 (L48) -> integration.md L3 'listen on 0.0.0.0 port 3000'; prompts/app_context.md use http://localhost:3000. (4) Liveness: probe /api/health then / (L42-57, any HTTP status accepted) -> integration.md L3 'GET /api/health should answer 200 even if the database can't be opened'. (5) Storage: DB_PATH=/app/app.db or the copy's app.db (L98-109, restart helper L165) -> instruction.md L5 'keeping its data in /app/app.db'; integration.md L3 'or at the path in DB_PATH when that is set'; restart persistence -> integration.md L5. (6) Sanitized env -i with only PATH, NODE_PATH, HOME, PORT, DB_PATH (L104-109): NODE_PATH=/usr/local/lib/node_modules -> integration.md L3 'Express and better-sqlite3 are already installed globally and found through NODE_PATH'; brief promises no other env var, fixed clock is a stated constant (integration.md L7; seed clock 2026-05-12T11:00:00Z), not an injected variable. (7) Deps: agent environment/Dockerfile and verifier tests/Dockerfile both install express@5.1.0 and better-sqlite3@12.4.1 globally on Node 22 (environment_mode=separate), matching the note. (8) Seed: test.sh does no seeding; the app must self-seed -> instruction.md L5 /assets/seed_data.json; integration.md L5 'Copy /assets/seed_data.json into /app and import it once into an empty database ... hand it over without a database'; task.toml artifacts=['/app','/assets'] and test.sh L88 makes /assets readable, so both a /app copy and a direct /assets read work. (9) Symlink refusal (L72-83, exits 0 for any symlink outside /app/node_modules) -> integration.md L5 'don't put symbolic links anywhere in /app; we won't run an app that has them' (brief is stricter than the check, so a compliant agent is never surprised). (10) Startup window ~30 s (120 x 0.25 s) is not stated, but seeding a small JSON file is far inside it and health must answer before DB work. (11) Sign-in default and judge accounts are house convention (workbook internal annotation, Mukesh) and are stated anyway in instruction.md L7 and the seed. Network is public; no same-origin requirement (workbook row 23 text). Counterexample search: a conforming app that reads the seed from /assets directly, writes the DB via DB_PATH, uses absolute __dirname paths, or installs local node_modules (network public) still launches; a non-conforming app that hard-codes ./app.db relative to cwd, serves static files from a cwd-relative path, or ignores DB_PATH fails launch/persistence, but each of those is something the brief explicitly told the agent to avoid. A dead app answering any HTTP status passes the liveness probe, but that is gate/criteria territory (rows 21/27-type), not a contract disagreement. Runtime corroboration: raw-evidence-index scripted golden run (qc/repairs/kittle-2026-10-08/results/golden-run.log) launched the frozen solve.sh app as uid 65534 with env -i, DB_PATH and cwd /tmp, with a real kill/restart on the same DB; golden server.js L13-14 honours PORT/DB_PATH with __dirname fallback, L29 finds the seed relative to __dirname or /assets, L42 health, L519 listen 0.0.0.0. Limitation (not a defect for this row): no full configured test.sh launch in the separate verifier image with cwd /tests has been recorded; that remains the separate full-verifier-launch runtime record, which this row does not waive.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PASS"
+}
