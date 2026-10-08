@@ -1,0 +1,36 @@
+{
+  "number": 23,
+  "id": "verifier_and_instruction_agree_on_the_runtime_contract",
+  "reviewer": "row-reviewer-23",
+  "input_sha256": "6cefe0c62896147ba179b233d3691b2e12ab1bfeb584ea964c8daef7fcc644a7",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r1/rules/WebDev Rubrics QC.xlsx: Quality Checks row 24 (check 23) and Internal Quality Checks row 24 incl. column E/H annotation (sign-in default is house convention); rows 5/20/50 for context",
+    ".qc-cache/kittle-2026-10-09-r1/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r1/rules/harbor-webdev-rubric-qc/references/quality-checks.md (sec 23, also 4, 19, 21, 49)",
+    ".qc-cache/kittle-2026-10-09-r1/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (test.sh contract, cross-file table)",
+    ".qc-cache/kittle-2026-10-09-r1/rules/projects/webdev-task-template (test.sh, Dockerfiles, task.toml, integration.md, notes.md, solve.sh; diffed)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/test.sh",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/Dockerfile",
+    ".qc-cache/kittle-2026-10-09-r1/task/environment/Dockerfile",
+    ".qc-cache/kittle-2026-10-09-r1/task/task.toml",
+    ".qc-cache/kittle-2026-10-09-r1/task/instruction.md",
+    ".qc-cache/kittle-2026-10-09-r1/task/environment/instructions/integration.md, walls-and-retention.md, conversations.md",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/app_context.md, gates/*/prompt.md+judge.toml, scored/functional/prompt.md+judge.toml",
+    ".qc-cache/kittle-2026-10-09-r1/task/solution/solve.sh, solution/app/server.js (paths/env lines), package.json",
+    "qc/runs/kittle-2026-10-09-r1/raw-evidence-index.json (all 6 artifact hashes re-verified: match) and qc/repairs/kittle-2026-10-08/run_golden.sh line 20",
+    "F:/Documents/turing-workspace/model-beraking-prompts/handoffs/LESSONS_FROM_COLDERWATER_2026-10-08.md"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P1",
+  "evidence": "Launch assumptions in tests/test.sh (byte-identical to template tests/test.sh; template-controlled) mapped to the brief. AGREE: entry /app/server.js (test.sh:97,111; integration.md:3 'running /app/server.js'); port 3000 on 0.0.0.0 and PORT=3000 (test.sh:108; integration.md:3); liveness probe 127.0.0.1:3000/api/health then / with any HTTP answer accepted (test.sh:48; integration.md:3 'GET /api/health should answer 200 even if the database can't be opened'); NODE_PATH=/usr/local/lib/node_modules with express@5.1.0 and better-sqlite3@12.4.1 installed globally in BOTH images (tests/Dockerfile vs environment/Dockerfile; integration.md:3); DB_PATH=/app/app.db or the /tmp/submission copy (test.sh:98-109; integration.md:3 'or at the path in DB_PATH when that is set'); seed at /assets/kittle.json shipped via task.toml artifacts=[\"/app\",\"/assets\"] and chmod a+rX /assets in test.sh, with import-once stated in integration.md:5; fixed clock has no env var and is stated in integration.md:7; network public in both phases (task.toml). Sign-in surface is stated in instruction.md and walls-and-retention.md:3-11 (and the workbook internal annotation treats it as house convention anyway). Golden honours all of these (server.js:13-14,29,42,519) and the scripted golden run (index hashes verified) launched it as uid 65534, env -i, DB_PATH, cwd /tmp. MISMATCHES (not told to the agent): (1) working directory: test.sh:104-111 starts `node \"$APP_ENTRY\"` without cd, from the verifier's working directory (tests/Dockerfile:45 WORKDIR /tests, which test.sh:12 makes root-only go-rwx, and the app runs as uid 65534), whereas the agent's own environment has WORKDIR /app (environment/Dockerfile:25) and integration.md:3,5 never says the app may be started from another directory; it even says 'Copy /assets/kittle.json into /app', inviting a relative read of kittle.json. The golden run itself deliberately used `cd /tmp` (run_golden.sh:20), confirming the owner knows cwd is not /app. (2) Delivered database state: test.sh launches against the app.db the agent leaves in /app (no reset), and many functional criteria depend on exact seed state (M-13 timer 30 days and 'Probate estimate is 4,200 pounds.' present in timer_changes/deleted_message_takes_its_versions; 'Insurer letter acknowledged.' still held in hold_scope_and_release; Dev walled from M-12; unedited seed texts). instruction.md invites the agent to 'try it ... post, reply, edit' and walls-and-retention.md:23,29 make timer shortening and hold release irreversible, but nothing tells the agent the verifier starts from the database it hands over or that seed state must be left (or the DB removed for re-import). (3) Minor/P3: test.sh:72-83 zeroes the reward for ANY symlink under /app outside /app/node_modules (even an in-tree one), which no brief file mentions; the staged-task-contract describes only escaping symlinks. RUN STATUS: no full test.sh launch in the verifier image, no hosted run and no weak/alternative app run exist (raw-evidence-index scope says full configured grading is absent), so the harness cwd and the mismatches are NOT EXERCISED; they are derived from the frozen bytes.",
+  "counterexample": "Conforming alternative that fails: an app whose server.js does `app.use(express.static('public'))` and seeds from `fs.readFileSync('kittle.json')` after copying /assets/kittle.json into /app as integration.md:5 asks. The agent runs `node server.js` from its WORKDIR /app, self-tests per instruction.md and everything works. In the verifier test.sh starts it as uid 65534 from /tests (or any non-/app cwd): /api/health answers so the probe passes, but static files 404 and the seed is not imported, so the render and constraints gates fail and reward is 0 despite meeting every stated requirement. Second: an agent that, while testing as the brief invites, shortens the M-13 timer to 7 days and releases the 'Insurer letter acknowledged.' hold leaves an app.db where those seed fixtures are permanently gone; test.sh grades that DB and timer_changes, deleted_message_takes_its_versions and hold_scope_and_release fail on missing positive controls although the app is correct. Plausible broken app that passes this row's checks: none found; the probe/env/path contract would not let a dead app through.",
+  "suggested_fix": "In environment/instructions/integration.md (task-specific, not template) add: 'We may start it from any working directory, so find your own files relative to server.js, not the current directory. We will run it on the database you leave behind, so before handing over either delete app.db so it imports fresh, or make sure the people, matters, messages, timers, holds and walls are exactly as in kittle.json.' Optionally note that symlinks under /app outside node_modules are not allowed. Then rerun a full test.sh launch from a non-/app cwd with a weak relative-path app to confirm.",
+  "run_verdict": "NOT EXERCISED"
+}

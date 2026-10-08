@@ -1,0 +1,36 @@
+{
+  "number": 33,
+  "id": "criterion_description_is_self_consistent",
+  "reviewer": "row-reviewer-33",
+  "input_sha256": "6cefe0c62896147ba179b233d3691b2e12ab1bfeb584ea964c8daef7fcc644a7",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r1/rules/WebDev Rubrics QC.xlsx: Quality Checks row 33 (criterion_description_is_self_consistent) and Internal Quality Checks row 33 annotation (Mukesh: multiple verifiers combined in one flow is house practice)",
+    ".qc-cache/kittle-2026-10-09-r1/rules/harbor-webdev-rubric-qc/SKILL.md (Known false positives: one criterion covering a whole flow, checks 26/28/33)",
+    ".qc-cache/kittle-2026-10-09-r1/rules/harbor-webdev-rubric-qc/references/quality-checks.md:138-140",
+    ".qc-cache/kittle-2026-10-09-r1/rules/projects/webdev-task-template/tests/gates/constraints/judge.toml (template origin of 'does not grade authentication, roles, persistence' wording)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/scored/functional/judge.toml (all 17 criteria)",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/scored/functional/prompt.md",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/scored/polish/judge.toml",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/scored/polish/prompt.md",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/scored/visual/judge.toml",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/gates/render/judge.toml",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/gates/constraints/judge.toml",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/gates/constraints/prompt.md",
+    ".qc-cache/kittle-2026-10-09-r1/task/environment/instructions/walls-and-retention.md:23",
+    ".qc-cache/kittle-2026-10-09-r1/task/solution/app/public/app.js:212-221 (partner-tools hidden for non-partners) and server.js:462",
+    "qc/runs/kittle-2026-10-09-r1/raw-evidence-index.json; qc/repairs/kittle-2026-10-08/tests/functional.cjs:209-231 (sha256 95878ac7...e439, matches index)"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "Reviewed all 26 criteria (17 functional, 5 polish, 4 visual, 2 gates). No criterion lists several requirements and then waives most of them; multi-part criteria (signin_and_client_scope, deleted_and_expired_seed_messages, sent_once_in_order, search_and_transcript) end with 'Both parts must hold; failing either fails this criterion', which is one conjunctive bar and is the whole-flow pattern the skill (Known false positives) and workbook internal note exempt. Many 'Fails if' lists are narrower than the bodies they follow (e.g. wall_every_route step 3/4 'plain not-available' and step 1 'shows M-11 and M-13' not echoed in its Fails-if; timer_changes 'shows 7 days beside the title'; edits_and_stale_edit 'refused with a reason'; unread_and_new_messages_line Gwen's own count), but scored/functional/prompt.md:26 resolves this globally: 'Every numbered leg and every sentence that names a step must hold', so the body is the single bar (Note, not a defect). Constraints gate says it 'does not grade authentication, roles, ... persistence' while asking for sign-in and reload readback; that sentence comes from the template constraints judge.toml (line 27) and the sign-in is only access to content, so Note. ONE genuine self-inconsistency: scored/functional/judge.toml criterion timer_changes says 'As sian@kittle.test try to change the M-13 timer and record the request if a control exists, otherwise record Harriet's own timer-change request in step 1 and replay it as Sian: an associate's change must be refused and the timer stays at 30 days.' Step 1 is Harriet changing the timer to 7 days. In the fallback path (which is the golden's path: app.js:217-218 hides partner-tools for non-partners), Harriet's request can only be recorded by sending it, which makes the timer 7 days; the replay therefore happens when the timer is 7 (or, after step 2, off), so 'the timer stays at 30 days' cannot be observed unless the judge silently reorders the replay after step 3. The reference golden script confirms the conflict: qc/repairs/kittle-2026-10-08/tests/functional.cjs:214-219 replays Sian's request (days:1) immediately after setting 7 and asserts only status 403, never 30 days. The judge thus has two targets: 'timer unchanged by Sian' versus the literal 'timer stays at 30 days', and the prompt's 'every sentence must hold' rule makes the literal reading binding. Not exercised by any configured judge run (raw-evidence-index scope: full configured grading absent).",
+  "counterexample": "Conforming app (the golden itself, or any app that hides the timer control from associates and returns 403 to Sian): the judge records Harriet's step-1 POST, replays it as Sian right away as the text sequence implies, observes 403 and the timer at 7 days, and then fails timer_changes because 'the timer stays at 30 days' is false (weight 2.0 lost). Conversely, a judge reading the target as 'unchanged' and replaying Harriet's own 7-day body while the timer is already 7 cannot distinguish a broken app that accepts associate changes (7 -> 7 writes nothing visible) unless it inspects the status, so the bar also weakens for a broken app.",
+  "suggested_fix": "Rewrite the Sian leg as a fixed step after step 3: 'After step 3, as sian@kittle.test, try to change the M-13 timer with the app's control if one exists; otherwise replay Harriet's recorded timer-change request as Sian with the value set to 1 day: it must be refused and the timer still shows 30 days.'",
+  "run_verdict": "NOT EXERCISED"
+}

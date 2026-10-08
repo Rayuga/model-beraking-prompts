@@ -1,0 +1,36 @@
+{
+  "number": 37,
+  "id": "later_dimensions_tolerate_earlier_mutations",
+  "reviewer": "row-reviewer-37",
+  "input_sha256": "6cefe0c62896147ba179b233d3691b2e12ab1bfeb584ea964c8daef7fcc644a7",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r1/rules/WebDev Rubrics QC.xlsx: 'Quality Checks' row 38 (#37 later_dimensions_tolerate_earlier_mutations) and 'Internal Quality Checks' row 38 (same text; column E annotation empty)",
+    ".qc-cache/kittle-2026-10-09-r1/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r1/rules/harbor-webdev-rubric-qc/references/quality-checks.md section 37",
+    ".qc-cache/kittle-2026-10-09-r1/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (test.sh order, judge.toml, restart)",
+    ".qc-cache/kittle-2026-10-09-r1/rules/projects/webdev-task-template (layout)",
+    "qc/REVIEW_POLICY.md",
+    "F:/Documents/turing-workspace/model-beraking-prompts/handoffs/LESSONS_FROM_COLDERWATER_2026-10-08.md",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/test.sh (one app process; gates then scored, rewardkit --max-concurrent-agent 1)",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/app_context.md",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/gates/{render,constraints}/{judge.toml,prompt.md}",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/scored/functional/{judge.toml,prompt.md} (all 17 criteria, individual mode, listed order)",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/scored/{polish,visual}/{judge.toml,prompt.md}",
+    ".qc-cache/kittle-2026-10-09-r1/task/environment/assets/kittle.json (messages, holds, timers, read_up_to)",
+    ".qc-cache/kittle-2026-10-09-r1/task/environment/instructions/conversations.md, walls-and-retention.md, integration.md",
+    ".qc-cache/kittle-2026-10-09-r1/task/solution/app/server.js (seed import, reads, threadFor), public/app.js (new-line placement)",
+    "qc/runs/kittle-2026-10-09-r1/raw-evidence-index.json; qc/repairs/kittle-2026-10-08/tests/functional.cjs (sha256 95878ac7... matches index), results/golden-run.log (sha256 9930f70d... matches)"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P1",
+  "evidence": "State model: test.sh launches one app process and DB; gates (render, constraints) only sign in/reload as Gwen, then the scored suite runs functional (mode=individual, 17 sequential sessions on one DB, prompt.md:70-73 says criteria run in listed order and must be judged against the state earlier ones left), then polish and visual. Most of the suite handles this well: app_context.md:28 'Do not assume the seed state'; polish/prompt.md:32 and visual/prompt.md:49 accept the functional writes; polish timer_label deliberately uses M-11 (never retimed) and hold_mark uses K-7 (never released); persistence notes values before restart and compares relative; unread counts are mostly relative ('rises by two'); hold_scope_and_release releases seeded K-17 'Insurer letter acknowledged.', which no later criterion relies on (search_and_transcript's held reply is K-15); timer_changes resets M-13 to 30 days and K-8 'Draft will sent for your review.' (used later by message_links and live_updates) survives 7 days and off. DEFECT: unread_and_new_messages_line (functional/judge.toml:181-191, criterion 13 of 17) says 'Note M-13's unread count in Dev's matter list, then as harriet post ... JUDGE-U1 and JUDGE-U2 ... In one tab Dev opens M-13: a \"new messages\" line sits just above JUDGE-U1'. That assumes Dev has read M-13 up to date. The seed has read_up_to dev M-13 = K-8 (kittle.json:204), so K-9 'Received, reading it tonight.' (Gwen, 2026-05-12T09:30) is already unread for Dev. Earlier criteria add more M-13 messages from other authors that Dev never opens: nested_replies (JUDGE-R0, R1, R2, R3, RX, R1B), edits_and_stale_edit (JUDGE-E1), safe_formatting (JUDGE-F1, F2). No earlier criterion tells Dev to open M-13 (wall_every_route step 1 checks only his list; wall_mentions_and_links uses M-11 and mentions). The brief (conversations.md:25) says the line goes 'where I stopped reading'. The golden does that too: app.js:186 sets newLineSeq to the first message with seq > last_read that is not his own and not deleted, and server.js:116-121 imports read_up_to as seq(K-8), so the golden draws 'New messages' above K-9, not above JUDGE-U1. The scripted golden harness passes only because it adds a step the criterion lacks: functional.cjs:336-338 'await openMatter(dev, 'M-13'); await openMatter(dev, 'M-11'); await dev.waitForFunction(() => !document.querySelector('.matter-link[href=\"/matters/M-13\"] .badge') ...' clears Dev's M-13 unread before noting the count. golden-run.log:16 'unread_and_new_messages_line PASS' therefore does not measure the criterion as written. Secondary coupling (P2, not counted toward the Fail): deleted_message_takes_its_versions (judge.toml:131-139) needs timer_changes to have deleted K-13 already ('Now that it has been deleted'), and search_and_transcript Part A ('Version one/two JUDGE-E1') needs edits_and_stale_edit to have created and edited JUDGE-E1. If the earlier session times out or breaks, a correct app fails the later criterion too, because neither criterion sets up its own fallback state. No configured judge run, Oracle grade or model score exists for this candidate (raw-evidence-index scope), so the full-sequence outcome is unmeasured.",
+  "counterexample": "The reference solution itself. In the configured individual-mode order, Dev reaches criterion 13 with about 10 unread in M-13 (K-9 plus JUDGE-R0/R1/R2/R3/RX/R1B/E1/F1/F2). Harriet posts JUDGE-U1/U2 and Dev's count rises by two, which passes. Dev then opens M-13, and the golden places 'New messages' above K-9 (app.js:186), as the brief requires ('where I stopped reading'), not 'just above JUDGE-U1'. A judge that follows the criterion literally fails the golden on a weight-2.0 criterion, so Oracle < 1. Any conforming app that marks 'where I stopped reading' fails the same way. A broken app that always draws the line above the newest arrivals (ignoring the stored read position) would pass this leg.",
+  "suggested_fix": "Make the setup explicit, the way the golden harness does: 'Sign in as dev@kittle.test in two tabs; in one, open M-13 so it is read up to date, then open another matter and confirm M-13 shows no unread count' before noting the count. Or word it state-relative: 'the line sits just above the oldest M-13 message Dev had not read, which is JUDGE-U1 after the catch-up step.' Optionally give deleted_message_takes_its_versions and search_and_transcript Part A a self-contained fallback, or note that they are graded relative to earlier criteria.",
+  "run_verdict": "PARTIAL"
+}

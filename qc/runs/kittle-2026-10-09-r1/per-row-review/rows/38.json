@@ -1,0 +1,40 @@
+{
+  "number": 38,
+  "id": "batched_criteria_are_scored_independently",
+  "reviewer": "row-reviewer-38",
+  "input_sha256": "6cefe0c62896147ba179b233d3691b2e12ab1bfeb584ea964c8daef7fcc644a7",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r1/rules/WebDev Rubrics QC.xlsx :: Quality Checks row 38 (batched_criteria_are_scored_independently), Internal Quality Checks row 38, Deterministic Checks check-batched-independence-wording.py",
+    ".qc-cache/kittle-2026-10-09-r1/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r1/rules/harbor-webdev-rubric-qc/references/quality-checks.md ### 38",
+    ".qc-cache/kittle-2026-10-09-r1/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (check-batched-independence-wording.py)",
+    ".qc-cache/kittle-2026-10-09-r1/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (judge.toml section)",
+    ".qc-cache/kittle-2026-10-09-r1/rules/projects/webdev-task-template/tests/scored/{functional,polish,visual}/{prompt.md,judge.toml}",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/scored/functional/prompt.md",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/scored/functional/judge.toml",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/scored/polish/prompt.md",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/scored/polish/judge.toml",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/scored/visual/prompt.md",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/scored/visual/judge.toml",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/gates/render/prompt.md",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/gates/constraints/prompt.md",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/gates/*/judge.toml",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/app_context.md",
+    ".qc-cache/kittle-2026-10-09-r1/task/environment/assets/kittle.json (M-13 seed dates)",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/kittle-2026-10-09-r1/raw-evidence-index.json",
+    "model-beraking-prompts/handoffs/LESSONS_FROM_COLDERWATER_2026-10-08.md"
+  ],
+  "verdict": "Note",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "WORDING (the row's stated test) holds in all three scored prompts; no prompt or app_context says to stop at a first failure (grep for stop|first fail|abort|halt|remaining: only hit is functional/prompt.md:60 'The tool stops the application', about restart_app). polish/prompt.md:20-26 '## Independent scoring ... Score each criterion independently ... One failed criterion does not zero the others. If a criterion cannot be performed, mark it failed and continue to every remaining criterion; return a verdict for all of them. The global browser gate is the only all-or-nothing rule' (verbatim template text). visual/prompt.md:38-43 same, with 0-anchor fallback. functional (judge.toml:6 mode = \"individual\", 17 criteria, timeout 520 per criterion) is structurally independent: each criterion is its own session; prompt.md:9 '...that criterion fails and scores 0; report what you saw and move on to the next criterion', :29 'Two failed attempts at the same control fail that criterion; continue.', :51-53 'Score each criterion independently and return a verdict for every one.' Gates (render/constraints, aggregation all_pass) are exempt. DRIFT FROM TEMPLATE: template scored/functional/prompt.md:68 reads 'Score each criterion independently and continue after any failure; return ...'; the task's functional :52 dropped 'and continue after any failure'. Continuation is still stated elsewhere (:9, :29), and individual mode may place functional outside the checker's 'batched' scope, but the private check-batched-independence-wording.py was not run (not present in workspace), so its exact pattern match on the edited sentence is unmeasured. STATE CASCADE (row's parenthetical 'one miss can't zero the rest'): in individual mode criteria share one DB in order (prompt.md:70-73), and two criteria consume state produced only by earlier criteria with no in-criterion fallback: (a) search_and_transcript (weight 3.0) Part A, judge.toml:223 'Search \"Version one JUDGE-E1\" (an earlier version from the edits check) finds nothing, while \"Version two JUDGE-E1\" finds the edited message' depends on edits_and_stale_edit (:154) having posted and edited JUDGE-E1; 'Both parts must hold' (:232). (b) deleted_message_takes_its_versions (1.5), :133 'Before the M-13 timer was shortened... Now that it has been deleted' depends on timer_changes (:121) having shortened M-13 to 7 days. No configured judge run exists (raw-evidence-index scope: 'Full configured grading/workload, reward discrimination/ranking and Oracle/target scores are absent'; golden evidence is scripted Playwright only), so actual independent-continuation behaviour and cascade impact are NOT EXERCISED.",
+  "counterexample": "Conforming-ish app penalised twice: an app whose search, transcript, versions and holds are all correct, but whose message-edit save has a bug (or a judge session for edits_and_stale_edit times out at 520 s before saving 'Version two JUDGE-E1' - a harness-side miss on a heavy two-context criterion). edits_and_stale_edit fails (1.5) AND search_and_transcript fails entirely (3.0, including the unrelated transcript Part B) because Part A cannot find 'Version two JUDGE-E1'. Likewise a timer-shortening bug (or a timer_changes session dying before step 1) leaves 'Probate estimate is 4,200 pounds.' visible, failing deleted_message_takes_its_versions even when version purging on deletion is correct. One miss zeroes a second, independently weighted criterion.",
+  "suggested_fix": "Restore the template sentence in scored/functional/prompt.md:52 ('Score each criterion independently and continue after any failure; return a verdict for every one'), and make search_and_transcript Part A and deleted_message_takes_its_versions self-contained or state-relative (e.g. post and edit a fresh JUDGE-S probe inside the search criterion; in the versions criterion, if the probate message is still present, first shorten the timer as Harriet or delete an own edited probe, then check its versions) - coordinate with rows 28/37 reviewers.",
+  "run_verdict": "NOT EXERCISED"
+}

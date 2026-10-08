@@ -1,0 +1,38 @@
+{
+  "number": 40,
+  "id": "reward_is_graded_not_binary_and_discriminates",
+  "reviewer": "row-reviewer-40",
+  "input_sha256": "6cefe0c62896147ba179b233d3691b2e12ab1bfeb584ea964c8daef7fcc644a7",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r1/rules/WebDev Rubrics QC.xlsx: 'Quality Checks' row 41 (#40) and 'Internal Quality Checks' row 41 (#40; no internal annotation in the extra columns)",
+    ".qc-cache/kittle-2026-10-09-r1/rules/harbor-webdev-rubric-qc/SKILL.md (delivery profile, verdicts, evidence standard)",
+    ".qc-cache/kittle-2026-10-09-r1/rules/harbor-webdev-rubric-qc/references/quality-checks.md section 40 (and adjacent 39, 41-44 for scope)",
+    ".qc-cache/kittle-2026-10-09-r1/rules/projects/webdev-task-template/tests/scoring.toml",
+    "qc/REVIEW_POLICY.md (runtime and model evidence section)",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/scoring.toml",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/tools/score.py",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/test.sh",
+    ".qc-cache/kittle-2026-10-09-r1/task/task.toml",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/gates/render/judge.toml",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/gates/constraints/judge.toml",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/scored/functional/judge.toml",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/scored/functional/prompt.md (line 70, criteria run in listed order)",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/scored/polish/judge.toml",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/scored/visual/judge.toml",
+    "qc/runs/kittle-2026-10-09-r1/raw-evidence-index.json (hashes verified for golden-run.log, functional-before.json, functional-after.json)",
+    "qc/repairs/kittle-2026-10-08/results/golden-run.log",
+    "handoffs/LESSONS_FROM_COLDERWATER_2026-10-08.md (lesson 4)"
+  ],
+  "verdict": "Not exercised",
+  "risk": true,
+  "severity": null,
+  "evidence": "STRUCTURE SUPPORTS A GRADED REWARD (static analysis only). tests/scoring.toml matches the template exactly: gates render=0.0 and constraints=0.0, weights functional 0.6 / polish 0.2 / visual 0.2, floor functional=0.05. score.py computes reward = weighted mean of the three dimensions when gates pass and functional > 0.05, otherwise 0. Gates are simple reachability checks: render = page loads, nothing private before sign-in, wrong password refused, gwen signs in; constraints = served from localhost:3000, gwen's matters still shown after a reload. Neither gate depends on walls, timers, holds, search or live updates, so the strictness sits in scored criteria, as Colderwater lesson 4 advises. scored/functional has 17 independent binary criteria, aggregation weighted_mean, weights 1.5-3.0 summing to 34. polish has 5 binary criteria of weight 1.0. visual has 4 likert criteria (points=5, anchors 0-5) weighted 2/2/1/1. A partial app therefore lands at many intermediate values. Worked partial case: an app with sign-in/scope, wall routes, nested replies, safe formatting, message links and idempotent/ordered send, but no timers, holds, edits, live updates or transcripts, passes about 12/34 functional = 0.353, giving 0.6*0.353 + polish/visual share, around 0.3-0.45. Removing more features gives proportionally less, and dead apps fail the gates and score 0. No single precondition gates all functional criteria. Read-only checks (wall_every_route, deleted_and_expired_seed_messages, timer_changes) still earn credit when posting is broken. The golden scripted harness (golden-run.log, sha256 9930f70d... matches the index) shows all 21 legs PASS at the top end, but that is a scripted run, not a judge grade.\n\nWEAKER SPOTS (Note level, not demonstrated defects): (a) Sequential shared state creates partial cascades. deleted_message_takes_its_versions depends on timer_changes having shortened M-13 ('Before the M-13 timer was shortened ... Now that it has been deleted'). search_and_transcript Part A depends on JUDGE-E1 from edits_and_stale_edit ('Version two JUDGE-E1 finds the edited message'). persistence re-reads items created by earlier criteria. An app with no edit history loses edits_and_stale_edit 1.5, deleted_message_takes_its_versions 1.5 (positive control needs the earlier version) and search_and_transcript 3.0 (Part B item 3 needs both versions), about 6/34 = 18% of functional for one missing feature. This compresses the spread somewhat but does not collapse it; the double counting belongs to rows 28/42. (b) Floor discontinuity: one passing 1.5-weight criterion = 1.5/34 = 0.044, which is not > 0.05, so reward 0, while one 2.0-weight pass = 0.059 clears the floor. This is the template floor working as designed, not a task defect. (c) Heavy conjunctive bundling (e.g. search_and_transcript weight 3, two parts with multiple sub-steps) reduces granularity per criterion, but 17 criteria keep the overall distribution graded.\n\nMISSING REQUIRED MEASUREMENT: raw-evidence-index.json states 'Full configured grading/workload, reward discrimination/ranking and Oracle/target scores are absent.' REVIEW_POLICY.md requires a hash-bound reward-discrimination runtime record before local clearance. No mutated weak-app or partial-app judge run exists to show the configured judge (claude-code + z-ai/glm-5.3-flashx, individual functional mode) actually produces a spread. The judge could over-pass or zero whole dimensions on infra crashes (Colderwater lesson 11). A spread is therefore designed but not measured. Per the skill ('Never upgrade an unmeasured claim to Pass'), this row stays Not exercised with risk=true.\n\nCounterexample probes: (1) A plausible broken app that could pass, such as a static mock or seed copy, fails the render/constraints gates (sign-in rejection plus reload readback), giving 0. A keyword-stuffed app showing 'On hold' text is countered by hold_mark/safe_formatting checks. I found no structural route for a broken app to get a high score. (2) A conforming alternative that could fail: a conforming app passes every criterion, so it is not penalized by the reward structure. Only a judge-side misgrade, which is unmeasured, could flatten its score.",
+  "counterexample": null,
+  "suggested_fix": "No rubric change required for this row. Close the evidence gap by running the full configured verifier on the golden plus 2-3 mutated partial apps (e.g. golden with timers disabled, golden with walls only applied to the list, golden with edit history removed), and record hash-bound reward-discrimination and ranking logs that show distinct, ordered rewards. Optionally reduce the edit-history cascade (search_and_transcript Part A / deleted_message_takes_its_versions depending on edits_and_stale_edit) by seeding the needed edited message, though that is primarily a row 28/42 concern.",
+  "run_verdict": "NOT EXERCISED"
+}

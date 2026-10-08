@@ -1,0 +1,41 @@
+{
+  "number": 30,
+  "id": "negative_checks_have_positive_controls",
+  "reviewer": "row-reviewer-30",
+  "input_sha256": "6cefe0c62896147ba179b233d3691b2e12ab1bfeb584ea964c8daef7fcc644a7",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r1/rules/WebDev Rubrics QC.xlsx: Quality Checks row 31 (#30 negative_checks_have_positive_controls) and Internal Quality Checks row 31 (same text, no extra annotation); no comment/note parts exist in the workbook",
+    ".qc-cache/kittle-2026-10-09-r1/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r1/rules/harbor-webdev-rubric-qc/references/quality-checks.md:127-129 (#30)",
+    "qc/REVIEW_POLICY.md ('A negative needs a successful control')",
+    ".qc-cache/kittle-2026-10-09-r1/task/instruction.md",
+    ".qc-cache/kittle-2026-10-09-r1/task/environment/instructions/conversations.md",
+    ".qc-cache/kittle-2026-10-09-r1/task/environment/instructions/walls-and-retention.md",
+    ".qc-cache/kittle-2026-10-09-r1/task/environment/instructions/integration.md",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/app_context.md",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/gates/render/judge.toml",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/gates/render/prompt.md",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/gates/constraints/judge.toml",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/gates/constraints/prompt.md",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/scored/functional/judge.toml",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/scored/functional/prompt.md",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/scored/polish/judge.toml",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/scored/polish/prompt.md",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/scored/visual/judge.toml",
+    "qc/runs/kittle-2026-10-09-r1/raw-evidence-index.json (hashes of run_golden.sh and tests/functional.cjs re-verified: b61aa378..., 95878ac7...)",
+    "qc/repairs/kittle-2026-10-08/tests/functional.cjs (delete legs, lines 249-251, 327)",
+    "F:/Documents/turing-workspace/model-beraking-prompts/handoffs/LESSONS_FROM_COLDERWATER_2026-10-08.md"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "I checked each negative leg in the 2 gates, 17 functional and 5 polish criteria. Most have a success case in the same criterion: render gate (Gwen's sign-in vs. no private data before sign-in and a wrong password); signin_and_client_scope (Gwen's titles, plus Part B 'it must appear in M-11 (positive control)'); wall_every_route (Sian's thread and search control); wall_mentions_and_links (Harriet's preview, JUDGE-M2 mention); wall_added_live (posting request recorded before the wall, lift restores access); deleted_and_expired (Clause 14 search, younger message shown); timer_changes (Sian's refusal paired with Harriet's own timer change); deleted_message_takes_its_versions (held message's earlier version); edits_and_stale_edit (the first edit succeeds); safe_formatting, message_links, unread, sent_once (JUDGE-D2), search_and_transcript (Dev opens the M-11 transcript); polish refusal_in_place ('also do the same action successfully'). The defect is in functional/judge.toml:212, hold_scope_and_release. It says 'As harriet@kittle.test try to delete JUDGE-H1 with the app's control, recording the request if one is sent, and as its author also replay that request: deleting a held message must be refused and JUDGE-H1 stays.' Nothing in that criterion shows a delete succeeding on a message that is not held. The only delete success in the suite is message_links (judge.toml:246, deleting JUDGE-P2). That criterion runs later, not earlier. functional/judge.toml:75 sets mode='individual', so each criterion runs in its own session. functional/prompt.md:43-44 says 'Every refusal pairs with a success of the same kind on an eligible target, in the same criterion or an earlier one'. No earlier criterion performs a user delete, and prompt.md:23-24 forbids carrying evidence between criteria anyway. So this refusal leg has no positive control, and the prompt's own pairing rule cannot be met by the steps listed. The scripted golden harness (qc/repairs/kittle-2026-10-08/tests/functional.cjs:249-251) also attempts the held delete before any successful delete (line 327). That harness is not a configured judge run, and no configured judge, Oracle or model run exists (raw-evidence-index scope says so). Run verdict: NOT EXERCISED. Minor notes, not blockers. These absence legs rely on search or transcript with no positive control for that feature inside the criterion, though each criterion also checks the thread with a control: timer_changes step 2 (search 'Probate estimate' finds nothing); deleted_message_takes_its_versions (search and transcript absence); hold_scope_and_release release leg (search 'Insurer letter' finds nothing); wall_every_route legs 3-4 (Sian's control does not explicitly confirm that the transcript loads); wall_mentions_and_links (Dev following the link shows not-available, with no check that following works for Harriet). wall_added_live does not explicitly say the pre-wall post must appear.",
+  "counterexample": "Broken app: the Delete control is missing or does nothing for every message, and the DELETE endpoint returns 403 or not-available whatever the hold state, but holds and release work. In hold_scope_and_release, JUDGE-H1 'stays' and the replay is 'refused', so a lenient judge credits 'a held message cannot be deleted' (weight 2.0) for a feature that never worked. That is exactly the dead-feature-earns-credit case this row is about. Conforming app that could fail: a strict judge applying prompt.md:43-44 finds no same-kind delete success in this session or an earlier criterion. It then either fails the golden or a conforming app because the refusal is unpaired, or it improvises an unlisted delete, which prompt.md:45/51 discourages because it changes shared state.",
+  "suggested_fix": "In hold_scope_and_release, add an in-criterion positive control before the held-delete attempt. For example, Harriet posts 'Delete me JUDGE-H3' in M-11 and deletes it with the app's control, recording that request: it disappears. Then try the held JUDGE-H1 delete and replay the recorded delete request with JUDGE-H1 as the target. Add 'or if deleting the unheld JUDGE-H3 did not work' to the Fails line. Optionally add search controls ('Clause 14 noted' or 'Survey booked' is found) where search-absence legs stand alone, and have Sian confirm the M-12 transcript shows messages in wall_every_route.",
+  "run_verdict": "NOT EXERCISED"
+}

@@ -1,0 +1,40 @@
+{
+  "number": 27,
+  "id": "no_criterion_grades_the_unrequired",
+  "reviewer": "row-reviewer-27",
+  "input_sha256": "6cefe0c62896147ba179b233d3691b2e12ab1bfeb584ea964c8daef7fcc644a7",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r1/rules/WebDev Rubrics QC.xlsx (Quality Checks sheet row 28 = check 27; Internal Quality Checks sheet row 28 incl. column E annotation that login is house convention)",
+    ".qc-cache/kittle-2026-10-09-r1/rules/harbor-webdev-rubric-qc/SKILL.md (Known false positives: sign-in)",
+    ".qc-cache/kittle-2026-10-09-r1/rules/harbor-webdev-rubric-qc/references/quality-checks.md:116-118 (check 27), :100-102 (check 23)",
+    ".qc-cache/kittle-2026-10-09-r1/rules/projects/webdev-task-template/tests/gates/constraints/judge.toml (template gate wording)",
+    "qc/REVIEW_POLICY.md",
+    "F:/Documents/turing-workspace/model-beraking-prompts/handoffs/LESSONS_FROM_COLDERWATER_2026-10-08.md",
+    ".qc-cache/kittle-2026-10-09-r1/task/instruction.md",
+    ".qc-cache/kittle-2026-10-09-r1/task/environment/instructions/conversations.md",
+    ".qc-cache/kittle-2026-10-09-r1/task/environment/instructions/walls-and-retention.md",
+    ".qc-cache/kittle-2026-10-09-r1/task/environment/instructions/integration.md",
+    ".qc-cache/kittle-2026-10-09-r1/task/environment/assets/kittle.json (matters, messages, read_up_to)",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/app_context.md",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/gates/render/judge.toml + prompt.md",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/gates/constraints/judge.toml + prompt.md",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/scored/functional/judge.toml (all 17 criteria) + prompt.md",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/scored/polish/judge.toml + prompt.md",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/scored/visual/judge.toml + prompt.md",
+    ".qc-cache/kittle-2026-10-09-r1/task/solution/app/public/app.js:175-195,280-290,338-342 and server.js:100-135,240-355 (golden unread line, role controls)",
+    "qc/runs/kittle-2026-10-09-r1/raw-evidence-index.json",
+    "qc/repairs/kittle-2026-10-08/tests/functional.cjs:209-231,242-262,334-358 (sha256 95878ac7... matches index; indexed golden app.js 3875be4e... and server.js a8a4a561... match the frozen cache bytes)"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P1",
+  "evidence": "Built the criterion->requirement map for all 2 gate, 17 functional, 5 polish and 4 visual criteria. Most demands trace to public text (walls: walls-and-retention.md:17-19; boundary/timers :23; holds :29; search/transcript :33-35; refusal in place :37; replies, edits, formatting, links, mentions, unread, idempotency, order, live updates: conversations.md:5-33; signed-out data: integration.md:9; sign-in/out is house convention per the SKILL.md known false positive and the workbook internal annotation). Instances where a criterion grades something the brief does not require, or contradicts it so correct apps fail:\n(1) P1 unread_and_new_messages_line (tests/scored/functional/judge.toml:187): 'In one tab Dev opens M-13: a \"new messages\" line sits just above JUDGE-U1'. The brief puts the line 'where I stopped reading' (conversations.md:25). Seed read_up_to has Dev read M-13 only up to K-8, so K-9 'Received, reading it tonight.' is already unread, and earlier criteria in the fixed order (functional prompt.md:70-73) add JUDGE-R0/R1/R2/R3/RX/R1B, E1, F1, F2 to M-13; no earlier criterion has Dev open M-13. A correct app puts the line above K-9; the golden does (app.js:186 takes the first message with seq > last_read). The scripted golden harness passes only because it adds an unstated pre-step, functional.cjs:337 'await openMatter(dev, \"M-13\"); await openMatter(dev, \"M-11\");', to clear Dev's backlog. The criterion has no such step, so as written it fails the golden and every conforming app.\n(2) P2 timer_changes (judge.toml:120): when Sian has no timer control (golden hides partner-tools for non-partners, app.js:217-218, the expected design), the criterion forces the fallback 'record Harriet's own timer-change request in step 1 and replay it as Sian' yet requires 'the timer stays at 30 days'. After step 1 the timer is 7 days, so a correct app cannot satisfy that sentence literally under prompt.md:26-28 ('every sentence that names a step must hold'). The golden harness (functional.cjs:216-219) replays after the change and never asserts 30 days.\n(3) P2 hold_scope_and_release (judge.toml:143): 'try to delete JUDGE-H1 with the app's control, recording the request if one is sent, and as its author also replay that request'. The brief only says nobody can delete a held message (walls-and-retention.md:29); hiding or disabling Delete on held messages is conforming. Then no request exists, the replay cannot be performed (prompt.md:26-28 fails unperformed steps; prompt.md:34-35 forbids guessing routes), and no earlier successful user delete exists to borrow (first is message_links, later). The criterion implicitly requires the delete control to remain on held messages; the golden keeps it (app.js:338), so the harness passed. Unlike timer_changes and wall_added_live there is no fallback.\n(4) P3 visual matter_sidebar (tests/scored/visual/judge.toml:28): anchor 5 needs the list 'beside the thread', 'the client quietly beneath' and 'the timer setting ... as a small label' in the list; the brief requires the timer beside the title in the thread (walls-and-retention.md:23) and never asks for client names, a list timer label or a sidebar layout. transcript_page anchor 5 (:60) 'consistent author and time columns' is likewise a golden layout choice. Bounded (likert craft) but caps conforming designs below 5.\nNotes, not counted as defects: the constraints gate (gates/constraints/judge.toml:31) requires staying signed in across a reload, unstated but a professional default; wall_added_live needs the wall to apply without reload within 10 s, supported by 'takes effect at once, including for someone who already has the matter open' (walls-and-retention.md:19), though 'the next time their screen refreshes' has a reload reading (row 6 ambiguity); live unread counts in both tabs rest on conversations.md:25,31. Evidence is source and scripted-harness only: no full configured judge run, Oracle or model score exists (raw-evidence-index.json scope), so false-fails (1)-(3) are inferred from criterion text plus golden code and harness, not observed in a judge run.",
+  "counterexample": "The frozen golden itself: in criterion order Dev never opens M-13 before unread_and_new_messages_line, so on opening M-13 the golden's line sits above K-9 'Received, reading it tonight.' (correct per conversations.md:25), not just above JUDGE-U1, and the 2.0-weight criterion fails. Also, a conforming app that hides Delete on held messages fails hold_scope_and_release (no request to replay), and any correct app that hides the timer control from associates cannot show 'the timer stays at 30 days' after the forced fallback in timer_changes.",
+  "suggested_fix": "unread: add a first step 'As Dev open M-13, then another matter, so M-13 shows no unread count' (or say the line sits above the earliest message Dev had not read); timer_changes: require 'Sian's attempt leaves the timer unchanged' (7 days after the fallback) or restore 30 days before the replay; hold: add a fallback 'if no delete control is offered on a held message, delete a fresh own message JUDGE-H3 to record the delete request (positive control) and replay it against JUDGE-H1'; visual: drop 'beside the thread', client-beneath, list timer label and 'columns' from the 5 anchors, or add them to the brief.",
+  "run_verdict": "PARTIAL"
+}

@@ -1,0 +1,38 @@
+{
+  "number": 19,
+  "id": "solution_honors_the_runtime_contract_and_is_self_contained",
+  "reviewer": "row-reviewer-19",
+  "input_sha256": "6cefe0c62896147ba179b233d3691b2e12ab1bfeb584ea964c8daef7fcc644a7",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r1/rules/WebDev Rubrics QC.xlsx (row solution_honors_the_runtime_contract_and_is_self_contained, shared strings 59/60; related deterministic solve.sh string 234; xlsx comment parts scanned)",
+    ".qc-cache/kittle-2026-10-09-r1/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r1/rules/harbor-webdev-rubric-qc/references/quality-checks.md lines 83-85 (#19)",
+    ".qc-cache/kittle-2026-10-09-r1/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md lines 160-185 (cross-file agreements)",
+    ".qc-cache/kittle-2026-10-09-r1/rules/projects/webdev-task-template/solution/solve.sh",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/kittle-2026-10-09-r1/task/solution/solve.sh",
+    ".qc-cache/kittle-2026-10-09-r1/task/solution/app/server.js (lines 1-180, 518-519)",
+    ".qc-cache/kittle-2026-10-09-r1/task/solution/app/package.json",
+    ".qc-cache/kittle-2026-10-09-r1/task/solution/app/public/index.html",
+    ".qc-cache/kittle-2026-10-09-r1/task/instruction.md",
+    ".qc-cache/kittle-2026-10-09-r1/task/environment/instructions/integration.md",
+    ".qc-cache/kittle-2026-10-09-r1/task/environment/Dockerfile",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/Dockerfile",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/test.sh",
+    ".qc-cache/kittle-2026-10-09-r1/task/task.toml",
+    "qc/runs/kittle-2026-10-09-r1/raw-evidence-index.json",
+    "qc/repairs/kittle-2026-10-08/run_golden.sh and results/golden-run.log, restart-pids.json (hashes verified)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Static: solution/solve.sh (81 bytes, sha256 f7c17a01..., 0 CR bytes, shebang #!/bin/bash, set -euo pipefail) only does `mkdir -p /app; cp -a \"$(dirname \"$0\")/app/.\" /app/` - byte-identical to the frozen template solve.sh; it writes nothing to /tests, /logs/verifier or /solution; no pkill, no NODE_ENV (grep over solution/ found none); no solve-time install. The app is plain CommonJS requiring only express/better-sqlite3 (resolved via NODE_PATH, matching both Dockerfiles' pinned global installs express@5.1.0 / better-sqlite3@12.4.1 and package.json), entry /app/server.js, listens 0.0.0.0:PORT||3000 (server.js:13,519), DB_PATH honoured with /app/app.db default (server.js:14,57-60), /api/health registered before the DB gate and always 200 (server.js:42-47), init failure caught (server.js:156-165), seeding guarded by settings.seeded inside a transaction (server.js:93-127). Seed is shipped at /app/seed/kittle.json (bytes identical to environment/assets/kittle.json, sha 42ab8b97...) with /app/kittle.json and /assets/kittle.json fallbacks (server.js:29), so it is self-contained under the separate verifier (task.toml artifacts [/app,/assets]). index.html loads only same-origin /styles.css and /app.js. Runtime (this review, 2026-10-09): built the frozen environment/Dockerfile into a throwaway image, ran `bash /solution/solve.sh` (rc=0), confirmed no /app/node_modules and globals express@5.1.0/better-sqlite3@12.4.1; launched exactly as test.sh does (setsid env -i PATH/NODE_PATH/PORT=3000/DB_PATH, setpriv uid 65534, cwd /tmp): /api/health -> {ok:true,booted:true,clock:2026-05-12T11:00:00Z}, unauthenticated /api/matters -> 401; DB created at DB_PATH. Restart on the same DB kept counts (messages 17, users 5, next_id 18) and an injected settings row, i.e. no re-import. DB_PATH=/tmp/alt/x.db created the DB there. DB_PATH=/root/x.db (unwritable) still answered health 200 with booted:false. Container and image removed afterwards. Prior evidence: raw-evidence-index hashes for run_golden.sh and golden-run.log match current bytes; that run installed the frozen solve.sh (matching_source_files hashes equal current solution hashes) and passed 21 scripted legs across a real kill/restart (pids 28->57). Note it used image cw-editor-agent-r3 rather than this task's environment image - my own build of the frozen Dockerfile closes that gap for this row. Counterexample probes: a broken solve.sh variant that writes into /app/node_modules symlinks or npm-installs elsewhere would be caught by test.sh symlink refusal; a conforming alternative that places kittle.json directly in /app (as integration.md literally says) also works under this contract since the reference and test.sh do not depend on the seed's exact location. Minor observations (not defects): the golden copies the seed to /app/seed/ rather than /app root - still 'into /app'; an exotic DB_PATH under /proc produced no listener in a 4 s window, which is not a stated contract scenario. This row does not evidence Oracle/judge scores, gates, or full configured grading duration.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PASS (local docker build of frozen environment, solve.sh install, test.sh-style launch, restart/DB_PATH/health probes)"
+}

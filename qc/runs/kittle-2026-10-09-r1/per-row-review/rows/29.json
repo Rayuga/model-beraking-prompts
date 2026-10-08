@@ -1,0 +1,35 @@
+{
+  "number": 29,
+  "id": "global_browser_gate_is_present_and_correct_in_every_dimension",
+  "reviewer": "row-reviewer-29",
+  "input_sha256": "6cefe0c62896147ba179b233d3691b2e12ab1bfeb584ea964c8daef7fcc644a7",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r1/rules/WebDev Rubrics QC.xlsx :: Quality Checks row 30 (#29 global_browser_gate_is_present_and_correct_in_every_dimension); Internal Quality Checks row 30 (no lead comment; its 'cross-origin' wording is superseded by the public sheet and delivery profile); Deterministic Checks row 28 (check-rubric-prompt.py) and row 5",
+    ".qc-cache/kittle-2026-10-09-r1/rules/harbor-webdev-rubric-qc/SKILL.md (delivery profile: public network; verdict/severity rules)",
+    ".qc-cache/kittle-2026-10-09-r1/rules/harbor-webdev-rubric-qc/references/quality-checks.md ### 29 and ### 35 note",
+    ".qc-cache/kittle-2026-10-09-r1/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md 'prompt.md and app_context.md'",
+    ".qc-cache/kittle-2026-10-09-r1/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md check-rubric-prompt.py",
+    "qc/REVIEW_POLICY.md ('Gates must exclude convincing dead apps')",
+    "qc/runs/kittle-2026-10-09-r1/per-row-review/rows/29.template.json",
+    "task/tests/gates/render/prompt.md + judge.toml (sha256 7e3cbe04..., 84fe3268...)",
+    "task/tests/gates/constraints/prompt.md + judge.toml (sha256 da238380..., 7c3b7b27...)",
+    "task/tests/scored/functional/prompt.md + judge.toml (prompt sha256 d073afb6...)",
+    "task/tests/scored/polish/prompt.md + judge.toml (prompt sha256 563c898b...)",
+    "task/tests/scored/visual/prompt.md + judge.toml (prompt sha256 ec0350ed...)",
+    "task/tests/scoring.toml, task/tests/tools/score.py (gate/floor logic), task/tests/test.sh (gates suite before scored suite, lines 213-227)",
+    "task/tests/app_context.md, task/instruction.md, task/environment/instructions/integration.md",
+    "qc/runs/kittle-2026-10-09-r1/raw-evidence-index.json (scope: gates, polish and visual not covered by any run)"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "PRESENT/CORRECT PARTS: (1) Both gate dimensions exist with aggregation all_pass and zero-weight gates (scoring.toml [gates] render=0.0, constraints=0.0; score.py:41 gates_passed requires each >0; test.sh:213-227 runs gates then scored only after score.py). (2) Every scored prompt restates the in-dimension gate with a hard zero: functional/prompt.md:11-19, polish/prompt.md:10-18, visual/prompt.md:18-26 all say 'A blank page, empty workspace, static mock, static shell, missing backend, or seeded-looking facade fails this gate ... If the gate fails, assign 0 to every criterion in this dimension'; polish:25-26 and visual:42-43 state it is the only all-or-nothing rule. Functional runs mode='individual', so each per-criterion session re-applies the gate to its own criterion (prompt.md:70 'Use gwen@kittle.test for the initial gate. Each session grades one criterion'); this is consistent, not a partial-credit leak. (3) Auth leg exists: gates/render/judge.toml:26-34 checks nothing private before sign-in, wrong password rejected, gwen opens her matters (public requirement instruction.md:7). (4) No same-origin requirement anywhere: grep of tests/, instruction.md and environment/instructions finds only 'External font, script, or CDN asset requests are allowed' (render/prompt.md:12, constraints/prompt.md:13, constraints/judge.toml:29, scored prompts); functional/prompt.md:38 'replays are in-page calls from the app's origin' is a judge procedure, not a requirement on the app. DEFECT (backing leg): the only gate backing check, gates/constraints/judge.toml:26-33 server_backed_local_application, is 'Sign in as gwen@kittle.test, note her matter list, then reload the page: her matters and their messages are still shown. This gate does not grade authentication, roles, correctness, persistence, or feature completeness.' A reload readback of seeded data in the same context is not a successful operation and is satisfied by a read-only or client-only facade. The scored-gate leg 'Protected content must contain real task data backed by the running local server' gives the judge no procedure to decide that. qc/REVIEW_POLICY.md: 'Gates must exclude convincing dead apps. Health reachability and a static JSON response do not prove server-backed persistence. Use an actual successful operation and independent-context readback where the product requires shared storage.' This product is a multi-user chat whose shared storage is mandatory (integration.md:3 'Keep everything in SQLite ... matter data stays in our own server and database'; instruction.md:9 'post, reply, edit'). RUNTIME: raw-evidence-index.json scope states gates, polish and visual are not covered by any run; no gate dimension has been executed against the golden or a mutant, so neither golden gate pass nor dead-app exclusion is measured.",
+  "counterexample": "Broken app that plausibly passes every gate: server.js serves the static bundle plus a read-only GET that returns the seed already filtered for retention (or app.js embeds that data), sign-in is checked against the seed passwords with the session kept in localStorage, and the post/reply/edit handlers fail silently. Render gate: no data before sign-in, wrong password refused, gwen sees M-11/M-13 -> 1. Constraints gate: served from localhost:3000, gwen's matters still shown after reload, external assets irrelevant -> 1 (no write is ever attempted). Scored gate in each dimension: real seeded matters load over the network from the local server -> passes. Functional deleted_and_expired_seed_messages (weight 3.0 of 34 = 0.088) is read-only (thread placeholder, search, transcript, 7-day boundary) and can pass, clearing the 0.05 functional floor (scoring.toml [floors]); seeded-surface polish/visual criteria (e.g. timer_label, matter_sidebar, phone_chambers likert) can also score, so a chat in which nobody can post can earn a non-zero reward instead of being gated out. Conforming alternative risk (secondary): a server-rendered app with no XHR could be misread under the undefined 'backed by the running local server' / 'seeded-looking facade' wording, but this is judge-dependent and not demonstrated.",
+  "suggested_fix": "Make the constraints gate prove backing with a real operation: as gwen@kittle.test post a distinctive message (e.g. 'Gate check JUDGE-G0', absent from seed) in M-11, then in a separate fresh browser context sign in as harriet@kittle.test and confirm it appears in M-11; update later criteria/polish/visual task-state notes to tolerate that message, and run the gates against the golden and a read-only mutant to measure both directions.",
+  "run_verdict": "NOT EXERCISED"
+}

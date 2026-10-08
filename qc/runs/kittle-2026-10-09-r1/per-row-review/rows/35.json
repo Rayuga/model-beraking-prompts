@@ -1,0 +1,41 @@
+{
+  "number": 35,
+  "id": "core_behavior_is_graded_and_state_is_proven_durable_where_it_must_be",
+  "reviewer": "row-reviewer-35",
+  "input_sha256": "6cefe0c62896147ba179b233d3691b2e12ab1bfeb584ea964c8daef7fcc644a7",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r1/rules/WebDev Rubrics QC.xlsx :: Quality Checks row 36 (#35, block E, C36/D36)",
+    ".qc-cache/kittle-2026-10-09-r1/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r1/rules/harbor-webdev-rubric-qc/references/quality-checks.md:145-147",
+    ".qc-cache/kittle-2026-10-09-r1/rules/projects/webdev-task-template (tree)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/kittle-2026-10-09-r1/task/instruction.md",
+    ".qc-cache/kittle-2026-10-09-r1/task/environment/instructions/integration.md",
+    ".qc-cache/kittle-2026-10-09-r1/task/environment/instructions/walls-and-retention.md",
+    ".qc-cache/kittle-2026-10-09-r1/task/environment/instructions/conversations.md",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/scored/functional/judge.toml",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/scored/functional/prompt.md",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/gates/render/judge.toml",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/gates/constraints/judge.toml",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/app_context.md",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/scoring.toml",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/test.sh:85-193",
+    ".qc-cache/kittle-2026-10-09-r1/task/tests/tools/restart_mcp.py",
+    ".qc-cache/kittle-2026-10-09-r1/task/solution/app/server.js (schema 63-83, timer 458-466, walls 470-480)",
+    "qc/runs/kittle-2026-10-09-r1/raw-evidence-index.json",
+    "qc/repairs/kittle-2026-10-08/results/golden-run.log (sha256 9930f70d... verified)",
+    "qc/repairs/kittle-2026-10-08/tests/functional.cjs (sha256 95878ac7... verified)"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "Core behaviour is graded thoroughly: functional judge.toml has 17 criteria covering walls on every route (wall_every_route, wall_mentions_and_links, wall_added_live), retention (deleted_and_expired_seed_messages, timer_changes, hold_scope_and_release), threads, edits, unread, idempotent send and transcripts. Server-backing is proven in ways a same-origin/localStorage facade cannot pass: cross-account readbacks (e.g. nested_replies leg 3 'As gwen@kittle.test after a reload'), separate per-criterion sessions with playwright-mcp --isolated (judge.toml:6,21), and the last criterion 'persistence' (judge.toml:235-243) which calls restart_app, a real process kill and relaunch on the same DB (test.sh:127-193, restart_mcp.py:25-47, single use, error reported as isError), then 'open a fresh page and sign in again'. It checks replies, edit versions, the JUDGE-H1 hold, Dev's unread count, the Dev/M-12 wall, the deleted original and no seed duplication. Reload is also in the render gate (constraints judge.toml:31-32). Golden evidence: the scripted golden run (hashes in raw-evidence-index match the frozen server.js a8a4a561...) logs 'persistence PASS' after a real kill/restart. The golden stores walls and timer_days in SQLite (server.js:65-66, 466, 478-479). GAP: integration.md says restarts keep '...timers, holds, walls, unread positions and deletions'. The only walls and timers checked across the restart have their seed values. M-12/Dev is seeded. wall_added_live (judge.toml:79) lifts Sian's wall again. timer_changes step 3 (judge.toml:123) restores M-13 to the seeded 30 days. So no restart check covers a wall or timer change made at runtime. Also, in individual mode the persistence session does not remember earlier criteria, and it names only 'the deleted Here is the original lease scan' (seed-expired). It does not name runtime deletions such as 'Probate estimate' or the released 'Insurer letter acknowledged', so 'nothing deleted came back' is weak for those. Runtime evidence gap: no full configured judge run, Oracle or model score exists (raw-evidence-index scope says so). The scripted golden pass is not judge evidence.",
+  "counterexample": "A weak app keeps messages, versions, holds and reads in SQLite but loads walls and matter timers from /app/kittle.json into memory at every boot and changes them only in memory. It passes every criterion, including persistence: after restart, Dev/M-12 is still walled (from the seed) and M-13 shows 30 days (from the seed). But a wall Harriet adds at runtime disappears on the next restart, so a conflicted associate regains access. The brief says this must never happen ('A wall has to be airtight'; integration.md says restarts keep walls and timers). If retention is filtered at read time, a shortened timer also reverts and an expired message (e.g. Probate estimate) can come back. Neither case is noted.",
+  "suggested_fix": "In the persistence criterion, before calling restart_app, have Harriet set a non-seed wall (e.g. wall Sian from M-11) and a non-seed timer change that deletes nothing new. Name a runtime-deleted message (e.g. 'Probate estimate is 4,200 pounds.' and 'Insurer letter acknowledged.') among the noted items. After restart, check that the wall still blocks Sian and that the timer value and deletions persisted, then lift the wall. Persistence runs last, so no later criterion is affected.",
+  "run_verdict": "PARTIAL"
+}

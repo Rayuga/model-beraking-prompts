@@ -1,0 +1,33 @@
+{
+  "number": 10,
+  "id": "verifier_is_isolated_pinned_and_credentialed",
+  "reviewer": "row-reviewer-10",
+  "input_sha256": "6cefe0c62896147ba179b233d3691b2e12ab1bfeb584ea964c8daef7fcc644a7",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    "rules/WebDev Rubrics QC.xlsx :: Quality Checks!A11:D11 (row 10) and Internal Quality Checks!A11:D11 (older 'pinned image + allowlist' annotation, superseded by the public-network wording in Quality Checks D11 and SKILL.md Delivery profile)",
+    "rules/harbor-webdev-rubric-qc/SKILL.md lines 16, 25-27 (delivery profile: public network, judge.toml fallback rule)",
+    "rules/harbor-webdev-rubric-qc/references/quality-checks.md lines 47-48 (check 10 procedure)",
+    "rules/harbor-webdev-rubric-qc/references/staged-task-contract.md lines 61-75 (frozen [verifier.env] block), line 178",
+    "rules/harbor-webdev-rubric-qc/references/deterministic-checks.md line 60",
+    "rules/projects/webdev-task-template/task.toml [verifier]..end, tests/Dockerfile, tests/test.sh, tests/tools/, tests/gates/render/judge.toml",
+    "task/task.toml lines 26-38",
+    "task/tests/Dockerfile lines 1-45",
+    "task/tests/test.sh lines 58-70, 203-210",
+    "task/tests/{gates/render,gates/constraints,scored/functional,scored/polish,scored/visual}/judge.toml",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/kittle-2026-10-09-r1/raw-evidence-index.json (scope header and entries)",
+    "model-beraking-prompts/handoffs/LESSONS_FROM_COLDERWATER_2026-10-08.md (grep for model/credential lessons)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Isolation: task/task.toml:27-28 [verifier] environment_mode = \"separate\" with its own tests/Dockerfile (COPY . /tests, chmod -R go-rwx /tests at line 43-44); agent image environment/Dockerfile copies only instructions/ and assets/, not tests/ or solution/. Credentials: task/task.toml:30-35 is exactly REWARDKIT_JUDGE=\"claude-code\", REWARDKIT_MODEL=\"z-ai/glm-5.3-flashx\", ANTHROPIC_BASE_URL=\"https://openrouter.ai/api\", ANTHROPIC_AUTH_TOKEN=\"${OPENROUTER_API_KEY}\", ANTHROPIC_API_KEY=\"\"; `diff` of the [verifier]..EOF section against the frozen template task.toml is empty (byte-identical), matching staged-task-contract.md:66-74. [verifier.environment] network_mode=\"public\" (line 37-38) - correct per delivery profile, no allowlist needed. test.sh:63-66 refuses to run without REWARDKIT_JUDGE/REWARDKIT_MODEL and passes no model override to rewardkit (line 207-209); no literal key/token anywhere in task tomls/sh/Dockerfiles (grep). judge.toml: all five (gates/render, gates/constraints, scored/functional, scored/polish, scored/visual) carry only judge = \"claude-code\" at line 5 (expected fallback) plus a comment; grep for model/temperature/effort finds no setting - only the explanatory comment. Criterion-level weight fields are rubric criteria weights, also present in the template, not judge-level model settings. Pinning: tests/Dockerfile is byte-identical to the frozen template (diff empty): @anthropic-ai/claude-code@2.1.281, @openai/codex@0.151.0, @playwright/mcp@0.0.79 (pins its Playwright Chromium build), express@5.1.0, better-sqlite3@12.4.1, harbor-rewardkit==0.1.7; tests/tools identical to template. Base images are tag-pinned (node:22-bookworm-slim, python:3.12-slim) without digests and apt is unpinned - template-controlled and NOTE-level per deterministic-checks wording, not a task defect. Adversarial: a model= line or alternate REWARDKIT_MODEL/base URL would be caught by the diff - none present; a conforming task could not do better since the block is frozen. Runtime: no full configured verifier launch is in the raw evidence index (its scope states full configured grading is absent), so credential acceptance by OpenRouter / model recognition (cf. Colderwater lesson 20 'unrecognized_model') is not measured here; that gap belongs to the separate full-verifier-launch runtime record, and this row's static wiring requirement is fully met.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

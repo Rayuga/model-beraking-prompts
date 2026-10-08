@@ -1,0 +1,31 @@
+{
+  "number": 18,
+  "id": "solution_covers_every_graded_dimension",
+  "reviewer": "row-reviewer-18",
+  "input_sha256": "6cefe0c62896147ba179b233d3691b2e12ab1bfeb584ea964c8daef7fcc644a7",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r1/rules/WebDev Rubrics QC.xlsx (Quality Checks D19 and Internal Quality Checks row 19, #18 solution_covers_every_graded_dimension; no internal annotation on that row)",
+    ".qc-cache/kittle-2026-10-09-r1/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r1/rules/harbor-webdev-rubric-qc/references/quality-checks.md (### 18)",
+    ".qc-cache/kittle-2026-10-09-r1/rules/projects/webdev-task-template (layout)",
+    "qc/REVIEW_POLICY.md",
+    "task/instruction.md, environment/instructions/{conversations,integration,walls-and-retention}.md, environment/assets/kittle.json",
+    "task/tests/gates/{render,constraints}/judge.toml, tests/scored/{functional,polish,visual}/judge.toml, tests/app_context.md, tests/scoring.toml",
+    "task/solution/app/server.js, solution/app/public/app.js (openMatter/renderThread/markUnread, errors), styles.css",
+    "qc/runs/kittle-2026-10-09-r1/raw-evidence-index.json (all 6 artifact hashes re-verified; all matching_source_files hashes equal frozen solution bytes)",
+    "qc/repairs/kittle-2026-10-08/tests/functional.cjs, results/golden-run.log, results/functional-before.json, functional-after.json",
+    "handoffs/LESSONS_FROM_COLDERWATER_2026-10-08.md"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P1",
+  "evidence": "Walked all 17 functional, 5 polish, 4 visual and 2 gate criteria against the golden source and the hash-verified scripted golden run (golden-run.log: all 21 legs PASS, exit 0; persistence after a real restart PASS). Most criteria are plausibly satisfiable by the reference: walls (404 'not available', link previews {available:false}), timer boundary sweep uses >= (server.js:139-146), eraseMessage purges versions/mentions (server.js:150-154), stale-edit refusal keeps typed text, idempotent client_key sends, transcript with no form controls, sign-in error cleared only on input (app.js:94). However one criterion cannot be satisfied by the reference as written. tests/scored/functional/judge.toml:256 (unread_and_new_messages_line) says: 'Note M-13's unread count in Dev's matter list, then as harriet@kittle.test post ... JUDGE-U1 and JUDGE-U2 ... In one tab Dev opens M-13: a \"new messages\" line sits just above JUDGE-U1'. The seed sets Dev's M-13 read position to K-8 (environment/assets/kittle.json read_up_to.dev@kittle.test.M-13 = 'K-8'), so seeded K-9 'Received, reading it tonight.' (30-day-safe, never deleted) is already unread for Dev; in the judge's shared-state order, earlier criteria also add unread M-13 messages for Dev (nested_replies JUDGE-R0..R1B, edits JUDGE-E1, safe_formatting JUDGE-F1/F2, optionally Sian's pre-wall post). The golden places the line at the first unread message by seq: app.js:186-187 'const firstUnread = r.data.messages.find(x => x.seq > r.data.last_read && !x.mine && !x.deleted); state.newLineSeq = firstUnread ? firstUnread.seq : null;' rendered at app.js:284-286. So when the judge follows the criterion, the line sits above K-9, not JUDGE-U1, and the reference fails a weight-2.0 criterion (2/34.5 of functional). This is also the behaviour the brief requires ('shows a \"new messages\" line where I stopped reading', conversations.md Unread messages), so every conforming app fails too. The scripted golden PASS does not refute this: functional.cjs:337-338 inserts an extra step absent from the criterion ('await openMatter(dev, 'M-13'); await openMatter(dev, 'M-11'); ... wait until no M-13 badge') to clear Dev's unread before posting U1. Minor (Note-level) wording risk: timer_changes (judge.toml:189) says to replay Harriet's step-1 request as Sian and expect 'the timer stays at 30 days', but after step 1 it is 7; the golden refuses with 403 either way, so a careful judge passes it, but a literal judge may stumble. Gates, polish and visual criteria were not exercised by any run (index scope says so); source review finds them plausible (timer_label 'Messages disappear after 7 days' beside title, hold badge, @media max-width 720px, transcript without controls), but they remain unmeasured, and no configured judge run / Oracle score exists. Run verdict NOT EXERCISED: the failure is derived from seed + golden source; no run has executed the criterion's literal sequence (the scripted run used the extra clearing step).",
+  "counterexample": "Fresh seed, judge runs criteria in TOML order. Before unread_and_new_messages_line, Dev's M-13 unread includes K-9 plus JUDGE-R0, R1, R2, R3, RX, R1B, E1, F1, F2. Judge notes Dev's count (e.g. 10), Harriet posts JUDGE-U1/U2, count rises to 12 in both tabs (pass), Dev opens M-13: the golden renders 'New messages' immediately above K-9 'Received, reading it tonight.' (app.js:186, 284), not above JUDGE-U1 -> judge fails the criterion; the reference (and any app following the brief's 'where I stopped reading' rule) loses weight 2.0, so Oracle cannot reach 1.0 on functional.",
+  "suggested_fix": "Add a setup step to unread_and_new_messages_line: 'As dev@kittle.test open M-13 so it is read up to its newest message, then open M-11; M-13 shows no unread count' before Harriet posts JUDGE-U1/U2 (mirroring functional.cjs:337-338), and rerun the scripted golden and a configured judge run; optionally reword timer_changes' Sian replay so the expected timer value matches when it is replayed.",
+  "run_verdict": "NOT EXERCISED"
+}
