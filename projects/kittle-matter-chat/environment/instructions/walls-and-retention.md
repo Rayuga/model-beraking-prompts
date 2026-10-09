@@ -20,7 +20,7 @@ Conflicts come up mid-matter, so Harriet can add or lift a wall for any of our s
 
 ## Disappearing messages
 
-Each matter has a timer: off, 1 day, 7 days or 30 days, and the thread shows the current setting beside the matter title. Once a message is as old as its matter's timer, counting from when it was sent to our clock, it is deleted for good unless it is on hold. So a message sent exactly seven days ago on a seven-day matter is already gone. Only a partner changes a timer. Shortening a timer deletes whatever is now too old straight away. Turning a timer off or lengthening it never brings anything back.
+Each matter has a timer: off, 1 day, 7 days or 30 days, and the thread shows the current setting beside the matter title. Once a message is as old as its matter's timer, counting from when it was sent to our clock, it is deleted for good unless it is on hold. So a message sent exactly seven days ago on a seven-day matter is already gone, and editing a message doesn't make it any younger. Only a partner changes a timer. Shortening a timer deletes whatever is now too old straight away. Turning a timer off or lengthening it never brings anything back.
 
 When a message goes, everything about it goes with it: its text, its earlier versions and any quote of it shown above a reply. Replies to it are separate messages and stay unless they are old enough themselves; above them we just want to see that the original message was deleted.
 
@@ -30,7 +30,7 @@ Only a partner places or releases a hold, on any message, including a reply. A h
 
 ## Search and transcripts
 
-Search looks through the current text of messages in the matters you can see, ignoring upper and lower case, and never shows deleted text or earlier versions. Clicking a result opens the thread at that message.
+Search looks through the current text of messages in the matters you can see, ignoring upper and lower case, and never shows deleted text or earlier versions. It looks for exactly the characters typed, so symbols such as `%`, `_` and `*` are just characters to find, never wildcards. Clicking a result opens the thread at that message.
 
 A transcript is our record of a matter. It is a page headed with the matter number, its title and the time it was generated, listing the matter's current messages oldest first in their threads, each with its author, sent time, "edited" if it was changed, and the hold mark. For a held message that was edited, it shows each version. A deleted message that still has replies appears only as a placeholder. A transcript is a plain reading page with no chat controls. Anyone who can see a matter can open its transcript; nobody else gets one, even with its address.
 

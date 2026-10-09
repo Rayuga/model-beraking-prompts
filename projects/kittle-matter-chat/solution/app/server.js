@@ -336,6 +336,13 @@ app.get("/api/matters/:id", (req, res) => {
   const walls = user.role === "partner" ? db.prepare("SELECT email FROM walls WHERE matter_id = ?").all(m.id).map(w => w.email) : undefined;
   res.json({ matter: matterSummary(user, m), last_read: lastRead(user.email, m.id), messages: threadFor(user, m.id), walls });
 });
+// Mention suggestions: only the other people who can see this matter, so walls and client scope hold here too.
+app.get("/api/matters/:id/people", (req, res) => {
+  const user = requireUser(req, res); if (!user) return;
+  const m = visibleMatter(user, req.params.id);
+  if (!m) return res.status(404).json({ error: NOT_AVAILABLE });
+  res.json({ people: people().filter(u => u.email !== user.email && canSee(u, m)).map(u => ({ name: u.name, mention: u.name.split(" ")[0] })) });
+});
 app.post("/api/matters/:id/read", (req, res) => {
   const user = requireUser(req, res); if (!user) return;
   const m = visibleMatter(user, req.params.id);
@@ -396,6 +403,7 @@ app.post("/api/matters/:id/messages", (req, res) => {
   const key = req.body?.client_key ? `${user.email}:${String(req.body.client_key).slice(0, 80)}` : null;
   let parentId = null;
   if (req.body?.parent_id) {
+    // A reply belongs to its parent's matter: a parent from any other matter is simply not there.
     const parent = db.prepare("SELECT * FROM messages WHERE id = ? AND matter_id = ?").get(String(req.body.parent_id), m.id);
     if (!parent || parent.deleted) return res.status(404).json({ error: "The message you are replying to is no longer available." });
     parentId = parent.id;

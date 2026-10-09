@@ -7,7 +7,8 @@ const $ = id => document.getElementById(id);
 const newKey = () => (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random());
 const state = {
   me: null, matters: [], current: null, thread: [], newLineSeq: null,
-  replyTo: null, editing: null, clientKey: newKey(), focusMessage: null, threadSig: "", listSig: "", messageErrors: {}
+  replyTo: null, editing: null, clientKey: newKey(), focusMessage: null, threadSig: "", listSig: "", messageErrors: {},
+  confirmDelete: null, suggestions: []
 };
 
 async function api(path, options = {}) {
@@ -176,7 +177,7 @@ async function openMatter(id, focusMessage = null) {
   const switching = state.current !== id;
   state.current = id;
   state.focusMessage = focusMessage;
-  if (switching) { resetComposer(); state.threadSig = ""; }
+  if (switching) { resetComposer(); state.threadSig = ""; state.confirmDelete = null; }
   showView("matter-view");
   const r = await api(`/api/matters/${encodeURIComponent(id)}`);
   if (!r.ok) return showUnavailable(r.status);
@@ -293,7 +294,7 @@ function renderThread() {
 
 function renderMessage(msg) {
   const li = document.createElement("li");
-  li.className = "message" + (msg.depth ? " reply" : "") + (msg.deleted ? " deleted" : "");
+  li.className = "message" + (msg.depth ? " reply" : "") + (msg.deleted ? " deleted" : "") + (state.focusMessage === msg.id ? " focused" : "");
   li.id = "msg-" + msg.id;
   li.style.setProperty("--depth", Math.min(msg.depth, 6));
   if (msg.deleted) {
@@ -334,12 +335,22 @@ function renderMessage(msg) {
     b.addEventListener("click", handler);
     actions.appendChild(b);
   };
-  add("Reply", () => startReply(msg), `Reply to ${msg.author_name}`);
-  if (msg.mine) { add("Edit", () => startEdit(msg)); add("Delete", () => deleteMessage(msg)); }
-  add("Copy link", () => copyLink(msg));
-  add("Mark unread", () => markUnread(msg));
-  if (msg.edited && state.me.role !== "client") add("Versions", () => showVersions(msg, li));
-  if (state.me.role === "partner") add(msg.hold ? "Release hold" : "Place hold", () => setHold(msg, !msg.hold));
+  if (state.confirmDelete === msg.id) {
+    const ask = document.createElement("span");
+    ask.className = "confirm-text";
+    ask.textContent = "Delete this message? This can't be undone.";
+    actions.appendChild(ask);
+    add("Yes, delete", () => deleteMessage(msg));
+    add("Keep it", () => askDelete(msg, false));
+    actions.classList.add("confirming");
+  } else {
+    add("Reply", () => startReply(msg), `Reply to ${msg.author_name}`);
+    if (msg.mine) { add("Edit", () => startEdit(msg)); add("Delete", () => askDelete(msg, true)); }
+    add("Copy link", () => copyLink(msg));
+    add("Mark unread", () => markUnread(msg));
+    if (msg.edited && state.me.role !== "client") add("Versions", () => showVersions(msg, li));
+    if (state.me.role === "partner") add(msg.hold ? "Release hold" : "Place hold", () => setHold(msg, !msg.hold));
+  }
   li.appendChild(actions);
   const err = document.createElement("p");
   err.className = "error action-error";
@@ -386,6 +397,7 @@ function startEdit(msg) {
   $("composer-input").focus();
 }
 function resetComposer() {
+  hideSuggestions();
   state.replyTo = null; state.editing = null; state.clientKey = newKey();
   $("composer-context").hidden = true;
   $("composer-send").textContent = "Send";
@@ -393,10 +405,71 @@ function resetComposer() {
   hideError("composer-error");
 }
 $("composer-cancel").addEventListener("click", resetComposer);
-$("composer-input").addEventListener("input", () => hideError("composer-error"));
+$("composer-input").addEventListener("input", () => { hideError("composer-error"); suggestMentions(); });
+$("composer-input").addEventListener("click", suggestMentions);
+// Enter sends, Shift+Enter is a new line, Escape closes an edit or reply without saving.
 $("composer-input").addEventListener("keydown", event => {
-  if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) { event.preventDefault(); $("composer").requestSubmit(); }
+  if (event.isComposing) return;
+  const open = !$("mention-suggest").hidden;
+  if (event.key === "Enter" && !event.shiftKey) {
+    event.preventDefault();
+    if (open && state.suggestions.length) return pickMention(state.suggestions[0]);
+    $("composer").requestSubmit();
+  } else if (event.key === "Escape") {
+    if (open) { event.preventDefault(); return hideSuggestions(); }
+    if (state.editing || state.replyTo) { event.preventDefault(); resetComposer(); }
+  }
 });
+
+/* ---------- mention suggestions ---------- */
+
+// The @word being typed just before the caret, if any.
+function mentionToken() {
+  const input = $("composer-input");
+  const before = input.value.slice(0, input.selectionStart);
+  const m = before.match(/(^|[^\w@])@([^\s@]*)$/);
+  return m ? { start: before.length - m[2].length - 1, query: m[2].toLowerCase() } : null;
+}
+let suggestSeq = 0;
+async function suggestMentions() {
+  const token = mentionToken();
+  if (!token || !state.current) return hideSuggestions();
+  const seq = ++suggestSeq;
+  const r = await api(`/api/matters/${encodeURIComponent(state.current)}/people`);
+  if (seq !== suggestSeq) return;
+  if (!r.ok) return hideSuggestions();
+  state.suggestions = r.data.people.filter(p => p.name.toLowerCase().split(" ").some(w => w.startsWith(token.query)));
+  const list = $("mention-suggest");
+  list.innerHTML = "";
+  for (const p of state.suggestions) {
+    const li = document.createElement("li");
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "suggestion"; b.setAttribute("role", "option");
+    b.textContent = p.name;
+    b.addEventListener("mousedown", e => e.preventDefault());
+    b.addEventListener("click", () => pickMention(p));
+    li.appendChild(b);
+    list.appendChild(li);
+  }
+  list.hidden = !state.suggestions.length;
+}
+function pickMention(p) {
+  const input = $("composer-input");
+  const token = mentionToken();
+  if (!token) return hideSuggestions();
+  const end = input.selectionStart;
+  input.value = input.value.slice(0, token.start) + "@" + p.mention + " " + input.value.slice(end);
+  const caret = token.start + p.mention.length + 2;
+  input.setSelectionRange(caret, caret);
+  input.focus();
+  hideSuggestions();
+}
+function hideSuggestions() {
+  suggestSeq++;
+  state.suggestions = [];
+  $("mention-suggest").hidden = true;
+  $("mention-suggest").innerHTML = "";
+}
 
 $("composer").addEventListener("submit", async event => {
   event.preventDefault();
@@ -419,10 +492,19 @@ $("composer").addEventListener("submit", async event => {
   $("composer-input").focus();
 });
 
+function askDelete(msg, asking) {
+  clearMessageError(msg);
+  state.confirmDelete = asking ? msg.id : null;
+  document.getElementById("msg-" + msg.id)?.replaceWith(renderMessage(msg));
+}
 async function deleteMessage(msg) {
   clearMessageError(msg);
+  state.confirmDelete = null;
   const r = await api(`/api/messages/${encodeURIComponent(msg.id)}`, { method: "DELETE" });
-  if (!r.ok) return messageError(msg, r.data.error || "That message can't be deleted.");
+  if (!r.ok) {
+    document.getElementById("msg-" + msg.id)?.replaceWith(renderMessage(msg));
+    return messageError(msg, r.data.error || "That message can't be deleted.");
+  }
   reloadCurrent();
 }
 async function setHold(msg, hold) {
