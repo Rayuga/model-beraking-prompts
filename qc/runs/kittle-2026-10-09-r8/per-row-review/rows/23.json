@@ -1,0 +1,28 @@
+{
+  "number": 23,
+  "id": "verifier_and_instruction_agree_on_the_runtime_contract",
+  "reviewer": "row-reviewer-23",
+  "input_sha256": "f328e4b698f6db99b2bb6f9b9ecb19f57b973f8ff0e2073409b1bd18e25f357f",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r8/rules/WebDev Rubrics QC.xlsx (Quality Checks C24 row 23; Internal Quality Checks row 23 incl. Mukesh annotation on sign-in; Deterministic Checks check-runtime-contract-strings.py; Internal row 4)",
+    ".qc-cache/kittle-2026-10-09-r8/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r8/rules/harbor-webdev-rubric-qc/references/quality-checks.md (#4, #19, #21, #23, #49)",
+    ".qc-cache/kittle-2026-10-09-r8/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (test.sh contract, cross-file agreements)",
+    ".qc-cache/kittle-2026-10-09-r8/rules/projects/webdev-task-template (tests/test.sh, tests/Dockerfile, environment/Dockerfile, integration.md diffs)",
+    "qc/REVIEW_POLICY.md",
+    "task/tests/test.sh, task/task.toml, task/instruction.md, task/environment/instructions/*.md, task/environment/Dockerfile, task/tests/Dockerfile, task/tests/.dockerignore, task/tests/app_context.md, task/tests/*/*/judge.toml (headers/URLs), task/tests/tools/restart_mcp.py, task/solution/solve.sh, task/solution/app/server.js (lines 13-58, 528), task/environment/assets/seed_data.json",
+    "qc/runs/kittle-2026-10-09-r8/raw-evidence-index.json (hashes of server.js, solve.sh, seed re-verified against frozen bytes)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Frozen tests/test.sh is byte-identical to the template test.sh (diff clean; sha256 bd68259276ca...). Each launch assumption maps to a public statement: (1) entry /app/server.js (test.sh:68,97,111) = instruction.md:5 and integration.md:3; launched with cwd /tests and possibly from /tmp/submission copy (test.sh:90-101) = integration.md:3 'not necessarily from inside /app, find your own files relative to server.js'. (2) env -i with only PATH, NODE_PATH, HOME=/tmp/submission, PORT=3000, DB_PATH (test.sh:104-109, restart helper 160-165) = integration.md:3 lists exactly these and says HOME may not be /app. (3) uid 65534 via setpriv (test.sh:110) = 'as an ordinary user'. (4) DB_PATH=/app/app.db or copy path = 'SQLite at /app/app.db, or at the path in DB_PATH'. (5) probe 127.0.0.1:3000/api/health then / , accepting any HTTP response (test.sh:42-58) = 'listen on 0.0.0.0 port 3000' and 'GET /api/health should answer 200 even if the database can't be opened' (probe is laxer than the instruction). (6) symlink refusal outside /app/node_modules (test.sh:72-83) = integration.md:5 'don't put symbolic links anywhere in /app' (instruction stricter than check, so no conforming app is refused). (7) deps: verifier image installs Node 22 + express@5.1.0 + better-sqlite3@12.4.1 globally with NODE_PATH (tests/Dockerfile:1-22), same pins as environment/Dockerfile:9-12 = 'Express and better-sqlite3 are already installed globally and found through NODE_PATH'; locally vendored node_modules travel with the /app artifact. (8) seed: no seeding by test.sh; /assets is a task.toml artifact and integration.md:5 says copy /assets/seed_data.json into /app and import once into an empty DB, hand over without a DB; restart helper/persistence matches 'restarts keep everything'. (9) clock 2026-05-12T11:00:00Z (integration.md:7), accounts in seed and password123 (walls-and-retention.md:3) match app_context.md accounts; all judge URLs are http://localhost:3000 with no fixed routes. REWARDKIT_* / ANTHROPIC_* env vars are verifier-side judge config, not app launch contract. Golden server.js honours PORT, DB_PATH, __dirname-relative files, early /api/health and 0.0.0.0 (server.js:13-15,29,42,528); raw-evidence hashes for server.js/solve.sh/seed match frozen bytes. Adversarial: a broken app that passes the probe (any HTTP 500 on /) only clears launch, and the gates require a real post/readback, so no contract gap admits it; a conforming alternative (cwd-independent, DB_PATH-honouring, local node_modules, slower but <30s start) is not refused by any unstated assumption. Only unstated item is the ~30 s readiness window (test.sh:116-122), which is template-controlled and implied by 'health answers even if DB can't be opened'. Per the skill's known false positive, sign-in surface is house convention. This is a source contract review; no full configured verifier launch of these bytes was run by this reviewer (the index says a full configured grading run is absent), which belongs to runtime rows, not this agreement check.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

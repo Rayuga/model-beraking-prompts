@@ -1,0 +1,37 @@
+{
+  "number": 19,
+  "id": "solution_honors_the_runtime_contract_and_is_self_contained",
+  "reviewer": "row-reviewer-19",
+  "input_sha256": "f328e4b698f6db99b2bb6f9b9ecb19f57b973f8ff0e2073409b1bd18e25f357f",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r8/rules/WebDev Rubrics QC.xlsx :: Quality Checks row 20 (#19, C20/D20) and Internal Quality Checks row 20 (#19) plus Deterministic Checks C31/C34",
+    ".qc-cache/kittle-2026-10-09-r8/rules/harbor-webdev-rubric-qc/SKILL.md (delivery profile: network public)",
+    ".qc-cache/kittle-2026-10-09-r8/rules/harbor-webdev-rubric-qc/references/quality-checks.md:83-85 (#19 verify procedure)",
+    ".qc-cache/kittle-2026-10-09-r8/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (test.sh launch contract, cross-file table lines 173-176)",
+    ".qc-cache/kittle-2026-10-09-r8/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md:62 (check-solve-contract)",
+    ".qc-cache/kittle-2026-10-09-r8/rules/projects/webdev-task-template/solution/solve.sh and tests/test.sh",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/kittle-2026-10-09-r8/task/solution/solve.sh",
+    ".qc-cache/kittle-2026-10-09-r8/task/solution/app/server.js (lines 1-180, 295-330, 505-528)",
+    ".qc-cache/kittle-2026-10-09-r8/task/solution/app/package.json",
+    ".qc-cache/kittle-2026-10-09-r8/task/instruction.md",
+    ".qc-cache/kittle-2026-10-09-r8/task/environment/instructions/integration.md",
+    ".qc-cache/kittle-2026-10-09-r8/task/environment/Dockerfile",
+    ".qc-cache/kittle-2026-10-09-r8/task/tests/test.sh",
+    ".qc-cache/kittle-2026-10-09-r8/task/tests/Dockerfile",
+    ".qc-cache/kittle-2026-10-09-r8/task/task.toml",
+    "qc/runs/kittle-2026-10-09-r8/raw-evidence-index.json (hashes re-verified) and qc/repairs/kittle-2026-10-08/results/golden-run.log (sha256 58d77dc1... matches index)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "solve.sh is byte-identical to the template solve.sh: '#!/bin/bash', set -euo pipefail, 'mkdir -p /app; cp -a \"$(dirname \"$0\")/app/.\" /app/', LF only (0 CR), no writes to /tests, /logs/verifier or /solution, no pkill, no NODE_ENV, no installs; sha256 f7c17a01... matches the evidence index, and all solution/app file hashes match too. server.js meets every integration.md term: PORT default 3000 and listen on 0.0.0.0 (server.js:13, :528); DB_PATH || path.join(__dirname,'app.db') (:14); public/ and seed are resolved via __dirname (:15, :29), with /assets/seed_data.json as fallback; seeding is guarded by settings.seeded inside one transaction (:93-127); GET /api/health is registered before init and returns 200 with booted=false when the DB fails, while other /api routes return 503 (:42-47, :145-154); express/better-sqlite3 resolve through NODE_PATH (package.json pins express 5.1.0 and better-sqlite3 12.4.1, matching the agent Dockerfile). No app.db, node_modules or symlinks ship in solution/. Independent Docker run on 2026-10-09: I built environment/Dockerfile and ran the container with --network none, ran the frozen solve.sh, then chowned /app to 65534 as test.sh does. I launched the app the way test.sh does: setsid env -i with PATH, NODE_PATH, HOME=/tmp/h, PORT=3000 and DB_PATH=/app/app.db, using setpriv uid 65534 and cwd /tmp. Results: health 200 booted=true; anonymous /api/matters returned 401; harriet login 200; matters M-11,M-12,M-13; posting to M-11 returned 201 (id K-19); search found it. After a kill and restart on the same DB, K-19 was still there and the seed was not imported again. With an unwritable DB_PATH (/root/locked/app.db) the log showed 'Database initialisation failed: EACCES', health returned 200 {booted:false}, /api/matters 503 and / 200. Test container and image removed. Broken app that could pass: an app that also writes outside /app is not graded by this row, and the reference doesn't do that. Conforming alternative that could fail: an app that keeps the seed only at /app/seed_data.json is also accepted, because server.js checks several candidate paths, and the contract does not depend on the reference's layout. Minor observation, not a defect: with an artificial DB_PATH under /proc, Node's recursive mkdirSync spun and never listened. That is a Node/procfs quirk outside the stated contract. The realistic EACCES case behaves correctly. Scope: this is a local contract and runtime check, not a configured judge run, Oracle score or portal result.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "CONFIRMED"
+}

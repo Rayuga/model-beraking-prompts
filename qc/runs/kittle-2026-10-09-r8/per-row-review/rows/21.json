@@ -1,0 +1,35 @@
+{
+  "number": 21,
+  "id": "verifier_entrypoint_is_safe_and_always_scores",
+  "reviewer": "row-reviewer-21",
+  "input_sha256": "f328e4b698f6db99b2bb6f9b9ecb19f57b973f8ff0e2073409b1bd18e25f357f",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r8/rules/WebDev Rubrics QC.xlsx: 'Quality Checks' row 22 (#21 verifier_entrypoint_is_safe_and_always_scores), 'Internal Quality Checks' row 22, 'Deterministic Checks' rows C33/C36 (related test.sh contract)",
+    ".qc-cache/kittle-2026-10-09-r8/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r8/rules/harbor-webdev-rubric-qc/references/quality-checks.md (### 21)",
+    ".qc-cache/kittle-2026-10-09-r8/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (## tests/test.sh ordered contract, budget nesting)",
+    ".qc-cache/kittle-2026-10-09-r8/rules/projects/webdev-task-template/tests/{test.sh,tools/score.py,tools/restart_mcp.py,scoring.toml,Dockerfile}",
+    ".qc-cache/kittle-2026-10-09-r8/task/tests/test.sh",
+    ".qc-cache/kittle-2026-10-09-r8/task/tests/tools/score.py",
+    ".qc-cache/kittle-2026-10-09-r8/task/tests/scoring.toml",
+    ".qc-cache/kittle-2026-10-09-r8/task/tests/Dockerfile",
+    ".qc-cache/kittle-2026-10-09-r8/task/tests/*/*/judge.toml (timeouts, modes, restart wiring)",
+    ".qc-cache/kittle-2026-10-09-r8/task/task.toml",
+    ".qc-cache/kittle-2026-10-09-r8/task/environment/instructions/integration.md (launch contract: cwd, HOME, env, health)",
+    ".qc-cache/kittle-2026-10-09-r8/task/solution/app/server.js (path resolution lines 14-29, 522)",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/kittle-2026-10-09-r8/raw-evidence-index.json (scope: no full configured grading run on these bytes)"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "Source: frozen tests/test.sh, tools/score.py, tools/restart_mcp.py, scoring.toml and tests/Dockerfile are byte-identical to the frozen template (diff empty). test.sh matches every step of the staged-task-contract test.sh contract: write_zero_reward runs before `trap cleanup EXIT` (cleanup -> ensure_reward), no exec; refuses on missing REWARDKIT_JUDGE/MODEL, missing /app/server.js, or any symlink outside /app/node_modules; copies /app aside and launches `setsid env -i PATH NODE_PATH HOME PORT=3000 DB_PATH setpriv --reuid=65534 --regid=65534 --clear-groups node $APP_ENTRY`; /tests chmod go-rwx and LOG_DIR chmod 700 so the app cannot read rubrics or forge rewards; probe_ready polls /api/health then / for 30 s before RewardKit; exports APP_RESTART_HELPER; runs gates (1500 s) -> score.py (0 continue / 1 stop with detailed record / other -> plain zero) -> scored (11100 s) -> score.py || write_zero_reward. Budgets nest: 1500+11100=12600 < verifier 13200; worst-case scored = 16 functional criteria x 550 s (individual mode, max-concurrent 1) + polish 900 + visual 900 = 10600 < 11100; gates 600+600 < 1500. Actual run (9 Oct 2026, container from cw-editor-verifier:current, frozen task mounted read-only, rewardkit replaced by a PATH stub so no provider calls; script in my scratchpad r21/sim.sh): 13 paths all left reward.txt/reward.json and exit 0 - golden+passing stubs 0.6800 (gates then scored order observed, node ran as `nobody`, no leftover node process after cleanup); gate fail 0.0000 graded=1 gates_passed=0 (scored not run); functional floor fail 0.0 with weighted 0.4; gates rewardkit crash, garbage gates JSON, missing gate key, scored garbage JSON -> plain zero (no_op=1); scored rewardkit crash -> 0.0 graded record with gates_passed=1; missing server.js, symlink /app/evil->/etc/passwd, app that never listens, missing REWARDKIT_MODEL -> plain zero without invoking rewardkit. Plausible broken app: a server answering HTTP 500 on every route passes liveness (HTTPError counts as up) and reaches RewardKit - by design; dead-app exclusion is the render/constraints gates' job, not test.sh's. Conforming alternative: an app resolving files relative to cwd would fail under test.sh (cwd is not /app), but integration.md line 3 explicitly tells the agent to resolve files relative to server.js and that HOME may not be /app, and the golden uses __dirname, so this is a disclosed contract, not a defect. Risk=true only because the real RewardKit/judge integration on these bytes (actual reward.json schema from rewardkit 0.1.7, real suite durations, harness kill behaviour at verifier timeout) is unmeasured: raw-evidence-index.json states no full configured grading run exists for this candidate. Note: a scored-suite RewardKit failure or timeout zeroes the reward even after gates pass (template policy, not task-editable); harness SIGKILL bypasses the trap but the zero reward written at start still stands.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL"
+}

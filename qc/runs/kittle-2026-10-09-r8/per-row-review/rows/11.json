@@ -1,0 +1,34 @@
+{
+ "number": 11,
+ "id": "timeouts_fit_the_work",
+ "reviewer": "row-reviewer-11",
+ "input_sha256": "f328e4b698f6db99b2bb6f9b9ecb19f57b973f8ff0e2073409b1bd18e25f357f",
+ "read_sources": {
+  "workbook": true,
+  "skill": true,
+  "template": true
+ },
+ "sources_read": [
+  ".qc-cache/kittle-2026-10-09-r8/rules/WebDev Rubrics QC.xlsx :: Quality Checks row 11 timeouts_fit_the_work; Internal Quality Checks row 11 ('inner < outer, sum of judges < verifier'); Deterministic Checks check-scoring-policy.py and check-rubric-schema.py",
+  ".qc-cache/kittle-2026-10-09-r8/rules/harbor-webdev-rubric-qc/SKILL.md",
+  ".qc-cache/kittle-2026-10-09-r8/rules/harbor-webdev-rubric-qc/references/quality-checks.md ### 11",
+  ".qc-cache/kittle-2026-10-09-r8/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (task.toml block, 'Budgets must nest', judge.toml template)",
+  ".qc-cache/kittle-2026-10-09-r8/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (check-scoring-policy, check-rubric-schema)",
+  ".qc-cache/kittle-2026-10-09-r8/rules/projects/webdev-task-template/{task.toml,tests/test.sh,tests/*/*/judge.toml}",
+  "qc/REVIEW_POLICY.md line 25 (workload measured, not inferred)",
+  ".qc-cache/kittle-2026-10-09-r8/task/task.toml (sha256 15b097b6...)",
+  ".qc-cache/kittle-2026-10-09-r8/task/tests/test.sh (sha256 bd682592..., byte-identical to template)",
+  ".qc-cache/kittle-2026-10-09-r8/task/tests/gates/{render,constraints}/judge.toml",
+  ".qc-cache/kittle-2026-10-09-r8/task/tests/scored/{functional,polish,visual}/judge.toml (functional sha256 1a900ec9...)",
+  ".qc-cache/kittle-2026-10-09-r8/task/tests/tools/restart_mcp.py",
+  "qc/runs/kittle-2026-10-09-r8/raw-evidence-index.json; hashes of qc/repairs/kittle-2026-10-09-v3/hosted-v2/* re-verified (all 8 match)",
+  "qc/repairs/kittle-2026-10-09-v3/hosted-v2/{oracle,luna}-result.json timestamps and {oracle,luna}-scored-details.json"
+ ],
+ "verdict": "Not exercised",
+ "risk": true,
+ "severity": "P2",
+ "evidence": "Static nesting holds (arithmetic). task.toml: [agent].timeout_sec=7200, build_timeout_sec=600, [verifier].timeout_sec=13200 (identical to template). test.sh (byte-identical to template) line 213 run_suite gates 1500, line 224 run_suite scored 11100, rewardkit --max-concurrent-agent 1 (line 207, sequential). Gates: render 600 + constraints 600 (batched, judge.toml:7) = 1200 < 1500. Scored: functional mode='individual' timeout=550 per criterion (functional/judge.toml:6,12) x 16 criteria = 8800, + polish 900 + visual 900 (batched) = 10600 < 11100 (500 s spare; matches the judge.toml:7-11 comment). Budgets: 1500 + 11100 = 12600 < 13200 (600 s for copy, liveness, score.py). Sum of all judges 1200+10600 = 11800 < 13200 (internal annotation). Liveness: 120 x 0.25 s probe loop (test.sh:116-122, ~30 s when connect fails fast; worst case with two 2 s urlopen timeouts ~510 s, still 510+12600 = 13110 < 13200). Restart helper 30 s loop (test.sh:171-177) < restart_mcp HELPER_TIMEOUT_SEC=55 (restart_mcp.py:11) < 550 criterion cap. Measured context (previous v2 bytes, not this candidate; hashes verified): hosted verifier wall time Oracle 05:21:17->06:24:16 (~3780 s) and openhands/GPT-5.6 05:29:27->06:45:14 (~4547 s), both well inside 13200; Oracle got all 16 individual functional criteria 'yes' under the 550 s cap, which also shows the cap is per criterion. Agent run took ~8 min of 7200 s. NOT measured: whether 550 s per criterion is long enough for v3. Five v3 functional criteria roughly doubled in description length vs v2 (wall_every_route 1106->2365 chars, wall_mentions_and_links 980->2023, timer_changes 1464->2267, edits_and_stale_edit 1217->2242, search_and_transcript 1307->2121), and three polish rows were replaced; no per-criterion durations exist for v2 and no configured judge run exists for v3 (raw-evidence-index scope and functional/judge.toml:11 both say unmeasured). The template default (batched, 9000) was replaced by individual/550 on the lead's instruction as recorded in the judge.toml comment; this is within the five-hour limit and not an increase.",
+ "counterexample": "Not a confirmed failure; the open risk: a conforming app whose wall_every_route (multi-role, request-recording-and-replay, 2365-char) criterion takes the GLM-5.3-flashx judge longer than 550 s would have that criterion cut off and graded as not passing (or error), costing a correct submission weight it earned. A broken app cannot exploit this; the exposure is false negatives only.",
+ "suggested_fix": "Run one full configured judge run on the v3 bytes and record per-criterion durations for the five lengthened functional criteria; if any approaches 550 s, split it or rebalance per-criterion timeouts within the unchanged 11100 s scored budget, with recorded authorization.",
+ "run_verdict": "NOT EXERCISED"
+}

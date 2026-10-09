@@ -1,0 +1,38 @@
+{
+  "number": 32,
+  "id": "criteria_are_outcome_based_and_browser_decidable",
+  "reviewer": "row-reviewer-32",
+  "input_sha256": "f328e4b698f6db99b2bb6f9b9ecb19f57b973f8ff0e2073409b1bd18e25f357f",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r8/rules/WebDev Rubrics QC.xlsx (Quality Checks row 33 / check #32; Internal Quality Checks row 33, no extra annotation)",
+    ".qc-cache/kittle-2026-10-09-r8/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r8/rules/harbor-webdev-rubric-qc/references/quality-checks.md (### 32)",
+    ".qc-cache/kittle-2026-10-09-r8/rules/projects/webdev-task-template (tree)",
+    "qc/REVIEW_POLICY.md",
+    "task/instruction.md",
+    "task/environment/instructions/conversations.md, integration.md, walls-and-retention.md",
+    "task/environment/assets/seed_data.json",
+    "task/tests/app_context.md",
+    "task/tests/gates/render/{prompt.md,judge.toml}",
+    "task/tests/gates/constraints/{prompt.md,judge.toml}",
+    "task/tests/scored/functional/{prompt.md,judge.toml}",
+    "task/tests/scored/polish/{prompt.md,judge.toml}",
+    "task/tests/scored/visual/{prompt.md,judge.toml}",
+    "task/tests/scoring.toml",
+    "task/solution/app/server.js:395-426 (POST messages: access check, then client_key dedupe)",
+    "task/solution/app/public/app.js:482 (client sends client_key)",
+    "qc/runs/kittle-2026-10-09-r8/raw-evidence-index.json (scope header only)"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "Reviewed all 2 gate, 16 functional, 6 polish and 4 visual criteria. Almost all name concrete browser-observable outcomes with distinctive JUDGE-* probes absent from seed and golden (grep count 0), state readback after reload/other context/restart, and refusals paired with positive controls (e.g. constraints JUDGE-G1 reload + second context; wall_every_route JUDGE-W2/W3 with changed text; timer_changes recomputed from seed dates K-13 4 May, K-18 3 May, K-8 10 May survives; persistence notes and compares concrete values across restart_app). Visual likert criteria are craft judgements with anchors, acceptable by design. One instance fails the row: functional/judge.toml:50 (signin_and_client_scope Part B) replays Gwen's recorded M-11 posting request 'aimed at M-12' with the same text 'Lease question JUDGE-CS1', and functional/prompt.md:45-46 tells the judge to change the duplicate-send key only 'When a replay changes a message's text', so the key is kept. The golden client sends client_key (app.js:482) and the golden server happens to check matter access before dedupe (server.js:398-399 before 412-415), but an app that resolves an idempotency key first (common idempotency-middleware pattern) answers the replay with the original M-11 result: nothing is written to or leaked from M-12, yet the criterion's response-shape bar 'if the refusal is not a plain not-available answer' fails it. The probe therefore does not reliably reach the cross-matter write path and its decisive evidence is a response shape rather than a state change. No configured judge run exists for these bytes (raw-evidence-index scope), so this is source reasoning, not measured.",
+  "counterexample": "Conforming alternative: an app whose POST handler (or middleware) first looks up (user, client_key) and returns the stored 201 response for a duplicate key, then checks access for new sends. Gwen's replay to M-12 with the unchanged key returns her existing M-11 message; M-12 gains nothing and leaks nothing, but the judge sees a 2xx with message data instead of a plain not-available and assigns 0 to the 3.0-weight signin_and_client_scope criterion. Conversely the leg cannot distinguish 'refused by access check' from 'deduplicated', so it does not prove the M-12 write path is enforced for any app that dedupes first.",
+  "suggested_fix": "In signin_and_client_scope Part B, replay the post to M-12 with new text (e.g. \"Cross post JUDGE-CS2\") and check M-12 has no JUDGE-CS2, and/or change functional/prompt.md:45-46 to 'When a replay changes a message's text or its target matter or parent, also change any duplicate-send key it carries.'",
+  "run_verdict": "NOT EXERCISED"
+}

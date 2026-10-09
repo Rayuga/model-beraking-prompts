@@ -1,0 +1,31 @@
+{
+  "number": 24,
+  "id": "grading_wiring_is_structurally_correct",
+  "reviewer": "row-reviewer-24",
+  "input_sha256": "f328e4b698f6db99b2bb6f9b9ecb19f57b973f8ff0e2073409b1bd18e25f357f",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r8/rules/WebDev Rubrics QC.xlsx (Quality Checks row 24; Internal Quality Checks row 24; Deterministic Checks check-rubric-schema.py, check-scoring-policy.py, check-canonical-shared-files.py)",
+    ".qc-cache/kittle-2026-10-09-r8/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r8/rules/harbor-webdev-rubric-qc/references/quality-checks.md (check 24)",
+    ".qc-cache/kittle-2026-10-09-r8/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md",
+    ".qc-cache/kittle-2026-10-09-r8/rules/projects/webdev-task-template/tests/** (diffed against task)",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/kittle-2026-10-09-r8/raw-evidence-index.json, preflight.json",
+    ".qc-cache/kittle-2026-10-09-r8/task/task.toml",
+    ".qc-cache/kittle-2026-10-09-r8/task/tests/scoring.toml, test.sh, Dockerfile, tools/score.py, tools/restart_mcp.py, app_context.md",
+    ".qc-cache/kittle-2026-10-09-r8/task/tests/{gates/render,gates/constraints,scored/functional,scored/polish,scored/visual}/{judge.toml,prompt.md}",
+    "rewardkit 0.1.7 source (runner.py, judges.py, agents.py) inside cw-editor-verifier:current"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "Structure: tests/scoring.toml:1-11 has [gates] render=0.0/constraints=0.0, [weights] functional 0.6/polish 0.2/visual 0.2 (sum 1.0), [floors] functional=0.05; each name maps to tests/gates/<name> or tests/scored/<name>. scoring.toml, test.sh, Dockerfile, .dockerignore, tools/score.py and tools/restart_mcp.py are byte-identical to the frozen template (diff). All five judge.toml files carry [judge] judge='claude-code' fallback, mode, timeout, isolated=false, prompt_template='prompt.md', no model/reasoning_effort/temperature/weight, and the playwright stdio MCP server (playwright-mcp --headless --isolated --executable-path=/usr/local/bin/chromium --no-sandbox). Only scored/functional/judge.toml:23-27 declares the 'verifier' server: /usr/local/bin/python3 /tests/tools/restart_mcp.py $APP_RESTART_HELPER, matching test.sh:193 'export APP_RESTART_HELPER=\"$LOG_DIR/app-restart.sh\"' which is exported before both run_suite calls (test.sh:213,224). tomllib parse: render 1 / constraints 1 binary criteria, all_pass; functional 16 binary (weights sum 44.0, matches comment at functional/judge.toml:31-37), polish 6 binary, visual 4 likert points=5, all weighted_mean; ids unique and equal to names, all weights >0, descriptions non-empty, no stray keys. All five prompt.md contain {app_context} (substituted by test.sh:195-201) and {criteria}; rewardkit build_prompt uses str.replace (judges.py:133) so the literal braces in app_context.md:24 are safe. Actual-run evidence (no provider spend, --network none, --rm): rewardkit 0.1.7 discover('/tests/gates') and discover('/tests/scored') on the frozen tests loaded all five as AgentJudge claude-code / z-ai/glm-5.3-flashx with the expected mode/timeout/aggregation/criterion counts and {criteria} present; the claude-code backend's MCP add args expanded $APP_RESTART_HELPER to /logs/verifier/app-restart.sh (agents.py:66 os.path.expandvars). restart_mcp.py answered initialize/tools/list (single restart_app tool) and returned a structured isError when the helper is absent. The only template deviation is functional mode='individual', timeout=550 (template batched/9000), recorded in-file as the lead's instruction relayed 8 Oct 2026. rewardkit 0.1.7 models.py:142 JudgeMode=Literal['batched','individual'] and judges.py:460-499 run each criterion as its own sequential agent call with judge.timeout per call; add_mcp_servers runs once before the loop, so both servers are available per criterion and the file-based .used marker keeps restart_app single-use across sessions. 16x550+900+900=10600 < 11100 scored budget; gates 600+600=1200 < 1500 (--max-concurrent-agent 1); 1500+11100=12600 < verifier 13200. Counterexample attempts: (a) a broken app cannot pass through wiring - gates are binary all_pass and score.py:41 requires >0.0, so any gate failure zeroes reward; (b) a conforming app is not failed by wiring - individual sessions each re-apply the in-dimension gate and the persistence criterion builds its own state before restart (functional/judge.toml:273-280). No structural defect found. Risk kept true: individual mode and the verifier MCP registration have not been exercised end-to-end in a full configured judge run (raw-evidence-index scope says a full configured grading run is absent; the in-file comment says 'Not yet measured against a judge run'), the parse test used the existing cw-editor-verifier:current image (rewardkit 0.1.7, same pin as tests/Dockerfile) rather than a fresh build of these tests, the restart tool is visible to all 16 individual sessions so a stray early call would consume the single use and fail persistence, and parse-failure retries (_MAX_JUDGE_RETRIES=3, judges.py:229) could exceed the suite budget - the latter two are timing/feasibility concerns owned by other rows.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL"
+}
