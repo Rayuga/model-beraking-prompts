@@ -42,8 +42,8 @@ dimension.
   with another account's session or another target or field values.
 - Record method, path, body, session credential and any header that identifies the send
   (such as an idempotency key) of the UI's own writes; replays are in-page calls from the
-  app's origin. When a replay changes a message's text, also change any duplicate-send key
-  it carries. Never use curl or shell
+  app's origin. When a replay changes a message's text, target matter or parent, also change
+  any duplicate-send key it carries. Never use curl or shell
   commands.
 - A hidden or disabled control is not enforcement; the replay must also be
   refused. A refusal writes nothing and a re-read matches the previous state.

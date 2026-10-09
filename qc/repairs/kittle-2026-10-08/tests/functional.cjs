@@ -157,12 +157,13 @@ async function before() {
     await openMatter(gwen, 'M-11'); gwen.requests.length = 0;
     await post(gwen, 'Lease question JUDGE-CS1');
     const req = lastReq(gwen, 'POST', /\/api\/matters\/M-11\/messages$/);
-    assert.equal((await replay(gwen, { ...req, url: req.url.replace('M-11', 'M-12') })).status, 404);
+    assert.equal((await replay(gwen, { ...req, url: req.url.replace('M-11', 'M-12'), body: JSON.stringify({ body: 'Cross post JUDGE-CS2', client_key: 'cs2' }) })).status, 404);
     harriet.requests.length = 0; await openMatter(harriet, 'M-12');
     const h12 = lastReq(harriet, 'GET', /\/api\/matters\/M-12$/);
+    assert.ok(JSON.stringify((await replay(harriet, h12)).data).includes('heads of terms'), 'Harriet M-12 load');
     assert.equal((await replay(gwen, h12)).status, 404);
     const gt = await gwen.request.get(`${B}/transcripts/M-12`); assert.equal(gt.status(), 404); assert.ok(!(await gt.text()).includes('Marsh'));
-    assert.ok(!JSON.stringify((await api(harriet, 'GET', '/api/matters/M-12')).data).includes('JUDGE-CS1'));
+    assert.ok(!/JUDGE-CS1|JUDGE-CS2/.test(JSON.stringify((await api(harriet, 'GET', '/api/matters/M-12')).data)));
   });
 
   await check('wall_every_route', async () => {
@@ -257,6 +258,9 @@ async function before() {
     await harriet.selectOption('#wall-select', 'sian@kittle.test'); await harriet.click('#wall-add');
     await harriet.waitForFunction(() => document.querySelector('#wall-list').textContent.includes('Sian'));
     await sian.waitForFunction(() => !document.querySelector('#matter-list').textContent.includes('M-12') && /Not available/.test(document.querySelector('#main').innerText), null, { timeout: 10000 });
+    const sl = await sian.locator('#matter-list').innerText();
+    assert.ok(sl.includes('M-11') && sl.includes('M-13'), 'other matters stay');
+    await openMatter(sian, 'M-11'); assert.ok((await sian.locator('#thread').innerText()).includes('Survey booked for Friday.'));
     assert.equal((await replay(sian, { ...preq, body: JSON.stringify({ body: 'Too late JUDGE-WL1', client_key: 'wl1' }) })).status, 404);
     assert.ok(!JSON.stringify((await api(harriet, 'GET', '/api/matters/M-12')).data).includes('JUDGE-WL1'));
     assert.ok([403, 404].includes((await replay(sian, liftReq)).status));
@@ -327,7 +331,7 @@ async function before() {
     const vreq = lastReq(harriet, 'GET', /\/versions$/);
     assert.deepEqual(await harriet.locator('#timer-select option').allTextContents(), ['Off', '1 day', '7 days', '30 days']);
     await editMsg(harriet, 'Costs estimate sent to Gwen.', 'Costs estimate sent to Gwen JUDGE-TE');
-    assert.equal(await msgLi(harriet, 'JUDGE-TE').locator('.edited').count(), 1);
+    assert.equal(await msgLi(harriet, 'Costs estimate sent to Gwen JUDGE-TE').count(), 1);
     harriet.requests.length = 0;
     await setTimer(harriet, '7');
     const treq = lastReq(harriet, 'POST', /\/timer$/);
@@ -410,6 +414,8 @@ async function before() {
     assert.equal(await harriet.locator('.versions i').count(), 0);
     await gwen2.fill('#composer-input', 'Version stale JUDGE-E1'); await gwen2.click('#composer-send');
     await gwen2.waitForSelector('#composer-error:not([hidden])');
+    await sleep(10000);
+    assert.ok((await gwen2.locator('#composer-error').innerText()).trim().length > 0, 'stale-edit reason stays');
     assert.equal(await gwen2.inputValue('#composer-input'), 'Version stale JUDGE-E1');
     await gwen2.reload(); await gwen2.waitForSelector('.matter-link'); await openMatter(gwen2, 'M-13');
     let text = await gwen2.locator('#thread').innerText();
@@ -616,6 +622,7 @@ async function before() {
     await openMatter(harriet, 'M-12');
     assert.ok((await harriet.locator('#matter-timer').innerText()).includes('30 days'));
     assert.equal((await api(sian, 'GET', '/api/matters/M-11')).status, 404);
+    assert.equal((await api(sian, 'GET', '/api/matters/M-13')).status, 200);
     assert.equal((await api(dev, 'GET', '/api/matters/M-12')).status, 404);
     assert.deepEqual(await search(harriet, 'Persist gone'), []);
     assert.ok((await search(harriet, 'Persist child JUDGE-S1')).some(t => t.includes('Persist child JUDGE-S1')));
