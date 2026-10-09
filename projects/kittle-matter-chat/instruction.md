@@ -6,4 +6,4 @@ The people, matters and messages we start with are in `/assets/seed_data.json`. 
 
 Until somebody signs in they see only the sign-in page, with no matter titles, names or messages.
 
-Before you hand it over, please try it the way we'll use it: sign in as different people, post, reply, edit, search and open a transcript, and make sure nothing breaks.
+Before you hand it over, please try it the way we'll use it, in a browser: sign in as different people, post, reply, edit, search and open a transcript from the pages themselves, and make sure nothing breaks. We only ever use it through the pages, so something that works when you call the server directly but not from the page doesn't work for us.
