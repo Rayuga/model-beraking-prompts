@@ -405,7 +405,8 @@ app.post("/api/matters/:id/messages", (req, res) => {
   if (req.body?.parent_id) {
     // A reply belongs to its parent's matter: a parent from any other matter is simply not there.
     const parent = db.prepare("SELECT * FROM messages WHERE id = ? AND matter_id = ?").get(String(req.body.parent_id), m.id);
-    if (!parent || parent.deleted) return res.status(404).json({ error: "The message you are replying to is no longer available." });
+    if (!parent) return res.status(404).json({ error: NOT_AVAILABLE });
+    if (parent.deleted) return res.status(404).json({ error: "The message you are replying to is no longer available." });
     parentId = parent.id;
   }
   const result = db.transaction(() => {

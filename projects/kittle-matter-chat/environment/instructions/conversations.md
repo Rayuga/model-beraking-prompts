@@ -14,7 +14,7 @@ Clients paste all sorts into chat, and some of it comes from documents with odd 
 
 ## Links to messages
 
-Every message has a link we can copy and paste into another matter, so we can point at something said elsewhere. Pasted into a message, it shows a short preview of the linked message for anyone who can see that matter, and "not available" for anyone who can't or once the message is gone. Opening a message from a link or a search result takes you to it in its thread and highlights it, so you can spot it at once.
+Every message has a link we can copy and paste into another matter, so we can point at something said elsewhere. Pasted into a message, it shows a short preview of the linked message for anyone who can see that matter, and "not available" for anyone who can't or once the message is gone. Opening a message from a link or a search result takes you to it in its thread and highlights it, so you can spot it at once; it stays highlighted until you open something else.
 
 ## Mentions
 
@@ -30,6 +30,6 @@ Enter sends a message and Shift+Enter starts a new line in it. Escape closes an 
 
 Our internet in court is patchy. If the same message is sent twice because the first reply got lost, it must appear only once. Messages sent at the same time stay in the order they were sent wherever you see them: the thread, search and the transcript.
 
-When someone else posts, replies, edits or a message disappears, every open tab should show it within about five seconds without reloading. That must not disturb what I'm doing: a half-typed reply, where I've scrolled to and an open thread all stay as they are.
+When someone else posts, replies, edits or a message disappears, every open tab should show it within about ten seconds without reloading. That must not disturb what I'm doing: a half-typed reply, where I've scrolled to and an open thread all stay as they are.
 
 The app should work on a phone at about 390 px wide without the page scrolling sideways.

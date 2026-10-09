@@ -194,6 +194,13 @@ async function before() {
     const cross = { ...JSON.parse(rreq.body), body: 'Cross reply JUDGE-W2', parent_id: w0, client_key: 'w2' };
     assert.ok((await replay(dev, { ...rreq, body: JSON.stringify(cross) })).status >= 400, 'cross reply refused');
     for (const [pg, id] of [[dev, 'M-11'], [harriet, 'M-11'], [sian, 'M-12']]) assert.ok(!JSON.stringify((await api(pg, 'GET', `/api/matters/${id}`)).data).includes('JUDGE-W2'), id);
+    dev.requests.length = 0; await openMatter(dev, 'M-13');
+    const d13 = lastReq(dev, 'GET', /\/api\/matters\/M-13$/);
+    const k8 = (await replay(dev, d13)).data.messages.find(m => m.body === 'Draft will sent for your review.').id;
+    const cross2 = { ...cross, body: 'Cross reply JUDGE-W3', parent_id: k8, client_key: 'w3' };
+    const c2 = await replay(dev, { ...rreq, body: JSON.stringify(cross2) });
+    assert.ok(c2.status === 404 && c2.data.error === 'Not available.', JSON.stringify(c2));
+    for (const id of ['M-11', 'M-13']) assert.ok(!JSON.stringify((await api(dev, 'GET', `/api/matters/${id}`)).data).includes('JUDGE-W3'), id);
     await home(dev);
   });
 
@@ -335,9 +342,11 @@ async function before() {
     assert.ok(!t.includes('2,400') && !t.includes('4,200') && !t.includes('JUDGE-TE') && t.includes('My executor will be my sister.'));
     await home(harriet); await openMatter(harriet, 'M-13');
     await setTimer(harriet, 'off');
+    assert.ok(/off/i.test(await harriet.locator('#matter-timer').innerText()));
     assert.ok(!(await harriet.locator('#thread').innerText()).includes('Probate'));
     await setTimer(harriet, '30');
-    await home(sian);
+    assert.ok(!(await harriet.locator('#thread').innerText()).includes('Probate'));
+    await home(sian); await openMatter(sian, 'M-13');
     assert.equal((await replay(sian, { ...treq, body: JSON.stringify({ days: 1 }) })).status, 403);
     await home(harriet); await openMatter(harriet, 'M-13');
     assert.ok((await harriet.locator('#matter-timer').innerText()).includes('30 days'));
@@ -405,8 +414,10 @@ async function before() {
     let text = await gwen2.locator('#thread').innerText();
     assert.ok(text.includes('Version two JUDGE-E1') && !text.includes('Version stale'));
     await gwen2.context().close();
-    await home(sian);
-    assert.equal((await replay(sian, { ...ereq, body: JSON.stringify({ ...JSON.parse(ereq.body), body: 'Hijack JUDGE-E1' }) })).status, 403);
+    await home(sian); sian.requests.length = 0; await openMatter(sian, 'M-13');
+    const s13 = lastReq(sian, 'GET', /\/api\/matters\/M-13$/);
+    const e1 = (await replay(sian, s13)).data.messages.find(m => m.body === 'Version two JUDGE-E1');
+    assert.equal((await replay(sian, { ...ereq, body: JSON.stringify({ ...JSON.parse(ereq.body), body: 'Hijack JUDGE-E1', version: e1.version }) })).status, 403);
     assert.ok(!JSON.stringify((await api(harriet, 'GET', '/api/matters/M-13')).data).includes('Hijack'));
     const t = (await transcript(gwen, 'M-13')).html;
     const at = t.indexOf('Version two JUDGE-E1');
@@ -563,6 +574,7 @@ async function before() {
     const row = s => t.slice(t.lastIndexOf('<li', t.indexOf(s)), t.indexOf(s));
     assert.match(row('Transcript child JUDGE-T1'), /--depth:\s*1/);
     assert.match(row('Transcript parent JUDGE-T0'), /Harriet/);
+    assert.match(row('Survey booked for Friday.'), /2026-05-08 15:00/);
     const k2 = t.slice(t.lastIndexOf('<li', t.indexOf('Landlord&#39;s notice')), t.indexOf('Landlord&#39;s notice') + 600);
     assert.ok(k2.includes('On hold') && /edited/.test(k2) && t.includes('Landlords notice recieved.'), 'held edited versions');
     await home(gwen); await openMatter(gwen, 'M-11');
@@ -570,7 +582,11 @@ async function before() {
     const tags = async q => (await search(gwen, q)).map(x => (x.match(/JUDGE-Q\d/) || [''])[0]).filter(Boolean).join(',');
     assert.equal(await tags('100%'), 'JUDGE-Q1');
     assert.equal(await tags('A_1'), 'JUDGE-Q3');
+    await home(gwen); await openMatter(gwen, 'M-11');
+    for (const m of ['Code X*9 JUDGE-Q5', 'Code XY9 JUDGE-Q6']) await post(gwen, m);
     assert.equal(await tags('1000 pounds'), 'JUDGE-Q2');
+    assert.equal((await search(gwen, 'X*9')).map(x => (x.match(/JUDGE-Q\d/) || [''])[0]).join(','), 'JUDGE-Q5');
+    assert.ok((await search(gwen, 'urvey booked')).some(t => t.includes('Survey booked for Friday.')));
   });
 
   // Persistence setup, before the restart.
@@ -587,6 +603,23 @@ async function before() {
   await openMatter(harriet, 'M-11');
   await harriet.selectOption('#wall-select', 'sian@kittle.test'); await harriet.click('#wall-add');
   await harriet.waitForFunction(() => document.querySelector('#wall-list').textContent.includes('Sian'));
+  await check('persistence_before', async () => {
+    await home(harriet); await openMatter(harriet, 'M-11');
+    assert.equal(await depthOf(harriet, 'Persist child JUDGE-S1'), 1);
+    assert.equal(await msgLi(harriet, 'JUDGE-S0 edited').locator('.edited').count(), 1);
+    await msgLi(harriet, 'JUDGE-S0 edited').locator('button', { hasText: 'Versions' }).click();
+    await harriet.waitForSelector('.versions');
+    assert.ok((await harriet.locator('.versions').innerText()).includes('Persist parent JUDGE-S0'));
+    assert.equal(await msgLi(harriet, 'Persist child JUDGE-S1').locator('.hold-badge').count(), 1);
+    assert.ok(!(await harriet.locator('#thread').innerText()).includes('Persist gone'));
+    await openMatter(harriet, 'M-12');
+    assert.ok((await harriet.locator('#matter-timer').innerText()).includes('30 days'));
+    assert.equal((await api(sian, 'GET', '/api/matters/M-11')).status, 404);
+    assert.equal((await api(dev, 'GET', '/api/matters/M-12')).status, 404);
+    assert.deepEqual(await search(harriet, 'Persist gone'), []);
+    assert.ok((await search(harriet, 'Persist child JUDGE-S1')).some(t => t.includes('Persist child JUDGE-S1')));
+    assert.ok((await search(harriet, 'Survey booked')).some(t => t.includes('Survey booked for Friday.')));
+  });
   await home(dev);
   const baseline = { survey: (await search(harriet, 'Survey booked')).length, probate: (await search(harriet, 'Probate')).length, insurer: (await search(harriet, 'Insurer letter')).length };
   fs.writeFileSync(STATE, JSON.stringify({ devUnread13: await unreadOf(dev, 'M-13'), baseline }));
