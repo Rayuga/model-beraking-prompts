@@ -180,6 +180,7 @@ async function before() {
     const list = await dev.locator('#matter-list').innerText();
     assert.ok(list.includes('M-11') && list.includes('M-13') && !list.includes('M-12') && !list.includes('Marsh'));
     for (const q of ['JUDGE-W0', 'heads of terms', 'Fenwick']) assert.deepEqual(await search(dev, q), []);
+    assert.ok((await search(dev, 'Survey booked')).some(t => t.includes('Survey booked for Friday.')), 'Dev search works');
     assert.equal((await replay(dev, load)).status, 404);
     const dl = JSON.stringify((await replay(dev, slist)).data);
     assert.ok(!dl.includes('M-12') && !dl.includes('Marsh'), 'matter list replay');
@@ -324,6 +325,7 @@ async function before() {
     await harriet.waitForSelector('.versions');
     assert.ok((await harriet.locator('.versions').innerText()).includes('Probate estimate is 2,400 pounds.'));
     const vreq = lastReq(harriet, 'GET', /\/versions$/);
+    assert.deepEqual(await harriet.locator('#timer-select option').allTextContents(), ['Off', '1 day', '7 days', '30 days']);
     await editMsg(harriet, 'Costs estimate sent to Gwen.', 'Costs estimate sent to Gwen JUDGE-TE');
     assert.equal(await msgLi(harriet, 'JUDGE-TE').locator('.edited').count(), 1);
     harriet.requests.length = 0;
@@ -481,7 +483,7 @@ async function before() {
   });
 
   await check('unread_and_new_messages_line', async () => {
-    const devB = await ctx(); await signIn(devB, 'dev@kittle.test');
+    const devB = await ctx(); await signIn(devB, 'dev@kittle.test'); await openMatter(devB, 'M-11');
     await home(dev);
     await openMatter(dev, 'M-13'); await openMatter(dev, 'M-11');
     for (const p of [dev, devB]) await unreadIs(p, 'M-13', 0);
@@ -500,7 +502,7 @@ async function before() {
     const items2 = await threadItems(dev);
     const line2 = items2.findIndex(t => t.startsWith('new-line'));
     assert.ok(line2 >= 0 && items2[line2 + 1].includes('JUDGE-U2'), 'line above U2');
-    await home(gwen);
+    await home(gwen); await openMatter(gwen, 'M-11');
     assert.ok((await unreadOf(gwen, 'M-13')) >= 2, 'gwen count is her own');
     await devB.context().close(); await home(dev);
   });
@@ -697,11 +699,17 @@ async function after() {
     assert.ok(await gwen.locator('#msg-K-3').isVisible());
     const bg = await gwen.locator('#msg-K-3').evaluate(el => getComputedStyle(el).boxShadow);
     assert.ok(bg && bg !== 'none');
+    await home(gwen); await openMatter(gwen, 'M-13');
+    const link = await copyLink(gwen, 'Draft will sent for your review.');
+    await openMatter(gwen, 'M-11');
+    await gwen.goto(link);
+    await gwen.waitForFunction(() => location.pathname === '/matters/M-13' && document.querySelector('#msg-K-8.focused'));
   });
   await check('polish_transcript_phone', async () => {
     const p = await ctx(); await p.setViewportSize({ width: 390, height: 844 });
     await signIn(p, 'gwen@kittle.test');
     await p.goto(B + '/transcripts/M-11');
+    assert.ok((await p.locator('body').innerText()).includes('Survey booked for Friday.'), 'transcript lists messages');
     assert.ok(await p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'no sideways scroll');
     await p.context().close();
   });
