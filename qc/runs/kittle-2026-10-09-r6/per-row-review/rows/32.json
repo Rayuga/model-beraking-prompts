@@ -1,0 +1,36 @@
+{
+  "number": 32,
+  "id": "criteria_are_outcome_based_and_browser_decidable",
+  "reviewer": "row-reviewer-32",
+  "input_sha256": "3038f6b5d3f6431199fee16d95d02b0f49e1e44b10ed7949534890fd7bc3c823",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r6/rules/WebDev Rubrics QC.xlsx (Quality Checks row #32 and Internal Quality Checks row #32; no extra internal annotation on that row)",
+    ".qc-cache/kittle-2026-10-09-r6/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r6/rules/harbor-webdev-rubric-qc/references/quality-checks.md (### 32, plus 36/38 context)",
+    ".qc-cache/kittle-2026-10-09-r6/rules/projects/webdev-task-template (tree: tests/gates, tests/scored, app_context.md layout)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/kittle-2026-10-09-r6/task/instruction.md",
+    ".qc-cache/kittle-2026-10-09-r6/task/environment/instructions/{conversations,integration,walls-and-retention}.md",
+    ".qc-cache/kittle-2026-10-09-r6/task/environment/assets/seed_data.json",
+    ".qc-cache/kittle-2026-10-09-r6/task/tests/app_context.md",
+    ".qc-cache/kittle-2026-10-09-r6/task/tests/scored/functional/{judge.toml,prompt.md} (all 16 criteria)",
+    ".qc-cache/kittle-2026-10-09-r6/task/tests/scored/polish/judge.toml (6 criteria)",
+    ".qc-cache/kittle-2026-10-09-r6/task/tests/scored/visual/judge.toml (4 likert criteria)",
+    ".qc-cache/kittle-2026-10-09-r6/task/tests/gates/{render,constraints}/judge.toml",
+    ".qc-cache/kittle-2026-10-09-r6/task/solution/app/server.js (POST /api/matters/:id/messages ~395-425, GET /api/messages/:id/versions ~368-375)",
+    ".qc-cache/kittle-2026-10-09-r6/task/solution/app/public/app.js (showVersions ~536-553)",
+    "qc/runs/kittle-2026-10-09-r6/raw-evidence-index.json (scope line; source hashes re-verified for server.js, app.js, seed_data.json)"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "Strengths: all 28 criteria (16 functional, 6 polish, 4 visual likert, 2 gates) name browser-observable outcomes; every write uses a distinctive JUDGE-* probe (grep finds none in seed_data.json, server.js or public/*), mutations are read back durably (reload, second context, second account, search, transcript, restart_app), each refusal replay is paired with a same-kind positive control, and conditional recording is handled explicitly where a request may not exist (wall_mentions_and_links Part B: 'If showing the suggestions made a request, record it'; edits_and_stale_edit step 3: 'if the request carries a version or similar field'; hold_scope_and_release step 3: 'if it offers one'). Visual likert criteria are craft judgements with anchors, acceptable per the skill. Defect: functional/judge.toml criterion timer_changes (weight 4.0) requires unconditionally 'Open the probate message's earlier versions and record that request', and step 2 replays 'the recorded earlier-versions request'. This is shaped on the golden's dedicated GET /api/messages/:id/versions (app.js showVersions ~540, server.js ~368). The public brief only says staff 'can open its earlier versions' and that versions go with a deleted message; it does not require a separate request. prompt.md Evidence discipline says 'A step you skipped, replaced with a different test, or could not perform fails the criterion'. So the recording step cannot be decided for an app that delivers versions in its thread payload. Lesser notes, not counted as the Fail: (a) every replay is defined in app_context.md as 'an in-page fetch', so a conforming app that sends writes over a WebSocket (plausible given the 10-second live-update requirement, and transport is not mandated) leaves the many replay legs hard to perform. (b) In signin_and_client_scope Part B, Gwen's post replayed at M-12 with unchanged text keeps the same duplicate-send key. An app that checks duplicates before access would return its M-11 duplicate (writing nothing to M-12) rather than 'plain not-available'. The brief's 'nothing back but a plain not available' arguably makes that a real defect, so this is a note only. No configured judge run exists for these bytes (raw-evidence-index scope: 'A full configured grading run of this candidate ... absent'), so the judge's actual handling is unmeasured.",
+  "counterexample": "A conforming app returns each staff-visible message with its versions array in GET /api/matters/M-13 and expands 'Earlier versions' client-side with no network request, deleting versions server-side on timer sweep exactly as the brief requires. In timer_changes the judge opens the probate versions (2,400 shown, positive control holds) but finds no request to record. Step 2's 'replay the recorded earlier-versions request' then cannot be performed as written. Under the evidence-discipline rule this 4.0-weight criterion scores 0 for correct behaviour. A judge improvising with the thread request is 'replaced with a different test'.",
+  "suggested_fix": "In timer_changes, say 'record the request that returned the earlier versions (a dedicated request, or the thread-loading request if the versions arrived with it)' and have step 2 replay that request. Optionally, add to app_context.md that a replay may also be a re-sent WebSocket message, and tell signin Part B to change any duplicate-send key when retargeting.",
+  "run_verdict": "NOT EXERCISED"
+}

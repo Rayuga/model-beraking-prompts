@@ -1,0 +1,36 @@
+{
+  "number": 23,
+  "id": "verifier_and_instruction_agree_on_the_runtime_contract",
+  "reviewer": "row-reviewer-23",
+  "input_sha256": "3038f6b5d3f6431199fee16d95d02b0f49e1e44b10ed7949534890fd7bc3c823",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r6/rules/WebDev Rubrics QC.xlsx: Quality Checks row 24 (check 23), Internal Quality Checks C24 incl. Mukesh annotation (sign-in is house convention) and 'Conc' note; Deterministic Checks C31 check-runtime-contract-strings.py",
+    ".qc-cache/kittle-2026-10-09-r6/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r6/rules/harbor-webdev-rubric-qc/references/quality-checks.md #23 (lines 100-102), #4, #49",
+    ".qc-cache/kittle-2026-10-09-r6/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md test.sh section (line 104) and cross-file table (lines 166-180)",
+    "qc/REVIEW_POLICY.md",
+    "task/tests/test.sh (all 227 lines, sha256 bd68259276ca4b03...)",
+    "task/instruction.md",
+    "task/environment/instructions/integration.md",
+    "task/environment/instructions/walls-and-retention.md (line 3 password)",
+    "task/environment/Dockerfile",
+    "task/tests/Dockerfile",
+    "task/task.toml",
+    "task/tests/app_context.md",
+    "task/solution/solve.sh, solution/app/server.js (lines 13-42, 528), solution/app/package.json",
+    "task/environment/assets/seed_data.json",
+    "qc/runs/kittle-2026-10-09-r6/raw-evidence-index.json (solution/seed hashes re-verified against frozen bytes)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Every launch assumption in frozen tests/test.sh is stated to the agent. Entry: test.sh:68 requires /app/server.js and runs `node $APP_ENTRY` (l.111); instruction.md:5 and integration.md:3 state /app/server.js started with Node 22, 'as an ordinary user and not necessarily from inside /app, so find your own files relative to server.js' (matches setpriv --reuid=65534 l.110, no cd, and the /tmp/submission copy fallback l.99-102). Env: test.sh:104-109 env -i with exactly PATH, NODE_PATH, HOME=$APP_COPY, PORT=3000, DB_PATH; integration.md:3 names exactly these five, says HOME may not be /app, port 3000 on 0.0.0.0, and DB_PATH honoured with /app/app.db default (test.sh APP_DB=/app/app.db or the copy's app.db). Probe: test.sh:48 probes 127.0.0.1:3000/api/health then /; integration.md:3 requires GET /api/health 200 even if DB fails. Deps: NODE_PATH=/usr/local/lib/node_modules; express@5.1.0 and better-sqlite3@12.4.1 installed globally in both environment/Dockerfile:9-12 and tests/Dockerfile:16-21 with the same node:22-bookworm-slim runtime, as integration.md:3 states. Seed: test.sh does not reference a seed path; integration.md:5 tells the agent to copy /assets/seed_data.json into /app (travels with the copy) and /assets is also a task.toml artifact made readable at test.sh:88; ship without a pre-made DB is stated. Symlink refusal (test.sh:72-83) is stated in integration.md:5 ('don't put symbolic links anywhere in /app; we won't run an app that has them'), and the brief is stricter than the check, so a conforming app is never refused. Restart helper (l.160-167) reuses the identical env/entry/DB. Accounts/password (app_context.md) are in seed_data.json accounts and walls-and-retention.md:3; sign-in surface is a known false positive per the workbook annotation. No same-origin requirement; network public. Corroboration: raw-evidence-index scripted golden ran the frozen solve.sh app as uid 65534 with env -i, DB_PATH and cwd /tmp; I re-verified server.js, solve.sh and seed hashes match the frozen bytes. Weak/alternative apps tried: an app resolving seed or public/ via process.cwd() fails, but the brief explicitly forbids that; an app ignoring DB_PATH still works because DB_PATH defaults to /app/app.db unless /app is unwritable after test.sh chowns it. Notes (non-blocking): (1) the 30 s readiness window (test.sh:116-122) is not stated, but a conforming Express+SQLite seed import starts well within it; (2) the brief does not explicitly say that extra global npm installs made in the agent container are not carried over (only /app and /assets are artifacts); 'The finished app goes in /app' and the stated globally-provided set make the reasonable reading clear. This row is a source agreement check; no full configured test.sh/RewardKit launch of these bytes exists (raw-evidence-index scope says so) - that gap belongs to the runtime rows, not to this contract agreement.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PASS (source agreement verified; full configured verifier launch not measured)"
+}

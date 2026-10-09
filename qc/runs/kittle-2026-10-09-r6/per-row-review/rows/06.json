@@ -1,0 +1,34 @@
+{
+  "number": 6,
+  "id": "instruction_is_achievable_and_unambiguous_in_the_environment",
+  "reviewer": "row-reviewer-06",
+  "input_sha256": "3038f6b5d3f6431199fee16d95d02b0f49e1e44b10ed7949534890fd7bc3c823",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r6/rules/WebDev Rubrics QC.xlsx :: Quality Checks row 6 and Internal Quality Checks row 6",
+    ".qc-cache/kittle-2026-10-09-r6/rules/harbor-webdev-rubric-qc/SKILL.md (delivery profile: public network)",
+    ".qc-cache/kittle-2026-10-09-r6/rules/harbor-webdev-rubric-qc/references/quality-checks.md ### 6",
+    ".qc-cache/kittle-2026-10-09-r6/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (seed/clock agreement rows)",
+    ".qc-cache/kittle-2026-10-09-r6/rules/projects/webdev-task-template/environment/instructions/integration.md",
+    "qc/REVIEW_POLICY.md",
+    "task/instruction.md",
+    "task/environment/instructions/conversations.md, integration.md, walls-and-retention.md",
+    "task/environment/assets/seed_data.json (all 18 messages, accounts, timer options, read_up_to)",
+    "task/environment/Dockerfile, task/task.toml",
+    "task/tests/app_context.md, tests/Dockerfile, tests/test.sh (lines 55-130)",
+    "task/tests/scored/functional/judge.toml (all 16 criteria) and prompt.md; tests/scored/polish/judge.toml; tests/scored/visual/judge.toml; tests/gates/*/judge.toml",
+    "task/solution/app/server.js (refusal responses, POST /api/matters/:id/messages, search ordering)",
+    "qc/runs/kittle-2026-10-09-r6/raw-evidence-index.json (server.js and seed hashes re-verified: e4d9402d..., b256f85e...)"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "Reachability is good: Node 22 + express@5.1.0 + better-sqlite3@12.4.1 via NODE_PATH are installed in both environment/Dockerfile and tests/Dockerfile; seed has all 5 accounts, M-11/M-12/M-13, timers [null,1,7,30], Dev walled from M-12, and every seeded fact the criteria rely on (K-10 exactly 7 days old at 2026-05-05T11:00:00Z vs K-11 one second younger; K-1 expired parent with K-14/K-15 replies; held K-17 overdue; K-13 with 2,400 version; K-2 with 'Landlords notice recieved.'; K-16 literal tags). Password, clock, port, DB_PATH, health, env-only start and no-symlink rule are stated in instructions/integration.md and walls-and-retention.md. No browser exists in the agent image, but network is public (SKILL.md delivery profile overrides the Internal sheet's 'no network' wording), so the requested browser self-test is reachable by installing one. Boundary ('as old as its timer' => exactly 7 days gone), edit-does-not-rejuvenate, hold scope, literal search (%,_,*, substring), transcript content, mentions-follow-edits and unread semantics each have one reasonable reading matching the criteria. Defect: walls-and-retention.md:17 requires a plain \"not available\" only for walled staff and clients reaching matters not theirs, and line 37 says a refused action shows its reason; conversations.md:5 only says nobody can reply across matters, with no refusal form. Yet tests/scored/functional/judge.toml:65-66 (wall_every_route step 5) also replays Dev's reply into M-13, a matter Dev CAN see, and the Fails-if says 'if a refusal is anything but a plain not-available'. That imposes one reading (plain not-available) on a refusal the public text leaves open and arguably steers the other way. The golden happens to return 404 'Not available.' (server.js:407-408), so it is unaffected. Minor note (not a defect): conversations.md 'stay in the order they were sent wherever you see them: ... search' is read by the criterion as oldest-first search (C,A,B); a newest-first search listing would be a weaker second reading, and the golden orders search by seq ascending (server.js:387).",
+  "counterexample": "A conforming app rejects the JUDGE-W3 replay (Dev, posted to M-11 with parent 'Draft will sent for your review.' from M-13) with HTTP 400 {\"error\":\"A reply has to stay in the matter of the message it answers.\"} and writes nothing. It satisfies conversations.md:5 and the reason-shown rule of walls-and-retention.md:37, but under wall_every_route's 'if a refusal is anything but a plain not-available' it fails the whole 4.0-weight criterion.",
+  "suggested_fix": "In wall_every_route step 5/Fails-if, require the plain not-available only for the M-12 (walled) cross reply and accept any refusal that writes nothing for the M-13 cross reply, e.g. 'the JUDGE-W2 replay gets a plain not-available; the JUDGE-W3 replay is refused in any form'.",
+  "run_verdict": "NOT EXERCISED"
+}

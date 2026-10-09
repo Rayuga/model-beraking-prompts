@@ -1,0 +1,34 @@
+{
+  "number": 21,
+  "id": "verifier_entrypoint_is_safe_and_always_scores",
+  "reviewer": "row-reviewer-21",
+  "input_sha256": "3038f6b5d3f6431199fee16d95d02b0f49e1e44b10ed7949534890fd7bc3c823",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r6/rules/WebDev Rubrics QC.xlsx: 'Quality Checks' row C22 (#21 verifier_entrypoint_is_safe_and_always_scores), 'Internal Quality Checks' row C22 (#21, no annotation), 'Deterministic Checks' C33 check-scoring-policy.py and C36 check-verifier-contract.py (related)",
+    ".qc-cache/kittle-2026-10-09-r6/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r6/rules/harbor-webdev-rubric-qc/references/quality-checks.md lines 92-94 (#21)",
+    ".qc-cache/kittle-2026-10-09-r6/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md lines 98-111 (tests/test.sh ordered contract and budget nesting)",
+    ".qc-cache/kittle-2026-10-09-r6/rules/projects/webdev-task-template/tests/{test.sh,tools/score.py,tools/restart_mcp.py,Dockerfile,scoring.toml} and task.toml (diffed)",
+    ".qc-cache/kittle-2026-10-09-r6/task/tests/test.sh (lines 1-227)",
+    ".qc-cache/kittle-2026-10-09-r6/task/tests/tools/score.py",
+    ".qc-cache/kittle-2026-10-09-r6/task/tests/scoring.toml",
+    ".qc-cache/kittle-2026-10-09-r6/task/tests/Dockerfile, .dockerignore",
+    ".qc-cache/kittle-2026-10-09-r6/task/tests/{gates,scored}/*/judge.toml (mode/timeout/criterion counts)",
+    ".qc-cache/kittle-2026-10-09-r6/task/task.toml",
+    ".qc-cache/kittle-2026-10-09-r6/task/instruction.md and environment/instructions/integration.md (launch contract, symlink and DB_PATH statements)",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/kittle-2026-10-09-r6/raw-evidence-index.json (scope statement)"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "Static: frozen task/tests/test.sh (sha256 bd682592...e5aa) is byte-identical to the frozen template tests/test.sh, and score.py, restart_mcp.py, Dockerfile and scoring.toml are identical too; task.toml differs from the template only in [task]/[metadata] text, and all budgets are unchanged. Against staged-task-contract.md lines 100-111: write_zero_reward runs at line 60 before any grading, and trap cleanup->ensure_reward is set at line 61. No exec. Missing judge env (63-66), missing /app/server.js (68-70) and symlinks outside /app/node_modules (72-83) all exit 0 on the zero record. /app is copied aside (90-95), and the app is launched with setsid env -i (PATH, NODE_PATH, HOME, PORT, DB_PATH) and setpriv uid 65534 (104-111). Liveness is probed on /api/health then / before RewardKit (115-125). The restart helper is written by heredoc+sed, chmod 755 and exported (127-193). {app_context} is substituted (195-201). The gates suite runs (timeout 1500) and is followed by score.py, where rc 0 continues, rc 1 keeps the detailed record and anything else writes the plain zero (213-222). The scored suite (11100) is followed by score.py, with || write_zero_reward (224-227). Budgets nest: gates 2x600=1200<1500; scored 16x550 (functional individual)+900+900=10600<11100; 1500+11100=12600<13200 verifier. bash -n passes and the file has no CRLF. Instruction/integration.md disclose port 3000, /api/health, the env -i variable set, DB_PATH, a non-/app HOME and cwd, and the no-symlinks rule. Runtime (own container r6row21-sim from the local cw-editor-verifier:current image; frozen tests copied in; real rewardkit replaced by a stub only inside that container; removed afterwards): every scenario exited 0 with a reward. No server.js -> 0.0/no_op; a never-listening app -> 0.0/no_op after ~118 s; an /app/x->/etc/passwd symlink -> 0.0/no_op. A gate failure (render 0) -> graded record, reward 0, gates_passed 0. Malformed gates JSON or a crashed gates RewardKit -> plain zero. A scored RewardKit exit 124 -> graded record, reward 0, gates_passed 1. Functional 0 -> floors_passed 0, reward 0. An out-of-range scored value -> score.py rc 2 -> plain zero. A good run -> reward 0.6 (weights 0.6/0.2/0.2), and the exported APP_RESTART_HELPER restarted the app (ready=1). Hostile app probe: the app ran as uid 65534 with cwd /, DB_PATH=/app/app.db, and its attempt to write /logs/verifier/reward.txt was denied (dir is root 0700). The final reward stayed 0.6000. Plausible broken app passing: none found at this row's level. A 404-on-health app still passes liveness by design (HTTPError counts as up), and the gates judges must then exclude it. Conforming alternative failing: an app that needs more than ~30 s to start would score 0, but the canonical template sets this and the measured probe window was about 118 s. Risk=true because this was a stub-RewardKit control-flow run, not a real configured RewardKit/judge launch. raw-evidence-index.json states that a full configured grading run on these bytes is absent. The 10600 s functional-individual scored budget is also unmeasured (judge.toml comment: 'Not yet measured against a judge run'). An overrun would hit the scored timeout path and give every rollout a graded 0. That is still a written reward, but it is a validity risk that belongs to the workload/launch rows.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "EXERCISED (stubbed RewardKit control-flow run in reviewer-owned container; real judge launch NOT EXERCISED)"
+}

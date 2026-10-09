@@ -1,0 +1,29 @@
+{
+  "number": 19,
+  "id": "solution_honors_the_runtime_contract_and_is_self_contained",
+  "reviewer": "row-reviewer-19",
+  "input_sha256": "3038f6b5d3f6431199fee16d95d02b0f49e1e44b10ed7949534890fd7bc3c823",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r6/rules/WebDev Rubrics QC.xlsx (Quality Checks row 20 / #19; Internal Quality Checks row 20 annotation 'no network / no run-time install'; Deterministic Checks rows for check-solve-contract.py, check-runtime-contract-strings.py)",
+    ".qc-cache/kittle-2026-10-09-r6/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r6/rules/harbor-webdev-rubric-qc/references/quality-checks.md (### 19, lines 83-85)",
+    ".qc-cache/kittle-2026-10-09-r6/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (contract table lines 170-181)",
+    ".qc-cache/kittle-2026-10-09-r6/rules/projects/webdev-task-template (solve.sh)",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/kittle-2026-10-09-r6/raw-evidence-index.json",
+    "task/solution/solve.sh, task/solution/app/** (server.js, package.json, public/index.html, seed/seed_data.json)",
+    "task/instruction.md, task/environment/instructions/integration.md, task/environment/Dockerfile, task/tests/Dockerfile, task/tests/test.sh, task/task.toml"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "solve.sh (LF, #!/bin/bash, set -euo pipefail) is byte-identical to the frozen template's: mkdir -p /app; cp -a $(dirname $0)/app/. /app/ - writes only /app, no /tests,/logs/verifier,/solution writes, no pkill, no NODE_ENV, no installs, no symlinks, no prebuilt app.db. Golden app has no node_modules; it requires only express@5.1.0/better-sqlite3@12.4.1, which both environment/Dockerfile and tests/Dockerfile install globally (NODE_PATH). server.js:13-14 honours PORT and DB_PATH (default __dirname/app.db), :29 resolves seed relative to __dirname (bundled seed sha b256f85e... == /assets/seed_data.json), :42 /api/health answers 200 before boot, :94 seeding guarded by settings.seeded (idempotent), :528 listens 0.0.0.0:PORT; index.html loads only local /styles.css and /app.js. Solution file hashes match raw-evidence-index matching_source_files. Own Docker run (env image built from frozen environment/, run then removed): solve.sh installed the app; launched exactly as test.sh does (env -i PATH/NODE_PATH/HOME/PORT=3000/DB_PATH, setpriv uid 65534, cwd / or /tmp) -> health {ok:true,booted:true}, 18 messages/5 users seeded, unauthenticated /api/matters 401; after kill+restart a manual settings row and a posted message (POST /api/matters/M-11/messages 201, K-19) persisted with no re-import; the test.sh non-writable fallback (/tmp/submission copy, DB_PATH there) also booted and left /app without app.db. Weak/alternative probes: a solve.sh writing to /app/node_modules or relying on cwd would be caught by check-solve-contract/test.sh symlink scan; a conforming alternative placing the seed at /app/seed_data.json is also accepted by the golden-independent contract. Workbook internal annotation 'no network / no run-time install' is also satisfied (no installs at all). This row does not cover judge grading, Oracle or model scores.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PASS (own Docker run of solve.sh + test.sh-style launch/restart on frozen bytes)"
+}

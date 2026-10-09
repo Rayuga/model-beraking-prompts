@@ -1,0 +1,30 @@
+{
+  "number": 11,
+  "id": "timeouts_fit_the_work",
+  "reviewer": "row-reviewer-11",
+  "input_sha256": "3038f6b5d3f6431199fee16d95d02b0f49e1e44b10ed7949534890fd7bc3c823",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r6/rules/WebDev Rubrics QC.xlsx: Quality Checks row 12 (#11 timeouts_fit_the_work), Internal Quality Checks row 12 (no annotations), Deterministic Checks C33 (timeout nesting)",
+    ".qc-cache/kittle-2026-10-09-r6/rules/harbor-webdev-rubric-qc/SKILL.md (structure/wiring step 3)",
+    ".qc-cache/kittle-2026-10-09-r6/rules/harbor-webdev-rubric-qc/references/quality-checks.md:50-51",
+    ".qc-cache/kittle-2026-10-09-r6/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md:54-63,100-111,163",
+    ".qc-cache/kittle-2026-10-09-r6/rules/projects/webdev-task-template (task.toml, tests/test.sh, tests/*/*/judge.toml, environment/Dockerfile, tests/tools/restart_mcp.py)",
+    "qc/REVIEW_POLICY.md:25",
+    "task/task.toml:17-27; task/tests/test.sh:104-125,127-184,203-227; task/tests/gates/{render,constraints}/judge.toml:6-8; task/tests/scored/functional/judge.toml:1-14 and all 16 criteria; task/tests/scored/{polish,visual}/judge.toml:6-8; task/tests/tools/restart_mcp.py:11,39; task/environment/Dockerfile",
+    "rewardkit 0.1.7 source (deliverables/colderwater-playground-devtools/final-cross-check-2026-09-27/harness/rewardkit-0.1.7-source/judges.py:229,285-303,467-500,530-570)",
+    "qc/runs/kittle-2026-10-09-r6/raw-evidence-index.json (no judge-duration measurement for these bytes)",
+    "Hosted runs of an earlier version (v2, commit 9766459f): F:/Documents/turing-workspace/model-beraking-prompts/run-outputs/kittle-matter-chat/runs-export/runs-export/run-364af89e.../kittle-matter-chat__KneamC2 and run-d6cb6e6a.../kittle-matter-chat__7CWiF5d (result.json, verifier/reward-details.json, verifier/app-restart.log)"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": "minor",
+  "evidence": "Arithmetic (frozen bytes, template-identical test.sh/task.toml/env Dockerfile/restart_mcp.py by diff). Gates suite: render 600 + constraints 600 = 1200 s sequential (--max-concurrent-agent 1) < run_suite gates 1500 (test.sh:213). Scored suite: functional mode=individual, timeout 550 per criterion x 16 criteria = 8800 (rewardkit _arun_agent_individual runs criteria sequentially, judges.py:467-500) + polish 900 + visual 900 = 10600 s < run_suite scored 11100 (test.sh:224), margin 500 s. 1500 + 11100 = 12600 < [verifier].timeout_sec 13200 (task.toml:27), 600 s left for copy/launch/liveness/score.py. Liveness: startup probe 120 x 0.25 s (~30 s + probe time, test.sh:115-125); restart helper 5 s kill wait + 30 s readiness < restart_mcp HELPER_TIMEOUT_SEC 55 (restart_mcp.py:11). Agent 7200 s and build 600 s are template values; agent image is template-identical (node slim + express/better-sqlite3), hosted env setup 2-18 s, hosted v2 agent finished in ~8 min. Adequacy: the functional comment itself says 'Not yet measured against a judge run' and the raw evidence index has no judge-duration measurement for these bytes. Indirect evidence: two hosted runs on 9 Oct of v2 (same 550 s individual config, same 16 criterion ids, same GLM judge) completed with no 'judge timed out' errors in any of 32 functional sessions; verifier wall time 63 min (oracle) and 76 min (agent), restart (inside last functional criterion) at ~54/67 min, i.e. avg <=~200-240 s per session including image build. But v3 enlarged several functional criteria (words: wall_every_route 184->337, wall_mentions_and_links 166->331, edits_and_stale_edit 200->372, search_and_transcript 205->343, timer_changes 243->330) and replaced polish with 6 interactive criteria in one batched 900 s session; these were not timed. A rewardkit timeout records the criterion as 0.0 (judges.py:285-303, 545-549), so a conforming app could lose a whole weight-4.0 criterion if the GLM judge overruns 550 s on the heaviest legs. Also harness-level: schema-mismatch retries (_MAX_JUDGE_RETRIES=3) can each consume a full timeout, which the nominal sum does not cover (template property, not task-specific). Nesting holds; length adequacy for current bytes is unmeasured, hence risk=true.",
+  "counterexample": null,
+  "suggested_fix": "No byte change required for nesting. Before packaging, obtain a full configured judge run of the current bytes (oracle) and record per-criterion durations of the heaviest functional criteria (wall_every_route, wall_mentions_and_links, edits_and_stale_edit, search_and_transcript) and the 6-criterion polish session; if any approaches 550/900 s or times out, split or trim those legs rather than raising budgets automatically.",
+  "run_verdict": "NOT EXERCISED"
+}

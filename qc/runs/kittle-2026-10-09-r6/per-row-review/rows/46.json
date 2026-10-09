@@ -1,0 +1,32 @@
+{
+  "number": 46,
+  "id": "tests_and_key_are_out_of_agent_reach",
+  "reviewer": "row-reviewer-46",
+  "input_sha256": "3038f6b5d3f6431199fee16d95d02b0f49e1e44b10ed7949534890fd7bc3c823",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r6/rules/WebDev Rubrics QC.xlsx (Quality Checks C47 row 46; Internal Quality Checks C47 row 46, no extra annotation)",
+    ".qc-cache/kittle-2026-10-09-r6/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r6/rules/harbor-webdev-rubric-qc/references/quality-checks.md (### 46)",
+    ".qc-cache/kittle-2026-10-09-r6/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md",
+    ".qc-cache/kittle-2026-10-09-r6/rules/projects/webdev-task-template (diffed against task)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/kittle-2026-10-09-r6/task/task.toml",
+    ".qc-cache/kittle-2026-10-09-r6/task/environment/Dockerfile",
+    ".qc-cache/kittle-2026-10-09-r6/task/environment/instructions/*.md, environment/assets/seed_data.json (grep)",
+    ".qc-cache/kittle-2026-10-09-r6/task/instruction.md (grep)",
+    ".qc-cache/kittle-2026-10-09-r6/task/tests/Dockerfile, tests/.dockerignore, tests/test.sh, tests/tools/restart_mcp.py",
+    ".qc-cache/kittle-2026-10-09-r6/task/tests/*/*/judge.toml (judge/mcp sections)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Agent image (environment/Dockerfile) is byte-identical to the template: node:22 + express/better-sqlite3 only, and COPYs only environment/instructions/ and environment/assets/; no rewardkit, judge CLI, Playwright MCP or rubric. grep for JUDGE-/rubric/criteri/rewardkit/judge over environment/ and instruction.md finds nothing, so no criteria text reaches the agent. task.toml [verifier] environment_mode = \"separate\"; criteria live only in tests/ which is built into the separate verifier image (tests/Dockerfile: COPY . /tests; chmod -R go-rwx /tests), with rewardkit 0.1.7, claude-code and playwright-mcp only there. Influence on reward: tests/test.sh (identical to template) writes zero reward first, keeps LOG_DIR chmod 700 root, re-applies go-rwx to /tests, rejects symlinks escaping /app/node_modules, and runs the submitted app as uid/gid 65534 via setpriv with env -i, so the app process cannot read /tests prompts or write reward.txt/reward.json/app-restart.sh; prompts are templated from /tests/app_context.md, not agent files; nothing from /app is executed as root. test.sh, score.py, restart_mcp.py, scoring.toml and tests/Dockerfile all diff identical to the frozen template. Broken-app probe: an app that tries to read /tests/scored/*/prompt.md or write /logs/verifier/reward.txt at startup fails with EACCES as uid 65534 (static analysis of permissions, not executed). Residual judge prompt-injection via rendered UI is check 45's scope, not this row. Static/source review only; no Docker run performed for this row.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

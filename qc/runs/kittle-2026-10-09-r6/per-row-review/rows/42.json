@@ -1,0 +1,31 @@
+{
+  "number": 42,
+  "id": "reward_ranking_is_monotone",
+  "reviewer": "row-reviewer-42",
+  "input_sha256": "3038f6b5d3f6431199fee16d95d02b0f49e1e44b10ed7949534890fd7bc3c823",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r6/rules/WebDev Rubrics QC.xlsx (Quality Checks C43 row 42; Internal Quality Checks C43 row 42, annotation 'Mukesh - we need to monitor this one.')",
+    ".qc-cache/kittle-2026-10-09-r6/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r6/rules/harbor-webdev-rubric-qc/references/quality-checks.md (### 42, also 39-44 context)",
+    ".qc-cache/kittle-2026-10-09-r6/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (scoring.toml, test.sh sections)",
+    ".qc-cache/kittle-2026-10-09-r6/rules/projects/webdev-task-template/tests/{scoring.toml,tools/score.py,test.sh} (diffed: scoring.toml, score.py and test.sh identical to task)",
+    "qc/REVIEW_POLICY.md",
+    "task/instruction.md, task/environment/instructions/{conversations.md,walls-and-retention.md,integration.md}",
+    "task/tests/scoring.toml, task/tests/tools/score.py, task/tests/test.sh, task/tests/app_context.md",
+    "task/tests/gates/{render,constraints}/{judge.toml,prompt.md}",
+    "task/tests/scored/{functional,polish,visual}/{judge.toml,prompt.md}",
+    "qc/runs/kittle-2026-10-09-r6/raw-evidence-index.json (all 14 artifact hashes and matching source hashes re-verified: match)"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "Dimension mechanics are monotone and template-identical: scoring.toml gates 0.0, weights 0.6/0.2/0.2, floor functional 0.05; score.py computes a non-decreasing weighted mean, zeroes on a failed gate or floor; functional weights sum to 42.0 across 16 binary criteria; visual likert anchors 0-5; gates (render sign-in, constraints cross-context post) are satisfiable by any conforming app, so no gate a stronger app fails. The inversion comes from criterion structure in tests/scored/functional/judge.toml: restart durability is graded only by `persistence` (weight 2.0, the only criterion that calls restart_app; the constraints gate checks only reload/second context, which an in-memory store passes), while the shared prompt rule 'A criterion passes only if every numbered leg and every listed positive control holds' makes one secondary UI omission cascade into several heavy criteria. The earlier-versions viewer is a positive control in edits_and_stale_edit (3.0, Part A.1), timer_changes (4.0, 'Open the probate message's earlier versions ... is listed (positive control)') and persistence (2.0, step c 'Harriet can open its earlier version'). The brief makes walls and retention the top two priorities and integration.md says 'restarts keep everything as it was: messages, replies, edits and their versions, timers, holds, walls...'. The judge.toml comment 'Each observable is graded in exactly one criterion' is not true for the earlier-versions view. Also noted, not the failure basis: the template floor (functional > 0.05) zeroes an app passing a single 1.5 or 2.0 criterion even with perfect polish/visual, while a single 2.5/3.0 pass is scored; this is template-controlled and intended by check 43. Ranking on these bytes is unmeasured: raw-evidence-index scope says 'reward discrimination/ranking on these bytes and Oracle/target scores for these bytes are absent'; the hosted Oracle 0.9917 > model 0.8114 > nop 0 ordering is for the PREVIOUS v2 bytes only.",
+  "counterexample": "App Y keeps all state in memory (re-imports the seed on every start, ignores /app/app.db) but otherwise matches the golden: it fails only `persistence` (2.0), so functional = 40/42 = 0.952 and reward = 0.6*0.952 + 0.2 + 0.2 = about 0.971 with full polish/visual. After any restart Y loses every hold, live-added wall (Sian regains walled M-11/M-13 content), timer change and deletion state, breaking both priorities the brief ranks first. App X persists everything correctly but has no 'earlier versions' viewer (transcript still lists versions): it fails edits_and_stale_edit (3.0), timer_changes (4.0, its positive control) and persistence (2.0, its step-c control), so functional = 33/42 = 0.786 and reward = about 0.871. The data-losing, wall-breaching app outscores the durable app by about 0.10. A similar inversion holds for an app with server-enforced walls but no partner wall control (loses wall_added_live 2.0 + persistence 2.0 = 4.0 > Y's 2.0).",
+  "suggested_fix": "Make the earlier-versions control gate only the leg that needs it (e.g. move the version-purge replay of timer_changes into its own small criterion and drop 'can open its earlier version' from persistence step c, or replace it with a read of state that does not need the viewer), and weight restart durability to reflect that it underpins every wall and retention promise, then re-run discrimination/ranking with mutated weak apps (in-memory store, no version viewer, no wall control) on the new bytes.",
+  "run_verdict": "NOT EXERCISED"
+}

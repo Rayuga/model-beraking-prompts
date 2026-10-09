@@ -1,0 +1,32 @@
+{
+  "number": 38,
+  "id": "batched_criteria_are_scored_independently",
+  "reviewer": "row-reviewer-38",
+  "input_sha256": "3038f6b5d3f6431199fee16d95d02b0f49e1e44b10ed7949534890fd7bc3c823",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r6/rules/WebDev Rubrics QC.xlsx: 'Quality Checks'!C39:D39 and 'Internal Quality Checks'!C39:D39 (row 38; no internal annotation in E39:Z39)",
+    ".qc-cache/kittle-2026-10-09-r6/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r6/rules/harbor-webdev-rubric-qc/references/quality-checks.md:156-159 (### 38)",
+    ".qc-cache/kittle-2026-10-09-r6/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md:54 (check-batched-independence-wording.py)",
+    ".qc-cache/kittle-2026-10-09-r6/rules/projects/webdev-task-template/tests/scored/{functional,polish,visual}/prompt.md and judge.toml",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/kittle-2026-10-09-r6/task/tests/scoring.toml",
+    ".qc-cache/kittle-2026-10-09-r6/task/tests/scored/functional/prompt.md and judge.toml (all 16 criteria)",
+    ".qc-cache/kittle-2026-10-09-r6/task/tests/scored/polish/prompt.md and judge.toml (all 6 criteria)",
+    ".qc-cache/kittle-2026-10-09-r6/task/tests/scored/visual/prompt.md and judge.toml",
+    ".qc-cache/kittle-2026-10-09-r6/task/tests/gates/{render,constraints}/prompt.md and judge.toml (aggregation all_pass, exempt)",
+    "qc/runs/kittle-2026-10-09-r6/raw-evidence-index.json (sha256 2726b0fa...; states no full configured grading run exists)"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "Wording layer passes: every scored prompt carries independence-and-continue language and none says stop at first failure. tests/scored/functional/prompt.md:59-61 'Score each criterion independently and continue after any failure; return a verdict for every criterion' (plus :9 'move on to the next criterion', :29 'fail that criterion; continue'); tests/scored/polish/prompt.md:20-26 and tests/scored/visual/prompt.md:38-43 'One failed criterion does not zero the others ... continue ... The global browser gate is the only all-or-nothing rule', matching the template wording. Functional runs mode='individual' (functional/judge.toml), so each criterion has its own session and the global gate can only zero that session's criterion. Gates are all_pass and exempt. However the row's stated purpose ('one miss can't zero the rest') is defeated by cross-criterion setup/state coupling in the criteria themselves, which the wording cannot fix: (1) polish escape_closes requires 'her message \"Enter check JUDGE-K1\"' that only enter_sends creates, and only if Enter sends; (2) functional wall_added_live walls Dev from M-13 and lifts it, then walls Sian from M-13 and lifts it in leg 4; if the app's lift is broken, both stay walled and later criteria fail their required positive controls: timer_changes leg 5 'As sian@kittle.test ... open M-13 (she can see it, as a positive control)', edits_and_stale_edit Part A leg 3 (Sian opens M-13) and Part B (Dev's mentions list for M-13 messages), and unread_and_new_messages_line (Dev opens M-13). No full configured judge run exists for these bytes (raw-evidence-index scope), so actual judge continuation behaviour is NOT EXERCISED; this finding is from source reasoning. Overlaps rows 28/37; the owner may relocate it but it should not be dropped.",
+  "counterexample": "App A: everything correct except the wall-lift action is a no-op on the server (lift button returns OK but the wall row stays). Correctly fails wall_added_live (2.0), but Dev and Sian remain walled from M-13, so timer_changes (4.0), edits_and_stale_edit (3.0) and unread_and_new_messages_line (1.5) also fail their positive controls although those features work: one miss costs 10.5/42 instead of 2/42 of functional. App B: Enter inserts a newline and only a Send button sends (Escape handling correct). enter_sends fails correctly, but no 'Enter check JUDGE-K1' message exists, so escape_closes cannot be performed and is marked failed per polish/prompt.md:23-24.",
+  "suggested_fix": "Make each criterion create or tolerate its own preconditions: have escape_closes post its own message (e.g. 'Escape check JUDGE-K3') instead of reusing enter_sends' message, and have wall_added_live use a dedicated walled account/matter pair not needed later (or have later criteria use an account whose M-13 access no earlier criterion changes, or explicitly say to skip/neutralise a residual wall left by an earlier failed lift) so a broken lift cannot fail timer_changes, edits_and_stale_edit or unread_and_new_messages_line.",
+  "run_verdict": "NOT EXERCISED"
+}
