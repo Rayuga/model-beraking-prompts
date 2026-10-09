@@ -1,0 +1,38 @@
+{
+  "number": 23,
+  "id": "verifier_and_instruction_agree_on_the_runtime_contract",
+  "reviewer": "row-reviewer-23",
+  "input_sha256": "e328e9dfd48187ef3a6c5d0c73d616202822a40ae0640b199197bd7cc522acf7",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r9/rules/WebDev Rubrics QC.xlsx :: Quality Checks row 24 (#23) and Internal Quality Checks row 24 (#23, incl. E24 Mukesh annotation on sign-in convention, H24); Deterministic Checks C31 check-runtime-contract-strings",
+    ".qc-cache/kittle-2026-10-09-r9/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r9/rules/harbor-webdev-rubric-qc/references/quality-checks.md (#23, #4, #19, #49)",
+    ".qc-cache/kittle-2026-10-09-r9/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (test.sh contract, cross-file agreements)",
+    ".qc-cache/kittle-2026-10-09-r9/rules/projects/webdev-task-template (tests/test.sh, environment/instructions)",
+    "qc/REVIEW_POLICY.md",
+    "task/tests/test.sh",
+    "task/instruction.md",
+    "task/environment/instructions/integration.md",
+    "task/environment/instructions/walls-and-retention.md (timer line)",
+    "task/environment/Dockerfile",
+    "task/tests/Dockerfile",
+    "task/tests/.dockerignore",
+    "task/task.toml",
+    "task/tests/app_context.md",
+    "task/solution/solve.sh",
+    "task/solution/app/server.js (lines 13-29, 42, 528)",
+    "qc/runs/kittle-2026-10-09-r9/raw-evidence-index.json (sha256 5f5a4c39...)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Frozen tests/test.sh is byte-identical to the template test.sh (diff empty). Every launch assumption maps to a public statement: (1) entry /app/server.js required (test.sh:68) and launched with `node $APP_ENTRY` (111) <- instruction.md:5 'starting from /app/server.js' and integration.md:3 'Node 22 running /app/server.js'; (2) unprivileged uid 65534 and arbitrary cwd (99-111) <- integration.md:3 'as an ordinary user and not necessarily from inside /app, so find your own files relative to server.js'; (3) env -i with exactly PATH, NODE_PATH, HOME, PORT=3000, DB_PATH (104-109) <- integration.md:3 lists exactly those five vars, 'HOME (which may not be /app)', 'PORT=3000'; (4) DB_PATH=/app/app.db or /tmp/submission/app.db copy (97-102) <- integration.md:3 'SQLite at /app/app.db, or at the path in DB_PATH when that is set'; instruction.md:5 same; (5) probe http://127.0.0.1:3000/api/health then / , any HTTP response counts (42-57) <- integration.md:3 'listen on 0.0.0.0 port 3000' and 'GET /api/health should answer 200 even if the database can't be opened'; (6) deps: no npm install at verify time; NODE_PATH=/usr/local/lib/node_modules and verifier image installs express@5.1.0 + better-sqlite3@12.4.1 (tests/Dockerfile:42-47), same pins as agent image (environment/Dockerfile:9-12) <- integration.md:3 'Express and better-sqlite3 are already installed globally and found through NODE_PATH'; (7) seed: artifacts=['/app','/assets'] (task.toml:2) so both /app copy and /assets/seed_data.json reach the separate verifier <- instruction.md:5 and integration.md:5 'Copy /assets/seed_data.json into /app and import it once into an empty database', 'hand it over without a database'; (8) symlink refusal (72-83) <- integration.md:5 'don't put symbolic links anywhere in /app; we won't run an app that has them' (test.sh is more lenient, tolerating in-tree node_modules links); (9) fixed clock 2026-05-12T11:00:00Z stated in integration.md:7; restart helper relaunches with identical env and same DB (127-190) <- integration.md:5 'restarts keep everything as it was'. Judge URL localhost:3000 (app_context.md:4) matches. Network is public on both sides; sign-in is house convention (workbook E24 / skill known FP) and is in any case stated in instruction.md:7. Golden honours this: server.js:13-14 PORT/DB_PATH relative to __dirname, :29 seed fallbacks incl. /assets, :42 health, :528 listen 0.0.0.0; raw evidence index (hash 5f5a4c39...) records golden run as uid 65534 with env -i, DB_PATH and cwd /tmp. Adversarial: a conforming app using cwd-relative paths is warned against explicitly; an app reading /assets directly instead of a /app copy still works (artifact); an app adding extra npm deps in /app/node_modules is copied and not forbidden; an app listening on default '::' dual-stack still answers 127.0.0.1. A broken app that passes the probe (health-only) is not this row's concern (gates/functional). No unstated launch assumption found. Only unstated item: 30 s startup readiness window (120x0.25 s), which is template-standard and generous for a small seed import; not a contract mismatch. Note: no full test.sh launch was executed on these exact bytes in the evidence index; this row is a source-contract agreement check and that runtime gap belongs to the full-verifier/runtime rows.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PASS (source contract comparison; test.sh not executed by this reviewer)"
+}

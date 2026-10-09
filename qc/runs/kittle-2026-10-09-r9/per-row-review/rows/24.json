@@ -1,0 +1,34 @@
+{
+  "number": 24,
+  "id": "grading_wiring_is_structurally_correct",
+  "reviewer": "row-reviewer-24",
+  "input_sha256": "e328e9dfd48187ef3a6c5d0c73d616202822a40ae0640b199197bd7cc522acf7",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r9/rules/WebDev Rubrics QC.xlsx (Quality Checks row 24; Internal Quality Checks row 24)",
+    ".qc-cache/kittle-2026-10-09-r9/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r9/rules/harbor-webdev-rubric-qc/references/quality-checks.md (check 24)",
+    ".qc-cache/kittle-2026-10-09-r9/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (scoring.toml, test.sh, judge.toml, tools sections)",
+    ".qc-cache/kittle-2026-10-09-r9/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (check-scoring-policy, check-rubric-schema, check-verifier-contract)",
+    ".qc-cache/kittle-2026-10-09-r9/rules/projects/webdev-task-template/tests/{scoring.toml,test.sh,Dockerfile,tools/*,gates/*/judge.toml,scored/*/judge.toml}",
+    ".qc-cache/kittle-2026-10-09-r9/task/task.toml",
+    ".qc-cache/kittle-2026-10-09-r9/task/tests/scoring.toml",
+    ".qc-cache/kittle-2026-10-09-r9/task/tests/test.sh",
+    ".qc-cache/kittle-2026-10-09-r9/task/tests/{gates/constraints,gates/render,scored/functional,scored/polish,scored/visual}/{judge.toml,prompt.md}",
+    ".qc-cache/kittle-2026-10-09-r9/task/tests/tools/{score.py,restart_mcp.py}, tests/Dockerfile (diffed vs template)",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/kittle-2026-10-09-r9/raw-evidence-index.json",
+    "harbor-rewardkit==0.1.7 wheel (pinned in tests/Dockerfile:31): rewardkit/runner.py, judges.py, models.py, agents.py"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "scoring.toml is byte-identical in content to the template: [gates] render=0.0, constraints=0.0; [weights] functional 0.6/polish 0.2/visual 0.2 (sum 1); [floors] functional=0.05; every name has a matching tests/gates/<n> or tests/scored/<n> dir. All five judge.toml parse with tomllib; [judge] has judge='claude-code' fallback, mode, timeout, isolated=false, prompt_template='prompt.md' and no model/reasoning_effort/temperature/weight. Every dimension declares the playwright stdio MCP server with the template args; only scored/functional/judge.toml:23-27 adds the 'verifier' server (/usr/local/bin/python3 /tests/tools/restart_mcp.py \"$APP_RESTART_HELPER\"), and test.sh:193 exports APP_RESTART_HELPER before run_suite (rewardkit agents.py:66 os.path.expandvars expands it). Criteria: constraints 1 binary, render 1 binary (gates all_pass, binary as required); functional 16 binary, unique ids, positive weights summing 44.0 as its comment states; polish 6 binary; visual 4 likert points=5, positive weights. Every prompt.md contains {criteria} once and {app_context} (substituted by test.sh:196-201). test.sh, tools/score.py, tools/restart_mcp.py and tests/Dockerfile are identical to the frozen template. I loaded the frozen gates/ and scored/ trees (copied to scratch) with the pinned harbor-rewardkit 0.1.7 discover(): all five dimensions build as AgentJudge with the expected mode/timeout/aggregation/criteria count/MCP servers and the {criteria} validation passes; mode='individual' is a valid JudgeMode (models.py:142) that grades criteria sequentially in listed order (judges.py:467-492), consistent with the functional prompt's ordered-state and single restart_app design. Deviation from template: functional mode individual/timeout 550 (template batched/9000), documented with reason and lead authorization in functional/judge.toml:7-11; 16x550+900+900=10600 < scored budget 11100 < verifier 13200. Broken-app attempt: no wiring path lets a blank/static app score (gates all_pass zero via score.py, floor 0.05). Conforming-alternative attempt: a correct but slow-to-judge app could lose criteria to per-call 550 s timeouts or, with schema-retry overhead (3 retries per call, judges.py:229), exceed the 11100 s suite budget and zero the scored suite; this is a budget/workload concern, not a structural defect. Risk=true because no full configured judge run of these bytes exists (raw-evidence-index scope: 'A full configured grading run of this candidate ... are absent'; the judge.toml comment itself says 'Not yet measured against a judge run'), so live MCP registration, restart_app use in individual mode and the 500 s slack are unmeasured.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

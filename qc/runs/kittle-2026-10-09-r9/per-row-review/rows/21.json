@@ -1,0 +1,28 @@
+{
+  "number": 21,
+  "id": "verifier_entrypoint_is_safe_and_always_scores",
+  "reviewer": "row-reviewer-21",
+  "input_sha256": "e328e9dfd48187ef3a6c5d0c73d616202822a40ae0640b199197bd7cc522acf7",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r9/rules/WebDev Rubrics QC.xlsx: Quality Checks row 22 (#21), Internal Quality Checks row 22 (#21, no annotations in E-H), Deterministic Checks C33/C36",
+    ".qc-cache/kittle-2026-10-09-r9/rules/harbor-webdev-rubric-qc/references/quality-checks.md lines 92-94",
+    ".qc-cache/kittle-2026-10-09-r9/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md lines 98-114 (test.sh ordered contract)",
+    ".qc-cache/kittle-2026-10-09-r9/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md lines 42,46",
+    ".qc-cache/kittle-2026-10-09-r9/rules/projects/webdev-task-template/tests/test.sh, tools/score.py, scoring.toml, task.toml",
+    ".qc-cache/kittle-2026-10-09-r9/task/tests/test.sh (lines 1-227), tests/tools/score.py, tests/scoring.toml, task.toml",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/kittle-2026-10-09-r9/raw-evidence-index.json (all entry hashes re-verified: match); qc/repairs/kittle-2026-10-09-v3/hosted-v2/{nop,oracle}-reward.json"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "task/tests/test.sh (sha256 bd68259276ca...) and tests/tools/score.py (13de2b38...) are byte-identical to the frozen template (diff empty); scoring.toml also identical. Static: bash -n OK; write_zero_reward (L60) runs before anything, then trap cleanup EXIT (L61) -> ensure_reward; no exec (only find -exec L86); refuses missing /app/server.js (L68) and symlinks escaping /app/node_modules (L72-83); copies /app aside and launches via setsid env -i (PATH,NODE_PATH,HOME,PORT,DB_PATH) setpriv --reuid=65534 (L104-111); probes /api/health then / up to 30s before RewardKit (L115-125); gates (1500s) then score.py with 0/1/other handling (L213-222), scored (11100s) then score.py || write_zero_reward (L224-227); 1500+11100 < verifier timeout 13200. Runtime (Docker, existing cw-editor-verifier:current image, --rm containers, copied tests, stub rewardkit on PATH, run 2026-10-09): every path exited 0 with a reward: no REWARDKIT env -> plain zero; missing server.js -> plain zero; /app/evil -> /etc/passwd symlink -> plain zero; never-listening app -> zero after liveness timeout, app process group killed; gates rewardkit exit 3 -> plain zero; render=0 gate -> detailed record reward 0.0 gates_passed 0; non-numeric gate JSON -> score.py exit 2 -> plain zero; scored rewardkit failure -> reward 0.0 (gates record, gates_passed 1); non-numeric scored JSON -> plain zero; full pass -> reward 0.7 (0.6*0.5+0.2+0.2), app observed running as uid 65534. Hosted v2 runs (same test.sh hash per git 9766459f) show nop-reward plain zero and oracle-reward graded 0.9917, consistent. Notes (non-blocking, template-controlled, must not be edited): liveness counts any HTTPError (e.g. 500) as alive, by design, and gates still judge; a scored-suite crash after passing gates leaves score.py's gates-only record (reward 0.0, graded=1) instead of the 'plain zero' the contract text describes, but the reward is still 0.0 and written. Broken-app attempt: an app that answers HTTP but is blank passes liveness but cannot pass this row's concern (reward still written; gating is the judges' job). Conforming-alternative attempt: an app with a missing /api/health but working / still passes liveness (probe falls through on HTTPError). Stub-based runs are not a configured judge run, Oracle or model score.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PASS (local stubbed-RewardKit execution of the frozen test.sh across 10 code paths; no configured judge run)"
+}

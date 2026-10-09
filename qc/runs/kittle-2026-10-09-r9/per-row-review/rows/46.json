@@ -1,0 +1,29 @@
+{
+  "number": 46,
+  "id": "tests_and_key_are_out_of_agent_reach",
+  "reviewer": "row-reviewer-46",
+  "input_sha256": "e328e9dfd48187ef3a6c5d0c73d616202822a40ae0640b199197bd7cc522acf7",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r9/rules/WebDev Rubrics QC.xlsx: 'Quality Checks' C47 and 'Internal Quality Checks' C47 (row 46; no internal annotation columns populated)",
+    ".qc-cache/kittle-2026-10-09-r9/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r9/rules/harbor-webdev-rubric-qc/references/quality-checks.md:184-185 (### 46)",
+    ".qc-cache/kittle-2026-10-09-r9/rules/projects/webdev-task-template (environment/Dockerfile, tests/Dockerfile, tests/test.sh, tests/.dockerignore diffed)",
+    "qc/REVIEW_POLICY.md",
+    "task/task.toml, task/instruction.md, task/environment/Dockerfile, task/environment/instructions/*.md, task/environment/assets/seed_data.json",
+    "task/tests/Dockerfile, task/tests/.dockerignore, task/tests/test.sh, task/tests/scoring.toml, task/tests/scored/functional/judge.toml and prompt.md (head)",
+    "harbor-rewardkit 0.1.7 wheel (PyPI) rewardkit/agents.py ClaudeCodeCLI.build_command",
+    "qc/runs/kittle-2026-10-09-r9/raw-evidence-index.json (input_sha256 matches; no entry bears on this row)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Agent image: task/environment/Dockerfile is byte-identical to the frozen template and builds from the environment/ context only, copying just instructions/ (conversations.md, integration.md, walls-and-retention.md) and assets/seed_data.json; it installs only express/better-sqlite3 globally (no rewardkit, no claude-code/codex judge client, no Playwright MCP) and /app starts from a single .gitkeep commit. grep for rubric|criteri|judge|reward|score|weight across instruction.md, instructions/*.md and seed_data.json finds no rubric content (seed keys: clock, firm, accounts, timer_options_days, matters, read_up_to); tests/, solution/ and app_context.md are not in the build context. Verifier isolation: task.toml:28 environment_mode=\"separate\" with artifacts [/app,/assets] only; tests/Dockerfile (template-identical) installs rewardkit/claude-code/Playwright there, COPY . /tests then chmod -R go-rwx /tests. tests/test.sh (template-identical) sets umask 077 (l.3), chmod 700 $LOG_DIR (l.11), re-applies go-rwx on /tests (l.12), writes zero reward first, refuses symlinks outside node_modules, and launches the submitted app with env -i and setpriv uid/gid 65534 (l.104-110, restart helper l.160-166), so the agent-authored server cannot read /tests prompts/criteria, cannot see OPENROUTER/ANTHROPIC tokens, and cannot write reward.txt/reward.json, which only root-run score.py writes. The restart helper sits in the root-only 700 LOG_DIR. Adversarial tries: (a) agent planting a rubric-aware file or a symlink in /app to reach /tests -> rejected by the symlink scan and by root-only perms; hardlinks impossible across separate containers. (b) app reading criteria at grading time: rewardkit 0.1.7 ClaudeCodeCLI passes the prompt as argv to `claude -p`, so a uid-65534 process could in principle read /proc/<pid>/cmdline of the judge in the shared verifier container; this happens only during grading after the agent phase ends, cannot change reward files, and is a property of the shared template/RewardKit harness (both files byte-identical to template), not a task-specific defect - recorded as an observation, not a Fail. Conforming alternative: an app that writes logs to HOME/tmp works since HOME=/tmp/submission is nobody-owned; isolation does not penalize it. Static inspection only; no Docker run was needed for this row.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "NOT EXERCISED"
+}

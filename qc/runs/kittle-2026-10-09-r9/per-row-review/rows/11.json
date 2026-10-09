@@ -1,0 +1,28 @@
+{
+  "number": 11,
+  "id": "timeouts_fit_the_work",
+  "reviewer": "row-reviewer-11",
+  "input_sha256": "e328e9dfd48187ef3a6c5d0c73d616202822a40ae0640b199197bd7cc522acf7",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    "rules/WebDev Rubrics QC.xlsx: Quality Checks row 12 (#11 timeouts_fit_the_work) and Internal Quality Checks row 12 annotation ('inner < outer, sum of judges < verifier'); Deterministic Checks C29/C33 for context",
+    "rules/harbor-webdev-rubric-qc/SKILL.md (block B structure/timeout nesting) and references/quality-checks.md s11, references/staged-task-contract.md lines 54-63,111,163",
+    "rules/projects/webdev-task-template/task.toml, tests/test.sh, tests/{gates,scored}/*/judge.toml",
+    "qc/REVIEW_POLICY.md (workload is measured, not inferred)",
+    "task/task.toml, task/tests/test.sh (lines 115-125, 203-227), task/tests/{gates,scored}/*/judge.toml, task/tests/scoring.toml",
+    "rewardkit 0.1.7 judges.py/agents.py/runner.py inside cw-editor-verifier:current (docker run --rm, read-only)",
+    "qc/runs/kittle-2026-10-09-r9/raw-evidence-index.json (hashes of run_golden.sh, functional.cjs, golden-run.log verified)",
+    "model-beraking-prompts/run-outputs/kittle-matter-chat/runs-export (hosted runs 364af89e and d6cb6e6a on an earlier candidate, commit 3654fc9d)"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": "medium",
+  "evidence": "Nesting arithmetic holds on the frozen bytes. task.toml: agent 7200, build 600, verifier 13200, identical to the template and staged-task-contract.md 54-63. test.sh is byte-identical to the template: gates budget 1500 (line 213), scored 11100 (line 224), and rewardkit runs with --max-concurrent-agent 1 (line 207), so judges run one after another. Gates: render 600 + constraints 600 = 1200 < 1500. Scored: functional is mode=individual with timeout=550 per criterion. rewardkit 0.1.7 _arun_agent_individual runs each criterion in its own sequential subprocess with wait_for(timeout=judge.timeout), and a timeout scores that criterion 0 without retrying. So 16 criteria x 550 = 8800, plus polish 900 and visual 900 (both batched), gives 10600 < 11100. Gates plus scored is 12600 < 13200, and the sum of all judges is 11800 < 13200, which satisfies the internal annotation. The liveness probe allows at least 30 s (120 x 0.25 s, test.sh 115-125). The restart helper waits 30 s and its MCP timeout is 55 s; both are template-controlled. Evidence that the time limits are long enough exists only for an earlier candidate. Two hosted runs on 9 Oct (verifier total 63 min for the golden run KneamC2 and 76 min for agent run 7CWiF5d) used commit 3654fc9d with the same individual/550 setting. Neither recorded a 'judge timed out' error. The agent run finished in about 8 min, well inside 7200 s. However, only 4 of the 16 functional criterion descriptions are identical to the frozen v3.4 bytes. The total functional criterion text grew from 3250 to 4206 words, and some criteria roughly doubled: wall_every_route 184->403, wall_mentions_and_links 166->346, edits_and_stale_edit 200->391, search_and_transcript 205->343, timer_changes 243->385. Polish went from 5 to 6 criteria. The raw-evidence index says no full configured grading run exists for this candidate. The scripted golden log has no timing data. So nobody has measured whether each heavy functional criterion finishes in 550 s under GLM-5.3-flashx. The judge.toml comment itself says 'Not yet measured against a judge run.' Two latent issues come from the shared template and are not defects in this task. First, rewardkit retries a schema mismatch up to 3 times, and each retry gets a fresh full timeout, so the worst case can exceed a suite budget (gates 3 x 1200 > 1500). claude-code uses --json-schema, which makes this unlikely. Second, if the outer `timeout 11100` fires, the whole scored suite is lost rather than a single criterion.",
+  "counterexample": null,
+  "suggested_fix": "This is not a Fail, but the risk must be cleared by measurement. Run one full configured verifier on the frozen v3.4 bytes against the golden app and record each functional criterion's duration (for example from timestamps in rewardkit.log or the judge outputs) and the polish/visual session durations. Confirm that none hits 550/900 s and that heavy criteria such as wall_every_route and edits_and_stale_edit leave clear headroom. If any criterion is close to its limit, reduce redundant browser legs. Change a timeout only with a recorded workload reason and authorization; a rebalance such as raising functional above 550 must keep 16 x t + 1800 < 11100, i.e. t <= 581 s at current budgets.",
+  "run_verdict": "PASS"
+}

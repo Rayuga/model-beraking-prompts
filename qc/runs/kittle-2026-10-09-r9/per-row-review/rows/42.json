@@ -1,0 +1,35 @@
+{
+  "number": 42,
+  "id": "reward_ranking_is_monotone",
+  "reviewer": "row-reviewer-42",
+  "input_sha256": "e328e9dfd48187ef3a6c5d0c73d616202822a40ae0640b199197bd7cc522acf7",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r9/rules/WebDev Rubrics QC.xlsx: Quality Checks row 43 (#42 reward_ranking_is_monotone) and Internal Quality Checks row 43 (annotation 'Mukesh - we need to monitor this one.')",
+    ".qc-cache/kittle-2026-10-09-r9/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r9/rules/harbor-webdev-rubric-qc/references/quality-checks.md:172-173 (#42), also #39-#44 for context",
+    ".qc-cache/kittle-2026-10-09-r9/rules/projects/webdev-task-template/tests/{scoring.toml,tools/score.py,test.sh,*/*/judge.toml} (diffed against task)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/kittle-2026-10-09-r9/task/tests/scoring.toml",
+    ".qc-cache/kittle-2026-10-09-r9/task/tests/tools/score.py",
+    ".qc-cache/kittle-2026-10-09-r9/task/tests/test.sh",
+    ".qc-cache/kittle-2026-10-09-r9/task/tests/gates/render/judge.toml, gates/constraints/judge.toml",
+    ".qc-cache/kittle-2026-10-09-r9/task/tests/scored/functional/judge.toml (all 16 criteria), functional/prompt.md:9,68-72",
+    ".qc-cache/kittle-2026-10-09-r9/task/tests/scored/polish/judge.toml, scored/visual/judge.toml",
+    ".qc-cache/kittle-2026-10-09-r9/task/instruction.md and environment/instructions/{walls-and-retention,conversations,integration}.md",
+    ".qc-cache/kittle-2026-10-09-r9/task/task.toml [verifier]",
+    "qc/runs/kittle-2026-10-09-r9/raw-evidence-index.json (scope statement)",
+    "deliverables/colderwater-playground-devtools/final-cross-check-2026-09-27/harness/rewardkit-0.1.7-source/judges.py:285-303,467-569 (timeout -> 0.0 per criterion, sequential agent individual mode)"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "Aggregation itself is sound and template-identical: scoring.toml (gates render/constraints 0.0, weights functional 0.6/polish 0.2/visual 0.2, functional floor 0.05), tools/score.py and test.sh are byte-identical to the frozen template; score.py:41-48 zeroes reward on a failed gate or floor, gates carry no mass, and functional outweighs craft. The task-authored functional rubric (weights sum 44.0) uses conjunctive positive controls, and conditional legs such as timer_changes 'If the app lets Harriet open earlier versions' and wall_every_route's JUDGE-W3 'either refused or filed under its own parent' accept conforming alternatives without inverting order. However, the persistence criterion (functional/judge.toml:267-281, weight 4.0) fails 'if any step c positive control did not hold before the restart', and step c (line 276) requires a working reply hold (JUDGE-S1 On hold), the M-12 timer at 30 days, a new wall on Sian, earlier versions, deletion and search. Those features are already graded by hold_scope_and_release (2.0), timer_changes (4.0), wall_added_live (2.0), edits_and_stale_edit (3.0) and search_and_transcript (4.0), contradicting the file's own comment at line 38 'Each observable is graded in exactly one criterion'. Result: a durable app that lacks one of those features loses that feature's weight plus the full 4.0 persistence weight, while an app with no durability at all (in-memory or re-seeding on every start; it passes the constraints gate because that only reloads, and only persistence calls restart_app per prompt.md:68-72) loses only 4.0. Durability, an explicit integration.md:5 requirement ('restarts keep everything as it was'), therefore earns zero credit for any app missing one of the coupled features, and the ranking inverts (see counterexample). Also unmeasured: raw-evidence-index.json states 'reward discrimination/ranking on these bytes ... absent', and no full configured judge run exists. Functional runs in individual mode, 550 s per criterion (judge.toml:6-12, comment 'Not yet measured against a judge run'); rewardkit 0.1.7 judges.py:539-549 records a timed-out criterion as 0.0, so a complete app (which forces the judge through every leg of long criteria such as wall_every_route or persistence) carries more timeout risk than a broken app that fails early or takes a shorter conditional branch. That is a further possible inversion that no measured evidence currently rules out.",
+  "counterexample": "App B: golden-equivalent in every feature but stores data in memory (or wipes and re-imports the seed on each start). It passes both gates and all functional criteria except persistence, so functional = 40/44 = 0.909. App C: durable SQLite with every restart readback correct, but its timer control cannot change M-12/M-13 timers. It fails timer_changes (4.0) and, because step c requires 'M-12's timer shows 30 days', also persistence (4.0), so functional = 36/44 = 0.818. With equal polish/visual, B outscores C by 0.6*4/44 = 0.055 reward even though B loses every message, hold, wall and deletion on restart. The same applies to a durable app that cannot place a hold on a reply (A: 38/44), or one whose wall UI fails (38/44), compared with the non-durable B (40/44).",
+  "suggested_fix": "Keep a small core positive-control set in persistence (posting, replying, editing, deleting and one search must work before the restart), and score the hold/timer/wall/version/unread items only when they worked before the restart, failing only if a working item differs afterwards and never failing persistence because another criterion's feature is absent. Alternatively, drop those items from step c. Then measure ranking with mutated weak apps (non-durable app versus durable app missing one feature) plus a full configured judge timing run before clearing.",
+  "run_verdict": "NOT EXERCISED"
+}

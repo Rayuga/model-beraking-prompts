@@ -687,6 +687,11 @@ async function after() {
     assert.ok(await gwen.locator('#composer-context').isHidden());
     await gwen.reload(); await gwen.waitForSelector('.matter-link'); await openMatter(gwen, 'M-13');
     assert.ok(!(await gwen.locator('#thread').innerText()).includes('Escaped reply'));
+    await editMsg(gwen, 'Escape check JUDGE-K3', 'Saved edit JUDGE-K3');
+    await gwen.reload(); await gwen.waitForSelector('.matter-link'); await openMatter(gwen, 'M-13');
+    assert.equal(await msgLi(gwen, 'Saved edit JUDGE-K3').count(), 1, 'normal save works');
+    await reply(gwen, 'Saved edit JUDGE-K3', 'Sent reply JUDGE-K3');
+    assert.ok((await gwen.locator('#thread').innerText()).includes('Sent reply JUDGE-K3'), 'normal send works');
   });
   await check('polish_delete_confirm', async () => {
     await post(gwen, 'Confirm check JUDGE-K2');
