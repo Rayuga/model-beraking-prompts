@@ -1,0 +1,38 @@
+{
+  "number": 19,
+  "id": "solution_honors_the_runtime_contract_and_is_self_contained",
+  "reviewer": "row-reviewer-19",
+  "input_sha256": "d7a61354d7f257ff5b1b408e9d87314b389023bc0bffa9d7e61ca8e698ee9d72",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r5/rules/WebDev Rubrics QC.xlsx: 'Quality Checks' row 20 (check 19, network public, fetching/installing not a defect); 'Internal Quality Checks' row 20 (check 19, internal annotation 'no network / no run-time install'); 'Deterministic Checks' rows 31 (check-runtime-contract-strings.py) and 34 (check-solve-contract.py) for context",
+    ".qc-cache/kittle-2026-10-09-r5/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r5/rules/harbor-webdev-rubric-qc/references/quality-checks.md lines 83-85 (row 19 Verify list)",
+    ".qc-cache/kittle-2026-10-09-r5/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (layout, cross-file agreements lines 166-181)",
+    ".qc-cache/kittle-2026-10-09-r5/rules/projects/webdev-task-template/solution/solve.sh and tests/test.sh",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/kittle-2026-10-09-r5/task/task.toml",
+    ".qc-cache/kittle-2026-10-09-r5/task/instruction.md",
+    ".qc-cache/kittle-2026-10-09-r5/task/environment/Dockerfile",
+    ".qc-cache/kittle-2026-10-09-r5/task/environment/instructions/integration.md",
+    ".qc-cache/kittle-2026-10-09-r5/task/solution/solve.sh",
+    ".qc-cache/kittle-2026-10-09-r5/task/solution/app/server.js (lines 1-170, 295-305, 395-410, 523-527)",
+    ".qc-cache/kittle-2026-10-09-r5/task/solution/app/package.json",
+    ".qc-cache/kittle-2026-10-09-r5/task/solution/app/public/* (scanned for external URLs)",
+    ".qc-cache/kittle-2026-10-09-r5/task/tests/test.sh",
+    "qc/runs/kittle-2026-10-09-r5/raw-evidence-index.json (hashes re-verified for run_golden.sh, functional.cjs, golden-run.log and all matching solution source files)",
+    "qc/repairs/kittle-2026-10-08/run_golden.sh, results/golden-run.log, results/restart-pids.json",
+    "Own runtime check: docker image qc-r5-row19-kittle-env:tmp built from frozen task/environment, container qc-r5-row19-run-b"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Static: solution/solve.sh (sha f7c17a01..., matches raw-evidence-index) is byte-identical to the template solve.sh: '#!/bin/bash', set -euo pipefail, LF only (0 CR), 'mkdir -p /app; cp -a $(dirname $0)/app/. /app/'. It writes only /app, nothing to /tests, /logs/verifier or /solution, no pkill, no NODE_ENV, no install or network fetch. tests/test.sh is identical to the template and launches 'node /app/server.js' (or the /tmp/submission copy) as uid 65534 with env -i PATH/NODE_PATH/HOME/PORT=3000/DB_PATH. server.js resolves everything from __dirname (lines 14-15, 29), uses DB_PATH || __dirname/app.db (line 14), registers /api/health before the boot guard and returns 200 even when DB init fails (lines 42-47, 154-165), listens on 0.0.0.0:PORT (line 527), and seeds once behind a settings 'seeded' flag inside a transaction (lines 93-127). Its only deps are express@5.1.0/better-sqlite3@12.4.1, matching the globally installed versions in environment/Dockerfile. The solution ships no app.db and no symlinks; the bundled seed/seed_data.json hash equals environment/assets/seed_data.json (b256f85e...), with /assets fallback. Public assets reference no external URLs. Runtime (own run, 9 Oct 2026, image built from the frozen task/environment Dockerfile, Node v22.23.2): solve.sh exited 0; after chown 65534 and the exact test.sh env -i/setpriv launch from cwd /tmp, /api/health 200 booted=true, / 200 HTML, anonymous /api/matters 401; DB had 18 messages, 5 users, seeded=1. Signed in as harriet, posted K-19 (201), killed node, relaunched from cwd /: K-19 persisted, users still 5 (no re-import). With an unwritable DB_PATH, /api/health stayed 200 (booted=false) while /api/matters returned 503. This matches the earlier scripted golden run (run_golden.sh, golden-run.log, hashes re-verified) which used the frozen solve.sh in a different image (cw-editor-agent-r3). Adversarial checks: an app needing cwd=/app, a solve-time npm install without network, or a pre-shipped app.db would violate this row; the reference does none of these. No full configured judge run of these bytes exists, but that is not required evidence for this row and none is claimed.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PASS (own docker run of frozen solve.sh + test.sh-style launch in the task's own environment image; not a judge, Oracle or portal run)"
+}

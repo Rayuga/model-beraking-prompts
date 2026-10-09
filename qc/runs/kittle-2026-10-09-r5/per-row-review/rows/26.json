@@ -1,0 +1,31 @@
+{
+  "number": 26,
+  "id": "dimensions_cover_every_graded_requirement",
+  "reviewer": "row-reviewer-26",
+  "input_sha256": "d7a61354d7f257ff5b1b408e9d87314b389023bc0bffa9d7e61ca8e698ee9d72",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r5/rules/WebDev Rubrics QC.xlsx: Quality Checks row 27 (#26 dimensions_cover_every_graded_requirement) and Internal Quality Checks row 27 (Mukesh note: flows bundle multiple verifiers)",
+    ".qc-cache/kittle-2026-10-09-r5/rules/harbor-webdev-rubric-qc/SKILL.md (known false positive: one criterion covering a flow)",
+    ".qc-cache/kittle-2026-10-09-r5/rules/harbor-webdev-rubric-qc/references/quality-checks.md:112-114",
+    ".qc-cache/kittle-2026-10-09-r5/rules/projects/webdev-task-template (instruction.md, environment/instructions/integration.md health policy, tests/test.sh)",
+    "qc/REVIEW_POLICY.md (coverage has two directions; shared runtime policy vs task-added)",
+    ".qc-cache/kittle-2026-10-09-r5/task/instruction.md",
+    ".qc-cache/kittle-2026-10-09-r5/task/environment/instructions/conversations.md, integration.md, walls-and-retention.md",
+    ".qc-cache/kittle-2026-10-09-r5/task/tests/gates/{render,constraints}/judge.toml+prompt.md",
+    ".qc-cache/kittle-2026-10-09-r5/task/tests/scored/{functional,polish,visual}/judge.toml+prompt.md",
+    ".qc-cache/kittle-2026-10-09-r5/task/tests/app_context.md, scoring.toml, test.sh:41-115",
+    ".qc-cache/kittle-2026-10-09-r5/task/solution/app/server.js:382-391 (golden search uses literal substring includes())"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "Built a requirement->criterion map over instruction.md and the three note files against the 16 functional, 6 polish, 4 visual and 2 gate criteria. Nearly every stated behavior maps to a criterion: walls by every route incl. live add/lift and partner-only lifting (wall_every_route, wall_mentions_and_links, wall_added_live), retention boundary/edit-age/shorten/off/hold/release (deleted_and_expired_messages, timer_changes, hold_scope_and_release), nested replies with quotes and parent ordering, edits/versions/stale edit/mention add-remove (edits_and_stale_edit), safe formatting across thread/quote/snippet/versions/transcript, message links and previews, unread per user/tab, idempotent send and fixed-clock ordering, live updates preserving draft/scroll, search case/visibility/versions/%/_, transcript content and access, persistence incl. unread/walls/timers/no re-import (Survey booked count), Enter/Shift+Enter/Escape/confirm/highlight/refusal-in-place (polish), 390px (transcript_print binary + phone_chambers likert); runtime facts are template policy or enforced by test.sh (symlink scan test.sh:72-83, env -i/DB_PATH/HOME launch test.sh:105-112). GAP (explicit, ungraded): walls-and-retention.md:77 says 'symbols such as `%`, `_` and `*` are just characters to find, never wildcards', but search_and_transcript Part C (functional/judge.toml:259-261) probes only % and _; no criterion searches with `*` (grep of all judge.toml: the only `*` is the *bold part* formatting text, never a search term). Related: every search probe is a whole word/phrase, so 'exactly the characters typed' (partial-word substring) is never discriminated from token search. Minor partial gaps (P3, record only): (a) 'nobody can reply from one matter to a message in another' (conversations.md:5) is graded only via a walled parent (wall_every_route leg 5), so an app that checks access to both matters but not matter equality passes; (b) highlight is graded only when opening from search (polish link_highlight), not from a pasted message link (conversations.md:17); (c) only an https URL is linkified-tested, not http (conversations.md:13); (d) 'lengthening never brings anything back' (walls-and-retention.md:67) is checked only for 'off', not after the reset to 30 days; (e) 'refusal reason appears next to what you did and stays' (walls-and-retention.md:81) is graded only for wrong-password sign-in. Bundled flows themselves are the known false positive and are not reported.",
+  "counterexample": "A submission implementing search as `lower(body) GLOB '*' || lower(?) || '*'` (or FTS5 token MATCH with quoted phrase) is case-insensitive, treats % and _ literally, finds 'survey BOOKED', 'notice received and filed', '100%' (not 1000) and 'A_1' (not AB1, under unicode61 tokenization too), so it passes search_and_transcript and every other criterion, yet a search for 'Ref*1' matches 'Ref A_1 JUDGE-Q3' (GLOB wildcard) or `*` acts as an FTS prefix operator, and partial words such as 'Surv' fail under FTS -- directly violating walls-and-retention.md:77, with no criterion able to catch it.",
+  "suggested_fix": "In search_and_transcript Part C, also post e.g. 'Code X*9 JUDGE-Q5' and 'Code XY9 JUDGE-Q6' and require search 'X*9' finds Q5 and not Q6, plus one partial-word probe (e.g. 'Survey book' or 'urvey') that must find 'Survey booked for Friday.'; optionally add a non-walled cross-matter reply replay (Harriet, M-11 reply pointing at an M-13 message id) to wall_every_route leg 5.",
+  "run_verdict": "NOT EXERCISED"
+}

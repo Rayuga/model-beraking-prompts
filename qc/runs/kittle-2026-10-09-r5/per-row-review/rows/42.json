@@ -1,0 +1,35 @@
+{
+  "number": 42,
+  "id": "reward_ranking_is_monotone",
+  "reviewer": "row-reviewer-42",
+  "input_sha256": "d7a61354d7f257ff5b1b408e9d87314b389023bc0bffa9d7e61ca8e698ee9d72",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r5/rules/WebDev Rubrics QC.xlsx (Quality Checks row 43 / check 42 reward_ranking_is_monotone; Internal Quality Checks row 43 annotation 'Mukesh - we need to monitor this one.')",
+    ".qc-cache/kittle-2026-10-09-r5/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r5/rules/harbor-webdev-rubric-qc/references/quality-checks.md (### 42, plus 39/40/43/44 for context)",
+    ".qc-cache/kittle-2026-10-09-r5/rules/projects/webdev-task-template/tests/{scoring.toml,test.sh,tools/score.py} (diffed against task: identical)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/kittle-2026-10-09-r5/task/instruction.md",
+    ".qc-cache/kittle-2026-10-09-r5/task/environment/instructions/{conversations.md,integration.md,walls-and-retention.md}",
+    ".qc-cache/kittle-2026-10-09-r5/task/tests/scoring.toml",
+    ".qc-cache/kittle-2026-10-09-r5/task/tests/tools/score.py",
+    ".qc-cache/kittle-2026-10-09-r5/task/tests/test.sh",
+    ".qc-cache/kittle-2026-10-09-r5/task/tests/gates/{render,constraints}/judge.toml",
+    ".qc-cache/kittle-2026-10-09-r5/task/tests/scored/{functional,polish,visual}/judge.toml",
+    ".qc-cache/kittle-2026-10-09-r5/task/tests/scored/functional/prompt.md",
+    ".qc-cache/kittle-2026-10-09-r5/task/tests/app_context.md",
+    "qc/runs/kittle-2026-10-09-r5/raw-evidence-index.json"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "Aggregation is template-identical and monotone in criterion outcomes: scoring.toml gates render/constraints 0.0, weights 0.6/0.2/0.2, floor functional 0.05; score.py:41-48 applies gate and floor as non-decreasing steps over a weighted mean, so an app that passes a superset of criteria never scores lower. Functional weights re-derived sum to 42.0 (matches the judge.toml comment); functional 0.6 outweighs polish+visual 0.4, and polish/visual criteria themselves need working posting/edit/delete/search/transcript, so craft-over-function inversion is bounded and template-mandated (Note only). The inversion comes from criterion design: functional/judge.toml persistence (weight 2.0, lines 266-280) only notes 'what the app shows now' and says 'This criterion grades only durability: a feature that did not work before the restart is graded in its own criterion, not here', with no positive controls; prompt.md:32 requires only 'listed' positive controls, so a missing feature reads identically before and after restart and earns persistence. integration.md:5 publicly requires unread positions to survive restarts; unread_and_new_messages_line is weight 1.5 (judge.toml:204-216). The same pattern gives a tie for holds (hold_scope_and_release 2.0 vs persistence 2.0). No measured reward-ordering evidence exists: raw-evidence-index.json scope states 'reward discrimination/ranking on these bytes and Oracle/target scores for these bytes are absent'.",
+  "counterexample": "App W and App B are identical except unread: W has no unread counts or new-messages line at all; B implements unread exactly as conversations.md:23-25 asks (passes unread_and_new_messages_line, +1.5) but keeps read markers in memory, so Dev's M-13 unread count changes after restart_app and persistence fails (-2.0). W shows no unread count before or after restart, so step c reads identically and W passes persistence (+2.0). W outscores B by 0.5/42 functional (about 0.007 reward) although B satisfies strictly more public requirements (B misses only unread durability; W misses the whole unread feature and its durability). More generally, an app lacking edits, holds, walls, timers, deletion and unread still collects the full 2.0 persistence credit for doing nothing, contrary to REVIEW_POLICY 'A dead feature must not earn credit for doing nothing.'",
+  "suggested_fix": "Make persistence step c require positive controls before restart (JUDGE-S1 nested under JUDGE-S0, JUDGE-S0 marked edited with its earlier version, JUDGE-S1 On hold, M-12 showing 30 days, Sian and Dev getting not-available, Dev's M-13 unread count shown as a number, JUDGE-S2 gone, Survey booked found) and fail if any did not work, so a missing feature can never earn durability credit; alternatively drop the unread item from persistence or weight persistence below every feature it observes.",
+  "run_verdict": "NOT EXERCISED"
+}

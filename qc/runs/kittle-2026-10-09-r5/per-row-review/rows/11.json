@@ -1,0 +1,34 @@
+{
+  "number": 11,
+  "id": "timeouts_fit_the_work",
+  "reviewer": "row-reviewer-11",
+  "input_sha256": "d7a61354d7f257ff5b1b408e9d87314b389023bc0bffa9d7e61ca8e698ee9d72",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r5/rules/WebDev Rubrics QC.xlsx: Quality Checks row 12 (#11 timeouts_fit_the_work) and Internal Quality Checks row 12 ('inner < outer, sum of judges < verifier')",
+    ".qc-cache/kittle-2026-10-09-r5/rules/harbor-webdev-rubric-qc/SKILL.md (workflow step 3, timeout nesting)",
+    ".qc-cache/kittle-2026-10-09-r5/rules/harbor-webdev-rubric-qc/references/quality-checks.md #11 (lines 50-51)",
+    ".qc-cache/kittle-2026-10-09-r5/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md lines 53-75, 111, 119, 163",
+    ".qc-cache/kittle-2026-10-09-r5/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md lines 42-44",
+    ".qc-cache/kittle-2026-10-09-r5/rules/projects/webdev-task-template/task.toml, tests/test.sh, tests/*/*/judge.toml, environment/Dockerfile, tests/Dockerfile",
+    "qc/REVIEW_POLICY.md line 25",
+    ".qc-cache/kittle-2026-10-09-r5/task/task.toml",
+    ".qc-cache/kittle-2026-10-09-r5/task/tests/test.sh",
+    ".qc-cache/kittle-2026-10-09-r5/task/tests/gates/{render,constraints}/judge.toml",
+    ".qc-cache/kittle-2026-10-09-r5/task/tests/scored/{functional,polish,visual}/judge.toml",
+    ".qc-cache/kittle-2026-10-09-r5/task/environment/Dockerfile",
+    "qc/runs/kittle-2026-10-09-r5/raw-evidence-index.json (all 14 artifact hashes re-verified: match)",
+    "qc/repairs/kittle-2026-10-09-v3/hosted-v2/{oracle,luna}-result.json and *-scored-details.json"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "Nesting arithmetic holds on the frozen bytes. task.toml: [agent].timeout_sec=7200, build_timeout_sec=600, [verifier].timeout_sec=13200 (identical to the template and staged-task-contract.md 53-75). test.sh (byte-identical to template) runs rewardkit with --max-concurrent-agent 1 (line 207), gates budget 1500 (line 213), scored budget 11100 (line 224). Gates: render 600 + constraints 600 = 1200 < 1500 (each also < 1500). Scored: functional mode=individual, timeout=550 per criterion x 16 criteria (counted 16 [[criterion]] blocks) = 8800, + polish 900 + visual 900 = 10600 < 11100 (each judge < 11100). Budgets: 1500 + 11100 = 12600 < 13200, leaving 600 s for copy/startup/liveness (120 x 0.25 s ready loop, ~30 s nominal) and score.py; 13200 < 18000 five-hour limit. Liveness: test.sh 30 s ready loop; restart helper 5 s kill wait + 30 s ready loop fits restart_mcp's 55 s cap. Only deviation from template is functional batched/9000 -> individual/550, recorded with reason and authorization in functional/judge.toml lines 7-11 (lead instruction relayed 8 Oct 2026), with the line-9 arithmetic matching mine; it does not increase any budget. Per-criterion semantics are corroborated by the hosted v2 Oracle run (same 550 cap): verifier wall 05:21:17-06:24:16 (~3780 s) with all 16 functional criteria graded 1.0, which is impossible under a single 550 s dimension cap since functional must have taken >= 3780-1200-1800 = 780 s. v2 verifier walls (~63 min Oracle, ~76 min GPT-5.6) are far below 13200; agent run took ~8 min of 7200; cold build is two apt/npm layers, plausible within 600. RISK: the indexed scope states v3 adds legs to five functional criteria and v3 judge durations are unmeasured; no per-criterion duration exists even for v2, and the judge.toml comment itself says 'Not yet measured against a judge run'. Per REVIEW_POLICY line 25 that measurement cannot be waived.",
+  "counterexample": "Conforming-alternative risk (not a confirmed defect): a correct but slower app (e.g. multi-second transcript or search responses) combined with a v3 functional criterion that now carries extra legs plus a process restart could push a single individual judge session past 550 s, so a correct criterion is cut off and scored as a failure, even though the scored suite as a whole has headroom. No measured run on v3 bytes rules this out.",
+  "suggested_fix": "No config change required for this row. Obtain a full configured judge run on the v3 bytes and record per-criterion functional durations (max vs 550 s) and gates/scored suite wall times; only if a criterion is measured near the cap, raise its timeout with recorded reason/authorization while keeping 16 x t + 1800 < 11100.",
+  "run_verdict": "NOT EXERCISED"
+}

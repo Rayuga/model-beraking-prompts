@@ -1,0 +1,34 @@
+{
+  "number": 32,
+  "id": "criteria_are_outcome_based_and_browser_decidable",
+  "reviewer": "row-reviewer-32",
+  "input_sha256": "d7a61354d7f257ff5b1b408e9d87314b389023bc0bffa9d7e61ca8e698ee9d72",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r5/rules/WebDev Rubrics QC.xlsx: 'Quality Checks' row 33 (#32 criteria_are_outcome_based_and_browser_decidable) and 'Internal Quality Checks' row 33 (identical text, no extra annotation columns, no cell comments; drawings carry no text)",
+    ".qc-cache/kittle-2026-10-09-r5/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r5/rules/harbor-webdev-rubric-qc/references/quality-checks.md:134-136 (#32), plus #30/#36/#38 for scope boundaries",
+    ".qc-cache/kittle-2026-10-09-r5/rules/projects/webdev-task-template (tree: tests/gates, tests/scored layout)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/kittle-2026-10-09-r5/task/instruction.md",
+    ".qc-cache/kittle-2026-10-09-r5/task/environment/instructions/{conversations,integration,walls-and-retention}.md",
+    ".qc-cache/kittle-2026-10-09-r5/task/tests/scored/functional/{judge.toml,prompt.md} (all 16 criteria)",
+    ".qc-cache/kittle-2026-10-09-r5/task/tests/scored/polish/judge.toml (6 criteria), scored/visual/judge.toml (4 likert criteria)",
+    ".qc-cache/kittle-2026-10-09-r5/task/tests/gates/render/judge.toml, gates/constraints/judge.toml",
+    ".qc-cache/kittle-2026-10-09-r5/task/tests/app_context.md",
+    ".qc-cache/kittle-2026-10-09-r5/task/solution/app/server.js:395-495 (POST messages, PATCH/DELETE messages, hold, timer, walls) and public/app.js:391,480-482,567",
+    ".qc-cache/kittle-2026-10-09-r5/task/environment/assets/seed_data.json (Fenwick/heads of terms in M-12; no JUDGE tokens)",
+    "qc/runs/kittle-2026-10-09-r5/raw-evidence-index.json (scope: no configured judge run on these bytes); qc/repairs/kittle-2026-10-08/tests/functional.cjs:387-412 (sha256 7494db08... matches index; server.js f5d5801a... and app.js fd8df974... match frozen bytes)"
+  ],
+  "verdict": "Fail",
+  "risk": true,
+  "severity": "P2",
+  "evidence": "Overall the 26 criteria are concrete, browser-observable and well probed: every scored write uses a distinctive JUDGE-* token (none in seed or golden public files), negatives have named positive controls, and state checks use re-reads (reload, second context, other account, search, transcript, restart). Visual likerts carry anchors and polish criteria are concrete (scrollWidth, dialog, highlight still present after about 10 s). Instance 1 (blocking, P2): in tests/scored/functional/judge.toml edits_and_stale_edit Part A leg 3 (line 172), 'As sian@kittle.test replay Gwen's recorded edit request with the text \"Hijack JUDGE-E1\": it is refused and the message still reads \"Version two JUDGE-E1\"'. The recorded request is the v1->v2 edit, and it carries the base version: the golden client sends PATCH /api/messages/:id {body, version: state.editing.version} (public/app.js:480), and the server rejects a stale version with 409 (server.js:434-436). By the time Sian replays, the message is at version 2, so the replay is stale whatever the account. Any app with the required stale-edit protection therefore refuses Sian's replay even with no author check, and the probe cannot tell an authorship refusal from a staleness refusal. The criterion says only 'it is refused' and asks for no reason. The functional prompt (line 47) says only that 'A refusal writes nothing and a re-read matches the previous state', which a 409 satisfies. No other criterion probes who may edit a message (deletion authorship is probed separately in deleted_and_expired_messages leg 3). The scripted golden asserts status 403 (functional.cjs:409), but that is a stricter check the judge is not given. Instance 2 (P3, conforming-alternative decidability): wall_added_live leg 3 (line 93) says to replay the wall-lifting request 'with Sian's identifier, as it appears in Harriet's recorded request that walled Sian, in place of Dev's'. This works for the golden's POST /api/matters/:id/walls {email, walled} (app.js:567). A conforming REST design such as DELETE /api/walls/<wallId>, or PUT of the full wall list, has no Dev identifier in the lift request to substitute. The functional prompt (line 27) says a step the judge 'could not perform fails the criterion', so a correct app could lose this 2.0-weight criterion if the judge takes the wording literally. Instance 3 (P3, idempotency-key confound): the posting replays in wall_added_live leg 2, wall_every_route leg 5 and signin_and_client_scope Part B change only the text or target. Any client idempotency key (the golden sends client_key, app.js:482, which the brief's sent-once rule effectively invites) stays the same. An app that deduplicates before it checks authorization returns the earlier message and writes nothing, which the judge could read as a refusal. signin Part B is protected by its 'plain not-available' requirement. The other two rely only on 'refused' or 'accepted'. Not exercised: no configured judge run, reward-discrimination or weak-app run exists for these bytes (raw-evidence-index.json scope line).",
+  "counterexample": "Weak app: take the golden server.js and delete line 431 (`if (msg.author !== user.email) return res.status(403)...`) in PATCH /api/messages/:id, keeping the version check at 434-436. Every non-author can now rewrite anyone's message through the page's own edit request with a fresh version. Yet in edits_and_stale_edit leg 3, Sian's replay of Gwen's recorded request still carries version 1 while the message is at version 2, so it gets 409 'This message changed since you opened it'. Nothing is written and the message still reads 'Version two JUDGE-E1', so leg 3 holds and the weak app earns the full 3.0 weight. Conforming alternative for Instance 2: walls exposed as DELETE /api/walls/17. Harriet's lift request contains no Dev identifier, so 'replace Dev's identifier with Sian's' cannot be performed literally, and the prompt fails any step the judge could not perform.",
+  "suggested_fix": "Leg 3: tell the judge to replay Gwen's edit request as Sian with the text 'Hijack JUDGE-E1' and with any version or concurrency field set to the message's current value as seen in Sian's latest thread data, so that only authorship can explain a refusal. Alternatively, have Sian replay before Gwen's second edit makes the request stale. Instance 2: reword leg 3 so the judge adapts Harriet's recorded lift request to target Sian's M-13 wall using identifiers from Harriet's recorded wall requests or their responses. Instance 3: tell the judge to also change any idempotency or client-key field when a replay changes the text.",
+  "run_verdict": "NOT EXERCISED"
+}

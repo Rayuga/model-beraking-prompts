@@ -1,0 +1,33 @@
+{
+  "number": 23,
+  "id": "verifier_and_instruction_agree_on_the_runtime_contract",
+  "reviewer": "row-reviewer-23",
+  "input_sha256": "d7a61354d7f257ff5b1b408e9d87314b389023bc0bffa9d7e61ca8e698ee9d72",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r5/rules/WebDev Rubrics QC.xlsx: Quality Checks row 23 and Internal Quality Checks row 23 (incl. Mukesh login annotation); rows 4, 19, 49 for boundaries",
+    ".qc-cache/kittle-2026-10-09-r5/rules/harbor-webdev-rubric-qc/SKILL.md (delivery profile, known false positives)",
+    ".qc-cache/kittle-2026-10-09-r5/rules/harbor-webdev-rubric-qc/references/quality-checks.md section 23",
+    ".qc-cache/kittle-2026-10-09-r5/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (test.sh contract, cross-file table)",
+    ".qc-cache/kittle-2026-10-09-r5/rules/projects/webdev-task-template/tests/test.sh, tests/Dockerfile, environment/Dockerfile (diffed against task: identical)",
+    "qc/REVIEW_POLICY.md",
+    "task/tests/test.sh (all 227 lines)",
+    "task/instruction.md",
+    "task/environment/instructions/integration.md",
+    "task/environment/instructions/conversations.md, walls-and-retention.md (grep for runtime facts)",
+    "task/task.toml, task/environment/Dockerfile, task/tests/Dockerfile, task/tests/.dockerignore, task/tests/app_context.md",
+    "task/solution/solve.sh, task/solution/app/server.js (runtime lines 13-42, 527), task/solution/app/package.json",
+    "qc/runs/kittle-2026-10-09-r5/raw-evidence-index.json (14 entries, all artifact hashes and matching source hashes re-verified), qc/repairs/kittle-2026-10-08/run_golden.sh, results/golden-run.log, hosted-v2/oracle-reward.json"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "tests/test.sh is byte-identical to the frozen template (diff empty), as are both Dockerfiles. Each launch assumption maps to a public statement: entry /app/server.js (test.sh:68,97; instruction.md:5, integration.md:3); node run as an ordinary user, cwd not /app and possibly from the /tmp/submission copy (test.sh:97-111 setpriv 65534, no cd; integration.md:3 'as an ordinary user and not necessarily from inside /app, so find your own files relative to server.js'); env -i with only PATH, NODE_PATH, HOME, PORT=3000, DB_PATH (test.sh:104-109; integration.md:3 lists exactly these and says HOME may not be /app); port 3000 probed at 127.0.0.1 (test.sh:48; integration.md:3 'listen on 0.0.0.0 port 3000'); DB at /app/app.db or the DB_PATH copy path (test.sh:98-101; integration.md:3 'at the path in DB_PATH when that is set'); liveness /api/health then / with any HTTP status accepted (test.sh:48-55; integration.md:3 'GET /api/health should answer 200 even if the database can't be opened' - brief is stricter than the probe, harmless); deps express@5.1.0 and better-sqlite3@12.4.1 global via NODE_PATH under Node 22 in both images (environment/Dockerfile:1,9-11; tests/Dockerfile:1,16-21; integration.md:3); symlink refusal outside /app/node_modules (test.sh:72-83; integration.md:5 'don't put symbolic links anywhere in /app; we won't run an app that has them' - stricter than test.sh, so a compliant agent never hits it); seed: no seed env var is injected, and the brief tells the agent to copy /assets/seed_data.json into /app and import once into an empty DB (integration.md:5), while task.toml artifacts also carry /assets; fixed clock 2026-05-12T11:00:00Z stated (integration.md:7), not injected; restart helper reuses identical env/DB (test.sh:160-167) and restart persistence is stated (integration.md:5). Adversarial probes: an app resolving public/ from process.cwd() fails because cwd is /tests (unreadable to uid 65534) - but the brief explicitly warns against cwd-relative paths; an app that reads SEED_PATH or a custom env var gets nothing under env -i - the brief lists the only variables provided; a conforming app reading /assets at runtime or listening on 0.0.0.0 or 127.0.0.1 works; npm-created node_modules/.bin links are tolerated by test.sh. No same-origin or offline assumption exists. Sign-in surface is house convention (known false positive). Runtime: scripted golden on these v3 bytes (hash-matched) ran under env -i, uid 65534, DB_PATH, cwd /tmp with a real restart and all checks PASS; hosted v2 Oracle via the same frozen test.sh reached graded=1. Risk=true only because no full configured verifier launch of THIS candidate through test.sh exists (raw-evidence-index scope says it is absent); scripted run used HOME=/app and did not exercise the /tmp/submission copy branch.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL"
+}
