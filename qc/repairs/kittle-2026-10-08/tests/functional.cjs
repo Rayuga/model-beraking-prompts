@@ -244,28 +244,27 @@ async function before() {
   });
 
   await check('wall_added_live', async () => {
-    await openMatter(sian, 'M-13'); sian.requests.length = 0;
+    await home(sian); await openMatter(sian, 'M-12'); sian.requests.length = 0;
     await post(sian, 'Before wall JUDGE-WL0');
     const preq = lastReq(sian, 'POST', /\/messages$/);
-    await openMatter(harriet, 'M-13'); harriet.requests.length = 0;
-    await harriet.selectOption('#wall-select', 'dev@kittle.test'); await harriet.click('#wall-add');
-    await harriet.waitForFunction(() => document.querySelector('#wall-list').textContent.includes('Dev'));
-    await harriet.locator('#wall-list button', { hasText: 'Lift wall' }).click();
-    await harriet.waitForFunction(() => !document.querySelector('#wall-list').textContent.includes('Dev'));
+    await home(harriet); await openMatter(harriet, 'M-12'); harriet.requests.length = 0;
+    await harriet.selectOption('#wall-select', 'sian@kittle.test'); await harriet.click('#wall-add');
+    await harriet.waitForFunction(() => document.querySelector('#wall-list').textContent.includes('Sian'));
+    await harriet.locator('#wall-list button[aria-label="Lift wall for Sian Lloyd"]').click();
+    await harriet.waitForFunction(() => !document.querySelector('#wall-list').textContent.includes('Sian'));
     const liftReq = lastReq(harriet, 'POST', /\/walls$/);
     await harriet.selectOption('#wall-select', 'sian@kittle.test'); await harriet.click('#wall-add');
     await harriet.waitForFunction(() => document.querySelector('#wall-list').textContent.includes('Sian'));
-    await sian.waitForFunction(() => !document.querySelector('#matter-list').textContent.includes('M-13') && /Not available/.test(document.querySelector('#main').innerText), null, { timeout: 10000 });
+    await sian.waitForFunction(() => !document.querySelector('#matter-list').textContent.includes('M-12') && /Not available/.test(document.querySelector('#main').innerText), null, { timeout: 10000 });
     assert.equal((await replay(sian, { ...preq, body: JSON.stringify({ body: 'Too late JUDGE-WL1', client_key: 'wl1' }) })).status, 404);
-    assert.ok(!JSON.stringify((await api(harriet, 'GET', '/api/matters/M-13')).data).includes('JUDGE-WL1'));
-    const lift = { ...liftReq, body: liftReq.body.replace('dev@kittle.test', 'sian@kittle.test') };
-    assert.equal(JSON.parse(liftReq.body).email, 'dev@kittle.test');
-    assert.ok([403, 404].includes((await replay(sian, lift)).status));
-    assert.equal((await api(sian, 'GET', '/api/matters/M-13')).status, 404);
-    await harriet.locator('#wall-list button', { hasText: 'Lift wall' }).click();
+    assert.ok(!JSON.stringify((await api(harriet, 'GET', '/api/matters/M-12')).data).includes('JUDGE-WL1'));
+    assert.ok([403, 404].includes((await replay(sian, liftReq)).status));
+    assert.equal((await api(sian, 'GET', '/api/matters/M-12')).status, 404);
+    await harriet.locator('#wall-list button[aria-label="Lift wall for Sian Lloyd"]').click();
     await harriet.waitForFunction(() => !document.querySelector('#wall-list').textContent.includes('Sian'));
-    await sian.reload(); await sian.waitForSelector('.matter-link'); await openMatter(sian, 'M-13');
+    await sian.reload(); await sian.waitForSelector('.matter-link'); await openMatter(sian, 'M-12');
     assert.equal(await msgLi(sian, 'Before wall JUDGE-WL0').count(), 1);
+    await home(sian); await home(harriet);
   });
 
   await check('nested_replies', async () => {
@@ -347,7 +346,7 @@ async function before() {
     await setTimer(harriet, '30');
     assert.ok(!(await harriet.locator('#thread').innerText()).includes('Probate'));
     await home(sian); await openMatter(sian, 'M-13');
-    assert.equal((await replay(sian, { ...treq, body: JSON.stringify({ days: 1 }) })).status, 403);
+    assert.equal((await replay(sian, { ...treq, body: JSON.stringify({ days: null }) })).status, 403);
     await home(harriet); await openMatter(harriet, 'M-13');
     assert.ok((await harriet.locator('#matter-timer').innerText()).includes('30 days'));
   });
@@ -666,16 +665,19 @@ async function after() {
     assert.equal(await gwen.inputValue('#composer-input'), '');
   });
   await check('polish_escape_closes', async () => {
-    await msgLi(gwen, 'Enter check JUDGE-K1').locator('button', { hasText: /^Edit$/ }).click();
-    await gwen.fill('#composer-input', 'Escaped edit JUDGE-K1'); await gwen.press('#composer-input', 'Escape');
+    await post(gwen, 'Escape check JUDGE-K3');
+    await msgLi(gwen, 'Escape check JUDGE-K3').locator('button', { hasText: /^Edit$/ }).click();
+    await gwen.fill('#composer-input', 'Escaped edit JUDGE-K3'); await gwen.press('#composer-input', 'Escape');
     assert.ok(await gwen.locator('#composer-context').isHidden());
     await gwen.reload(); await gwen.waitForSelector('.matter-link'); await openMatter(gwen, 'M-13');
-    assert.equal(await msgLi(gwen, 'Enter check JUDGE-K1').locator('.edited').count(), 0);
+    assert.equal(await msgLi(gwen, 'Escape check JUDGE-K3').locator('.edited').count(), 0);
     assert.ok(!(await gwen.locator('#thread').innerText()).includes('Escaped edit'));
-    await msgLi(gwen, 'Enter check JUDGE-K1').locator('button', { hasText: /^Reply$/ }).click();
+    await msgLi(gwen, 'Escape check JUDGE-K3').locator('button', { hasText: /^Reply$/ }).click();
     assert.ok(await gwen.locator('#composer-context').isVisible());
-    await gwen.press('#composer-input', 'Escape');
+    await gwen.fill('#composer-input', 'Escaped reply JUDGE-K3'); await gwen.press('#composer-input', 'Escape');
     assert.ok(await gwen.locator('#composer-context').isHidden());
+    await gwen.reload(); await gwen.waitForSelector('.matter-link'); await openMatter(gwen, 'M-13');
+    assert.ok(!(await gwen.locator('#thread').innerText()).includes('Escaped reply'));
   });
   await check('polish_delete_confirm', async () => {
     await post(gwen, 'Confirm check JUDGE-K2');

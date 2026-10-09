@@ -17,7 +17,7 @@ Every password is `password123`.
 
 ## Key screens
 
-Sign-in; the matter list with unread counts; a matter thread with nested replies, each message's reply, edit, delete, copy-link and (for partners) hold controls, and timer and wall controls for partners; a message box that suggests people when you type @; a mentions list; search; the transcript page for a matter.
+Sign-in; the matter list with unread counts; a matter thread with nested replies, each message's reply and copy-link controls, edit and delete on your own messages, (for partners) hold controls, and timer and wall controls for partners; a message box that suggests people when you type @; a mentions list; search; the transcript page for a matter.
 
 ## Notes for checking
 

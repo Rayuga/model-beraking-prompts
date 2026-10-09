@@ -20,7 +20,9 @@ dimension.
 ## Independent scoring
 
 Score each criterion independently from browser-visible evidence. One failed
-criterion does not zero the others. If a criterion cannot be performed, mark it
+criterion does not zero the others. A criterion passes only if every step it
+names holds; its "Fails if" sentence names the main failures but never excuses
+a step it does not mention. If a criterion cannot be performed, mark it
 failed and continue to every remaining criterion; return a verdict for all of
 them. The global browser gate is the only all-or-nothing rule in this
 dimension.
