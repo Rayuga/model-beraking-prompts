@@ -1,0 +1,30 @@
+{
+  "number": 19,
+  "id": "solution_honors_the_runtime_contract_and_is_self_contained",
+  "reviewer": "row-reviewer-19",
+  "input_sha256": "641f1533458d9f8dc8c182013b61f9663ecf95a9a5bd810895e4aa48d02fa45b",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r7/rules/WebDev Rubrics QC.xlsx: Quality Checks row 19; Internal Quality Checks row 19 ('with no network / no run-time install'); Deterministic Checks check-solve-contract.py",
+    ".qc-cache/kittle-2026-10-09-r7/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r7/rules/harbor-webdev-rubric-qc/references/quality-checks.md (#19)",
+    ".qc-cache/kittle-2026-10-09-r7/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md (check-solve-contract.py, check-runtime-contract-strings.py)",
+    ".qc-cache/kittle-2026-10-09-r7/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (cross-file agreements)",
+    ".qc-cache/kittle-2026-10-09-r7/rules/projects/webdev-task-template (solve.sh, test.sh, both Dockerfiles diffed: identical)",
+    "qc/REVIEW_POLICY.md",
+    "task/solution/solve.sh, task/solution/app/server.js (lines 1-175, 505-528), package.json, public/*",
+    "task/instruction.md, task/environment/instructions/integration.md, task/environment/Dockerfile, task/task.toml, task/tests/test.sh, task/tests/Dockerfile, task/tests/app_context.md",
+    "qc/runs/kittle-2026-10-09-r7/raw-evidence-index.json (solution hashes re-verified against frozen bytes)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "solve.sh (sha256 f7c17a01..., byte-identical to template; LF, '#!/bin/bash', set -euo pipefail) only does 'mkdir -p /app; cp -a \"$(dirname \"$0\")/app/.\" /app/' - nothing to /tests, /logs/verifier or /solution, no pkill, no NODE_ENV, no install/network step. Frozen solution hashes match raw-evidence-index (server.js e4d9402d..., app.js fd8df974..., seed b256f85e... = /assets seed). No symlinks, no app.db shipped. server.js resolves everything from __dirname (l.14-15, 29), honours DB_PATH (l.14), listens 0.0.0.0:PORT (l.528), registers /api/health before the DB gate (l.42) and wraps DB init in try/catch (init, l.153-162); seeding guarded by settings.seeded (l.94); deps limited to express 5.1.0/better-sqlite3 12.4.1 via NODE_PATH; no outbound http in server or public pages; fixed clock from seed. My run (own image built from frozen environment/Dockerfile, removed afterwards): solve.sh exit 0; started as uid 65534 via env -i with only PATH/NODE_PATH/HOME=/tmp/PORT/DB_PATH, cwd /tmp: health 200 booted=true, harriet login 200, POST /api/matters/M-11/messages 201 (K-19), kill+restart on same DB -> K-19 still found by search, no re-import; alternate DB_PATH /tmp/alt/x.db created there; unauthenticated /api/matters 401; unopenable DB_PATH (/root/x.db, read-only dir, garbage file, a directory) -> health 200 booted=false and / 200. Also ran the frozen bytes under cw-editor-verifier:current (verifier image whose Dockerfile matches the identical template; proxy, not this task's built verifier image): better-sqlite3 12.4.1/express 5.1.0 load, /app writable as 65534 so test.sh keeps DB_PATH=/app/app.db, health booted=true, dev@ (walled from M-12) sees only M-11/M-13. Weak/alternative probe: an app that seeded on every boot or used cwd-relative paths would fail this contract, the golden does not; a conforming alternative placing the seed at /app/seed_data.json is equally accepted (golden also falls back to /app/seed_data.json and /assets). Note (P3, not a defect): DB_PATH=/proc/nope/x.db makes Node's fs.mkdirSync(recursive) spin on procfs (reproduced standalone, exit 124), so the server never listens; test.sh never uses such a path. This row does not measure configured-judge/Oracle scores, which remain absent per the raw evidence index.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "CONFIRMED"
+}

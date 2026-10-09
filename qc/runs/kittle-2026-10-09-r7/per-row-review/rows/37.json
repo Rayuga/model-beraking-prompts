@@ -1,0 +1,37 @@
+{
+  "number": 37,
+  "id": "later_dimensions_tolerate_earlier_mutations",
+  "reviewer": "row-reviewer-37",
+  "input_sha256": "641f1533458d9f8dc8c182013b61f9663ecf95a9a5bd810895e4aa48d02fa45b",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r7/rules/WebDev Rubrics QC.xlsx (Quality Checks row 38 = check 37; Internal Quality Checks row 38, no extra annotation)",
+    ".qc-cache/kittle-2026-10-09-r7/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r7/rules/harbor-webdev-rubric-qc/references/quality-checks.md (### 37)",
+    ".qc-cache/kittle-2026-10-09-r7/rules/projects/webdev-task-template/tests (test.sh identical by diff; functional/prompt.md shared-database lines)",
+    "qc/REVIEW_POLICY.md",
+    ".qc-cache/kittle-2026-10-09-r7/task/task.toml",
+    ".qc-cache/kittle-2026-10-09-r7/task/tests/test.sh",
+    ".qc-cache/kittle-2026-10-09-r7/task/tests/app_context.md",
+    ".qc-cache/kittle-2026-10-09-r7/task/tests/gates/render/{prompt.md,judge.toml}",
+    ".qc-cache/kittle-2026-10-09-r7/task/tests/gates/constraints/{prompt.md,judge.toml}",
+    ".qc-cache/kittle-2026-10-09-r7/task/tests/scored/functional/{prompt.md,judge.toml}",
+    ".qc-cache/kittle-2026-10-09-r7/task/tests/scored/polish/{prompt.md,judge.toml}",
+    ".qc-cache/kittle-2026-10-09-r7/task/tests/scored/visual/{prompt.md,judge.toml}",
+    ".qc-cache/kittle-2026-10-09-r7/task/environment/assets/seed_data.json",
+    "qc/runs/kittle-2026-10-09-r7/raw-evidence-index.json (all artifact hashes re-verified, matching_source_files match frozen bytes)",
+    "qc/repairs/kittle-2026-10-08/results/golden-run.log",
+    "qc/repairs/kittle-2026-10-09-v3/hosted-v2/{oracle,luna}-scored-details.json (previous v2 bytes, context only)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "One app process and DB serve every dimension (test.sh starts it once; gates then scored, rewardkit --max-concurrent-agent 1; functional is mode=individual, sequential). The constraints gate writes 'Gate check JUDGE-G1' in M-11; no later criterion depends on M-11 being free of it. Every later dimension is told the state is mutated and to judge relatively: app_context.md:30 'The library of messages grows as criteria run. Do not assume the seed state'; functional/prompt.md:53 'Criteria share one database; never write something a later criterion does not expect' and :78-82 'judge it against the state the earlier ones left'; global gates say 'protected content appropriate to the current state'; polish/prompt.md:34 'Messages, replies, edits, holds, timer changes, walls and deletions left by the functional run are legitimate; do not assume the seed state'; visual matter_sidebar explicitly does not penalise absent unread counts; persistence step c notes values before restart and compares after ('reads exactly as it did before'), and unread leg 4 uses 'at least 2'. I traced every seeded fixture a criterion reads against all earlier writers: destructive steps (timer_changes deletes K-13/K-18 in M-13, hold_scope_and_release releases and deletes K-17, persistence walls Sian from M-11 and sets the M-12 timer) touch only fixtures no later criterion needs, and they restore timers and walls (M-13 back to 30 days, Sian's M-12 wall lifted, M-11 wall lifted, M-12 timer off). Fixtures read later all survive the fixed clock and earlier steps: K-3 'Survey booked' (4 days old on the 7-day M-11; polish link_highlight, search_and_transcript, persistence), K-2 held notice (search_and_transcript), K-8 'Draft will sent' (2 days old, so it survives the temporary 7-day M-13 timer; message_links, live_updates), K-11 rent review (wall_every_route, deleted_and_expired), K-6 in M-12 (no timer before persistence). Search probes use unique JUDGE tokens, so earlier posts cannot collide. Runtime corroboration: the hash-verified scripted golden run (golden-run.log) executed gate_constraints, then all 16 functional criteria in listed order, then persistence with a real restart, then six polish criteria, on one DB, and all passed. That is not a configured judge run. Mutation thought experiments: a broken app whose earlier failure cascades (for example, a hold release that deletes every held message) loses later criteria too, but that tracks a real defect and is not a pristine-seed assumption. Polish and visual are equally state-tolerant if run before functional; their writes in M-13 are new fixed-clock messages that no functional criterion counts by absolute number. Latent P3 note: the '-2' re-attempt rule (functional/prompt.md:34-35) covers repeated posts, but a re-attempt of timer_changes or hold_scope_and_release would find K-13 or K-17 already gone and fail its positive control. This matters only if the harness re-runs a partly executed criterion session, which the shipped wiring does not indicate.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PARTIAL"
+}

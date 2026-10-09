@@ -1,0 +1,34 @@
+{
+  "number": 21,
+  "id": "verifier_entrypoint_is_safe_and_always_scores",
+  "reviewer": "row-reviewer-21",
+  "input_sha256": "641f1533458d9f8dc8c182013b61f9663ecf95a9a5bd810895e4aa48d02fa45b",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r7/rules/WebDev Rubrics QC.xlsx sheet1 row 22 (#21 verifier_entrypoint_is_safe_and_always_scores; column E empty, no annotation) and sheet4 row 22 (older wording); sheet2 rows A36 check-verifier-contract.py, A33 check-scoring-policy.py",
+    ".qc-cache/kittle-2026-10-09-r7/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r7/rules/harbor-webdev-rubric-qc/references/quality-checks.md lines 92-94 (#21)",
+    ".qc-cache/kittle-2026-10-09-r7/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md lines 98-111 (test.sh ordered contract)",
+    ".qc-cache/kittle-2026-10-09-r7/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md lines 42-50",
+    ".qc-cache/kittle-2026-10-09-r7/rules/projects/webdev-task-template/tests/test.sh and tests/tools/ (diffed against task)",
+    ".qc-cache/kittle-2026-10-09-r7/task/tests/test.sh (lines 1-227)",
+    ".qc-cache/kittle-2026-10-09-r7/task/tests/tools/score.py",
+    ".qc-cache/kittle-2026-10-09-r7/task/tests/scoring.toml",
+    ".qc-cache/kittle-2026-10-09-r7/task/task.toml",
+    ".qc-cache/kittle-2026-10-09-r7/task/tests/scored/functional/judge.toml line 27; tests/app_context.md; tests/*/*/prompt.md ({app_context} placeholders)",
+    ".qc-cache/kittle-2026-10-09-r7/task/instruction.md line 5; environment/instructions/integration.md line 3",
+    "qc/REVIEW_POLICY.md",
+    "qc/runs/kittle-2026-10-09-r7/raw-evidence-index.json (scope statement)"
+  ],
+  "verdict": "Pass",
+  "risk": true,
+  "severity": null,
+  "evidence": "Frozen task/tests/test.sh is byte-identical to the frozen template (sha256 bd682592...e5aa for both) and tests/tools/ (score.py 13de2b38..., restart_mcp.py) is identical to the template. Static read against staged-task-contract.md 'tests/test.sh' 1-8: write_zero_reward (l.14-18, full zero record with reward, five dims, gates_passed, floors_passed, weighted_score, graded, no_op) runs at l.60 before anything else, then trap cleanup EXIT (l.61) calls ensure_reward (l.20-23); no shell exec (only find -exec, l.86); refuses missing /app/server.js (l.68) and any symlink outside /app/node_modules or whose target escapes it (l.72-83); copies /app aside (l.90-95); launches with setsid env -i PATH/NODE_PATH/HOME/PORT/DB_PATH + setpriv --reuid=65534 (l.104-111); liveness probe /api/health then / before RewardKit (l.42-58, 115-125); restart helper heredoc+sed, chmod 755, export APP_RESTART_HELPER (l.127-193) consumed by functional judge.toml l.27; {app_context} substitution (l.195-201; app_context.md 2225 bytes, placeholder in all 5 prompts); gates (1500s) then score.py with 0/1/other handling (l.213-222), scored (11100s) then score.py || write_zero_reward (l.224-227); 1500+11100 < verifier 13200. Runtime contract matches brief (integration.md l.3: server.js, port 3000, /api/health, env -i vars, DB_PATH, HOME not /app). Actual-run evidence (9 Oct 2026, cw-editor-verifier:current, --network none, --rm, scratch copy of frozen tests+solution, RewardKit replaced by a PATH stub so no provider spend): missing REWARDKIT env -> reward 0.0/no_op=1; missing server.js -> 0.0; /app/evil -> /etc/passwd symlink -> 0.0, no suite run; in-node_modules symlink accepted; server.js that exits -> 0.0 after liveness timeout (128 s wall, 120 probes), no suite run; golden app runs as 'nobody node /app/server.js', gates+scored pass -> 0.65 (0.6*0.5+0.2*1+0.2*0.75); gate failure -> 0.0000 detailed record, scored suite skipped; gates RewardKit crash -> plain zero; gates malformed JSON -> score.py exit 2 -> plain zero; scored crash -> 0.0 (gates-passed record, floors_passed 0); functional floor fail -> 0.0 with weighted 0.4; scored missing key -> plain zero; SIGTERM during hung scored suite -> rc 143, reward file present at 0.0000; app process group killed in every case. Adversarial: a dead app or one that answers nothing cannot reach RewardKit; an app answering 500 on /api/health passes liveness only (HTTPError treated as alive, template policy) and still has to pass judged gates. A conforming app needing >~2 min to boot would be zeroed, but the brief requires /api/health to answer even without a DB, so this is not a hidden requirement. Minor template-level observation (not a task defect, not to be patched here): after a gates pass, a scored-suite RewardKit failure leaves score.py's gates-only record (reward 0.0, graded 1) rather than the literal 'plain zero' in contract item 8; reward is still 0. Risk=true because a full configured verifier launch/grading with real RewardKit, claude-code judge and Playwright on these bytes is absent (raw-evidence-index scope says so); my runs prove the shell control flow and reward writing only, not a real judge launch.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "PASS (exit paths exercised with stub RewardKit; real configured RewardKit launch not measured)"
+}

@@ -1,0 +1,35 @@
+{
+  "number": 11,
+  "id": "timeouts_fit_the_work",
+  "reviewer": "row-reviewer-11",
+  "input_sha256": "641f1533458d9f8dc8c182013b61f9663ecf95a9a5bd810895e4aa48d02fa45b",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r7/rules/WebDev Rubrics QC.xlsx :: Quality Checks row 12 (#11 timeouts_fit_the_work) and Internal Quality Checks row 12 ('nest properly (inner < outer, sum of judges < verifier)')",
+    ".qc-cache/kittle-2026-10-09-r7/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r7/rules/harbor-webdev-rubric-qc/references/quality-checks.md:50-51",
+    ".qc-cache/kittle-2026-10-09-r7/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md:54-63,100-111",
+    ".qc-cache/kittle-2026-10-09-r7/rules/harbor-webdev-rubric-qc/references/deterministic-checks.md:42-44",
+    ".qc-cache/kittle-2026-10-09-r7/rules/projects/webdev-task-template/task.toml, tests/test.sh, tests/tools/score.py, tests/*/*/judge.toml",
+    "qc/REVIEW_POLICY.md:23-31",
+    ".qc-cache/kittle-2026-10-09-r7/task/task.toml",
+    ".qc-cache/kittle-2026-10-09-r7/task/tests/test.sh (sha256 bd682592..., identical to template)",
+    ".qc-cache/kittle-2026-10-09-r7/task/tests/tools/score.py (identical to template), tools/restart_mcp.py",
+    ".qc-cache/kittle-2026-10-09-r7/task/tests/gates/{render,constraints}/judge.toml",
+    ".qc-cache/kittle-2026-10-09-r7/task/tests/scored/{functional,polish,visual}/judge.toml (functional sha256 3188793b..., matches manifest)",
+    ".qc-cache/kittle-2026-10-09-r7/task/tests/Dockerfile (harbor-rewardkit==0.1.7), environment/Dockerfile",
+    "qc/runs/kittle-2026-10-09-r7/raw-evidence-index.json, manifest.json",
+    "rewardkit 0.1.7 source copy (cw-strict-worktree/.../final-cross-check-2026-09-27/harness/rewardkit-0.1.7-source/judges.py:229,467-570) for individual-mode timeout semantics"
+  ],
+  "verdict": "Not exercised",
+  "risk": true,
+  "severity": "P1",
+  "evidence": "Arithmetic (nesting) passes on the frozen bytes. task.toml: [agent].timeout_sec=7200, build_timeout_sec=600, [verifier].timeout_sec=13200 (template values). test.sh (byte-identical to template) runs rewardkit --max-concurrent-agent 1 under `timeout 1500` for gates (line 213) and `timeout 11100` for scored (line 224); liveness = 120 probes x 0.25 s (+2 s urlopen timeout) ~30 s (lines 115-122); restart helper 30 s, restart_mcp 55 s. Gates: render 600 + constraints 600 = 1200 < 1500 (each one criterion, batched). Scored: functional mode='individual', timeout=550 per criterion (rewardkit 0.1.7 _arun_agent_individual runs each criterion as its own sequential agent call with wait_for(timeout=judge.timeout)), 16 criteria -> 8800; polish batched 900 (6 criteria); visual batched 900 (4 criteria); 8800+900+900 = 10600 < 11100 (500 s slack), matching the judge.toml:7-11 comment. Verifier: 1500 + 11100 = 12600 + ~30 s liveness + copy < 13200. Every individual judge timeout < its suite budget. Agent 7200 s and build 600 s are reasonable for an Express/SQLite app whose agent Dockerfile only does a global npm install. 'Long enough' is NOT measured: the functional timeout was cut from the template's batched 9000 s (2 criteria) to 550 s per criterion for 16 heavy criteria; functional/judge.toml:11 itself says 'Not yet measured against a judge run', and raw-evidence-index.json scope states a full configured grading run of this candidate is absent; the indexed golden run is scripted Playwright, explicitly 'not ... a judge-duration measurement'. Per REVIEW_POLICY.md:25 and SKILL.md ('Never upgrade an unmeasured claim to Pass'), adequacy cannot be passed. Secondary latent issue (shared harness, not task-authored): rewardkit retries a schema-mismatch up to _MAX_JUDGE_RETRIES=3 with a fresh 550 s wait_for each, so the theoretical worst case does not nest; an overrun of the 11100 s outer timeout makes test.sh exit 0 with only the gates record, i.e. reward 0 for the whole task (score.py: scored_ran false -> reward 0).",
+  "counterexample": "Plausible conforming app that could be graded wrong (unmeasured, so not confirmed): a correct app where the GLM-5.3-flashx claude-code judge needs >550 s for wall_every_route (391-word description: sign in as Sian, post, record four requests, sign in as Dev, three searches, replay four requests, direct transcript URL, a reply plus two forged-reply replays across M-11/M-12/M-13 and a Harriet check) or edits_and_stale_edit (two browser contexts, three users, replayed edit, mentions add/remove/delete) -> rewardkit records the criterion as 0.0 via _timeout_scores, under-scoring a correct submission. Conversely, several criteria running near 550 s plus any schema retry can push the scored suite past 11100 s, zeroing the entire reward.",
+  "suggested_fix": "Before clearance, run the full configured verifier (claude-code + z-ai/glm-5.3-flashx, Playwright MCP) on the golden app on these bytes and record per-criterion durations and any timeout warnings; if any functional criterion approaches 550 s, rebalance (split/trim heavy criteria together with scope, or an authorized, reason-recorded timeout change within the nesting and <5 h limit) rather than increasing automatically.",
+  "run_verdict": "NOT EXERCISED"
+}

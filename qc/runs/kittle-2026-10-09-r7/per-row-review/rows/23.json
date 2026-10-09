@@ -1,0 +1,38 @@
+{
+  "number": 23,
+  "id": "verifier_and_instruction_agree_on_the_runtime_contract",
+  "reviewer": "row-reviewer-23",
+  "input_sha256": "641f1533458d9f8dc8c182013b61f9663ecf95a9a5bd810895e4aa48d02fa45b",
+  "read_sources": {
+    "workbook": true,
+    "skill": true,
+    "template": true
+  },
+  "sources_read": [
+    ".qc-cache/kittle-2026-10-09-r7/rules/WebDev Rubrics QC.xlsx (Quality Checks row 24 / check 23; Internal Quality Checks row 24 incl. E24 sign-in annotation and H24 conclusion)",
+    ".qc-cache/kittle-2026-10-09-r7/rules/harbor-webdev-rubric-qc/SKILL.md",
+    ".qc-cache/kittle-2026-10-09-r7/rules/harbor-webdev-rubric-qc/references/quality-checks.md (#23, #4, #19, #49)",
+    ".qc-cache/kittle-2026-10-09-r7/rules/harbor-webdev-rubric-qc/references/staged-task-contract.md (tests/test.sh contract, cross-file agreements)",
+    ".qc-cache/kittle-2026-10-09-r7/rules/projects/webdev-task-template (test.sh, tests/Dockerfile, environment/Dockerfile diffed: byte-identical)",
+    "qc/REVIEW_POLICY.md",
+    "task/tests/test.sh",
+    "task/instruction.md",
+    "task/environment/instructions/integration.md",
+    "task/environment/instructions/walls-and-retention.md (password line 3)",
+    "task/task.toml",
+    "task/environment/Dockerfile",
+    "task/tests/Dockerfile",
+    "task/tests/app_context.md",
+    "task/tests/*/*/judge.toml and prompt.md (localhost:3000, APP_RESTART_HELPER)",
+    "task/solution/solve.sh",
+    "task/solution/app/server.js (lines 13-31, 42, 528)",
+    "qc/runs/kittle-2026-10-09-r7/raw-evidence-index.json (scope statement)"
+  ],
+  "verdict": "Pass",
+  "risk": false,
+  "severity": null,
+  "evidence": "Every launch assumption in task/tests/test.sh is stated to the agent. Entry /app/server.js (test.sh:68,97) <- instruction.md:5 and integration.md:3. Port 3000 with probes on 127.0.0.1:3000 /api/health then / (test.sh:48,104-111) <- integration.md:3 says listen on 0.0.0.0 port 3000 and GET /api/health returns 200 even when the DB can't open. The probe accepts any HTTP response, so it is more lenient than the brief. Sanitized env -i with PATH, NODE_PATH, HOME, PORT=3000, DB_PATH (test.sh:104-109, restart helper 160-165) <- integration.md:3 lists exactly these five and says HOME may not be /app. Unprivileged uid 65534 and cwd /tests, with a possible launch from the copy /tmp/submission/server.js and DB_PATH=/tmp/submission/app.db when /app is not writable (test.sh:97-102) <- integration.md:3 says it runs as an ordinary user, not necessarily from inside /app, finds files relative to server.js, and honors DB_PATH. Database /app/app.db <- instruction.md:5 and integration.md:3. Seed: test.sh does no seeding. The brief says to copy /assets/seed_data.json into /app and import it once into an empty DB, with no leftover DB (integration.md:5). /assets is also a declared artifact (task.toml:2), so a seed read straight from /assets still works. Symlink refusal (test.sh:72-83) <- integration.md:5 says no symbolic links anywhere in /app (the brief is stricter than the check). Restart helper persistence <- integration.md:5. Deps: Node 22 plus express@5.1.0 and better-sqlite3@12.4.1 are installed globally via NODE_PATH in both environment/Dockerfile:1-12 and tests/Dockerfile:1-22 <- integration.md:3. Fixed clock: no env var is injected, and it is stated in integration.md:7. Accounts/password: walls-and-retention.md:3 plus seed accounts, matching app_context.md. Sign-in is a house convention (workbook E24 known false positive), and the brief also requires it (instruction.md:7). test.sh, tests/Dockerfile and environment/Dockerfile are byte-identical to the frozen template. The golden (server.js:13-14,29,42,528) honors PORT/DB_PATH/__dirname and 0.0.0.0. The raw-evidence-index scripted golden run used uid 65534, env -i, DB_PATH and cwd /tmp. Adversarial checks: (a) a conforming app that reads cwd-relative files, binds 127.0.0.1 only, or relies on HOME=/app was explicitly warned against or still passes the probe; (b) a conforming app using local node_modules passes (copied, internal symlinks tolerated); (c) a broken app whose /api/health returns 500 still passes liveness. That is probe leniency, not a contract mismatch, and the browser gates then judge it. No undisclosed launch assumption was found.",
+  "counterexample": null,
+  "suggested_fix": null,
+  "run_verdict": "SOURCE-VERIFIED (no full configured verifier run on these bytes; not required to establish file agreement)"
+}
